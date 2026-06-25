@@ -4,7 +4,143 @@ import logging
 import os
 import sys
 import queue
+import re
 from logging.handlers import RotatingFileHandler, QueueHandler, QueueListener
+
+class SafeFormatter(logging.Formatter):
+    """
+    Кастомный форматтер, маскирующий конфиденциальные данные (пути и файлы) в логах.
+    Сохраняет длину названий, расширения файлов, слэши и диски, но заменяет:
+    - латиницу -> i/I
+    - кириллицу -> п/П
+    - цифры -> 0
+    """
+    
+    @staticmethod
+    def anonymize_token(token):
+        if not token:
+            return token
+            
+        # Отделяем префиксы и суффиксы (кавычки, скобки, знаки препинания)
+        prefix = ""
+        suffix = ""
+        
+        start_idx = 0
+        while start_idx < len(token) and token[start_idx] in '\'"([{<':
+            start_idx += 1
+        prefix = token[:start_idx]
+        
+        end_idx = len(token)
+        while end_idx > start_idx and token[end_idx-1] in '\'")]}>,;:':
+            end_idx -= 1
+        suffix = token[end_idx:]
+        
+        inner = token[start_idx:end_idx]
+        if not inner:
+            return token
+            
+        # Проверяем, является ли токен путем или файлом
+        is_path_or_file = False
+        if '\\' in inner or '/' in inner:
+            is_path_or_file = True
+        else:
+            # Проверка на наличие расширения файла (например, image.png)
+            dot_idx = inner.rfind('.')
+            if dot_idx > 0:
+                ext = inner[dot_idx+1:]
+                if 2 <= len(ext) <= 5 and ext.isalnum() and not ext.isdigit():
+                    try:
+                        float(inner)
+                    except ValueError:
+                        is_path_or_file = True
+                        
+        if not is_path_or_file:
+            return token
+            
+        # Разделяем имя и расширение
+        dot_idx = inner.rfind('.')
+        last_slash = max(inner.rfind('\\'), inner.rfind('/'))
+        if dot_idx > last_slash and dot_idx > 0:
+            ext = inner[dot_idx:]
+            root = inner[:dot_idx]
+        else:
+            ext = ""
+            root = inner
+            
+        anonymized_root = []
+        i = 0
+        # Сохраняем имя диска или префикс UNC
+        if len(root) >= 2 and root[1] == ':' and root[0].isalpha():
+            anonymized_root.append(root[0])
+            anonymized_root.append(':')
+            i = 2
+        elif root.startswith('\\\\?\\'):
+            anonymized_root.append('\\\\?\\')
+            i = 4
+            
+        while i < len(root):
+            c = root[i]
+            if c in '\\/':
+                anonymized_root.append(c)
+            elif c.isdigit():
+                anonymized_root.append('0')
+            elif 'a' <= c.lower() <= 'z':
+                anonymized_root.append('i' if c.islower() else 'I')
+            elif 'а' <= c.lower() <= 'я' or c.lower() == 'ё':
+                anonymized_root.append('п' if c.islower() else 'П')
+            else:
+                anonymized_root.append(c)
+            i += 1
+            
+        return prefix + "".join(anonymized_root) + ext + suffix
+
+    @staticmethod
+    def anonymize_string(message):
+        if not isinstance(message, str):
+            return message
+            
+        # Разделяем по пробелам и кавычкам/скобкам
+        tokens = re.split(r'(\s+|[\'\"()\[\]{}])', message)
+        anonymized_tokens = []
+        for token in tokens:
+            if not token or not token.strip() or token in '\'"()[]{}':
+                anonymized_tokens.append(token)
+            else:
+                anonymized_tokens.append(SafeFormatter.anonymize_token(token))
+                
+        return "".join(anonymized_tokens)
+
+    def format(self, record):
+        orig_msg = record.msg
+        orig_args = record.args
+        
+        # Сначала получаем форматированное сообщение
+        try:
+            message = record.getMessage()
+        except Exception:
+            message = str(record.msg)
+            
+        # Маскируем сообщение
+        record.msg = self.anonymize_string(message)
+        record.args = ()
+        if hasattr(record, 'message'):
+            del record.message
+            
+        try:
+            result = super().format(record)
+        finally:
+            record.msg = orig_msg
+            record.args = orig_args
+            
+        return result
+
+    def formatException(self, ei):
+        orig_exception_text = super().formatException(ei)
+        return self.anonymize_string(orig_exception_text)
+
+    def formatStack(self, stack_info):
+        orig_stack_text = super().formatStack(stack_info)
+        return self.anonymize_string(orig_stack_text)
 
 # Global listener reference to prevent garbage collection
 _log_listener = None
@@ -39,7 +175,7 @@ def setup_logging():
     root_logger.setLevel(logging.DEBUG if not getattr(sys, 'frozen', False) else logging.WARNING)
 
     # 2. Форматтер
-    log_formatter = logging.Formatter(
+    log_formatter = SafeFormatter(
         '[%(asctime)s] [%(levelname)-8s] [%(module)s.%(funcName)s:%(lineno)d] - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )

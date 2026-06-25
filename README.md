@@ -28,8 +28,6 @@ Media Keeper is a powerful and fully private application for organizing, cleanin
 
 ## 📂 Application Screenshots
 
-Screenshots of the program sections will be placed here:
-
 ### Main Screen (Launcher)
 ![Main Screen](images/launcher_main.png)
 
@@ -173,6 +171,10 @@ You are free to study, modify, and use the project for personal purposes with ma
 *   💬 GitHub Issues: [GitHub — Media Keeper](https://github.com/scenthron/Media-Keeper)
 *   💬 Discord: `Centhron`
 *   📧 E-mail: media.keeper.fb@gmail.com
+
+### 💸 For those wishing to support the author financially:
+*  DonationAlerts: https://dalink.to/centhron_s
+*  Boosty.to: https://boosty.to/centhron
 
 ---
 *Special thanks to friends for testing and to Google for the Antigravity neural network family!* 😊

@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Keeper - Галерея иконок</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        h1 span {
+            color: #3b82f6;
+        }
+        p.subtitle {
+            color: #888888;
+            font-size: 14px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background-color: #1e1e1e;
+            border: 1px solid #2d2d2d;
+            border-radius: 12px;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+            height: 190px;
+        }
+        .card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15);
+        }
+        .icon-wrapper {
+            width: 64px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #181818;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #262626;
+            transition: background-color 0.2s ease;
+        }
+        .card:hover .icon-wrapper {
+            background-color: #222;
+        }
+        .icon-wrapper svg {
+            width: 40px;
+            height: 40px;
+            display: block;
+        }
+        .copy-btn {
+            background-color: #2a2a2a;
+            color: #cccccc;
+            border: 1px solid #3d3d3d;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: inherit;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: all 0.15s ease;
+        }
+        .copy-btn:hover {
+            background-color: #3b82f6;
+            color: #ffffff;
+            border-color: #3b82f6;
+        }
+        .copy-btn:active {
+            transform: scale(0.97);
+        }
+        /* Toast notification */
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background-color: #3b82f6;
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            z-index: 1000;
+        }
+        #toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Media Keeper <span>Иконки</span></h1>
+            <p class="subtitle">Кликните на название иконки, чтобы скопировать его для использования в коде</p>
+        </header>
+        
+        <div class="grid">
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+<svg fill="#eb2d2d" height="800px" width="800px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 335 335" xml:space="preserve" stroke="#eb2d2d">
+
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+
+<g id="SVGRepo_iconCarrier"> <circle cx="167.5" cy="167.5" r="167.5"/> </g>
+
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('-убрать-rec-color.svg')" title="Нажмите, чтобы скопировать: -убрать-rec-color.svg">-убрать-rec-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+
+<g id="SVGRepo_iconCarrier"> <path d="M5.65681 7.75728C5.26629 7.36675 4.63312 7.36675 4.2426 7.75728L1.41426 10.5857C0.633215 11.3667 0.633121 12.6331 1.41417 13.4141L4.24269 16.2425C4.63321 16.633 5.26638 16.633 5.6569 16.2425C6.04743 15.852 6.04743 15.2188 5.6569 14.8283L3.82849 12.9999L17.9998 12.9999L18.0015 12.9999H20.1714L18.3429 14.8283C17.9524 15.2188 17.9524 15.852 18.3429 16.2425C18.7335 16.633 19.3666 16.633 19.7572 16.2425L22.5856 13.4141C23.3666 12.633 23.3668 11.3667 22.5857 10.5857L19.7573 7.75725C19.3668 7.36672 18.7336 7.36672 18.3431 7.75725C17.9526 8.14777 17.9526 8.78094 18.3431 9.17146L20.1715 10.9999L3.82842 10.9999L5.65681 9.17149C6.04734 8.78097 6.04734 8.1478 5.65681 7.75728Z" fill="#ffffff"/> </g>
+
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('arrow-dual-horiz.svg')" title="Нажмите, чтобы скопировать: arrow-dual-horiz.svg">arrow-dual-horiz.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="none">
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+<g id="SVGRepo_iconCarrier" transform="rotate(180, 8, 8)"> <g fill="#ffffff"> <path d="M8.245 4.695a.75.75 0 00-.05 1.06l1.36 1.495H4.75a.75.75 0 000 1.5h4.805l-1.36 1.495a.75.75 0 001.11 1.01l2.5-2.75a.75.75 0 000-1.01l-2.5-2.75a.75.75 0 00-1.06-.05z"/> <path fill-rule="evenodd" d="M0 8a8 8 0 1116 0A8 8 0 010 8zm8-6.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13z" clip-rule="evenodd"/> </g> </g>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('arrow-right-color.svg')" title="Нажмите, чтобы скопировать: arrow-right-color.svg">arrow-right-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-up-down-icon lucide-arrow-up-down"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('arrow-up-down.svg')" title="Нажмите, чтобы скопировать: arrow-up-down.svg">arrow-up-down.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 24 24" data-name="Layer 1" id="Layer_1" xmlns="http://www.w3.org/2000/svg"><title/><path d="M11.4142,14,10,12.5858l9.7929-9.79291a1,1,0,0,1,1.4142,0h0a1.00005,1.00005,0,0,1,0,1.41422Z" style="fill:#d9925f"/><path d="M8.9401,21.8125a.64322.64322,0,0,1-.2441-.0476,10.17571,10.17571,0,0,1-6.6936-8.7213.65316.65316,0,0,1,.7944-.6914,6.87393,6.87393,0,0,0,4.8854-.6583l.0093-.0051,1.1261-.6201a.653.653,0,0,1,.7391.0757l3.6726,3.135a.65159.65159,0,0,1,.1726.7604c-.0102.0238-.3181.6932-.5435,1.1831l-.2313.5026a17.80309,17.80309,0,0,1-3.2158,4.8863A.65293.65293,0,0,1,8.9401,21.8125Z" style="fill:#ffd58c"/><path d="M13.1177,15.6958,8.5858,11.1639l1.4242-.7121a1.612,1.612,0,0,1,1.8607.3019l1.6571,1.6572a1.612,1.612,0,0,1,.302,1.8607Z" style="fill:#fa6d62"/><rect height="1.99997" style="fill:#fa6d62" transform="translate(0.21147 14.14658) rotate(-45.0004)" width="5.99995" x="14.18202" y="5.81804"/><path d="M4.8766,19.2816A13.60612,13.60612,0,0,0,8,16a12.94665,12.94665,0,0,1-4.8299.9969A9.80421,9.80421,0,0,0,4.8766,19.2816Z" style="fill:#d9925f"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('broom-color.svg')" title="Нажмите, чтобы скопировать: broom-color.svg">broom-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-check-icon lucide-square-check"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('checkbox_checked.svg')" title="Нажмите, чтобы скопировать: checkbox_checked.svg">checkbox_checked.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-icon lucide-square"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+
+                </div>
+                <button class="copy-btn" onclick="copyName('checkbox_unchecked-gray.svg')" title="Нажмите, чтобы скопировать: checkbox_unchecked-gray.svg">checkbox_unchecked-gray.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-icon lucide-square"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('checkbox_unchecked.svg')" title="Нажмите, чтобы скопировать: checkbox_unchecked.svg">checkbox_unchecked.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-first-icon lucide-chevron-first"><path d="m17 18-6-6 6-6"/><path d="M7 6v12"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('chevron-first.svg')" title="Нажмите, чтобы скопировать: chevron-first.svg">chevron-first.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-up-icon lucide-chevron-up"><path d="m18 15-6-6-6 6"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('chevron-up.svg')" title="Нажмите, чтобы скопировать: chevron-up.svg">chevron-up.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+<svg fill="#ffffff" width="800px" height="800px" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
+
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+
+<g id="SVGRepo_iconCarrier"> <path d="M18.8,16l5.5-5.5c0.8-0.8,0.8-2,0-2.8l0,0C24,7.3,23.5,7,23,7c-0.5,0-1,0.2-1.4,0.6L16,13.2l-5.5-5.5 c-0.8-0.8-2.1-0.8-2.8,0C7.3,8,7,8.5,7,9.1s0.2,1,0.6,1.4l5.5,5.5l-5.5,5.5C7.3,21.9,7,22.4,7,23c0,0.5,0.2,1,0.6,1.4 C8,24.8,8.5,25,9,25c0.5,0,1-0.2,1.4-0.6l5.5-5.5l5.5,5.5c0.8,0.8,2.1,0.8,2.8,0c0.8-0.8,0.8-2.1,0-2.8L18.8,16z"/> </g>
+
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('cross.svg')" title="Нажмите, чтобы скопировать: cross.svg">cross.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 512 512" xml:space="preserve">
+<rect x="128.191" style="fill:#FECA72;" width="255.618" height="278.854"/>
+<path style="fill:#B8DE6F;" d="M0.382,256.382V512H256l22.472-127.809L256,256.382H0.382z"/>
+<rect x="256" y="256.382" style="fill:#FD6144;" width="255.618" height="255.618"/>
+<path style="fill:#FCE190;" d="M457.281,319.36c6.708,6.438,6.933,17.112,0.483,23.82c-6.449,6.719-17.112,6.933-23.831,0.494
+	c-10.517-10.101-24.326-15.663-38.888-15.663c-30.978,0-56.18,25.191-56.18,56.18c0,30.978,25.202,56.18,56.18,56.18
+	c14.562,0,28.371-5.573,38.888-15.674c6.719-6.438,17.382-6.225,23.831,0.494c6.449,6.708,6.225,17.382-0.483,23.82
+	c-16.831,16.169-38.933,25.067-62.236,25.067c-49.562,0-89.888-40.326-89.888-89.888c0-49.573,40.326-89.888,89.888-89.888
+	C418.348,294.303,440.449,303.202,457.281,319.36z"/>
+<path style="fill:#FD6144;" d="M327.91,194.798c3.337,8.685-0.989,18.438-9.685,21.775c-8.674,3.348-18.438-0.989-21.775-9.674
+	l-23.91-62.169l-33.067-0.022l-23.921,62.191c-2.573,6.697-8.966,10.809-15.73,10.809c-2.011,0-4.056-0.371-6.045-1.135
+	c-8.697-3.337-13.022-13.09-9.685-21.775L240.27,48.73c2.506-6.506,8.753-10.809,15.73-10.809c6.978,0,13.225,4.303,15.73,10.809
+	L327.91,194.798z"/>
+<path style="fill:#00BAB9;" d="M195.607,347.663c0-29.427-23.124-53.36-51.539-53.36H77.629c-9.303,0-16.854,7.539-16.854,16.854
+	v146.067c0,9.303,7.551,16.854,16.854,16.854h66.438c28.416,0,51.539-23.944,51.539-53.36c0-14.124-5.326-26.978-14-36.528
+	C190.281,374.629,195.607,361.775,195.607,347.663z M144.067,440.371H94.483v-39.303h49.584c9.831,0,17.831,8.809,17.831,19.652
+	C161.899,431.551,153.899,440.371,144.067,440.371z M144.067,367.303c-0.438,0-49.584,0.056-49.584,0.056v-39.348h49.584
+	c9.831,0,17.831,8.809,17.831,19.652C161.899,358.494,153.899,367.303,144.067,367.303z"/>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('cubes-color-next.svg')" title="Нажмите, чтобы скопировать: cubes-color-next.svg">cubes-color-next.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg height="800px" width="800px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 512.001 512.001" xml:space="preserve">
+<path style="fill:#FFDB56;" d="M245.356,2.458c-1.631-1.529-3.822-2.31-6.052-2.171c-64.816,4.176-125.102,32.6-169.752,80.035
+	C24.7,127.969,0,190.264,0,255.732c0,41.296,10.083,82.349,29.156,118.723c1.039,1.979,2.849,3.441,5.004,4.039
+	c0.71,0.196,1.435,0.293,2.159,0.293c1.472,0,2.93-0.402,4.21-1.182l101.312-61.757c3.474-2.117,4.834-6.486,3.177-10.201
+	c-6.954-15.592-10.48-32.219-10.48-49.419c0-61.16,45.692-112.971,106.285-120.52c4.049-0.505,7.089-3.946,7.089-8.026V8.36
+	C247.912,6.124,246.986,3.987,245.356,2.458z"/>
+<path style="fill:#F77935;" d="M442.45,80.322C397.799,32.887,337.513,4.463,272.698,0.287c-2.239-0.15-4.423,0.642-6.052,2.171
+	c-1.631,1.529-2.556,3.665-2.556,5.9V127.68c0,4.081,3.039,7.522,7.089,8.026c60.592,7.549,106.285,59.361,106.285,120.52
+	c0,17.18-3.518,33.789-10.457,49.366c-1.655,3.716-0.293,8.084,3.183,10.199l101.342,61.709c1.279,0.78,2.736,1.18,4.207,1.18
+	c0.724,0,1.452-0.097,2.162-0.294c2.154-0.597,3.964-2.061,5.002-4.041c19.037-36.343,29.099-77.358,29.099-118.613
+	C512,190.264,487.3,127.969,442.45,80.322z"/>
+<path style="fill:#3FC8F2;" d="M466.808,396.563c-0.456-2.191-1.8-4.095-3.712-5.259l-101.253-61.652
+	c-3.488-2.123-8.013-1.315-10.548,1.888c-23.212,29.329-57.946,46.15-95.294,46.15c-37.326,0-72.046-16.803-95.257-46.103
+	c-2.538-3.203-7.062-4.011-10.551-1.884L48.97,391.405c-1.911,1.165-3.254,3.069-3.71,5.261c-0.455,2.191,0.018,4.473,1.306,6.303
+	C94.53,471.073,172.823,511.732,256,511.732c83.225,0,161.544-40.697,209.504-108.865
+	C466.792,401.035,467.264,398.753,466.808,396.563z"/>
+<path style="fill:#0DAACE;" d="M463.096,391.303l-22.963-13.982c-38.861,72.782-111.848,124.579-197.6,134.031
+	c4.473,0.236,8.961,0.379,13.467,0.379c83.225,0,161.544-40.697,209.504-108.865c1.288-1.83,1.76-4.113,1.303-6.304
+	C466.351,394.371,465.007,392.467,463.096,391.303z"/>
+<path style="fill:#D9510D;" d="M442.45,80.322C397.799,32.887,337.513,4.463,272.698,0.287c-2.239-0.15-4.423,0.642-6.052,2.171
+	c-1.011,0.947-1.748,2.128-2.164,3.42c117.292,23.375,205.693,126.881,205.693,251.046c0,37.746-8.175,73.582-22.842,105.84
+	l24.199,14.735c1.279,0.78,2.736,1.18,4.207,1.18c0.724,0,1.452-0.097,2.162-0.294c2.154-0.597,3.964-2.061,5.002-4.041
+	c19.037-36.343,29.099-77.358,29.099-118.613C512,190.264,487.3,127.969,442.45,80.322z"/>
+<path style="fill:#0DAACE;" d="M256,377.688c-37.326,0-72.046-16.803-95.257-46.103c-2.538-3.203-7.062-4.011-10.551-1.884
+	l-24.149,14.72c24.192,27.319,59.522,44.547,98.883,44.547c22.115,0,42.955-5.444,61.266-15.054
+	C276.454,376.396,266.327,377.688,256,377.688z"/>
+<path style="fill:#FBA806;" d="M224.926,124.88c-72.926,0-132.044,59.118-132.044,132.044c0,27.713,8.544,53.427,23.132,74.665
+	l25.827-15.743c3.474-2.117,4.834-6.486,3.177-10.201c-6.954-15.592-10.48-32.219-10.48-49.419
+	c0-61.16,45.692-112.971,106.285-120.52c4.049-0.505,7.089-3.946,7.089-8.026v-0.801C240.446,125.568,232.767,124.88,224.926,124.88
+	z"/>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('diagram-pie-color.svg')" title="Нажмите, чтобы скопировать: diagram-pie-color.svg">diagram-pie-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+
+
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg version="1.0" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 width="800px" height="800px" viewBox="0 0 64 64" enable-background="new 0 0 64 64" xml:space="preserve">
+<g>
+	<path fill="#F9EBB2" d="M58,60V4c0-1.104-0.896-2-2-2H8C6.896,2,6,2.896,6,4v56c0,1.104,0.896,2,2,2h48C57.104,62,58,61.104,58,60z
+		"/>
+	<g>
+		<path fill="#394240" d="M56,0H8C5.789,0,4,1.789,4,4v56c0,2.211,1.789,4,4,4h48c2.211,0,4-1.789,4-4V4C60,1.789,58.211,0,56,0z
+			 M58,60c0,1.104-0.896,2-2,2H8c-1.104,0-2-0.896-2-2V4c0-1.104,0.896-2,2-2h48c1.104,0,2,0.896,2,2V60z"/>
+		<path fill="#394240" d="M49,25H15c-0.553,0-1,0.447-1,1s0.447,1,1,1h34c0.553,0,1-0.447,1-1S49.553,25,49,25z"/>
+		<path fill="#394240" d="M49,19H15c-0.553,0-1,0.447-1,1s0.447,1,1,1h34c0.553,0,1-0.447,1-1S49.553,19,49,19z"/>
+		<path fill="#394240" d="M49,37H15c-0.553,0-1,0.447-1,1s0.447,1,1,1h34c0.553,0,1-0.447,1-1S49.553,37,49,37z"/>
+		<path fill="#394240" d="M49,43H15c-0.553,0-1,0.447-1,1s0.447,1,1,1h34c0.553,0,1-0.447,1-1S49.553,43,49,43z"/>
+		<path fill="#394240" d="M49,49H15c-0.553,0-1,0.447-1,1s0.447,1,1,1h34c0.553,0,1-0.447,1-1S49.553,49,49,49z"/>
+		<path fill="#394240" d="M49,31H15c-0.553,0-1,0.447-1,1s0.447,1,1,1h34c0.553,0,1-0.447,1-1S49.553,31,49,31z"/>
+		<path fill="#394240" d="M15,15h16c0.553,0,1-0.447,1-1s-0.447-1-1-1H15c-0.553,0-1,0.447-1,1S14.447,15,15,15z"/>
+	</g>
+</g>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('file.svg')" title="Нажмите, чтобы скопировать: file.svg">file.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--noto" preserveAspectRatio="xMidYMid meet"><path d="M124.17 27.95v87.49c0 4.82-3.91 8.73-8.73 8.73H12.56c-4.82 0-8.73-3.91-8.73-8.73V12.56c0-4.82 3.91-8.73 8.73-8.73h89.64c3.56 0 6.94 1.59 9.21 4.34l10.04 12.19c1.76 2.14 2.72 4.82 2.72 7.59z" fill="#616161"></path><path d="M103.94 124.17H24V71.25c0-1.81 1.47-3.28 3.28-3.28h73.39c1.81 0 3.28 1.47 3.28 3.28v52.92z" fill="#ffffff"></path><path fill="#039be5" d="M24 111.92h79.94v12.25H24z"></path><path d="M16.75 3.83v47.75c0 1.78 1.57 3.17 3.65 3.17h76.65c2.08 0 3.69-1.38 3.69-3.17V3.83H16.75z" fill="#424242"></path><path d="M35 3.83v45.02c0 1.68 1.18 2.98 2.74 2.98H95.2c1.56 0 2.77-1.3 2.77-2.98V3.83H35zm50.97 42.69c0 .72-.59 1.31-1.31 1.31H67.28c-.72 0-1.31-.59-1.31-1.31V9.14c0-.72.59-1.31 1.31-1.31h17.38c.72 0 1.31.59 1.31 1.31v37.38z" fill="#e0e0e0"></path></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('floppy-disk-color.svg')" title="Нажмите, чтобы скопировать: floppy-disk-color.svg">floppy-disk-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 1024 1024" class="icon"  version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M853.333333 256H469.333333l-85.333333-85.333333H170.666667c-46.933333 0-85.333333 38.4-85.333334 85.333333v170.666667h853.333334v-85.333334c0-46.933333-38.4-85.333333-85.333334-85.333333z" fill="#FFA000" /><path d="M853.333333 256H170.666667c-46.933333 0-85.333333 38.4-85.333334 85.333333v426.666667c0 46.933333 38.4 85.333333 85.333334 85.333333h682.666666c46.933333 0 85.333333-38.4 85.333334-85.333333V341.333333c0-46.933333-38.4-85.333333-85.333334-85.333333z" fill="#FFCA28" /></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('folder-color.svg')" title="Нажмите, чтобы скопировать: folder-color.svg">folder-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-funnel-plus-icon lucide-funnel-plus"><path d="M13.354 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14v6a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341l1.218-1.348"/><path d="M16 6h6"/><path d="M19 3v6"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('funnel-plus.svg')" title="Нажмите, чтобы скопировать: funnel-plus.svg">funnel-plus.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-funnel-icon lucide-funnel"><path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('funnel.svg')" title="Нажмите, чтобы скопировать: funnel.svg">funnel.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg fill="#dddddd" width="800px" height="800px" viewBox="0 0 256.00098 256.00098" id="Flat" xmlns="http://www.w3.org/2000/svg">
+  <path d="M229.645,105.96387,203.69873,91.56055a83.92517,83.92517,0,0,0-6.2876-10.90992l.5-29.68823a103.88966,103.88966,0,0,0-38.17138-22.00146L134.293,44.22949a83.89083,83.89083,0,0,0-12.5918-.01L96.24023,28.94263A103.8856,103.8856,0,0,0,58.10107,50.999l.49952,29.67188A83.85065,83.85065,0,0,0,52.2959,91.5708L26.335,105.98218A103.8963,103.8963,0,0,0,26.3667,150.04L52.313,164.44336a83.92506,83.92506,0,0,0,6.2876,10.90991l-.5,29.68823A103.88954,103.88954,0,0,0,96.272,227.043l25.44678-15.26856a83.89083,83.89083,0,0,0,12.5918.01l25.46093,15.27686a103.88532,103.88532,0,0,0,38.13916-22.0564l-.49951-29.67187a83.79517,83.79517,0,0,0,6.30469-10.8999l25.96094-14.41138A103.8963,103.8963,0,0,0,229.645,105.96387ZM128.00586,176.002a48,48,0,1,1,48-48A47.99987,47.99987,0,0,1,128.00586,176.002Z" opacity="0.2"/>
+  <path d="M128.00586,72.00195a56,56,0,1,0,56,56A56.06354,56.06354,0,0,0,128.00586,72.00195Zm0,96a40,40,0,1,1,40-40A40.0452,40.0452,0,0,1,128.00586,168.002Zm109.457-63.73584a8.00133,8.00133,0,0,0-3.93555-5.29687L209.75146,85.77051c-1.31591-2.55078-2.7539-5.04639-4.2998-7.46094l.458-27.2124a8.00056,8.00056,0,0,0-2.62158-6.05811A111.13811,111.13811,0,0,0,162.17871,21.3418a8.00177,8.00177,0,0,0-6.55469.75927l-23.31836,13.9917c-2.86865-.13672-5.75-.13916-8.61132-.00683L100.35645,22.08252a8.00256,8.00256,0,0,0-6.55762-.75879A111.15549,111.15549,0,0,0,52.72168,45.07715a8.00055,8.00055,0,0,0-2.61963,6.05664l.45752,27.18994c-1.55078,2.41455-2.99365,4.90869-4.31152,7.4541l-23.7959,13.21a8.00027,8.00027,0,0,0-3.93555,5.29932,111.13522,111.13522,0,0,0,.03223,47.45068,8.00137,8.00137,0,0,0,3.93554,5.29688L46.26025,170.2334c1.31592,2.55078,2.75391,5.04639,4.29981,7.46094l-.458,27.2124a8.00052,8.00052,0,0,0,2.62158,6.0581A111.13813,111.13813,0,0,0,93.833,234.66211a8.00156,8.00156,0,0,0,6.55469-.75928l23.31835-13.9917c2.86817.13623,5.749.13867,8.61133.00684l23.33789,14.00342a8.00239,8.00239,0,0,0,6.55762.75879A111.15557,111.15557,0,0,0,203.29,210.92676a8.00055,8.00055,0,0,0,2.61963-6.05664l-.45752-27.18994c1.55078-2.41455,2.99365-4.9087,4.31152-7.45411l23.7959-13.21a8.00023,8.00023,0,0,0,3.93555-5.29931A111.13527,111.13527,0,0,0,237.46289,104.26611Zm-14.9126,40.56153L199.833,157.43848a8.00563,8.00563,0,0,0-3.32324,3.5205,76.08445,76.08445,0,0,1-5.70362,9.86084,7.9999,7.9999,0,0,0-1.39355,4.648l.437,25.96485a95.02984,95.02984,0,0,1-29.14356,16.85986l-22.27929-13.36816a7.99661,7.99661,0,0,0-4.11572-1.14014q-.29737,0-.59522.022a76.08417,76.08417,0,0,1-11.3916-.00879,8.01723,8.01723,0,0,0-4.72168,1.11719L95.33447,218.27588A95.056,95.056,0,0,1,66.16211,201.4668l.4375-25.97852a8.00628,8.00628,0,0,0-1.38721-4.63867,76.183,76.183,0,0,1-5.688-9.87012,7.99823,7.99823,0,0,0-3.32812-3.53076l-22.70508-12.604a95.0434,95.0434,0,0,1-.02978-33.66846L56.17871,98.56543A8.00571,8.00571,0,0,0,59.502,95.04492a76.08512,76.08512,0,0,1,5.70362-9.86084,7.99987,7.99987,0,0,0,1.39355-4.64795l-.437-25.96484A95.02951,95.02951,0,0,1,95.30566,37.71143L117.585,51.07959a7.985,7.985,0,0,0,4.71094,1.11816,76.21624,76.21624,0,0,1,11.3916.00879,7.99566,7.99566,0,0,0,4.72168-1.11718L160.67725,37.728a95.05606,95.05606,0,0,1,29.17236,16.80908l-.4375,25.97852a8.00628,8.00628,0,0,0,1.38721,4.63867,76.18214,76.18214,0,0,1,5.688,9.87011,7.99828,7.99828,0,0,0,3.32813,3.53077l22.70508,12.604A95.0434,95.0434,0,0,1,222.55029,144.82764Z"/>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('gear-color.svg')" title="Нажмите, чтобы скопировать: gear-color.svg">gear-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 1024 1024" class="icon"  version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M512 512m-448 0a448 448 0 1 0 896 0 448 448 0 1 0-896 0Z" fill="#2196F3" /><path d="M469.333333 469.333333h85.333334v234.666667h-85.333334z" fill="#FFFFFF" /><path d="M512 352m-53.333333 0a53.333333 53.333333 0 1 0 106.666666 0 53.333333 53.333333 0 1 0-106.666666 0Z" fill="#FFFFFF" /></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('info-color.svg')" title="Нажмите, чтобы скопировать: info-color.svg">info-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+  <polyline points="2 17 12 22 22 17"/>
+  <polyline points="2 12 12 17 22 12"/>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('layers-top.svg')" title="Нажмите, чтобы скопировать: layers-top.svg">layers-top.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg height="800px" width="800px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 280.221 280.221" xml:space="preserve">
+<g>
+	<path style="fill:#EFC75E;" d="M35.1,96.452h210.02c9.661,0,17.502,7.841,17.502,17.502v148.765c0,9.67-7.841,17.502-17.502,17.502
+		H35.1c-9.661,0-17.502-7.832-17.502-17.502V113.954C17.598,104.284,25.439,96.452,35.1,96.452z"/>
+	<path style="fill:#D7B354;" d="M245.12,96.452H35.1c-9.661,0-17.502,7.841-17.502,17.502v17.502c0,9.67,7.841,17.502,17.502,17.502
+		h210.02c9.661,0,17.502-7.832,17.502-17.502v-17.502C262.622,104.284,254.782,96.452,245.12,96.452z"/>
+	<g>
+		<path style="fill:#B29446;" d="M70.104,105.203c-14.5,0-26.253,7.841-26.253,17.502c0,9.67,11.752,17.502,26.253,17.502
+			s26.253-7.832,26.253-17.502S84.604,105.203,70.104,105.203z M210.118,105.203c-14.491,0-26.253,7.841-26.253,17.502
+			c0,9.67,11.761,17.502,26.253,17.502c14.5,0,26.253-7.832,26.253-17.502S224.618,105.203,210.118,105.203z"/>
+	</g>
+	<path style="fill:#D1D5D7;" d="M140.111,0C91.78,0,52.602,39.195,52.602,87.526v35.362c0,4.839,7.841,8.751,17.502,8.751
+		s17.502-3.912,17.502-8.751V85.015c0-27.618,23.514-49.994,52.505-49.994c29,0,52.505,22.376,52.505,49.994v37.874
+		c0,4.839,7.841,8.751,17.502,8.751s17.502-3.912,17.502-8.751V87.526C227.618,39.195,188.441,0,140.111,0z"/>
+	<path style="fill:#DADDDF;" d="M140.111,17.502c-48.331,0-70.007,39.195-70.007,87.526v26.611c9.661,0,17.502-3.912,17.502-8.751
+		V85.015c0-27.618,23.514-49.994,52.505-49.994c29,0,52.505,22.376,52.505,49.994v37.874c0,4.839,7.841,8.751,17.502,8.751v-26.611
+		C210.118,56.697,188.441,17.502,140.111,17.502z"/>
+</g>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('lock-color.svg')" title="Нажмите, чтобы скопировать: lock-color.svg">lock-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg height="800px" width="800px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 512 512" xml:space="preserve">
+<path style="fill:#515262;" d="M340.28,295.632c50.302,64.35,116.59,79.641,153.315,130.644
+	c36.724,51.004,7.145,74.464,7.145,74.464s-23.46,29.579-74.464-7.145S359.982,390.581,295.632,340.28L340.28,295.632z"/>
+<path style="opacity:0.1;enable-background:new    ;" d="M460.511,459.36c-51.003-36.724-66.294-103.013-130.644-153.315
+	l-34.235,34.235c64.35,50.302,79.641,116.591,130.644,153.315c51.004,36.724,74.464,7.145,74.464,7.145s9.44-7.49,11.031-23.203
+	C499.672,478.763,482.699,475.336,460.511,459.36z"/>
+<ellipse transform="matrix(-0.7071 -0.7071 0.7071 -0.7071 299.0423 721.9669)" style="fill:#B4BBCC;" cx="299.045" cy="299.05" rx="41.395" ry="53.777"/>
+<path style="opacity:0.1;enable-background:new    ;" d="M286.701,311.397c-12.697-12.697-12.997-34.006-2.37-52.741
+	c-5.119,2.904-10.046,6.617-14.552,11.123c-21,21-24.919,51.129-8.753,67.294c16.166,16.166,46.295,12.247,67.295-8.753
+	c4.506-4.506,8.22-9.434,11.123-14.552C320.707,324.394,299.398,324.094,286.701,311.397z"/>
+<circle style="fill:#7DD2F0;" cx="176.982" cy="176.982" r="176.982"/>
+<circle style="fill:#FFFFFF;" cx="176.982" cy="176.982" r="125.142"/>
+<path style="opacity:0.1;enable-background:new    ;" d="M122.734,265.479c-48.872-48.872-48.872-128.107,0-176.979
+	c20.071-20.071,45.265-31.891,71.372-35.476C156.644,47.879,117.3,59.7,88.498,88.5c-48.872,48.872-48.87,128.107,0,176.979
+	c28.8,28.8,68.145,40.621,105.606,35.476C167.999,297.37,142.806,285.549,122.734,265.479z"/>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('loupe-color.svg')" title="Нажмите, чтобы скопировать: loupe-color.svg">loupe-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pause-icon lucide-pause"><rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('media_pause.svg')" title="Нажмите, чтобы скопировать: media_pause.svg">media_pause.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play-icon lucide-play"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('media_play.svg')" title="Нажмите, чтобы скопировать: media_play.svg">media_play.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+
+<svg fill="#dddddd" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 width="800px" height="800px" viewBox="0 0 556.98 556.98"
+	 xml:space="preserve">
+<g>
+	<g>
+		<path d="M536.846,23.491H20.135C9.015,23.491,0,32.506,0,43.62v107.37c0,11.12,9.015,20.128,20.135,20.128h516.711
+			c11.121,0,20.135-9.015,20.135-20.128V43.626C556.975,32.506,547.967,23.491,536.846,23.491z"/>
+		<path d="M536.846,204.68H20.135C9.015,204.68,0,213.694,0,224.809v107.369c0,11.12,9.015,20.129,20.135,20.129h516.711
+			c11.121,0,20.135-9.015,20.135-20.129V224.809C556.975,213.688,547.967,204.68,536.846,204.68z"/>
+		<path d="M536.846,385.862H20.135C9.015,385.862,0,394.877,0,405.991V513.36c0,11.12,9.015,20.129,20.135,20.129h516.711
+			c11.121,0,20.135-9.015,20.135-20.129V405.991C556.975,394.877,547.967,385.862,536.846,385.862z"/>
+	</g>
+</g>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('menu-sort.svg')" title="Нажмите, чтобы скопировать: menu-sort.svg">menu-sort.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<svg fill="#ffffff" width="800px" height="800px" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+<g id="SVGRepo_iconCarrier"> <path d="M6,15 H26 V17 H6 Z"/> </g>
+</svg>
+
+                </div>
+                <button class="copy-btn" onclick="copyName('minimize.svg')" title="Нажмите, чтобы скопировать: minimize.svg">minimize.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-minus-icon lucide-minus"><path d="M5 12h14"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('minus_menu.svg')" title="Нажмите, чтобы скопировать: minus_menu.svg">minus_menu.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-move-left-icon lucide-move-left"><path d="M6 8L2 12L6 16"/><path d="M2 12H22"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('move-left.svg')" title="Нажмите, чтобы скопировать: move-left.svg">move-left.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-move-right-icon lucide-move-right"><path d="M18 8L22 12L18 16"/><path d="M2 12H22"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('move-right.svg')" title="Нажмите, чтобы скопировать: move-right.svg">move-right.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--emojione" preserveAspectRatio="xMidYMid meet" fill="#dddddd">
+
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+
+<g id="SVGRepo_iconCarrier">
+
+<path fill="#ffce31" d="M7.934 41.132L39.828 9.246l14.918 14.922l-31.895 31.886z"/>
+
+<path d="M61.3 4.6l-1.9-1.9C55.8-.9 50-.9 46.3 2.7l-6.5 6.5l15 15l6.5-6.5c3.6-3.6 3.6-9.5 0-13.1" fill="#ed4c5c"/>
+
+<path fill="#93a2aa" d="M35.782 13.31l4.1-4.102l14.92 14.92l-4.1 4.101z"/>
+
+<path fill="#c7d3d8" d="M37.338 14.865l4.1-4.101l11.739 11.738l-4.102 4.1z"/>
+
+<path fill="#fed0ac" d="M7.9 41.1l-6.5 17l4.5 4.5l17-6.5z"/>
+
+<path d="M.3 61.1c-.9 2.4.3 3.5 2.7 2.6l8.2-3.1l-7.7-7.7l-3.2 8.2" fill="#cfcfcf"/>
+
+<path fill="#ffdf85" d="M7.89 41.175l27.86-27.86l4.95 4.95l-27.86 27.86z"/>
+
+<path fill="#ff8736" d="M17.904 51.142l27.86-27.86l4.95 4.95l-27.86 27.86z"/>
+
+</g>
+
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('pencil-color.svg')" title="Нажмите, чтобы скопировать: pencil-color.svg">pencil-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-icon lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('plus.svg')" title="Нажмите, чтобы скопировать: plus.svg">plus.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-icon lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('plus_menu.svg')" title="Нажмите, чтобы скопировать: plus_menu.svg">plus_menu.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-ccw-icon lucide-refresh-ccw"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('reset_view.svg')" title="Нажмите, чтобы скопировать: reset_view.svg">reset_view.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw-icon lucide-rotate-ccw"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('rotate_left.svg')" title="Нажмите, чтобы скопировать: rotate_left.svg">rotate_left.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-cw-icon lucide-rotate-cw"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('rotate_right.svg')" title="Нажмите, чтобы скопировать: rotate_right.svg">rotate_right.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-scan-icon lucide-scan"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('scan.svg')" title="Нажмите, чтобы скопировать: scan.svg">scan.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-scissors-icon lucide-scissors"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('scissors.svg')" title="Нажмите, чтобы скопировать: scissors.svg">scissors.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings-icon lucide-settings"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('settings.svg')" title="Нажмите, чтобы скопировать: settings.svg">settings.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#dddddd" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <polygon points="5,4 15,12 5,20" fill="#dddddd"/>
+  <line x1="19" y1="5" x2="19" y2="19"/>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('skip-forward.svg')" title="Нажмите, чтобы скопировать: skip-forward.svg">skip-forward.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume2-icon lucide-volume-2"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('speaker.svg')" title="Нажмите, чтобы скопировать: speaker.svg">speaker.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-x-icon lucide-volume-x"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('speaker_off.svg')" title="Нажмите, чтобы скопировать: speaker_off.svg">speaker_off.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-arrow-out-down-left-icon lucide-square-arrow-out-down-left"><path d="M13 21h6a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6"/><path d="m3 21 9-9"/><path d="M9 21H3v-6"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('square-arrow-out-down-left.svg')" title="Нажмите, чтобы скопировать: square-arrow-out-down-left.svg">square-arrow-out-down-left.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-chevron-down-icon lucide-square-chevron-down"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m16 10-4 4-4-4"/></svg>
+
+                </div>
+                <button class="copy-btn" onclick="copyName('square-chevron-down-gray.svg')" title="Нажмите, чтобы скопировать: square-chevron-down-gray.svg">square-chevron-down-gray.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-chevron-down-icon lucide-square-chevron-down"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m16 10-4 4-4-4"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('square-chevron-down.svg')" title="Нажмите, чтобы скопировать: square-chevron-down.svg">square-chevron-down.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-chevron-up-icon lucide-square-chevron-up"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="m8 14 4-4 4 4"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('square-chevron-up.svg')" title="Нажмите, чтобы скопировать: square-chevron-up.svg">square-chevron-up.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff">
+
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+
+<g id="SVGRepo_iconCarrier"> <path d="M11.5245 3.46353C11.6741 3.00287 12.3259 3.00287 12.4755 3.46353L14.1329 8.56434C14.1998 8.77035 14.3918 8.90983 14.6084 8.90983H19.9717C20.4561 8.90983 20.6575 9.52964 20.2656 9.81434L15.9266 12.9668C15.7514 13.0941 15.678 13.3198 15.745 13.5258L17.4023 18.6266C17.552 19.0873 17.0248 19.4704 16.6329 19.1857L12.2939 16.0332C12.1186 15.9059 11.8814 15.9059 11.7061 16.0332L7.3671 19.1857C6.97524 19.4704 6.448 19.0873 6.59768 18.6266L8.25503 13.5258C8.32197 13.3198 8.24864 13.0941 8.07339 12.9668L3.73438 9.81434C3.34253 9.52964 3.54392 8.90983 4.02828 8.90983H9.39159C9.6082 8.90983 9.80018 8.77035 9.86712 8.56434L11.5245 3.46353Z" fill="#ffffff"/> </g>
+
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('star-color.svg')" title="Нажмите, чтобы скопировать: star-color.svg">star-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg height="800px" width="800px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 504.139 504.139" xml:space="preserve">
+<path style="fill:#CC092E;" d="M497.16,140.694L363.425,6.967c-4.458-4.458-10.5-6.963-16.794-6.963H157.499
+	c-6.309,0-12.351,2.505-16.809,6.963L6.963,140.694C2.505,145.152,0,151.194,0,157.503v189.133c0,6.302,2.505,12.343,6.963,16.801
+	l133.734,133.734c4.45,4.458,10.5,6.963,16.809,6.963H346.64c6.294,0,12.335-2.497,16.794-6.955l133.742-133.734
+	c4.45-4.458,6.963-10.5,6.963-16.809V157.503C504.123,151.194,501.618,145.152,497.16,140.694z"/>
+<path style="fill:#E81542;" d="M66.773,80.892L6.963,140.694C2.505,145.152,0,151.194,0,157.503v189.133
+	c0,6.302,2.505,12.343,6.963,16.801l133.734,133.734c4.45,4.458,10.5,6.963,16.809,6.963H346.64c6.294,0,12.335-2.497,16.794-6.955
+	l59.809-59.809L66.773,80.892z"/>
+<g>
+	<path style="fill:#B2042E;" d="M86.355,247.15c-15.88-6.136-20.708-10.547-20.708-18.857c0-6.254,4.726-13.564,18.062-13.564
+		c9.106,0,16.061,2.757,20.307,5.065c1.016,0.551,2.229,0.638,3.308,0.213c1.095-0.425,1.938-1.308,2.308-2.41l4.151-12.304
+		c0.614-1.788-0.142-3.757-1.788-4.687c-4.104-2.324-13.17-6.231-27.766-6.231c-24.568,0-41.724,14.659-41.724,35.659
+		c0,16.786,10.957,28.83,33.367,36.777c16.305,6.262,19.495,11.91,19.495,19.543c0,10.012-7.664,15.99-20.496,15.99
+		c-8.476,0-17.818-2.631-24.986-7.042c-1.016-0.638-2.308-0.764-3.458-0.331c-1.142,0.433-2.016,1.371-2.371,2.544l-3.812,12.65
+		c-0.488,1.662,0.142,3.45,1.583,4.419c7.168,4.773,20.338,8.113,31.996,8.113c30.988,0,44.843-18.865,44.843-37.565
+		C118.674,267.268,109.001,255.902,86.355,247.15z"/>
+	<path style="fill:#B2042E;" d="M225.816,196.281h-86.489c-2.166,0-3.938,1.764-3.938,3.938v12.824c0,2.174,1.772,3.938,3.938,3.938
+		h31.602v100.053c0,2.174,1.757,3.938,3.938,3.938h15.25c2.182,0,3.938-1.764,3.938-3.938V216.982h31.768
+		c2.182,0,3.938-1.764,3.938-3.938V200.22C229.754,198.046,227.998,196.281,225.816,196.281z"/>
+	<path style="fill:#B2042E;" d="M298.772,194.375c-34.265,0-58.187,26.852-58.187,65.292c0,37.218,23.213,63.212,56.446,63.212
+		c28.971,0,58.187-20.244,58.187-65.465C355.218,219.707,332.54,194.375,298.772,194.375z M297.905,302.698
+		c-22.89,0-33.319-22.481-33.319-43.378c0-22.284,10.35-44.765,33.493-44.765c22.89,0,33.319,22.575,33.319,43.552
+		C331.398,280.296,321.048,302.698,297.905,302.698z"/>
+	<path style="fill:#B2042E;" d="M452.506,206.127c-7.893-7.113-19.803-10.713-35.383-10.713c-10.602,0-20.275,0.756-29.601,2.3
+		c-1.89,0.315-3.293,1.961-3.293,3.883v115.428c0,2.174,1.772,3.938,3.938,3.938h15.092c2.166,0,3.938-1.764,3.938-3.938v-42.149
+		c2.694,0.276,5.474,0.331,8.184,0.331c16.368,0,30.058-4.994,38.526-14.013c6.727-6.916,10.138-16.242,10.138-27.703
+		C464.045,222.275,459.926,212.539,452.506,206.127z M415.736,255.208c-3.387,0-6.215-0.165-8.539-0.496v-38.904
+		c2.402-0.315,5.845-0.551,10.264-0.551c10.784,0,23.631,3.285,23.631,18.936C441.092,252.475,425.196,255.208,415.736,255.208z"/>
+</g>
+<path style="fill:#FFFFFF;" d="M86.355,240.589c-15.88-6.136-20.708-10.547-20.708-18.857c0-6.254,4.726-13.564,18.062-13.564
+	c9.106,0,16.061,2.757,20.307,5.065c1.016,0.551,2.229,0.638,3.308,0.213c1.095-0.425,1.938-1.308,2.308-2.41l4.151-12.304
+	c0.614-1.788-0.142-3.757-1.788-4.687c-4.104-2.324-13.17-6.231-27.766-6.231c-24.568,0-41.724,14.659-41.724,35.659
+	c0,16.786,10.957,28.83,33.367,36.777c16.305,6.262,19.495,11.91,19.495,19.543c0,10.012-7.664,15.99-20.496,15.99
+	c-8.476,0-17.818-2.631-24.986-7.042c-1.016-0.638-2.308-0.764-3.458-0.331c-1.134,0.441-2.009,1.386-2.363,2.552l-3.812,12.65
+	c-0.488,1.662,0.142,3.45,1.583,4.419c7.168,4.773,20.338,8.113,31.996,8.113c30.988,0,44.843-18.865,44.843-37.565
+	C118.674,260.706,109.001,249.34,86.355,240.589z"/>
+<path style="fill:#E0E0E0;" d="M225.816,189.72h-86.489c-2.166,0-3.938,1.764-3.938,3.938v12.824c0,2.174,1.772,3.938,3.938,3.938
+	h31.602v100.053c0,2.174,1.757,3.938,3.938,3.938h15.25c2.182,0,3.938-1.764,3.938-3.938V210.42h31.768
+	c2.182,0,3.938-1.764,3.938-3.938v-12.824C229.754,191.484,227.998,189.72,225.816,189.72z"/>
+<path style="fill:#FFFFFF;" d="M175.592,189.72h-36.265c-2.166,0-3.938,1.764-3.938,3.938v12.824c0,2.174,1.772,3.938,3.938,3.938
+	h31.602v100.053c0,2.174,1.757,3.938,3.938,3.938h15.25c2.182,0,3.938-1.764,3.938-3.938V210.42h2.245L175.592,189.72z"/>
+<path style="fill:#E0E0E0;" d="M298.772,187.813c-34.265,0-58.187,26.852-58.187,65.292c0,37.218,23.213,63.212,56.446,63.212
+	c28.971,0,58.187-20.244,58.187-65.465C355.218,213.146,332.54,187.813,298.772,187.813z M297.905,296.137
+	c-22.89,0-33.319-22.481-33.319-43.378c0-22.284,10.35-44.765,33.493-44.765c22.89,0,33.319,22.575,33.319,43.552
+	C331.398,273.735,321.048,296.137,297.905,296.137z"/>
+<path style="fill:#FFFFFF;" d="M240.648,254.775c0.693,36.313,23.662,61.542,56.383,61.542c1.646,0,3.308-0.087,4.939-0.213
+	L240.648,254.775z"/>
+<path style="fill:#E0E0E0;" d="M452.506,199.566c-7.893-7.113-19.803-10.713-35.383-10.713c-10.602,0-20.275,0.756-29.601,2.3
+	c-1.89,0.315-3.293,1.961-3.293,3.883v115.428c0,2.174,1.772,3.938,3.938,3.938h15.092c2.166,0,3.938-1.764,3.938-3.938v-42.149
+	c2.694,0.276,5.474,0.331,8.184,0.331c16.368,0,30.058-4.994,38.526-14.013c6.727-6.916,10.138-16.242,10.138-27.703
+	C464.045,215.714,459.926,205.978,452.506,199.566z M415.736,248.647c-3.387,0-6.215-0.165-8.539-0.496v-38.904
+	c2.402-0.315,5.845-0.551,10.264-0.551c10.784,0,23.631,3.285,23.631,18.936C441.092,245.914,425.196,248.647,415.736,248.647z"/>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('stop-color.svg')" title="Нажмите, чтобы скопировать: stop-color.svg">stop-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<svg width="24px" height="24px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" version="1.1" fill="#dddddd">
+<g id="SVGRepo_iconCarrier" transform="matrix(-1, 0, 0, 1, 24, 0)"> 
+  <g transform="translate(0 -1028.4)"> 
+    <path d="m2 1029.4c-1.1046 0-2 0.9-2 2v7.1 0.1c0.016343 0.5 0.24566 1 0.59375 1.4l10.968 10.9c0.365 0.4 0.871 0.6 1.438 0.6s1.073-0.2 1.438-0.6l7.062-7c0.408-0.4 0.656-0.9 0.656-1.5s-0.248-1.2-0.656-1.5l-10.906-10.9c-0.355-0.4-0.8668-0.6-1.4065-0.6h-0.0313-7.1562zm3 3c1.1046 0 2 0.9 2 2s-0.8954 2-2 2-2-0.9-2-2 0.8954-2 2-2z" fill="#c99a18"/> 
+    <path d="m2 0c-1.1046 0-2 0.89544-2 2v7.1562 0.0626c0.016343 0.5271 0.24566 1.0272 0.59375 1.3752l10.968 10.968c0.365 0.38 0.871 0.594 1.438 0.594s1.073-0.214 1.438-0.594l7.062-7.062c0.408-0.366 0.656-0.909 0.656-1.5s-0.248-1.134-0.656-1.5l-10.906-10.906c-0.355-0.35526-0.8668-0.58564-1.4065-0.594h-0.0313-7.1562zm3 3c1.1046 0 2 0.8954 2 2s-0.8954 2-2 2-2-0.8954-2-2 0.8954-2 2-2z" transform="translate(0 1028.4)" fill="#ffce47"/> 
+    <path d="m13 1049.4 7-7-8-8-7 7z" fill="#c99a18"/> 
+    <path d="m13 20 7-7-8-8-7 7z" transform="translate(0 1028.4)" fill="#ecf0f1"/> 
+    <path fill="#7f8c8d" d="m12 1036.4-3.5 3.5-0.5 0.5 0.5 0.5 4-4-0.5-0.5zm2 2-3.5 3.5-0.5 0.5 0.5 0.5 4-4-0.5-0.5zm2 2-3.5 3.5-0.5 0.5 0.5 0.5 4-4-0.5-0.5z"/> 
+  </g> 
+</g>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('tag-color.svg')" title="Нажмите, чтобы скопировать: tag-color.svg">tag-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-text-align-justify-icon lucide-text-align-justify"><path d="M3 5h18"/><path d="M3 12h18"/><path d="M3 19h18"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('text-align-justify.svg')" title="Нажмите, чтобы скопировать: text-align-justify.svg">text-align-justify.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg height="800px" width="800px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 512 512" xml:space="preserve">
+<g transform="translate(1 1)">
+	<g>
+		<path style="fill:#FFDD09;" d="M319,254.771l-64,45.714l-64-45.714l64-45.714L319,254.771z"/>
+		<path style="fill:#FFDD09;" d="M136.143,254.771l-45.714,36.571l-54.857-36.571L90.429,218.2L136.143,254.771z"/>
+	</g>
+	<path style="fill:#FFFFFF;" d="M35.571,254.771l52.114-34.743l-15.543-10.971l-64,45.714l64,45.714l15.543-10.971L35.571,254.771z"
+		/>
+	<path style="fill:#FFDD09;" d="M227.571,190.771l-45.714,36.571L127,190.771l54.857-36.571L227.571,190.771z"/>
+	<path style="fill:#FFFFFF;" d="M127,190.771l52.114-34.743l-15.543-10.971l-64,45.714l64,45.714l15.543-10.971L127,190.771z"/>
+	<path style="fill:#FFDD09;" d="M191,126.771L236.714,90.2l54.857,36.571l-54.857,36.571L191,126.771z"/>
+	<path style="fill:#FD9808;" d="M291.571,126.771l-52.114,34.743L255,172.486l64-45.714l-64-45.714l-15.543,10.971L291.571,126.771z
+		"/>
+	<path style="fill:#FFDD09;" d="M282.429,190.771l45.714-36.571L383,190.771l-54.857,36.571L282.429,190.771z"/>
+	<path style="fill:#FD9808;" d="M383,190.771l-52.114,34.743l15.543,10.971l64-45.714l-64-45.714l-15.543,10.971L383,190.771z"/>
+	<path style="fill:#FFDD09;" d="M373.857,254.771l45.714-36.571l54.857,36.571l-54.857,36.571L373.857,254.771z"/>
+	<path style="fill:#FD9808;" d="M474.429,254.771l-52.114,34.743l15.543,10.971l64-45.714l-64-45.714l-15.543,10.971
+		L474.429,254.771z"/>
+	<path style="fill:#FFDD09;" d="M282.429,318.771l45.714-36.571L383,318.771l-54.857,36.571L282.429,318.771z"/>
+	<path style="fill:#FD9808;" d="M383,318.771l-52.114,34.743l15.543,10.971l64-45.714l-64-45.714l-15.543,10.971L383,318.771z"/>
+	<path style="fill:#FFDD09;" d="M227.571,318.771l-45.714,36.571L127,318.771l54.857-36.571L227.571,318.771z"/>
+	<path style="fill:#FFFFFF;" d="M127,318.771l52.114-34.743l-15.543-10.971l-64,45.714l64,45.714l15.543-10.971L127,318.771z"/>
+	<path style="fill:#FFDD09;" d="M319,382.771l-45.714,36.571l-54.857-36.571l54.857-36.571L319,382.771z"/>
+	<path style="fill:#FFFFFF;" d="M218.429,382.771l52.114-34.743L255,337.057l-64,45.714l64,45.714l15.543-10.971L218.429,382.771z"
+		/>
+	<path d="M255,181.629c-1.829,0-3.657-0.914-5.486-1.829l-64-45.714c-1.829-1.829-3.657-4.571-3.657-7.314s1.829-5.486,3.657-7.314
+		l64-45.714c2.743-1.829,7.314-1.829,10.971,0l64,45.714c2.743,1.829,3.657,4.571,3.657,7.314s-1.829,5.486-3.657,7.314l-64,45.714
+		C258.657,180.714,256.829,181.629,255,181.629z M206.543,126.771L255,161.514l48.457-34.743L255,92.029L206.543,126.771z"/>
+	<path d="M346.429,245.629c-1.829,0-3.657-0.914-5.486-1.829l-64-45.714c-1.829-1.829-3.657-4.571-3.657-7.314
+		s1.829-5.486,3.657-7.314l64-45.714c2.743-1.829,7.314-1.829,10.971,0l64,45.714c2.743,1.829,3.657,4.571,3.657,7.314
+		s-1.829,5.486-3.657,7.314l-64,45.714C350.086,244.714,348.257,245.629,346.429,245.629z M297.971,190.771l48.457,34.743
+		l48.457-34.743l-48.457-34.743L297.971,190.771z"/>
+	<path d="M163.571,245.629c-1.829,0-3.657-0.914-5.486-1.829l-64-45.714c-1.829-1.829-3.657-4.571-3.657-7.314
+		s1.829-5.486,3.657-7.314l64-45.714c2.743-1.829,7.314-1.829,10.971,0l64,45.714c2.743,1.829,3.657,4.571,3.657,7.314
+		s-1.829,5.486-3.657,7.314l-64,45.714C167.229,244.714,165.4,245.629,163.571,245.629z M115.114,190.771l48.457,34.743
+		l48.457-34.743l-48.457-34.743L115.114,190.771z"/>
+	<path d="M255,309.629c-1.829,0-3.657-0.914-5.486-1.829l-64-45.714c-1.829-1.829-3.657-4.571-3.657-7.314
+		c0-2.743,1.829-5.486,3.657-7.314l64-45.714c2.743-1.829,7.314-1.829,10.971,0l64,45.714c2.743,1.829,3.657,4.571,3.657,7.314
+		c0,2.743-1.829,5.486-3.657,7.314l-64,45.714C258.657,308.714,256.829,309.629,255,309.629z M206.543,254.771L255,289.514
+		l48.457-34.743L255,220.029L206.543,254.771z"/>
+	<path d="M255,437.629c-1.829,0-3.657-0.914-5.486-1.829l-64-45.714c-1.829-1.829-3.657-4.571-3.657-7.314
+		c0-2.743,1.829-5.486,3.657-7.314l64-45.714c2.743-1.829,7.314-1.829,10.971,0l64,45.714c2.743,1.829,3.657,4.571,3.657,7.314
+		c0,2.743-1.829,5.486-3.657,7.314l-64,45.714C258.657,436.714,256.829,437.629,255,437.629z M206.543,382.771L255,417.514
+		l48.457-34.743L255,348.029L206.543,382.771z"/>
+	<path d="M437.857,309.629c-1.829,0-3.657-0.914-5.486-1.829l-64-45.714c-1.829-1.829-3.657-4.571-3.657-7.314
+		c0-2.743,1.829-5.486,3.657-7.314l64-45.714c2.743-1.829,7.314-1.829,10.971,0l64,45.714c2.743,1.829,3.657,4.571,3.657,7.314
+		c0,2.743-1.829,5.486-3.657,7.314l-64,45.714C441.514,308.714,439.686,309.629,437.857,309.629z M389.4,254.771l48.457,34.743
+		l48.457-34.743l-48.457-34.743L389.4,254.771z"/>
+	<path d="M346.429,373.629c-1.829,0-3.657-0.914-5.486-1.829l-64-45.714c-1.829-1.829-3.657-4.571-3.657-7.314
+		c0-2.743,1.829-5.486,3.657-7.314l64-45.714c2.743-1.829,7.314-1.829,10.971,0l64,45.714c2.743,1.829,3.657,4.571,3.657,7.314
+		c0,2.743-1.829,5.486-3.657,7.314l-64,45.714C350.086,372.714,348.257,373.629,346.429,373.629z M297.971,318.771l48.457,34.743
+		l48.457-34.743l-48.457-34.743L297.971,318.771z"/>
+	<path d="M72.143,309.629c-1.829,0-3.657-0.914-5.486-1.829l-64-45.714C0.829,260.257-1,257.514-1,254.771
+		c0-2.743,1.829-5.486,3.657-7.314l64-45.714c2.743-1.829,7.314-1.829,10.971,0l64,45.714c2.743,1.829,3.657,4.571,3.657,7.314
+		c0,2.743-1.829,5.486-3.657,7.314l-64,45.714C75.8,308.714,73.971,309.629,72.143,309.629z M23.686,254.771l48.457,34.743
+		l48.457-34.743l-48.457-34.743L23.686,254.771z"/>
+	<path d="M163.571,373.629c-1.829,0-3.657-0.914-5.486-1.829l-64-45.714c-1.829-1.829-3.657-4.571-3.657-7.314
+		c0-2.743,1.829-5.486,3.657-7.314l64-45.714c2.743-1.829,7.314-1.829,10.971,0l64,45.714c2.743,1.829,3.657,4.571,3.657,7.314
+		c0,2.743-1.829,5.486-3.657,7.314l-64,45.714C167.229,372.714,165.4,373.629,163.571,373.629z M115.114,318.771l48.457,34.743
+		l48.457-34.743l-48.457-34.743L115.114,318.771z"/>
+</g>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('tiles.svg')" title="Нажмите, чтобы скопировать: tiles.svg">tiles.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--twemoji" preserveAspectRatio="xMidYMid meet"><path fill="#8899A6" d="M34.247 6.324l-2.742 2.743s-1.829.914-3.657-.915c-1.829-1.828-.915-3.657-.915-3.657l2.743-2.743C30.591.838 29.492 0 28.667 0a7.333 7.333 0 0 0-7.334 7.333c0 .569.072 1.121.194 1.653l-6.199 6.199l5.485 5.485l6.199-6.198a7.39 7.39 0 0 0 1.654.194a7.333 7.333 0 0 0 7.333-7.333c.001-.83-.838-1.923-1.752-1.009zm-19.027 9.04L3.031 27.552a3.832 3.832 0 0 0 0 5.417a3.832 3.832 0 0 0 5.417 0l12.187-12.188l-5.415-5.417zM5.763 31.838a1.482 1.482 0 1 1 0-2.964a1.482 1.482 0 0 1 0 2.964z"></path><path fill="#F4900C" d="M30.83 33.279c1.166 1.166 3.022 1.221 4.121.121c1.1-1.1 1.045-2.955-.121-4.121L11.565 6.014c-1.167-1.167-3.021-1.221-4.121-.121c-1.1 1.1-1.045 2.955.121 4.121L30.83 33.279z"></path><path fill="#66757F" d="M21.444.893s-6-3-11 2l-7 7s-1-1-2 0l-1 1s-1 1 0 2l4 4s1 1 2 0l1-1s1-1 0-2l-.078-.078c.77-.743 1.923-1.5 3.078-.922l4-4s-1-3 1-5s3-2 5-2s1-1 1-1z"></path></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('tools-color.svg')" title="Нажмите, чтобы скопировать: tools-color.svg">tools-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 1024 1024" class="icon"  version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M799.6 386.9H863c7.6 0 13.9 6.2 13.9 13.9v29.7c0 7.6-6.2 13.9-13.9 13.9h-63.4v-57.5z" fill="#A4A9AD" /><path d="M799.6 386.9h29.6v57.5h-29.6z" fill="" /><path d="M223.4 386.9H160c-7.6 0-13.9 6.2-13.9 13.9v29.7c0 7.6 6.2 13.9 13.9 13.9h63.4v-57.5z" fill="#A4A9AD" /><path d="M193.8 386.9h29.6v57.5h-29.6z" fill="" /><path d="M686.6 214.2h-70.7V158c0-11.7-9.9-21.7-21.7-21.7H428.7c-11.7 0-21.7 9.9-21.7 21.7v56.2h-70.7V158c0-50.9 41.4-92.4 92.4-92.4h165.5c50.9 0 92.4 41.4 92.4 92.4v56.2z" fill="#A4A9AD" /><path d="M686.4 151.8H615c0.6 2 0.9 4 0.9 6.2v56.2h70.7V158c0-2.1-0.1-4.1-0.2-6.2zM336.3 158v56.2H407V158c0-2.1 0.3-4.2 0.9-6.2h-71.4c-0.1 2.1-0.2 4.1-0.2 6.2z" fill="" /><path d="M776.4 208.8c0-18.8-15.4-34.2-34.2-34.2H280.8c-18.8 0-34.2 15.4-34.2 34.2v48.9c0 18.8 15.4 34.2 34.2 34.2h461.4c18.8 0 34.2-15.4 34.2-34.2v-48.9z" fill="#D1D3D3" /><path d="M775.7 202.1H247.2c-0.4 2.2-0.7 4.4-0.7 6.7v48.9c0 18.8 15.4 34.2 34.2 34.2h461.4c18.8 0 34.2-15.4 34.2-34.2v-48.9c0.1-2.3-0.1-4.5-0.6-6.7z" fill="" /><path d="M211.5 301.2v606.6c0 28.7 23.5 52.1 52.1 52.1h495.7c28.7 0 52.1-23.5 52.1-52.1V301.2H211.5z" fill="#D1D3D3" /><path d="M211.5 878.8v29c0 28.7 23.5 52.1 52.1 52.1h495.7c28.7 0 52.1-23.5 52.1-52.1v-29H211.5zM211.5 301.2h600v74.2h-600z" fill="" /><path d="M852.3 263.7c0-18.8-15.4-34.2-34.2-34.2H204.9c-18.8 0-34.2 15.4-34.2 34.2v35.2c0 18.8 15.4 34.2 34.2 34.2h613.2c18.8 0 34.2-15.4 34.2-34.2v-35.2zM511.5 818.1c-19.5 0-35.4-15.8-35.4-35.4V451c0-19.5 15.8-35.4 35.4-35.4s35.4 15.8 35.4 35.4v331.8c-0.1 19.5-15.9 35.3-35.4 35.3zM348 818.1c-19.5 0-35.4-15.8-35.4-35.4V451c0-19.5 15.8-35.4 35.4-35.4 19.5 0 35.4 15.8 35.4 35.4v331.8c0 19.5-15.9 35.3-35.4 35.3zM674.9 818.1c-19.5 0-35.4-15.8-35.4-35.4V451c0-19.5 15.8-35.4 35.4-35.4 19.5 0 35.4 15.8 35.4 35.4v331.8c0 19.5-15.8 35.3-35.4 35.3z" fill="#A4A9AD" /></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('trash-color.svg')" title="Нажмите, чтобы скопировать: trash-color.svg">trash-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M10.5 10.5c.002 2.762-2.237 5-5 5s-5.002-2.238-5-5c-.002-2.76 2.237-5 5-5s5.002 2.24 5 5z" color="#000000" fill="#ff15a1" stroke="#373737" stroke-width=".49999682600000006"/><path d="M8 1.401a4.998 4.998 0 0 0-2.488 9.334c-.004-.078-.012-.155-.012-.234a4.998 4.998 0 0 1 7.488-4.334A4.994 4.994 0 0 0 8 1.4z" fill="#1583ff"/><path d="M10.5 5.5a4.998 4.998 0 0 0-5 5c0 .08.008.157.012.235A4.998 4.998 0 0 0 13 6.401c0-.079-.008-.156-.012-.234A4.975 4.975 0 0 0 10.5 5.5z" fill="#00cf2d"/><path d="M12.988 6.167c.004.078.012.155.012.234a4.998 4.998 0 0 1-7.489 4.334 4.994 4.994 0 0 0 4.989 4.766 4.998 4.998 0 0 0 2.488-9.334z" fill="#f8ff15"/><path d="M5.512 10.735a4.996 4.996 0 0 0 2.486 4.093 4.987 4.987 0 0 0 2.49-4.091A4.978 4.978 0 0 1 8 11.4a4.975 4.975 0 0 1-2.488-.666z" fill="#ef0000"/><path d="M7.998 6.173A4.991 4.991 0 0 0 5.5 10.5c0 .079.008.156.012.234a4.978 4.978 0 0 0 4.977.002c.003-.079.011-.157.011-.236a4.99 4.99 0 0 0-2.502-4.328z" fill="#383027"/><path d="M5.5 5.5c-.91 0-1.76.247-2.494.67a4.99 4.99 0 0 0 2.506 4.564c-.004-.077-.012-.154-.012-.233a4.991 4.991 0 0 1 2.498-4.328A4.975 4.975 0 0 0 5.5 5.5z" fill="#5100cc"/><path d="M8 1.401a4.998 4.998 0 0 0-4.994 4.77 4.998 4.998 0 1 0 4.992 8.658 4.998 4.998 0 1 0 4.99-8.662A4.994 4.994 0 0 0 8 1.4z" fill="none" stroke="#373737" stroke-width=".9999936520000001"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('video-editor-color.svg')" title="Нажмите, чтобы скопировать: video-editor-color.svg">video-editor-color.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg height="800px" width="800px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 512 512" xml:space="preserve">
+<path style="fill:#F37B2A;" d="M497.524,131.453L404.001,37.82c-19.521-19.19-50.951-19.19-70.251,0.11L111.523,260.157
+	l-11.689,11.69c-2.317,2.316-3.86,5.294-4.522,8.492c-1.079,4.853,0.352,10.717,4.522,14.889l140.394,140.394
+	c4.162,4.161,10.023,5.604,14.889,4.522c3.198-0.662,6.177-2.206,8.492-4.522l11.691-11.69l46.879-46.879
+	c6.686-6.686,7.569-17.218,2.087-24.92c-20.138-28.292-48.966-68.596-48.966-68.596l93.523-93.523c0,0,47.169,33.29,70.199,49.857
+	c6.821,4.907,16.193,4.142,22.136-1.799l36.368-36.368C516.824,182.405,516.824,150.973,497.524,131.453z"/>
+<path style="fill:#E56722;" d="M170.031,365.425l70.197,70.198c2.081,2.081,4.587,3.482,7.18,4.227
+	c2.594,0.746,5.276,0.835,7.709,0.294c1.599-0.331,3.143-0.882,4.577-1.64c1.434-0.759,2.757-1.724,3.915-2.881l11.691-11.69
+	l29.226-29.226l29.226-29.226c3.252-3.198,4.879-7.417,4.879-11.648c0-4.233-1.627-8.479-4.879-11.732l-29.226-29.281L275.3,283.539
+	l46.761-46.761l46.761-46.761l29.281,29.226l29.281,29.226c3.252,3.253,7.472,4.88,11.688,4.88c4.22,0,8.438-1.627,11.691-4.88
+	l23.381-23.381l23.381-23.381c9.65-9.65,14.475-22.333,14.475-35.043s-4.825-25.449-14.475-35.209l-46.761-46.816L170.002,365.397
+	L170.031,365.425z"/>
+<path style="fill:#DAE1E6;" d="M263.551,318.599l58.494,58.592l140.431-140.424l-58.593-58.498
+	c-12.867-12.846-33.914-12.838-46.771,0.019l-93.54,93.54C250.657,284.743,250.649,305.676,263.551,318.599z"/>
+<path style="fill:#FF9F19;" d="M143.066,462.532l-21.175,21.175c-3.087,3.088-7.279,4.853-11.689,4.853H16.569
+	c-6.729,0-12.684-4.081-15.331-10.257c-2.537-6.176-1.102-13.234,3.641-17.977l68.045-67.936L143.066,462.532z"/>
+<path style="fill:#F28618;" d="M110.2,488.559c4.41,0,8.602-1.765,11.689-4.853l21.175-21.175l-35.1-35.1l-61.126,61.126H110.2
+	V488.559z"/>
+<path style="fill:#736056;" d="M111.523,260.157l-11.689,11.69c-2.317,2.316-3.86,5.294-4.522,8.492L72.924,392.39l70.143,70.142
+	l112.05-22.388c3.198-0.662,6.177-2.206,8.492-4.522l11.691-11.69L111.523,260.157z"/>
+<path style="fill:#665247;" d="M143.066,462.532l112.05-22.388c3.198-0.662,6.177-2.206,8.492-4.522l11.691-11.69l-81.915-81.916
+	l-85.418,85.417L143.066,462.532z"/>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('video-editor-marker.svg')" title="Нажмите, чтобы скопировать: video-editor-marker.svg">video-editor-marker.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg height="800px" width="800px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 51 51" xml:space="preserve">
+<polygon style="fill:#EFCE4A;" points="50.956,14.456 25.5,29 0.044,14.456 25.5,0 "/>
+<polygon style="fill:#ED8A19;" points="25.5,29 9.7,19.973 0.044,25.456 25.5,40 50.956,25.456 41.3,19.973 "/>
+<g>
+	<polygon style="fill:#EA6248;" points="25.5,40 9.7,30.973 0.044,36.456 25.5,51 50.956,36.456 41.3,30.973 	"/>
+</g>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('video-editor-overlay.svg')" title="Нажмите, чтобы скопировать: video-editor-overlay.svg">video-editor-overlay.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 512 512" xml:space="preserve">
+<rect x="82.844" y="33.074" style="fill:#D4D4D4;" width="140.077" height="33.391"/>
+<rect x="289.069" y="33.074" style="fill:#AAAAAA;" width="140.077" height="33.391"/>
+<rect x="82.844" y="445.54" style="fill:#D4D4D4;" width="140.077" height="33.391"/>
+<rect x="289.069" y="445.54" style="fill:#AAAAAA;" width="140.077" height="33.391"/>
+<rect x="33.074" y="82.844" style="fill:#D4D4D4;" width="33.391" height="140.077"/>
+<rect x="445.54" y="82.844" style="fill:#AAAAAA;" width="33.391" height="140.077"/>
+<rect x="33.074" y="289.069" style="fill:#D4D4D4;" width="33.391" height="140.088"/>
+<rect x="445.54" y="289.069" style="fill:#AAAAAA;" width="33.391" height="140.088"/>
+<path style="fill:#E68D2C;" d="M99.541,99.541H0V0h99.541V99.541z"/>
+<path style="fill:#E06B34;" d="M512,99.541h-99.541V0H512V99.541z"/>
+<g>
+	<path style="fill:#E68D2C;" d="M305.77,99.541H206.23V0h99.539V99.541z"/>
+	<path style="fill:#E68D2C;" d="M99.541,512H0v-99.539h99.541V512z"/>
+</g>
+<path style="fill:#E06B34;" d="M512,512h-99.541v-99.539H512V512z"/>
+<path style="fill:#E68D2C;" d="M305.77,512H206.23v-99.539h99.539V512z"/>
+<g>
+	<path style="fill:#E06B34;" d="M305.77,99.541h-49.769V0h49.769V99.541z"/>
+	<path style="fill:#E06B34;" d="M305.77,512h-49.769v-99.539h49.769V512z"/>
+</g>
+<path style="fill:#E68D2C;" d="M99.541,305.77H0V206.23h99.541V305.77z"/>
+<path style="fill:#E06B34;" d="M512,305.77h-99.541V206.23H512V305.77z"/>
+<circle style="fill:#595959;" cx="256" cy="256" r="16.696"/>
+<path style="fill:#444242;" d="M256,239.305c9.222,0,16.697,7.474,16.697,16.695s-7.474,16.696-16.697,16.696V239.305z"/>
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('video-editor-transform.svg')" title="Нажмите, чтобы скопировать: video-editor-transform.svg">video-editor-transform.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-grid3x3-icon lucide-grid-3x3"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('view_grid.svg')" title="Нажмите, чтобы скопировать: view_grid.svg">view_grid.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-table-properties-icon lucide-table-properties"><path d="M15 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M21 9H3"/><path d="M21 15H3"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('view_list.svg')" title="Нажмите, чтобы скопировать: view_list.svg">view_list.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dddddd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-icon lucide-file"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('view_single.svg')" title="Нажмите, чтобы скопировать: view_single.svg">view_single.svg</button>
+            </div>
+            <div class="card">
+                <div class="icon-wrapper">
+                    
+
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+<svg version="1.1" id="stop" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="800px" height="800px" viewBox="0 0 256 256" xml:space="preserve" fill="#dddddd">
+
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+
+<g id="SVGRepo_iconCarrier"> <style type="text/css">  .st0{fill:#464646;} .st1{fill:#75bcff;}  </style> <path class="st1" d="M79.494,244.284c-8.714,0-18.202-5.478-22.559-13.024L8.429,147.245c-4.357-7.545-4.357-18.499,0-26.047 L56.936,37.18c4.356-7.546,13.844-13.023,22.558-13.023h97.012c8.715,0,18.202,5.477,22.559,13.023l48.508,84.017 c4.357,7.547,4.357,18.502,0,26.048l-48.508,84.015c-4.355,7.547-13.844,13.024-22.559,13.024H79.494z"/> <path class="st0" d="M239.314,125.964l-48.508-84.017c-2.621-4.541-9.058-8.256-14.302-8.256H79.494 c-5.244,0-11.679,3.715-14.301,8.256l-48.507,84.017c-2.622,4.542-2.622,11.974,0,16.513l48.507,84.017 c2.622,4.542,9.058,8.257,14.301,8.257h97.012c5.244,0,11.68-3.715,14.303-8.257l48.506-84.017 C241.938,137.938,241.938,130.506,239.314,125.964z M150.957,134.693l37.891,37.89l-21.51,21.508L129.449,156.2l-37.89,37.891 l-21.506-21.508l37.889-37.89L70.053,96.803L91.56,75.296l37.891,37.891l38.834-38.835l21.507,21.507L150.957,134.693z"/> </g>
+
+</svg>
+                </div>
+                <button class="copy-btn" onclick="copyName('убрать-stop2-color.svg')" title="Нажмите, чтобы скопировать: убрать-stop2-color.svg">убрать-stop2-color.svg</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">Название скопировано!</div>
+
+    <script>
+        function copyName(name) {
+            navigator.clipboard.writeText(name).then(() => {
+                const toast = document.getElementById('toast');
+                toast.textContent = `"${name}" скопировано в буфер!`;
+                toast.classList.add('show');
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 2000);
+            }).catch(err => {
+                console.error('Не удалось скопировать текст: ', err);
+            });
+        }
+    </script>
+</body>
+</html>

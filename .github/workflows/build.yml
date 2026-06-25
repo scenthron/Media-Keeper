@@ -1,0 +1,72 @@
+name: Build and Release Media Keeper
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+
+    - name: Run build script
+      run: |
+        python build.py
+
+    - name: Find and Zip EXE
+      shell: pwsh
+      run: |
+        $exeFile = Get-ChildItem -Path dist\*.exe | Select-Object -First 1
+        if (-not $exeFile) {
+          Write-Error "Исполняемый файл .exe не найден в папке dist!"
+          exit 1
+        }
+        Write-Host "Найден файл: $($exeFile.FullName)"
+        
+        $tag = "${{ github.event.release.tag_name }}"
+        if (-not $tag) {
+          $tag = "main"
+        }
+        
+        $zipName = "Media_Keeper_$tag.zip"
+        Compress-Archive -Path $exeFile.FullName -DestinationPath $zipName -Force
+        Write-Host "Создан архив: $zipName"
+        
+        Add-Content -Path $env:GITHUB_ENV -Value "ZIP_NAME=$zipName"
+
+    - name: Upload artifact (for branch push)
+      if: github.event_name == 'push'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.ZIP_NAME }}
+        path: ${{ env.ZIP_NAME }}
+        retention-days: 30
+
+    - name: Upload Release Asset (for published release)
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ${{ env.ZIP_NAME }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

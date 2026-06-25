@@ -7,6 +7,8 @@ import queue
 import re
 from logging.handlers import RotatingFileHandler, QueueHandler, QueueListener
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 class SafeFormatter(logging.Formatter):
     """
     Кастомный форматтер, маскирующий конфиденциальные данные (пути и файлы) в логах.
@@ -38,6 +40,22 @@ class SafeFormatter(logging.Formatter):
         inner = token[start_idx:end_idx]
         if not inner:
             return token
+            
+        # 1. Проверяем, является ли путь частью нашего проекта (абсолютный путь)
+        try:
+            norm_inner = os.path.normpath(inner).lower()
+            norm_root = os.path.normpath(PROJECT_ROOT).lower()
+            if norm_inner.startswith(norm_root):
+                rel_path = inner[len(PROJECT_ROOT):].lstrip('\\/')
+                # Определяем разделитель, который использовался в исходном пути
+                sep = '\\' if '\\' in inner else '/'
+                return prefix + "<PROJECT_ROOT>" + sep + rel_path + suffix
+                
+            # 2. Проверяем, является ли путь относительным путем внутри проекта
+            if norm_inner.startswith(('src\\', 'src/', 'tests\\', 'tests/')):
+                return token
+        except Exception:
+            pass
             
         # Проверяем, является ли токен путем или файлом
         is_path_or_file = False

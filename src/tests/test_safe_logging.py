@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-from logic_logger import SafeFormatter
+from logic_logger import SafeFormatter, PROJECT_ROOT
 
 def test_safe_formatter_anonymize_string():
     # 1. Обычный текст лога без путей должен остаться без изменений
@@ -28,12 +27,13 @@ def test_safe_formatter_anonymize_string():
     anon5 = SafeFormatter.anonymize_string(msg5)
     assert "iiiii_iiiiii.log" in anon5
     
-    # 6. Относительный путь должен маскироваться с сохранением расширений
+    # 6. Относительный путь проекта не должен маскироваться для сохранения читаемости структуры
     msg6 = "Loaded translations from: src/languages/qtbase_ru.qm"
     anon6 = SafeFormatter.anonymize_string(msg6)
-    assert "iii/iiiiiiiii/iiiiii_ii.qm" in anon6
+    assert "src/languages/qtbase_ru.qm" in anon6
     
-    # 7. Трейсбэки исключений должны маскироваться
-    msg7 = 'File "c:\\Users\\Centhron\\Desktop\\Media_Keeper\\src\\main.py", line 123, in <module>'
+    # 7. Трейсбэки исключений должны заменять абсолютный путь проекта на плейсхолдер <PROJECT_ROOT>
+    msg7 = f'File "{PROJECT_ROOT}\\src\\main.py", line 123, in <module>'
     anon7 = SafeFormatter.anonymize_string(msg7)
-    assert 'File "c:\\Iiiii\\Iiiiiiii\\Iiiiiii\\Iiiii_Iiiiii\\iii\\iiii.py", line 123, in <module>' in anon7
+    assert f'File "<PROJECT_ROOT>\\src\\main.py", line 123, in <module>' in anon7
+

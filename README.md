@@ -1,6 +1,6 @@
 # Media Keeper 📂✨
 
-[![Downloads](https://img.shields.io/github/downloads/scenthron/Media-Keeper/total?style=for-the-badge&color=3b82f6&v=2)](https://github.com/scenthron/Media-Keeper/releases)
+[![Downloads](https://img.shields.io/github/downloads/scenthron/Media-Keeper/total?style=for-the-badge&color=3b82f6)](https://github.com/scenthron/Media-Keeper/releases)
 
 *🇬🇧 English | [🇷🇺 Русский](README_ru.md)*
 

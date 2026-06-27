@@ -66,6 +66,10 @@ def save_temp_image(processed_frames, durations, loop, out_format, out_path, s, 
     save_params = {}
     is_animated = len(processed_frames) > 1
     
+    # Явно указываем формат для Pillow (чтобы корректно сохранять во временные файлы с расширением .tmp)
+    pil_format = out_format.upper().replace('JPG', 'JPEG')
+    save_params['format'] = pil_format
+    
     if out_format == 'jpg':
         img_to_save = processed_frames[0]
         if img_to_save.mode != 'RGB':
@@ -138,13 +142,13 @@ def save_temp_image(processed_frames, durations, loop, out_format, out_path, s, 
             colors = step_params['colors']
             if img_to_save.mode != 'P':
                 img_to_save = img_to_save.convert('P', palette=Image.Palette.ADAPTIVE, colors=colors)
-            img_to_save.save(out_path, optimize=True)
+            img_to_save.save(out_path, optimize=True, **save_params)
             
     else:
         img_to_save = processed_frames[0]
         if img_to_save.mode == 'P':
             img_to_save = img_to_save.convert('RGBA' if 'transparency' in img_to_save.info else 'RGB')
-        img_to_save.save(out_path)
+        img_to_save.save(out_path, **save_params)
 
 class ImageConverterWorker(QThread):
     file_progress = pyqtSignal(str, int) # path, percent

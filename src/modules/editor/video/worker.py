@@ -279,9 +279,11 @@ class ConversionWorker(QThread):
         else:
             # Re-encode
             if is_webm:
-                base_v_args = ["-c:v", "libvpx-vp9"]
+                base_v_args = ["-c:v", "libvpx-vp9", "-pix_fmt", "yuv420p"]
             else:
-                base_v_args = ["-c:v", "libx264", "-preset", "medium"]
+                base_v_args = ["-c:v", "libx264", "-preset", "medium", "-pix_fmt", "yuv420p"]
+                if self.settings.get('extension') == 'mp4':
+                    base_v_args.extend(["-movflags", "+faststart"])
             
             if mode == 'crf':
                 crf = self.settings.get('crf', 23)

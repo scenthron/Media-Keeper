@@ -42,7 +42,7 @@ class ImageSettingsWidget(QWidget):
         grp_format = self.create_group_box(AppContext.tr("settings_image_format"))
         fmt_layout = QVBoxLayout(grp_format)
         self.combo_format = QComboBox()
-        self.combo_format.addItems(["JPG", "PNG", "WebP", "BMP", "TIFF"])
+        self.combo_format.addItems(["JPG", "PNG", "WebP", "BMP", "TIFF", "GIF"])
         self.combo_format.setStyleSheet(APP_DESIGN['nativelike_combo'])
         self.combo_format.setFixedHeight(28)
         self.combo_format.currentIndexChanged.connect(self.on_format_changed)
@@ -239,7 +239,7 @@ class ImageSettingsWidget(QWidget):
 
     def on_format_changed(self, idx):
         fmt = self.combo_format.currentText()
-        is_lossless_only = fmt in ("PNG", "BMP", "TIFF")
+        is_lossless_only = fmt in ("PNG", "BMP", "TIFF", "GIF")
         
         if is_lossless_only:
             self.chk_lossless.blockSignals(True)

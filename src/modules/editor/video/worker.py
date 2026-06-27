@@ -242,7 +242,10 @@ class ConversionWorker(QThread):
         if self.settings.get('mute', False):
             audio_args.append("-an")
         else:
-            audio_args.extend(["-c:a", "aac"]) 
+            if self.settings.get('extension') == 'webm':
+                audio_args.extend(["-c:a", "libvorbis"])
+            else:
+                audio_args.extend(["-c:a", "aac"]) 
 
         # Video filters (scaling)
         filter_args = []
@@ -268,17 +271,24 @@ class ConversionWorker(QThread):
         # Encoding Mode
         mode = self.settings.get('mode', 'crf')
         duration = item_info.get('duration', 0)
+        is_webm = self.settings.get('extension') == 'webm'
         
         if use_copy_stream:
             cmd = input_args + ["-c:v", "copy"] + audio_args + [out]
             return self.run_ffmpeg_with_progress(cmd, duration, 0, 100, inp)
         else:
             # Re-encode
-            base_v_args = ["-c:v", "libx264", "-preset", "medium"]
+            if is_webm:
+                base_v_args = ["-c:v", "libvpx-vp9"]
+            else:
+                base_v_args = ["-c:v", "libx264", "-preset", "medium"]
             
             if mode == 'crf':
                 crf = self.settings.get('crf', 23)
-                cmd = input_args + base_v_args + ["-crf", str(crf)] + filter_args + audio_args + [out]
+                v_args = ["-crf", str(crf)]
+                if is_webm:
+                    v_args.extend(["-b:v", "0"])
+                cmd = input_args + base_v_args + v_args + filter_args + audio_args + [out]
                 return self.run_ffmpeg_with_progress(cmd, duration, 0, 100, inp)
             
             elif mode == 'crf_percent':
@@ -287,13 +297,19 @@ class ConversionWorker(QThread):
                 max_size = self.settings.get('max_size')
                 if max_size:
                     target_bitrate = self.calculate_bitrate_for_size(max_size, item_info)
-                    v_args.extend(["-b:v", f"{target_bitrate}k", "-maxrate", f"{target_bitrate}k", "-bufsize", f"{target_bitrate * 2}k"])
+                    v_args.extend(["-b:v", f"{target_bitrate}k"])
+                    if not is_webm:
+                        v_args.extend(["-maxrate", f"{target_bitrate}k", "-bufsize", f"{target_bitrate * 2}k"])
                 else:
                     percent = self.settings.get('percent', 50)
                     original_bitrate = item_info.get('bitrate', 0) // 1000
                     if original_bitrate > 0:
                         maxrate = int(original_bitrate * (percent / 100))
-                        v_args.extend(["-maxrate", f"{maxrate}k", "-bufsize", f"{maxrate * 2}k"])
+                        v_args.extend(["-b:v", f"{maxrate}k"])
+                        if not is_webm:
+                            v_args.extend(["-maxrate", f"{maxrate}k", "-bufsize", f"{maxrate * 2}k"])
+                    else:
+                        v_args.extend(["-b:v", "1000k"])
                 
                 cmd = input_args + base_v_args + v_args + filter_args + audio_args + [out]
                 return self.run_ffmpeg_with_progress(cmd, duration, 0, 100, inp)

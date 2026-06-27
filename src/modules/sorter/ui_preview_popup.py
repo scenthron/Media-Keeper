@@ -480,6 +480,7 @@ class LargePreviewPopup(QDialog):
         # Проверяем, поддерживает ли файл анимацию (например, GIF или анимированный WebP)
         reader = QImageReader(filepath)
         is_animated = reader.supportsAnimation() and reader.imageCount() > 1
+        logging.info(f"[LargePreviewPopup] File: {os.path.basename(filepath)}, supportsAnimation: {reader.supportsAnimation()}, imageCount: {reader.imageCount()}, resolved is_animated: {is_animated}")
         
         if is_animated:
             self.lbl_media = QLabel()

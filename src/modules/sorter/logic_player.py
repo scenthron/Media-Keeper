@@ -3,7 +3,7 @@ import os
 import logging
 from PyQt6.QtCore import QUrl, Qt
 from PyQt6.QtMultimedia import QMediaPlayer
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QPixmap, QImageReader
 from config import AppContext, VIEWER_DESIGN
 from utils_common import format_size
 from utils_io import ensure_long_path
@@ -62,20 +62,28 @@ class PlayerMixin:
         ext = os.path.splitext(filename)[1].lower()
         
         # Управляем видимостью кнопок вращения в соло-режиме
-        is_rotatable = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp']
+        is_rotatable = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff', '.tif', '.heic', '.avif', '.apng', '.jfif']
         if hasattr(self, 'btn_rot_l') and self.btn_rot_l:
             self.btn_rot_l.setVisible(is_rotatable)
         if hasattr(self, 'btn_rot_r') and self.btn_rot_r:
             self.btn_rot_r.setVisible(is_rotatable)
         
+        # Check if the GIF/WebP is animated
+        is_gif_or_webp = ext in ['.gif', '.webp']
+        is_animated = False
+        if is_gif_or_webp:
+            reader = QImageReader(self.current_file_path)
+            is_animated = reader.supportsAnimation() and reader.imageCount() > 1
+            logging.info(f"[PlayerMixin] File: {filename}, supportsAnimation: {reader.supportsAnimation()}, imageCount: {reader.imageCount()}, resolved is_animated: {is_animated}")
+        
         # 1. Images (Static)
-        if ext in ['.jpg', '.jpeg', '.png', '.bmp']:
+        if ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.heic', '.avif', '.apng', '.jfif'] or (is_gif_or_webp and not is_animated):
             self.video_controls.hide()
             self.current_media_is_video = False
             self.viewer.set_image(QPixmap(self.current_file_path))
             
         # 2. Animations (GIF, WebP)
-        elif ext in ['.gif', '.webp']:
+        elif is_gif_or_webp and is_animated:
             self.video_controls.hide()
             self.current_media_is_video = False
             self.viewer.set_animated(self.current_file_path)

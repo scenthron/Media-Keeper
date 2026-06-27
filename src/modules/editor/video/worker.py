@@ -285,6 +285,11 @@ class ConversionWorker(QThread):
                 if self.settings.get('extension') == 'mp4':
                     base_v_args.extend(["-movflags", "+faststart"])
             
+            if inp.lower().endswith('.gif'):
+                # Force constant frame rate of 25 fps for GIF inputs.
+                # This guarantees valid timestamps and duration in containers like MP4/WebM.
+                base_v_args.extend(["-r", "25", "-vsync", "cfr"])
+            
             if mode == 'crf':
                 crf = self.settings.get('crf', 23)
                 v_args = ["-crf", str(crf)]

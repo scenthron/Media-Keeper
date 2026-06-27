@@ -246,7 +246,7 @@
   "tooltip_overlay_val_slider": "Регулировка прозрачности или силы размытия наложения",
   "tooltip_overlay_val_spin": "Точное значение интенсивности или прозрачности наложения в процентах",
   "preset_description_preset": "Скорость кодирования (пресет FFmpeg):\nОпределяет баланс между скоростью работы и эффективностью сжатия:\n- ultrafast/superfast: Очень быстрый экспорт, но размер файла будет значительно больше.\n- medium: Стандартный сбалансированный режим (рекомендуется).\n- slow/slower: Медленный экспорт, но алгоритм сжимает видео максимально эффективно (минимальный вес файла при том же качестве).",
-  "editor_filter_media": "Медиа файлы (*.mp4 *.mkv *.avi *.mov *.wmv *.mp3 *.wav *.ogg *.flac *.aac *.m4a *.opus *.wma);;Видео (*.mp4 *.mkv *.avi *.mov *.wmv);;Аудио (*.mp3 *.wav *.ogg *.flac *.aac *.m4a *.opus *.wma)",
+  "editor_filter_media": "Медиа файлы (*.mp4 *.mkv *.avi *.mov *.wmv *.gif *.mp3 *.wav *.ogg *.flac *.aac *.m4a *.opus *.wma);;Видео (*.mp4 *.mkv *.avi *.mov *.wmv *.gif);;Аудио (*.mp3 *.wav *.ogg *.flac *.aac *.m4a *.opus *.wma)",
   "ffmpeg_err_format": "Ошибка: {}",
   "editor_err_no_segments": "Не выбрано ни одного фрагмента для экспорта",
   "editor_msg_aborted": "Остановлено пользователем",
@@ -258,5 +258,9 @@
   "ffmpeg_extracting": "Распаковка архива...",
   "ffmpeg_err_extract": "Ошибка распаковки архива",
   "ffmpeg_success_installed": "FFmpeg успешно установлен!",
-  "ffmpeg_err_not_found_after": "FFmpeg не найден после установки"
+  "ffmpeg_err_not_found_after": "FFmpeg не найден после установки",
+  "settings_limit_size_group": "Ограничение размера",
+  "lbl_compress_priority": "Приоритет сжатия",
+  "lbl_priority_quality": "Качество",
+  "lbl_priority_resolution": "Разрешение"
 }

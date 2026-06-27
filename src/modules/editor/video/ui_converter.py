@@ -143,7 +143,7 @@ class VideoConverterWidget(QWidget):
         self.check_ffmpeg_and_switch()
 
     def add_files_dialog(self):
-        video_exts = "*.mp4 *.mkv *.avi *.mov *.wmv *.flv *.webm *.ts *.m2ts *.3gp *.mpeg *.mpg *.m4v *.f4v *.asf *.vob *.m2v *.vro *.divx *.xvid *.ogv"
+        video_exts = "*.mp4 *.mkv *.avi *.mov *.wmv *.flv *.webm *.ts *.m2ts *.3gp *.mpeg *.mpg *.m4v *.f4v *.asf *.vob *.m2v *.vro *.divx *.xvid *.ogv *.gif"
         fmt = f"Video Files ({video_exts});;All Files (*)"
         files, _ = QFileDialog.getOpenFileNames(self, AppContext.tr("msg_select_video_files"), "", fmt)
         if files:
@@ -209,7 +209,8 @@ class VideoConverterWidget(QWidget):
         # Filter existing and folders, and VALID VIDEO EXTENSIONS
         video_exts = {
             '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.ts', '.m2ts', '.3gp', 
-            '.mpeg', '.mpg', '.m4v', '.f4v', '.asf', '.vob', '.m2v', '.vro', '.divx', '.xvid', '.ogv'
+            '.mpeg', '.mpg', '.m4v', '.f4v', '.asf', '.vob', '.m2v', '.vro', '.divx', '.xvid', '.ogv',
+            '.gif'
         }
         
         new_paths = []

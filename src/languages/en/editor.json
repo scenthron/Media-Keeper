@@ -246,7 +246,7 @@
   "tooltip_overlay_val_slider": "Adjust opacity or blur strength of the overlay",
   "tooltip_overlay_val_spin": "Precise intensity or opacity value of the overlay in percent",
   "preset_description_preset": "Encoding speed (FFmpeg preset):\nDetermines the balance between execution speed and compression efficiency:\n- ultrafast/superfast: Very fast export, but the file size will be significantly larger.\n- medium: Standard balanced mode (recommended).\n- slow/slower: Slow export, but the algorithm compresses video as efficiently as possible (minimum file weight at the same quality).",
-  "editor_filter_media": "Media Files (*.mp4 *.mkv *.avi *.mov *.wmv *.mp3 *.wav *.ogg *.flac *.aac *.m4a *.opus *.wma);;Video (*.mp4 *.mkv *.avi *.mov *.wmv);;Audio (*.mp3 *.wav *.ogg *.flac *.aac *.m4a *.opus *.wma)",
+  "editor_filter_media": "Media Files (*.mp4 *.mkv *.avi *.mov *.wmv *.gif *.mp3 *.wav *.ogg *.flac *.aac *.m4a *.opus *.wma);;Video (*.mp4 *.mkv *.avi *.mov *.wmv *.gif);;Audio (*.mp3 *.wav *.ogg *.flac *.aac *.m4a *.opus *.wma)",
   "ffmpeg_err_format": "Error: {}",
   "editor_err_no_segments": "No fragments selected for export",
   "editor_msg_aborted": "Stopped by user",
@@ -258,5 +258,9 @@
   "ffmpeg_extracting": "Extracting archive...",
   "ffmpeg_err_extract": "Archive extraction error",
   "ffmpeg_success_installed": "FFmpeg successfully installed!",
-  "ffmpeg_err_not_found_after": "FFmpeg not found after installation"
+  "ffmpeg_err_not_found_after": "FFmpeg not found after installation",
+  "settings_limit_size_group": "Size Limit",
+  "lbl_compress_priority": "Compression Priority",
+  "lbl_priority_quality": "Quality",
+  "lbl_priority_resolution": "Resolution"
 }

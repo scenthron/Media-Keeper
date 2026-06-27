@@ -132,6 +132,65 @@ class ImageSettingsWidget(QWidget):
         scale_layout.addWidget(self.prop_container)
         layout.addWidget(grp_scale)
 
+        # Section 3.5: Size Limit
+        self.grp_limit = self.create_group_box(AppContext.tr("settings_limit_size_group"))
+        limit_layout = QVBoxLayout(self.grp_limit)
+        limit_layout.setSpacing(10)
+
+        # Row 1: Checkbox and SpinBox
+        row_limit_input = QHBoxLayout()
+        self.chk_limit_size = QCheckBox(AppContext.tr("chk_max_file_size"))
+        self.chk_limit_size.setStyleSheet(cb_style)
+        self.chk_limit_size.toggled.connect(self.on_limit_size_toggled)
+        row_limit_input.addWidget(self.chk_limit_size)
+
+        self.sb_limit_size = QSpinBox()
+        self.sb_limit_size.setRange(1, 500)
+        self.sb_limit_size.setValue(10)
+        self.sb_limit_size.setSuffix(" MB")
+        self.sb_limit_size.setFixedHeight(28)
+        self.sb_limit_size.setStyleSheet(sb_style)
+        self.sb_limit_size.setEnabled(False)
+        self.sb_limit_size.valueChanged.connect(self.settings_changed.emit)
+        row_limit_input.addWidget(self.sb_limit_size)
+        limit_layout.addLayout(row_limit_input)
+
+        # Row 2: Priority Label and Slider
+        self.lbl_compress_priority = QLabel(AppContext.tr("lbl_compress_priority"))
+        self.lbl_compress_priority.setStyleSheet("color: #aaa; font-size: 12px; margin-top: 5px;")
+        self.lbl_compress_priority.setEnabled(False)
+        limit_layout.addWidget(self.lbl_compress_priority)
+
+        row_priority_labels = QHBoxLayout()
+        lbl_q = QLabel(AppContext.tr("lbl_priority_quality"))
+        lbl_q.setStyleSheet("color: #777; font-size: 11px;")
+        lbl_q.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.lbl_priority_quality = lbl_q
+        self.lbl_priority_quality.setEnabled(False)
+
+        lbl_r = QLabel(AppContext.tr("lbl_priority_resolution"))
+        lbl_r.setStyleSheet("color: #777; font-size: 11px;")
+        lbl_r.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.lbl_priority_resolution = lbl_r
+        self.lbl_priority_resolution.setEnabled(False)
+
+        row_priority_labels.addWidget(self.lbl_priority_quality)
+        row_priority_labels.addWidget(self.lbl_priority_resolution)
+        limit_layout.addLayout(row_priority_labels)
+
+        self.slider_compress_priority = QSlider(Qt.Orientation.Horizontal)
+        self.slider_compress_priority.setRange(0, 100)
+        self.slider_compress_priority.setValue(50)
+        self.slider_compress_priority.setEnabled(False)
+        self.slider_compress_priority.setStyleSheet("""
+            QSlider::groove:horizontal { border: 1px solid #444; height: 4px; background: #333; margin: 6px 0; border-radius: 2px; }
+            QSlider::handle:horizontal { background: #3b82f6; border: 1px solid #3b82f6; width: 14px; height: 14px; margin: -5px 0; border-radius: 7px; }
+            QSlider::handle:horizontal:disabled { background: #555; border-color: #555; }
+        """)
+        self.slider_compress_priority.valueChanged.connect(self.settings_changed.emit)
+        limit_layout.addWidget(self.slider_compress_priority)
+        layout.addWidget(self.grp_limit)
+
         # Section 4: Naming
         grp_naming = self.create_group_box(AppContext.tr("settings_other"))
         nam_layout = QVBoxLayout(grp_naming)
@@ -262,6 +321,14 @@ class ImageSettingsWidget(QWidget):
         finally: self._sync_lock = False
         self.settings_changed.emit()
 
+    def on_limit_size_toggled(self, checked):
+        self.sb_limit_size.setEnabled(checked)
+        self.lbl_compress_priority.setEnabled(checked)
+        self.lbl_priority_quality.setEnabled(checked)
+        self.lbl_priority_resolution.setEnabled(checked)
+        self.slider_compress_priority.setEnabled(checked)
+        self.settings_changed.emit()
+
     def get_settings(self):
         idx = self.combo_scale.currentIndex()
         sp = 100
@@ -281,8 +348,17 @@ class ImageSettingsWidget(QWidget):
             'rename': self.chk_rename.isChecked(),
             'rename_prefix': self.combo_rename_type.currentIndex() == 0,
             'name_tmpl': self.inp_name_tmpl.text(),
-            'output_dir': self.output_dir
+            'output_dir': self.output_dir,
+            'limit_size': self.chk_limit_size.isChecked(),
+            'max_size_mb': self.sb_limit_size.value(),
+            'compress_priority': self.slider_compress_priority.value()
         }
 
     def update_ui_text(self):
         self.lbl_quality.setText(AppContext.tr("lbl_quality_slider").format(self.slider_quality.value()))
+        if hasattr(self, 'grp_limit'):
+            self.grp_limit.setTitle(AppContext.tr("settings_limit_size_group"))
+            self.chk_limit_size.setText(AppContext.tr("chk_max_file_size"))
+            self.lbl_compress_priority.setText(AppContext.tr("lbl_compress_priority"))
+            self.lbl_priority_quality.setText(AppContext.tr("lbl_priority_quality"))
+            self.lbl_priority_resolution.setText(AppContext.tr("lbl_priority_resolution"))

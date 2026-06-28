@@ -2,7 +2,7 @@
 import os
 from PyQt6.QtWidgets import (
     QScrollArea, QFrame, QLabel, QSizePolicy, QLayout, QWidgetItem, QStyle,
-    QPushButton, QVBoxLayout, QHBoxLayout
+    QPushButton, QVBoxLayout, QHBoxLayout, QDoubleSpinBox, QComboBox, QWidget
 )
 from PyQt6.QtCore import Qt, QPointF, QUrl, QSize, QRect, pyqtSignal
 from PyQt6.QtGui import QPainter, QDesktopServices, QIcon
@@ -438,3 +438,200 @@ class DropZoneWidget(QFrame):
                     self.folder_dropped.emit(paths[0])
                     
                 event.acceptProposedAction()
+
+class CleanSpinBox(QDoubleSpinBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lineEdit().setPlaceholderText("0")
+        
+    def textFromValue(self, val):
+        if val == 0: return ""
+        if val.is_integer(): return str(int(val))
+        return f"{val:.1f}".rstrip('0').rstrip('.')
+        
+    def valueFromText(self, text):
+        if not text.strip(): return 0.0
+        return super().valueFromText(text)
+
+class SizeFilterWidget(QWidget):
+    valueChanged = pyqtSignal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        is_ru = (AppContext.LANG == "RU")
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        
+        # Мин размер
+        self.spin_min = CleanSpinBox()
+        self.spin_min.setRange(0.0, 999999.0)
+        self.spin_min.setDecimals(1)
+        self.spin_min.setSingleStep(0.1)
+        self.spin_min.setFixedWidth(70)
+        self.spin_min.setFixedHeight(26)
+        self.spin_min.valueChanged.connect(self.validate_inputs)
+        
+        self.combo_unit_min = QComboBox()
+        self.combo_unit_min.addItems(["KB", "MB", "GB"] if not is_ru else ["КБ", "МБ", "ГБ"])
+        self.combo_unit_min.setCurrentIndex(1)
+        self.combo_unit_min.setFixedWidth(55)
+        self.combo_unit_min.setFixedHeight(26)
+        self.combo_unit_min.currentIndexChanged.connect(self.validate_inputs)
+        
+        # Разделитель
+        self.lbl_separator = QLabel("-")
+        self.lbl_separator.setStyleSheet("color: #888; font-weight: bold; background: transparent;")
+        
+        # Макс размер
+        self.spin_max = CleanSpinBox()
+        self.spin_max.setRange(0.0, 999999.0)
+        self.spin_max.setDecimals(1)
+        self.spin_max.setSingleStep(0.1)
+        self.spin_max.setFixedWidth(70)
+        self.spin_max.setFixedHeight(26)
+        self.spin_max.valueChanged.connect(self.validate_inputs)
+        
+        self.combo_unit_max = QComboBox()
+        self.combo_unit_max.addItems(["KB", "MB", "GB"] if not is_ru else ["КБ", "МБ", "ГБ"])
+        self.combo_unit_max.setCurrentIndex(1)
+        self.combo_unit_max.setFixedWidth(55)
+        self.combo_unit_max.setFixedHeight(26)
+        self.combo_unit_max.currentIndexChanged.connect(self.validate_inputs)
+        
+        # Кнопка сброса (крестик)
+        self.btn_reset = QPushButton()
+        self.btn_reset.setFixedSize(26, 26)
+        self.btn_reset.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_reset.setToolTip("Сбросить размер" if is_ru else "Reset size filter")
+        self.btn_reset.clicked.connect(self.reset_values)
+        
+        icons_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icons")
+        self.btn_reset.setIcon(QIcon(os.path.join(icons_dir, "cross.svg")))
+        self.btn_reset.setIconSize(QSize(10, 10))
+        self.btn_reset.setStyleSheet("""
+            QPushButton { 
+                background-color: #333333; 
+                border: 1px solid #555555; 
+                border-radius: 4px;
+            }
+            QPushButton:hover { 
+                background-color: #991b1b; 
+                border-color: #b91c1c; 
+            }
+        """)
+        
+        layout.addWidget(self.spin_min)
+        layout.addWidget(self.combo_unit_min)
+        layout.addWidget(self.lbl_separator)
+        layout.addWidget(self.spin_max)
+        layout.addWidget(self.combo_unit_max)
+        layout.addWidget(self.btn_reset)
+        
+        self.validate_inputs()
+
+    def get_min_bytes(self) -> int:
+        val = self.spin_min.value()
+        if val <= 0: return 0
+        unit = self.combo_unit_min.currentIndex()
+        return int(val * (1024 ** (unit + 1)))
+        
+    def get_max_bytes(self) -> int:
+        val = self.spin_max.value()
+        if val <= 0: return 0
+        unit = self.combo_unit_max.currentIndex()
+        return int(val * (1024 ** (unit + 1)))
+
+    def get_min_mb(self) -> float:
+        return self.get_min_bytes() / (1024 * 1024)
+        
+    def get_max_mb(self) -> float:
+        return self.get_max_bytes() / (1024 * 1024)
+
+    def set_values_mb(self, min_mb: float, max_mb: float):
+        def auto_unit(val_bytes):
+            if val_bytes <= 0:
+                return 0.0, 1
+            if val_bytes < 1024 * 1024:
+                return val_bytes / 1024, 0
+            if val_bytes < 1024 * 1024 * 1024:
+                return val_bytes / (1024 * 1024), 1
+            return val_bytes / (1024 * 1024 * 1024), 2
+            
+        min_val, min_unit = auto_unit(min_mb * 1024 * 1024)
+        max_val, max_unit = auto_unit(max_mb * 1024 * 1024)
+        
+        self.spin_min.blockSignals(True)
+        self.combo_unit_min.blockSignals(True)
+        self.spin_max.blockSignals(True)
+        self.combo_unit_max.blockSignals(True)
+        
+        self.spin_min.setValue(min_val)
+        self.combo_unit_min.setCurrentIndex(min_unit)
+        self.spin_max.setValue(max_val)
+        self.combo_unit_max.setCurrentIndex(max_unit)
+        
+        self.spin_min.blockSignals(False)
+        self.combo_unit_min.blockSignals(False)
+        self.spin_max.blockSignals(False)
+        self.combo_unit_max.blockSignals(False)
+        
+        self.validate_inputs()
+
+    def set_values_bytes(self, min_bytes: int, max_bytes: int):
+        self.set_values_mb(min_bytes / (1024 * 1024), max_bytes / (1024 * 1024))
+
+    def reset_values(self):
+        self.spin_min.setValue(0.0)
+        self.spin_max.setValue(0.0)
+        self.combo_unit_min.setCurrentIndex(1)
+        self.combo_unit_max.setCurrentIndex(1)
+        self.validate_inputs()
+
+    def has_error(self) -> bool:
+        min_b = self.get_min_bytes()
+        max_b = self.get_max_bytes()
+        return max_b > 0 and min_b > 0 and min_b >= max_b
+
+    def validate_inputs(self):
+        min_b = self.get_min_bytes()
+        max_b = self.get_max_bytes()
+        is_error = self.has_error()
+        
+        style_def = "background: #1a1a1a; color: white; border: 1px solid #444; font-weight: bold; border-radius: 4px; padding: 2px 2px 2px 6px;"
+        style_ok = "background: #14532d; color: white; border: 1px solid #16a34a; font-weight: bold; border-radius: 4px; padding: 2px 2px 2px 6px;"
+        style_err = "background: #451a1a; color: white; border: 1px solid #ef4444; font-weight: bold; border-radius: 4px; padding: 2px 2px 2px 6px;"
+        
+        arrow_style = (
+            "QDoubleSpinBox::up-button, QDoubleSpinBox::down-button { width: 16px; background: #2a2a2e; border: none; }"
+            "QDoubleSpinBox::up-button { border-top-right-radius: 3px; }"
+            "QDoubleSpinBox::down-button { border-bottom-right-radius: 3px; }"
+            "QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover { background: #3a3a5a; }"
+            "QDoubleSpinBox::up-arrow { image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%23ffffff\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m18 15-6-6-6 6\"/></svg>'); width: 8px; height: 8px; }"
+            "QDoubleSpinBox::down-arrow { image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%23ffffff\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m6 9 6 6 6-6\"/></svg>'); width: 8px; height: 8px; }"
+        )
+        
+        combo_style_def = "QComboBox { background: #1a1a1a; color: white; border: 1px solid #444; border-radius: 4px; padding: 0px 4px; } QComboBox::drop-down { border: none; width: 15px; } QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; padding: 2px; outline: none; min-width: 50px; }"
+        combo_style_ok = "QComboBox { background: #14532d; color: white; border: 1px solid #16a34a; border-radius: 4px; padding: 0px 4px; } QComboBox::drop-down { border: none; width: 15px; } QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; padding: 2px; outline: none; min-width: 50px; }"
+        combo_style_err = "QComboBox { background: #451a1a; color: white; border: 1px solid #ef4444; border-radius: 4px; padding: 0px 4px; } QComboBox::drop-down { border: none; width: 15px; } QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; padding: 2px; outline: none; min-width: 50px; }"
+        
+        if is_error:
+            self.spin_min.setStyleSheet(f"QDoubleSpinBox {{ {style_err} }} {arrow_style}")
+            self.spin_max.setStyleSheet(f"QDoubleSpinBox {{ {style_err} }} {arrow_style}")
+            self.combo_unit_min.setStyleSheet(combo_style_err)
+            self.combo_unit_max.setStyleSheet(combo_style_err)
+        else:
+            style_m = style_ok if min_b > 0 else style_def
+            style_x = style_ok if max_b > 0 else style_def
+            combo_m = combo_style_ok if min_b > 0 else combo_style_def
+            combo_x = combo_style_ok if max_b > 0 else combo_style_def
+            
+            self.spin_min.setStyleSheet(f"QDoubleSpinBox {{ {style_m} }} {arrow_style}")
+            self.spin_max.setStyleSheet(f"QDoubleSpinBox {{ {style_x} }} {arrow_style}")
+            self.combo_unit_min.setStyleSheet(combo_m)
+            self.combo_unit_max.setStyleSheet(combo_x)
+            
+        self.valueChanged.emit()
+

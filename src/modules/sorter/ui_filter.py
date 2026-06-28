@@ -9,7 +9,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QColor, QPalette, QIcon
 
 from config import AppContext, APP_DESIGN
-from ui_widgets_base import FlowLayout
+from ui_widgets_base import FlowLayout, SizeFilterWidget
 from .utils_extensions import EXT_CATEGORIES
 
 class SorterFilterDialog(QDialog):
@@ -139,51 +139,9 @@ class SorterFilterDialog(QDialog):
         lbl_size_title.setStyleSheet("color: white; font-size: 13px; font-weight: bold; background: transparent;")
         size_layout.addWidget(lbl_size_title)
         
-        # Мин размер
-        lbl_min = QLabel("Мин (МБ):" if AppContext.LANG == "RU" else "Min (MB):")
-        lbl_min.setStyleSheet("color: #aaa; font-size: 12px; background: transparent;")
-        size_layout.addWidget(lbl_min)
-        
-        self.sb_min_size = QDoubleSpinBox()
-        self.sb_min_size.setRange(0.0, 999999.0)
-        self.sb_min_size.setDecimals(2)
-        self.sb_min_size.setSingleStep(1.0)
-        self.sb_min_size.setSpecialValueText("0.00 (Без огр.)" if AppContext.LANG == "RU" else "0.00 (No limit)")
-        self.sb_min_size.setValue(self.min_size)
-        self.sb_min_size.setFixedSize(140, 26)
-        self.sb_min_size.setStyleSheet("""
-            QDoubleSpinBox {
-                background-color: #1a1a1a;
-                border: 1px solid #444;
-                color: white;
-                border-radius: 4px;
-                padding-left: 5px;
-            }
-        """)
-        size_layout.addWidget(self.sb_min_size)
-        
-        # Макс размер
-        lbl_max = QLabel("Макс (МБ):" if AppContext.LANG == "RU" else "Max (MB):")
-        lbl_max.setStyleSheet("color: #aaa; font-size: 12px; background: transparent;")
-        size_layout.addWidget(lbl_max)
-        
-        self.sb_max_size = QDoubleSpinBox()
-        self.sb_max_size.setRange(0.0, 999999.0)
-        self.sb_max_size.setDecimals(2)
-        self.sb_max_size.setSingleStep(1.0)
-        self.sb_max_size.setSpecialValueText("0.00 (Без огр.)" if AppContext.LANG == "RU" else "0.00 (No limit)")
-        self.sb_max_size.setValue(self.max_size)
-        self.sb_max_size.setFixedSize(140, 26)
-        self.sb_max_size.setStyleSheet("""
-            QDoubleSpinBox {
-                background-color: #1a1a1a;
-                border: 1px solid #444;
-                color: white;
-                border-radius: 4px;
-                padding-left: 5px;
-            }
-        """)
-        size_layout.addWidget(self.sb_max_size)
+        self.size_widget = SizeFilterWidget()
+        self.size_widget.set_values_mb(self.min_size, self.max_size)
+        size_layout.addWidget(self.size_widget)
         size_layout.addStretch()
         
         layout.addWidget(size_frame)
@@ -530,6 +488,6 @@ class SorterFilterDialog(QDialog):
             'mode': self.mode, 
             'exts': list(self.selected_exts),
             'recursive': self.chk_recursive.isChecked(),
-            'min_size': self.sb_min_size.value(),
-            'max_size': self.sb_max_size.value()
+            'min_size': self.size_widget.get_min_mb(),
+            'max_size': self.size_widget.get_max_mb()
         }

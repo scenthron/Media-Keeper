@@ -9,7 +9,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize, QEvent
 from PyQt6.QtGui import QIcon, QPixmap, QImage, QPainter
 from PyQt6.QtSvg import QSvgRenderer
 from config import AppContext
-from ui_widgets_base import DropZoneWidget
+from ui_widgets_base import DropZoneWidget, SizeFilterWidget
 from utils_common import format_size
 from .ui_widgets import SourceListItem, CleanSpinBox, ModeBadgeButton, CompactDropZone
 
@@ -185,40 +185,9 @@ class CleanerSettingsPanel(QWidget):
         self.lbl_size.setStyleSheet("color: #ccc; font-size: 12px;")
         size_layout.addWidget(self.lbl_size)
         
-        self.input_base_style = """min-height: 26px; max-height: 26px; border-radius: 4px; border: none; padding: 0px 4px;"""
-        combo_style = f"QComboBox {{ {self.input_base_style} background: #333; color: white; }} QComboBox::drop-down {{ border: none; width: 15px; }} QComboBox QAbstractItemView {{ background-color: #333; color: white; selection-background-color: #3b82f6; padding: 2px; outline: none; min-width: 50px; }}"
-        
-        self.spin_min = CleanSpinBox()
-        self.spin_min.setRange(0, 99999)
-        self.spin_min.setDecimals(2)
-        self.spin_min.setFixedWidth(60)
-        self.spin_min.valueChanged.connect(self.validate_size_inputs)
-        size_layout.addWidget(self.spin_min)
-        
-        self.combo_unit_min = QComboBox()
-        self.combo_unit_min.addItems(["KB", "MB", "GB"])
-        self.combo_unit_min.setCurrentIndex(1)
-        self.combo_unit_min.setStyleSheet(combo_style)
-        self.combo_unit_min.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
-        self.combo_unit_min.currentIndexChanged.connect(self.validate_size_inputs)
-        size_layout.addWidget(self.combo_unit_min)
-        
-        size_layout.addWidget(QLabel("-"))
-        
-        self.spin_max = CleanSpinBox()
-        self.spin_max.setRange(0, 99999)
-        self.spin_max.setDecimals(2)
-        self.spin_max.setFixedWidth(60)
-        self.spin_max.valueChanged.connect(self.validate_size_inputs)
-        size_layout.addWidget(self.spin_max)
-        
-        self.combo_unit_max = QComboBox()
-        self.combo_unit_max.addItems(["KB", "MB", "GB"])
-        self.combo_unit_max.setCurrentIndex(1)
-        self.combo_unit_max.setStyleSheet(combo_style)
-        self.combo_unit_max.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
-        self.combo_unit_max.currentIndexChanged.connect(self.validate_size_inputs)
-        size_layout.addWidget(self.combo_unit_max)
+        self.size_widget = SizeFilterWidget()
+        self.size_widget.valueChanged.connect(self.validate_size_inputs)
+        size_layout.addWidget(self.size_widget)
         
         size_layout.addStretch()
         algo_layout.addWidget(size_widget)
@@ -374,29 +343,7 @@ class CleanerSettingsPanel(QWidget):
         # NOTE: btn_scan text update is handled in CleanerModule to respect scanning state.
 
     def validate_size_inputs(self):
-        min_b, max_b = self.get_size_limits()
-        style_def = f"{self.input_base_style} background: #333; color: white;"
-        style_ok = f"{self.input_base_style} background: #064e3b; color: #ffffff; font-weight: bold;"
-        style_err = f"{self.input_base_style} background: #7f1d1d; color: #ffffff; font-weight: bold;"
-        
-        style_min = style_def
-        style_max = style_def
-        is_error = False
-        
-        if min_b > 0: style_min = style_ok
-        if max_b > 0: style_max = style_ok
-            
-        if max_b > 0 and min_b > 0:
-            if min_b == max_b:
-                style_min = style_err
-                style_max = style_err
-                is_error = True
-            elif min_b > max_b:
-                style_min = style_err
-                is_error = True
-        
-        self.spin_min.setStyleSheet(f"QDoubleSpinBox {{ {style_min} }}")
-        self.spin_max.setStyleSheet(f"QDoubleSpinBox {{ {style_max} }}")
+        is_error = self.size_widget.has_error()
         
         has_folders = self.btn_scan.property("has_folders")
         should_enable = has_folders and not is_error
@@ -419,13 +366,7 @@ class CleanerSettingsPanel(QWidget):
             """)
 
     def get_size_limits(self):
-        def calc(spin, combo):
-            val = spin.value()
-            if val <= 0: return 0
-            unit = combo.currentIndex()
-            multiplier = 1024 ** (unit + 1)
-            return int(val * multiplier)
-        return calc(self.spin_min, self.combo_unit_min), calc(self.spin_max, self.combo_unit_max)
+        return self.size_widget.get_min_bytes(), self.size_widget.get_max_bytes()
 
     def set_scan_enabled(self, enabled):
         self.btn_scan.setProperty("has_folders", enabled)

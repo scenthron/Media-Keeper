@@ -500,6 +500,9 @@ class SizeFilterWidget(QWidget):
         self.btn_up_min.setIconSize(QSize(8, 8))
         self.btn_up_min.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_up_min.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_up_min.setAutoRepeat(True)
+        self.btn_up_min.setAutoRepeatDelay(400)
+        self.btn_up_min.setAutoRepeatInterval(50)
         self.btn_up_min.setStyleSheet("""
             QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-top-left-radius: 5px; }
             QPushButton:hover { background: rgba(255, 255, 255, 0.1); }
@@ -511,6 +514,9 @@ class SizeFilterWidget(QWidget):
         self.btn_down_min.setIconSize(QSize(8, 8))
         self.btn_down_min.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_down_min.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_down_min.setAutoRepeat(True)
+        self.btn_down_min.setAutoRepeatDelay(400)
+        self.btn_down_min.setAutoRepeatInterval(50)
         self.btn_down_min.setStyleSheet("""
             QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-bottom-left-radius: 5px; }
             QPushButton:hover { background: rgba(255, 255, 255, 0.1); }
@@ -580,6 +586,9 @@ class SizeFilterWidget(QWidget):
         self.btn_up_max.setIconSize(QSize(8, 8))
         self.btn_up_max.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_up_max.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_up_max.setAutoRepeat(True)
+        self.btn_up_max.setAutoRepeatDelay(400)
+        self.btn_up_max.setAutoRepeatInterval(50)
         self.btn_up_max.setStyleSheet("""
             QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-top-left-radius: 5px; }
             QPushButton:hover { background: rgba(255, 255, 255, 0.1); }
@@ -591,6 +600,9 @@ class SizeFilterWidget(QWidget):
         self.btn_down_max.setIconSize(QSize(8, 8))
         self.btn_down_max.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_down_max.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_down_max.setAutoRepeat(True)
+        self.btn_down_max.setAutoRepeatDelay(400)
+        self.btn_down_max.setAutoRepeatInterval(50)
         self.btn_down_max.setStyleSheet("""
             QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-bottom-left-radius: 5px; }
             QPushButton:hover { background: rgba(255, 255, 255, 0.1); }

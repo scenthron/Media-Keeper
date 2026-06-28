@@ -141,6 +141,7 @@ class SorterFilterDialog(QDialog):
         
         self.size_widget = SizeFilterWidget()
         self.size_widget.set_values_mb(self.min_size, self.max_size)
+        self.size_widget.valueChanged.connect(self.validate_dialog_inputs)
         size_layout.addWidget(self.size_widget)
         size_layout.addStretch()
         
@@ -189,19 +190,29 @@ class SorterFilterDialog(QDialog):
         btn_clear.clicked.connect(self.clear_filter)
         fl.addWidget(btn_clear)
         
-        btn_apply = QPushButton(AppContext.tr("filter_btn_apply"))
-        btn_apply.setFixedHeight(28)
-        btn_apply.setMinimumWidth(160)
-        btn_apply.setStyleSheet("""
-            QPushButton { background-color: #15803d; border: 1px solid #16a34a; color: white; border-radius: 4px; font-weight: bold; padding: 2px 16px; font-size: 12px; }
-            QPushButton:hover { background-color: #166534; }
-        """)
-        btn_apply.clicked.connect(self.accept)
-        fl.addWidget(btn_apply)
+        self.btn_apply = QPushButton(AppContext.tr("filter_btn_apply"))
+        self.btn_apply.setFixedHeight(28)
+        self.btn_apply.setMinimumWidth(160)
+        self.btn_apply.clicked.connect(self.accept)
+        fl.addWidget(self.btn_apply)
         
         layout.addWidget(footer)
         
         self.set_mode(self.mode)
+        self.validate_dialog_inputs()
+
+    def validate_dialog_inputs(self):
+        is_error = self.size_widget.has_error()
+        self.btn_apply.setEnabled(not is_error)
+        if is_error:
+            self.btn_apply.setStyleSheet("""
+                QPushButton { background-color: #222; border: 1px solid #333; color: #555; font-weight: bold; padding: 2px 16px; font-size: 12px; }
+            """)
+        else:
+            self.btn_apply.setStyleSheet("""
+                QPushButton { background-color: #15803d; border: 1px solid #16a34a; color: white; border-radius: 4px; font-weight: bold; padding: 2px 16px; font-size: 12px; }
+                QPushButton:hover { background-color: #166534; }
+            """)
 
     def set_mode(self, mode):
         self.mode = mode

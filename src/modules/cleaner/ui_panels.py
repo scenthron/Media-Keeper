@@ -122,9 +122,10 @@ class CleanerSettingsPanel(QWidget):
         col_filters.addLayout(algo_header)
         
         algo_frame = QFrame()
-        algo_frame.setStyleSheet("background-color: #252526; border: 1px solid #3e3e42; border-radius: 4px; padding: 6px;")
+        algo_frame.setObjectName("algo_frame")
+        algo_frame.setStyleSheet("QFrame#algo_frame { background-color: #252526; border: 1px solid #3e3e42; border-radius: 4px; }")
         algo_layout = QVBoxLayout(algo_frame)
-        algo_layout.setContentsMargins(0, 0, 0, 0)
+        algo_layout.setContentsMargins(6, 6, 6, 6)
         algo_layout.setSpacing(6)
         
         cache_layout = QHBoxLayout()
@@ -224,10 +225,11 @@ class CleanerSettingsPanel(QWidget):
         self.col_prog.addLayout(prog_header)
         
         metrics_frame = QFrame()
-        metrics_frame.setStyleSheet("background: #252526; border: 1px solid #333; border-radius: 4px; padding: 4px;")
+        metrics_frame.setObjectName("metrics_frame")
+        metrics_frame.setStyleSheet("QFrame#metrics_frame { background: #252526; border: 1px solid #333; border-radius: 4px; }")
         gl = QGridLayout(metrics_frame)
         gl.setSpacing(6)
-        gl.setContentsMargins(8, 4, 8, 4)
+        gl.setContentsMargins(8, 8, 8, 8)
         
         lbl_style = "color: #cccccc; font-size: 13px;"
         val_style = "color: #cccccc; font-weight: bold; font-size: 13px;"

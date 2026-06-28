@@ -475,12 +475,12 @@ class SizeFilterWidget(QWidget):
             
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(6)
+        main_layout.setSpacing(4)
         
         # --- БЛОК МИНИМУМА ---
         self.frame_min = QFrame()
         self.frame_min.setFixedHeight(26)
-        self.frame_min.setFixedWidth(132)
+        self.frame_min.setFixedWidth(104)
         
         layout_min = QHBoxLayout(self.frame_min)
         layout_min.setContentsMargins(0, 0, 0, 0)
@@ -532,7 +532,7 @@ class SizeFilterWidget(QWidget):
         self.spin_min.setDecimals(1)
         self.spin_min.setSingleStep(0.1)
         self.spin_min.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
-        self.spin_min.setFixedWidth(64)
+        self.spin_min.setFixedWidth(46)
         self.spin_min.setFixedHeight(24)
         self.spin_min.setStyleSheet("border: none; background: transparent; color: white; font-weight: bold; font-size: 12px; padding: 0 4px;")
         self.spin_min.valueChanged.connect(self.validate_inputs)
@@ -545,7 +545,7 @@ class SizeFilterWidget(QWidget):
         self.combo_unit_min = QComboBox()
         self.combo_unit_min.addItems(["KB", "MB", "GB"] if not is_ru else ["КБ", "МБ", "ГБ"])
         self.combo_unit_min.setCurrentIndex(1)
-        self.combo_unit_min.setFixedWidth(46)
+        self.combo_unit_min.setFixedWidth(40)
         self.combo_unit_min.setFixedHeight(24)
         self.combo_unit_min.view().setMinimumWidth(60)
         self.combo_unit_min.setStyleSheet("""
@@ -566,7 +566,7 @@ class SizeFilterWidget(QWidget):
         # --- БЛОК МАКСИМУМА ---
         self.frame_max = QFrame()
         self.frame_max.setFixedHeight(26)
-        self.frame_max.setFixedWidth(132)
+        self.frame_max.setFixedWidth(104)
         
         layout_max = QHBoxLayout(self.frame_max)
         layout_max.setContentsMargins(0, 0, 0, 0)
@@ -618,7 +618,7 @@ class SizeFilterWidget(QWidget):
         self.spin_max.setDecimals(1)
         self.spin_max.setSingleStep(0.1)
         self.spin_max.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
-        self.spin_max.setFixedWidth(64)
+        self.spin_max.setFixedWidth(46)
         self.spin_max.setFixedHeight(24)
         self.spin_max.setStyleSheet("border: none; background: transparent; color: white; font-weight: bold; font-size: 12px; padding: 0 4px;")
         self.spin_max.valueChanged.connect(self.validate_inputs)
@@ -631,7 +631,7 @@ class SizeFilterWidget(QWidget):
         self.combo_unit_max = QComboBox()
         self.combo_unit_max.addItems(["KB", "MB", "GB"] if not is_ru else ["КБ", "МБ", "ГБ"])
         self.combo_unit_max.setCurrentIndex(1)
-        self.combo_unit_max.setFixedWidth(46)
+        self.combo_unit_max.setFixedWidth(40)
         self.combo_unit_max.setFixedHeight(24)
         self.combo_unit_max.view().setMinimumWidth(60)
         self.combo_unit_max.setStyleSheet("""
@@ -646,7 +646,7 @@ class SizeFilterWidget(QWidget):
         
         # --- КНОПКА СБРОСА ---
         self.btn_reset = QPushButton()
-        self.btn_reset.setFixedSize(26, 26)
+        self.btn_reset.setFixedSize(24, 24)
         self.btn_reset.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_reset.setToolTip("Сбросить размер" if is_ru else "Reset size filter")
         self.btn_reset.clicked.connect(self.reset_values)

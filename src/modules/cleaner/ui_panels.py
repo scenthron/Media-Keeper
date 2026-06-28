@@ -177,13 +177,21 @@ class CleanerSettingsPanel(QWidget):
         algo_layout.addWidget(self.chk_safe_scan)
         
         # Size Filters
+        size_widget = QWidget()
+        size_layout = QHBoxLayout(size_widget)
+        size_layout.setContentsMargins(0, 0, 0, 0)
+        size_layout.setSpacing(6)
+        
         self.lbl_size = QLabel(AppContext.tr("cln_size_filter"))
-        self.lbl_size.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI'; padding: 2px 0px;")
-        algo_layout.addWidget(self.lbl_size)
+        self.lbl_size.setStyleSheet("color: #ccc; font-size: 12px; font-weight: bold;")
+        size_layout.addWidget(self.lbl_size)
         
         self.size_widget = SizeFilterWidget()
         self.size_widget.valueChanged.connect(self.validate_size_inputs)
-        algo_layout.addWidget(self.size_widget)
+        size_layout.addWidget(self.size_widget)
+        size_layout.addStretch()
+        
+        algo_layout.addWidget(size_widget)
         
         self.lbl_shield = QLabel(AppContext.tr("cln_lbl_method_info"))
         self.lbl_shield.setStyleSheet("color: #ccc; font-size: 12px; line-height: 140%;")

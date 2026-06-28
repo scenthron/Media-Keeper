@@ -272,6 +272,9 @@ class ConversionWorker(QThread):
                 target_w = (target_w // 2) * 2
                 target_h = (target_h // 2) * 2
                 filter_args.extend(['-vf', f'scale={target_w}:{target_h}'])
+        elif not use_copy_stream:
+            # Force even dimensions (divisible by 2) to prevent libx264/libvpx-vp9 encoder failure
+            filter_args.extend(['-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2'])
 
         # Encoding Mode
         mode = self.settings.get('mode', 'crf')

@@ -398,6 +398,11 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             self.set_session_trash(None)
 
         if is_external:
+            old_unsort = self.config.get("path_unsort", "")
+            if os.path.normpath(old_unsort) != path:
+                self.config["filter_min_size"] = 0.0
+                self.config["filter_max_size"] = 0.0
+                
             self.config["path_unsort"] = path
             
             # Reset filter on new inbox (external drop)

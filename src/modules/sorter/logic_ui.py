@@ -761,6 +761,8 @@ class UiSetupMixin:
             current_selection=current_exts,
             current_mode=current_mode,
             recursive_state=recursive_state,
+            min_size=self.config.get("filter_min_size", 0.0),
+            max_size=self.config.get("filter_max_size", 0.0),
             parent=self
         )
         
@@ -775,6 +777,15 @@ class UiSetupMixin:
             self.config["scan_subfolders"] = result['recursive']
             
             new_unsort = result.get('unsort_dir', '')
+            old_unsort = self.config.get("path_unsort", "")
+            
+            if os.path.normpath(new_unsort) != os.path.normpath(old_unsort):
+                self.config["filter_min_size"] = 0.0
+                self.config["filter_max_size"] = 0.0
+            else:
+                self.config["filter_min_size"] = result.get('min_size', 0.0)
+                self.config["filter_max_size"] = result.get('max_size', 0.0)
+                
             self.config["path_unsort"] = new_unsort
             self.session_inbox_path = None  # Reset temporary override
             

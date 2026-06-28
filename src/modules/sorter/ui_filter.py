@@ -3,7 +3,7 @@ import os
 import logging
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame, 
-    QScrollArea, QWidget, QCheckBox, QLineEdit, QFileDialog
+    QScrollArea, QWidget, QCheckBox, QLineEdit, QFileDialog, QDoubleSpinBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QColor, QPalette, QIcon
@@ -13,7 +13,7 @@ from ui_widgets_base import FlowLayout
 from .utils_extensions import EXT_CATEGORIES
 
 class SorterFilterDialog(QDialog):
-    def __init__(self, unsort_dir, found_extensions, current_selection, current_mode, recursive_state, parent=None):
+    def __init__(self, unsort_dir, found_extensions, current_selection, current_mode, recursive_state, min_size=0.0, max_size=0.0, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Настройка директории и типов файлов" if AppContext.LANG == "RU" else "Directory & File Types Setup")
         self.resize(800, 600)
@@ -33,6 +33,8 @@ class SorterFilterDialog(QDialog):
         self.found_extensions = set(found_extensions)
         self.selected_exts = set(current_selection)
         self.mode = current_mode
+        self.min_size = min_size
+        self.max_size = max_size
         self.icons_dir = AppContext.find_resource_dir("icons")
         
         layout = QVBoxLayout(self)
@@ -125,6 +127,66 @@ class SorterFilterDialog(QDialog):
         ml.addWidget(self.btn_include)
         ml.addWidget(self.btn_exclude)
         layout.addWidget(mode_container)
+        
+        # Фильтр размеров файлов
+        size_frame = QFrame()
+        size_frame.setStyleSheet("background-color: #262626; border-bottom: 1px solid #333333; border-top: 1px solid #333333;")
+        size_layout = QHBoxLayout(size_frame)
+        size_layout.setContentsMargins(15, 8, 15, 8)
+        size_layout.setSpacing(10)
+        
+        lbl_size_title = QLabel("Размер файлов:" if AppContext.LANG == "RU" else "File size:")
+        lbl_size_title.setStyleSheet("color: white; font-size: 13px; font-weight: bold; background: transparent;")
+        size_layout.addWidget(lbl_size_title)
+        
+        # Мин размер
+        lbl_min = QLabel("Мин (МБ):" if AppContext.LANG == "RU" else "Min (MB):")
+        lbl_min.setStyleSheet("color: #aaa; font-size: 12px; background: transparent;")
+        size_layout.addWidget(lbl_min)
+        
+        self.sb_min_size = QDoubleSpinBox()
+        self.sb_min_size.setRange(0.0, 999999.0)
+        self.sb_min_size.setDecimals(2)
+        self.sb_min_size.setSingleStep(1.0)
+        self.sb_min_size.setSpecialValueText("0.00 (Без огр.)" if AppContext.LANG == "RU" else "0.00 (No limit)")
+        self.sb_min_size.setValue(self.min_size)
+        self.sb_min_size.setFixedSize(140, 26)
+        self.sb_min_size.setStyleSheet("""
+            QDoubleSpinBox {
+                background-color: #1a1a1a;
+                border: 1px solid #444;
+                color: white;
+                border-radius: 4px;
+                padding-left: 5px;
+            }
+        """)
+        size_layout.addWidget(self.sb_min_size)
+        
+        # Макс размер
+        lbl_max = QLabel("Макс (МБ):" if AppContext.LANG == "RU" else "Max (MB):")
+        lbl_max.setStyleSheet("color: #aaa; font-size: 12px; background: transparent;")
+        size_layout.addWidget(lbl_max)
+        
+        self.sb_max_size = QDoubleSpinBox()
+        self.sb_max_size.setRange(0.0, 999999.0)
+        self.sb_max_size.setDecimals(2)
+        self.sb_max_size.setSingleStep(1.0)
+        self.sb_max_size.setSpecialValueText("0.00 (Без огр.)" if AppContext.LANG == "RU" else "0.00 (No limit)")
+        self.sb_max_size.setValue(self.max_size)
+        self.sb_max_size.setFixedSize(140, 26)
+        self.sb_max_size.setStyleSheet("""
+            QDoubleSpinBox {
+                background-color: #1a1a1a;
+                border: 1px solid #444;
+                color: white;
+                border-radius: 4px;
+                padding-left: 5px;
+            }
+        """)
+        size_layout.addWidget(self.sb_max_size)
+        size_layout.addStretch()
+        
+        layout.addWidget(size_frame)
         
         # Extensions Matrix
         scroll = QScrollArea()
@@ -467,5 +529,7 @@ class SorterFilterDialog(QDialog):
             'unsort_dir': self.unsort_dir,
             'mode': self.mode, 
             'exts': list(self.selected_exts),
-            'recursive': self.chk_recursive.isChecked()
+            'recursive': self.chk_recursive.isChecked(),
+            'min_size': self.sb_min_size.value(),
+            'max_size': self.sb_max_size.value()
         }

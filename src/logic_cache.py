@@ -14,13 +14,23 @@ class ScanWorker(QThread):
     def run(self):
         total_size = 0
         file_count = 0
+        from utils_io import ensure_long_path
+        long_folder = ensure_long_path(self.path)
         try:
-            for root, dirs, files in os.walk(self.path):
-                # Исключаем системную директорию .mediakeeper из обхода
+            # 1. Считаем файлы только в корне самой папки
+            try:
+                with os.scandir(long_folder) as it:
+                    for entry in it:
+                        if entry.is_file():
+                            file_count += 1
+            except:
+                pass
+                
+            # 2. Обходим подпапки рекурсивно только для подсчета суммарного размера
+            for root, dirs, files in os.walk(long_folder):
                 if '.mediakeeper' in dirs:
                     dirs.remove('.mediakeeper')
                 
-                file_count += len(files)
                 for f in files:
                     try:
                         fp = os.path.join(root, f)

@@ -172,7 +172,18 @@ class FileOpsMixin:
             
         # 1. Фильтрация
         filtered_files = []
+        min_mb = self.config.get("filter_min_size", 0.0)
+        max_mb = self.config.get("filter_max_size", 0.0)
+        min_bytes = int(min_mb * 1024 * 1024) if min_mb > 0 else 0
+        max_bytes = int(max_mb * 1024 * 1024) if max_mb > 0 else 0
+        
         for f_info in self._raw_dir_files:
+            size = f_info.get('size', 0)
+            if min_bytes > 0 and size < min_bytes:
+                continue
+            if max_bytes > 0 and size > max_bytes:
+                continue
+                
             rel_path = f_info['rel_path']
             ext = os.path.splitext(rel_path)[1].lower()
             

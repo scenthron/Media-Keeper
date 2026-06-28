@@ -477,6 +477,7 @@ class ActionMixin:
             dest_root = self.action_bar.drop_zone.get_path()
             if dest_root:
                 DirCache.inst().invalidate_with_parents(dest_root)
+                self.action_bar.drop_zone.refresh_stats()
 
         elapsed_ms = self.move_timer.elapsed()
         time_str = None

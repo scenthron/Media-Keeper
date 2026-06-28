@@ -480,7 +480,7 @@ class SizeFilterWidget(QWidget):
         # --- БЛОК МИНИМУМА ---
         self.frame_min = QFrame()
         self.frame_min.setFixedHeight(26)
-        self.frame_min.setFixedWidth(128)
+        self.frame_min.setFixedWidth(132)
         
         layout_min = QHBoxLayout(self.frame_min)
         layout_min.setContentsMargins(0, 0, 0, 0)
@@ -539,12 +539,13 @@ class SizeFilterWidget(QWidget):
         self.combo_unit_min = QComboBox()
         self.combo_unit_min.addItems(["KB", "MB", "GB"] if not is_ru else ["КБ", "МБ", "ГБ"])
         self.combo_unit_min.setCurrentIndex(1)
-        self.combo_unit_min.setFixedWidth(42)
+        self.combo_unit_min.setFixedWidth(46)
         self.combo_unit_min.setFixedHeight(24)
+        self.combo_unit_min.view().setMinimumWidth(60)
         self.combo_unit_min.setStyleSheet("""
             QComboBox { border: none; background: transparent; color: white; padding-left: 2px; }
             QComboBox::drop-down { border: none; width: 0px; }
-            QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; outline: none; }
+            QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; outline: none; padding: 2px 0px; }
         """)
         self.combo_unit_min.currentIndexChanged.connect(self.validate_inputs)
         layout_min.addWidget(self.combo_unit_min)
@@ -559,7 +560,7 @@ class SizeFilterWidget(QWidget):
         # --- БЛОК МАКСИМУМА ---
         self.frame_max = QFrame()
         self.frame_max.setFixedHeight(26)
-        self.frame_max.setFixedWidth(128)
+        self.frame_max.setFixedWidth(132)
         
         layout_max = QHBoxLayout(self.frame_max)
         layout_max.setContentsMargins(0, 0, 0, 0)
@@ -618,12 +619,13 @@ class SizeFilterWidget(QWidget):
         self.combo_unit_max = QComboBox()
         self.combo_unit_max.addItems(["KB", "MB", "GB"] if not is_ru else ["КБ", "МБ", "ГБ"])
         self.combo_unit_max.setCurrentIndex(1)
-        self.combo_unit_max.setFixedWidth(42)
+        self.combo_unit_max.setFixedWidth(46)
         self.combo_unit_max.setFixedHeight(24)
+        self.combo_unit_max.view().setMinimumWidth(60)
         self.combo_unit_max.setStyleSheet("""
             QComboBox { border: none; background: transparent; color: white; padding-left: 2px; }
             QComboBox::drop-down { border: none; width: 0px; }
-            QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; outline: none; }
+            QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; outline: none; padding: 2px 0px; }
         """)
         self.combo_unit_max.currentIndexChanged.connect(self.validate_inputs)
         layout_max.addWidget(self.combo_unit_max)

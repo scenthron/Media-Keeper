@@ -30,7 +30,7 @@ class SessionDB:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             cursor.execute('CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY AUTOINCREMENT, hash TEXT, size INTEGER, file_count INTEGER, wasted_size INTEGER, extension TEXT)')
-            cursor.execute('CREATE TABLE IF NOT EXISTS files (id INTEGER PRIMARY KEY AUTOINCREMENT, group_id INTEGER, path TEXT, is_deleted INTEGER DEFAULT 0, is_marked INTEGER DEFAULT 0, FOREIGN KEY(group_id) REFERENCES groups(id))')
+            cursor.execute('CREATE TABLE IF NOT EXISTS files (id INTEGER PRIMARY KEY AUTOINCREMENT, group_id INTEGER, path TEXT, is_deleted INTEGER DEFAULT 0, is_marked INTEGER DEFAULT 0, similarity_pct INTEGER DEFAULT 100, FOREIGN KEY(group_id) REFERENCES groups(id))')
             cursor.execute('CREATE TABLE IF NOT EXISTS zero_files (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, extension TEXT, is_deleted INTEGER DEFAULT 0, is_marked INTEGER DEFAULT 0)')
             cursor.execute('CREATE TABLE IF NOT EXISTS empty_folders (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, is_deleted INTEGER DEFAULT 0, is_marked INTEGER DEFAULT 0)')
             
@@ -71,6 +71,7 @@ class SessionDB:
             ("files",         "ALTER TABLE files ADD COLUMN is_deleted INTEGER DEFAULT 0"),
             ("zero_files",    "ALTER TABLE zero_files ADD COLUMN is_deleted INTEGER DEFAULT 0"),
             ("empty_folders", "ALTER TABLE empty_folders ADD COLUMN is_deleted INTEGER DEFAULT 0"),
+            ("files",         "ALTER TABLE files ADD COLUMN similarity_pct INTEGER DEFAULT 100"),
         ]
         for _table, sql in migrations:
             try:
@@ -131,7 +132,7 @@ class SessionDB:
                 wasted = grp['size'] * (len(files) - 1)
                 ext = ""
                 if files:
-                    ext = os.path.splitext(files[0]['real_path'])[1].lower()
+                    ext = os.path.splitext(files[0].get('real_path', files[0].get('path', '')))[1].lower()
                 groups_data.append((grp['hash'], grp['size'], len(files), wasted, ext))
             
             # Шаг 2. Пакетно вставляем все группы
@@ -144,16 +145,21 @@ class SessionDB:
             cursor.execute("SELECT id, hash FROM groups")
             hash_to_id = {row[1]: row[0] for row in cursor.fetchall()}
             
-            # Шаг 4. Формируем пакетные данные для файлов
+            # Шаг 4. Формируем пакетные данные для файлов (с полем similarity_pct)
             files_data = []
             for grp in groups_list:
                 g_id = hash_to_id.get(grp['hash'])
                 if g_id is not None:
                     for f in grp['files']:
-                        files_data.append((g_id, f['real_path']))
+                        real_path = f.get('real_path', f.get('path', ''))
+                        similarity_pct = f.get('similarity_pct', 100)
+                        files_data.append((g_id, real_path, similarity_pct))
             
             # Шаг 5. Пакетно вставляем все файлы
-            cursor.executemany("INSERT INTO files (group_id, path) VALUES (?, ?)", files_data)
+            cursor.executemany(
+                "INSERT INTO files (group_id, path, similarity_pct) VALUES (?, ?, ?)",
+                files_data
+            )
             
             conn.commit()
             conn.close()
@@ -267,7 +273,7 @@ class SessionDB:
                 return []
                 
             # Загружаем абсолютно все активные файлы за 1 запрос!
-            cursor.execute("SELECT id, group_id, path, is_marked FROM files WHERE is_deleted = 0")
+            cursor.execute("SELECT id, group_id, path, is_marked, similarity_pct FROM files WHERE is_deleted = 0")
             all_files = cursor.fetchall()
             
             # Быстро группируем файлы по group_id в оперативной памяти Python
@@ -309,7 +315,8 @@ class SessionDB:
                             'group_id': g['id'],
                             'path': f['path'],
                             'size': g['size'],
-                            'is_marked': f['is_marked']
+                            'is_marked': f['is_marked'],
+                            'similarity_pct': f['similarity_pct'] if 'similarity_pct' in f.keys() else 100
                         })
             if progress_callback:
                 progress_callback(total_groups, total_groups)
@@ -1108,3 +1115,6 @@ class SessionDB:
         except Exception as e:
             logging.error(f"Error in get_global_marked_empty_folders: {e}")
         return items
+
+class SimilarSessionDB(SessionDB):
+    DB_NAME = "session_similar.db"

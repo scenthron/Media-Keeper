@@ -422,3 +422,226 @@ class DBLoadWorker(QThread):
         except Exception as e:
             logging.error(f"[DBLoadWorker] Ошибка при фоновом чтении БД: {e}")
             self.finished.emit([], {})
+
+class SimilarScanWorker(QThread):
+    progress = pyqtSignal(int, float, str, int, int, object, object, int, int)
+    finished = pyqtSignal(dict)
+    
+    def __init__(self, folders_dict, use_cache=True, filter_config=None, size_limits=(0, 0), media_type=0, threshold=90):
+        super().__init__()
+        self.folders_dict = folders_dict
+        self.folders = list(folders_dict.keys())
+        self.use_cache = use_cache
+        self.filter_config = filter_config
+        self.min_size = size_limits[0]
+        self.max_size = size_limits[1]
+        self.media_type = media_type # 0: Images, 1: Audio, 2: Video
+        self.threshold = threshold
+        self.reference_path = None
+        self.is_running = True
+        
+        from .db_cache import SimilarDB
+        self.db = SimilarDB() if use_cache else None
+
+    def stop(self):
+        self.is_running = False
+
+    def is_extension_allowed(self, filename):
+        ext = os.path.splitext(filename)[1].lower()
+        if self.media_type == 0:
+            allowed_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.heic', '.heif'}
+        elif self.media_type == 1:
+            allowed_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma'}
+        else:
+            allowed_exts = {'.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm'}
+            
+        if ext not in allowed_exts:
+            return False
+            
+        if not self.filter_config:
+            return True
+            
+        mode = self.filter_config['mode']
+        target_exts = self.filter_config['exts']
+        if not target_exts:
+            return (True if mode != 'include' else False)
+            
+        if mode == 'include':
+            return ext in target_exts
+        elif mode == 'exclude':
+            return ext not in target_exts
+        return True
+
+    def run(self):
+        valid_files = []
+        scanned_files = 0
+        scanned_bytes = 0
+        last_emit_time = 0
+        emit_interval = 0.1
+        
+        self.progress.emit(STAGE_SCANNING, 0.0, "Сканирование файлов...", 0, 0, 0, 0, 0, 0)
+        
+        for folder in self.folders:
+            if not self.is_running: break
+            norm_folder = os.path.normpath(folder)
+            scan_path = ensure_win_path(norm_folder)
+            if not os.path.exists(scan_path): continue
+            
+            try:
+                for root, dirs, files in os.walk(scan_path):
+                    if not self.is_running: break
+                    for f in files:
+                        if not self.is_running: break
+                        path = os.path.join(root, f)
+                        try:
+                            stat = os.stat(path)
+                            size = stat.st_size
+                            scanned_files += 1
+                            scanned_bytes += size
+                            
+                            current_time = time.time()
+                            if current_time - last_emit_time > emit_interval:
+                                self.progress.emit(STAGE_SCANNING, 0.0, path, scanned_files, 0, 0, scanned_bytes, 0, 0)
+                                last_emit_time = current_time
+                                
+                            if not self.is_extension_allowed(f): continue
+                            if size == 0: continue
+                            if self.min_size > 0 and size < self.min_size: continue
+                            if self.max_size > 0 and size > self.max_size: continue
+                            
+                            display_path = path
+                            if display_path.startswith('\\\\?\\'): display_path = display_path[4:]
+                            valid_files.append({
+                                'path': display_path,
+                                'real_path': path,
+                                'size': size,
+                                'mtime': stat.st_mtime,
+                                'source_root': norm_folder,
+                                'signature': None
+                            })
+                        except OSError: pass
+            except Exception: pass
+            
+        if not self.is_running:
+            self.finished.emit({'groups': [], 'zero_files': [], 'empty_folders': []})
+            return
+
+        total_files = len(valid_files)
+        self.progress.emit(STAGE_ANALYSIS, 10.0, f"Анализ {total_files} медиафайлов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
+        
+        from .dhash import get_image_ahash
+        
+        # 1. Сбор хэшей (подпись)
+        processed_count = 0
+        files_with_signatures = []
+        for file_data in valid_files:
+            if not self.is_running: break
+            processed_count += 1
+            
+            current_time = time.time()
+            if current_time - last_emit_time > emit_interval:
+                percent = 10.0 + (processed_count / max(1, total_files)) * 70.0
+                self.progress.emit(STAGE_ANALYSIS, percent, file_data['real_path'], scanned_files, 0, 0, scanned_bytes, 0, 0)
+                last_emit_time = current_time
+                
+            sig = None
+            if self.use_cache:
+                sig = self.db.get_cached_signature(file_data['real_path'], file_data['size'], file_data['mtime'])
+                
+            if not sig:
+                if self.media_type == 0: # Изображения
+                    sig = get_image_ahash(file_data['real_path'])
+                # В будущем добавим Аудио и Видео
+                if sig and self.use_cache:
+                    self.db.upsert_signature(file_data['real_path'], file_data['size'], file_data['mtime'], sig)
+                    
+            if sig:
+                file_data['signature'] = sig
+                files_with_signatures.append((file_data, int(sig, 16)))
+
+        if not self.is_running:
+            self.finished.emit({'groups': [], 'zero_files': [], 'empty_folders': []})
+            return
+
+        # 2. Группировка по сходству (расстояние Хэмминга)
+        groups = []
+        visited = set()
+        threshold_bits = int((100 - self.threshold) / 100.0 * 64)
+        
+        protected_folders = [os.path.normcase(os.path.normpath(p)) for p, d in self.folders_dict.items() if d.get('protected')]
+        norm_ref = None
+        if self.reference_path:
+            norm_ref = os.path.normcase(os.path.normpath(self.reference_path))
+            
+        found_matches_count = 0
+        current_wasted_bytes = 0
+        
+        for i in range(len(files_with_signatures)):
+            if not self.is_running: break
+            if i in visited: continue
+            
+            f1, h1 = files_with_signatures[i]
+            current_group = [f1]
+            
+            for j in range(i + 1, len(files_with_signatures)):
+                if j in visited: continue
+                f2, h2 = files_with_signatures[j]
+                
+                # Считаем расстояние Хэмминга через XOR и count
+                dist = bin(h1 ^ h2).count('1')
+                if dist <= threshold_bits:
+                    current_group.append(f2)
+                    visited.add(j)
+                    
+            if len(current_group) > 1:
+                visited.add(i)
+                
+                # Сортируем файлы в группе:
+                # 1. Сначала эталонный (is_ref)
+                # 2. Затем защищенный (is_prot)
+                # 3. Затем по убыванию размера файла
+                def get_sort_key(f):
+                    path_norm = os.path.normcase(os.path.normpath(f['path']))
+                    is_ref = norm_ref and is_subpath(path_norm, norm_ref)
+                    is_prot = any(is_subpath(path_norm, p) for p in protected_folders)
+                    return (0 if is_ref else 1, 0 if is_prot else 1, -f['size'])
+                    
+                current_group.sort(key=get_sort_key)
+                
+                # Задаем проценты схожести относительно первого файла (оригинала)
+                base_file = current_group[0]
+                base_file['similarity_pct'] = 100
+                base_hash = int(base_file['signature'], 16)
+                
+                for other in current_group[1:]:
+                    other_hash = int(other['signature'], 16)
+                    d = bin(base_hash ^ other_hash).count('1')
+                    other['similarity_pct'] = int((64 - d) / 64.0 * 100)
+                    
+                # Фильтруем группу по эталону
+                if norm_ref:
+                    has_ref = False
+                    subset_outside_ref = 0
+                    for f in current_group:
+                        path_norm = os.path.normcase(os.path.normpath(f['path']))
+                        if is_subpath(path_norm, norm_ref):
+                            has_ref = True
+                        else:
+                            subset_outside_ref += 1
+                    if has_ref and subset_outside_ref > 0:
+                        groups.append({ 'hash': base_file['signature'], 'size': base_file['size'], 'files': current_group })
+                        found_matches_count += subset_outside_ref
+                        current_wasted_bytes += sum(f['size'] for f in current_group if not is_subpath(os.path.normcase(os.path.normpath(f['path'])), norm_ref))
+                else:
+                    groups.append({ 'hash': base_file['signature'], 'size': base_file['size'], 'files': current_group })
+                    dupes_in_group = len(current_group) - 1
+                    found_matches_count += dupes_in_group
+                    current_wasted_bytes += sum(f['size'] for f in current_group[1:])
+                    
+        # Сортируем группы по общему объему "лишних" файлов
+        groups.sort(key=lambda g: g['size'] * (len(g['files']) - 1), reverse=True)
+        
+        if self.is_running:
+            self.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, found_matches_count, current_wasted_bytes, scanned_bytes, 0, 0)
+            
+        self.finished.emit({'groups': groups, 'zero_files': [], 'empty_folders': []})

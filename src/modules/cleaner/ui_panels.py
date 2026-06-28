@@ -719,22 +719,38 @@ class CleanerActionBar(QFrame):
             self.combo_autoselect.model().item(idx).setEnabled(False)
             self.combo_autoselect.setItemData(idx, QSize(0, 9), Qt.ItemDataRole.SizeHintRole)
 
-        add_item(AppContext.tr("cln_sel_auto"), AppContext.tr("cln_sel_tip_none"), 0)
-        add_sep()
-        add_item(AppContext.tr("cln_sel_all_except_first"), AppContext.tr("cln_sel_tip_except_first"), 2)
-        add_item(AppContext.tr("cln_sel_all_except_last"), AppContext.tr("cln_sel_tip_except_last"), 3)
-        add_sep()
-        add_item(AppContext.tr("cln_sel_shortest"), AppContext.tr("cln_sel_tip_shortest"), 5)
-        add_item(AppContext.tr("cln_sel_longest"), AppContext.tr("cln_sel_tip_longest"), 6)
-        add_sep()
-        add_item(AppContext.tr("cln_sel_newest"), AppContext.tr("cln_sel_tip_newest"), 8)
-        add_item(AppContext.tr("cln_sel_oldest"), AppContext.tr("cln_sel_tip_oldest"), 9)
-        add_sep()
-        add_item(AppContext.tr("cln_sel_shallow"), AppContext.tr("cln_sel_tip_shallow"), 11)
-        add_item(AppContext.tr("cln_sel_deep"), AppContext.tr("cln_sel_tip_deep"), 12)
-        add_sep()
-        add_item(AppContext.tr("cln_sel_protected_dupes"), AppContext.tr("cln_sel_tip_protected_dupes"), 14)
-        add_item(AppContext.tr("cln_sel_reference_dupes"), AppContext.tr("cln_sel_tip_reference_dupes"), 15)
+        is_similar = getattr(self, 'is_similar_mode', False)
+        is_ru = (AppContext.LANG == "RU")
+
+        if is_similar:
+            add_item("Автовыбор" if is_ru else "Autoselect", "Выберите условие автоматического выделения" if is_ru else "Choose autoselect condition", 0)
+            add_sep()
+            add_item("Оставить с наибольшим качеством (весом)" if is_ru else "Keep highest quality (size)", 
+                     "Выделить все файлы в группе, кроме файла с наибольшим размером" if is_ru else "Mark all files except the one with largest size", 2)
+            add_item("Оставить с наименьшим качеством (весом)" if is_ru else "Keep lowest quality (size)", 
+                     "Выделить все файлы в группе, кроме файла с наименьшим размером" if is_ru else "Mark all files except the one with smallest size", 3)
+            add_sep()
+            add_item("Оставить самый новый" if is_ru else "Keep newest", 
+                     "Выделить все файлы в группе, кроме самого свежего по дате" if is_ru else "Mark all files except the newest one", 8)
+            add_item("Оставить самый старый" if is_ru else "Keep oldest", 
+                     "Выделить все файлы в группе, кроме самого старого по дате" if is_ru else "Mark all files except the oldest one", 9)
+        else:
+            add_item(AppContext.tr("cln_sel_auto"), AppContext.tr("cln_sel_tip_none"), 0)
+            add_sep()
+            add_item(AppContext.tr("cln_sel_all_except_first"), AppContext.tr("cln_sel_tip_except_first"), 2)
+            add_item(AppContext.tr("cln_sel_all_except_last"), AppContext.tr("cln_sel_tip_except_last"), 3)
+            add_sep()
+            add_item(AppContext.tr("cln_sel_shortest"), AppContext.tr("cln_sel_tip_shortest"), 5)
+            add_item(AppContext.tr("cln_sel_longest"), AppContext.tr("cln_sel_tip_longest"), 6)
+            add_sep()
+            add_item(AppContext.tr("cln_sel_newest"), AppContext.tr("cln_sel_tip_newest"), 8)
+            add_item(AppContext.tr("cln_sel_oldest"), AppContext.tr("cln_sel_tip_oldest"), 9)
+            add_sep()
+            add_item(AppContext.tr("cln_sel_shallow"), AppContext.tr("cln_sel_tip_shallow"), 11)
+            add_item(AppContext.tr("cln_sel_deep"), AppContext.tr("cln_sel_tip_deep"), 12)
+            add_sep()
+            add_item(AppContext.tr("cln_sel_protected_dupes"), AppContext.tr("cln_sel_tip_protected_dupes"), 14)
+            add_item(AppContext.tr("cln_sel_reference_dupes"), AppContext.tr("cln_sel_tip_reference_dupes"), 15)
 
     def update_collision_items(self):
         current_idx = self.combo_collision.currentIndex()
@@ -770,3 +786,486 @@ class CleanerActionBar(QFrame):
         self.btn_delete.setIconSize(QSize(16, 16))
         self.update_autoselect_items()
         self.update_collision_items()
+
+class SimilarSettingsPanel(QWidget):
+    add_folder_clicked = pyqtSignal()
+    folder_dropped = pyqtSignal(str)
+    clear_folders_clicked = pyqtSignal()
+    open_filter_clicked = pyqtSignal()
+    start_scan_clicked = pyqtSignal()
+    clear_cache_clicked = pyqtSignal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self.setStyleSheet("background-color: #1e1e1e;")
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        
+        self.layout = QHBoxLayout(self)
+        self.layout.setContentsMargins(15, 4, 15, 4)
+        self.layout.setSpacing(12)
+        
+        is_ru = (AppContext.LANG == "RU")
+        
+        # COL 1: Sources
+        col_src = QVBoxLayout()
+        col_src.setContentsMargins(0, 0, 0, 0)
+        col_src.setSpacing(4)
+        src_header = QHBoxLayout()
+        src_header.setContentsMargins(0, 0, 0, 0)
+        src_header.setSpacing(5)
+        self.lbl_src_icon = QLabel()
+        self.lbl_src_icon.setFixedSize(16, 16)
+        self.lbl_src_icon.setStyleSheet("background: transparent; border: none;")
+        self.lbl_src = QLabel()
+        self.lbl_src.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI'; padding: 2px 0px;")
+        src_header.addWidget(self.lbl_src_icon)
+        src_header.addWidget(self.lbl_src)
+        src_header.addStretch()
+        col_src.addLayout(src_header)
+        
+        self.sources_list_widget = QWidget()
+        self.sources_list_widget.setStyleSheet("QWidget { background-color: #111111; }") 
+        self.folder_list_layout = QVBoxLayout()
+        self.folder_list_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        
+        list_container_layout = QVBoxLayout(self.sources_list_widget)
+        list_container_layout.setContentsMargins(0,0,0,0)
+        list_container_layout.addLayout(self.folder_list_layout)
+        list_container_layout.addStretch(1)
+        
+        self.drop_zone = DropZoneWidget()
+        self.drop_zone.clicked.connect(self.add_folder_clicked.emit)
+        self.drop_zone.folder_dropped.connect(self.folder_dropped.emit)
+        self.drop_zone.clear_default_requested.connect(self.clear_folders_clicked.emit)
+        self.drop_zone.btn_clear.show()
+        self.drop_zone.setStyleSheet(self.drop_zone.styleSheet() + "margin: 10px;")
+        
+        # Warning Label
+        self.lbl_warn = QLabel(AppContext.tr("cln_warn_system_folders"))
+        self.lbl_warn.setWordWrap(True)
+        self.lbl_warn.setStyleSheet("color: #777; font-size: 11px; margin: 0 15px 5px 15px; font-style: italic;")
+        self.lbl_warn.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        list_container_layout.addWidget(self.lbl_warn)
+        list_container_layout.addWidget(self.drop_zone)
+        
+        scroll_src = QScrollArea()
+        scroll_src.setWidgetResizable(True)
+        scroll_src.setWidget(self.sources_list_widget)
+        scroll_src.setStyleSheet("QScrollArea { background-color: #111; border: 1px solid #333; border-radius: 6px; }")
+        
+        col_src.addWidget(scroll_src, 1)
+        self.layout.addLayout(col_src, stretch=4)
+        
+        # COL 2: Filters
+        col_filters = QVBoxLayout()
+        col_filters.setContentsMargins(0, 0, 0, 0)
+        col_filters.setSpacing(4)
+        algo_header = QHBoxLayout()
+        algo_header.setContentsMargins(0, 0, 0, 0)
+        algo_header.setSpacing(5)
+        self.lbl_algo_icon = QLabel()
+        self.lbl_algo_icon.setFixedSize(16, 16)
+        self.lbl_algo_icon.setStyleSheet("background: transparent; border: none;")
+        self.lbl_algo = QLabel()
+        self.lbl_algo.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI'; padding: 2px 0px;")
+        algo_header.addWidget(self.lbl_algo_icon)
+        algo_header.addWidget(self.lbl_algo)
+        algo_header.addStretch()
+        col_filters.addLayout(algo_header)
+        
+        algo_frame = QFrame()
+        algo_frame.setObjectName("algo_frame")
+        algo_frame.setStyleSheet("QFrame#algo_frame { background-color: #252526; border: 1px solid #3e3e42; border-radius: 4px; }")
+        algo_layout = QVBoxLayout(algo_frame)
+        algo_layout.setContentsMargins(6, 6, 6, 6)
+        algo_layout.setSpacing(6)
+        
+        # Cache line
+        cache_layout = QHBoxLayout()
+        cache_layout.setContentsMargins(0, 0, 0, 0)
+        self.chk_cache = QCheckBox(AppContext.tr("cln_chk_cache"))
+        self.chk_cache.setChecked(True) 
+        self.chk_cache.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_cache.setStyleSheet("""
+            QCheckBox { color: white; font-weight: bold; font-size: 13px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        """)
+        cache_layout.addWidget(self.chk_cache)
+        cache_layout.addStretch()
+        
+        self.lbl_cache_size = QLabel("0 B")
+        self.lbl_cache_size.setStyleSheet("color: #888; font-size: 12px; margin-right: 5px;")
+        cache_layout.addWidget(self.lbl_cache_size)
+        
+        self.btn_clear_cache = QPushButton("")
+        icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
+        self.btn_clear_cache.setIcon(load_svg_icon(os.path.join(icons_dir, "trash-color.svg"), QSize(16, 16)))
+        self.btn_clear_cache.setIconSize(QSize(16, 16))
+        self.btn_clear_cache.setToolTip(AppContext.tr("cln_tip_clear_cache"))
+        self.btn_clear_cache.setFixedSize(32, 32)
+        self.btn_clear_cache.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear_cache.setStyleSheet("""
+            QPushButton { background-color: transparent; border: 1px solid #555; border-radius: 16px; padding: 0px; }
+            QPushButton:hover { background-color: #444; border-color: #ef4444; }
+        """)
+        self.btn_clear_cache.clicked.connect(self.clear_cache_clicked.emit)
+        cache_layout.addWidget(self.btn_clear_cache)
+        algo_layout.addLayout(cache_layout)
+        
+        # Media Type Selection Line
+        media_layout = QHBoxLayout()
+        media_layout.setContentsMargins(0, 0, 0, 0)
+        media_layout.setSpacing(6)
+        
+        self.lbl_media_type = QLabel("Анализ:" if is_ru else "Analysis:")
+        self.lbl_media_type.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
+        media_layout.addWidget(self.lbl_media_type)
+        
+        self.combo_media_type = QComboBox()
+        self.combo_media_type.addItems(["Изображения", "Аудио (заглушка)", "Видео (заглушка)"] if is_ru else ["Images", "Audio (stub)", "Video (stub)"])
+        self.combo_media_type.setFixedHeight(24)
+        self.combo_media_type.setFixedWidth(135)
+        self.combo_media_type.setStyleSheet("""
+            QComboBox { background-color: #333; color: white; border: 1px solid #555; border-radius: 4px; padding-left: 5px; font-weight: bold; }
+            QComboBox QAbstractItemView { background-color: #222; color: white; selection-background-color: #3b82f6; }
+        """)
+        media_layout.addWidget(self.combo_media_type)
+        
+        # Info icon
+        self.lbl_info_icon = QLabel("!")
+        self.lbl_info_icon.setFixedSize(16, 16)
+        self.lbl_info_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_info_icon.setStyleSheet("""
+            QLabel {
+                background-color: #3b82f6; 
+                color: white; 
+                border-radius: 8px; 
+                font-weight: bold; 
+                font-size: 11px; 
+                font-family: 'Segoe UI', Arial;
+            }
+        """)
+        self.lbl_info_icon.setToolTip(
+            "<b>Изображения:</b> Сравнение по визуальному контенту (aHash) с автоповоротом (90/180/270°). Позволяет находить одинаковые фото в разном разрешении и качестве.<br><br>"
+            "<b>Аудио:</b> Поиск дубликатов музыки по акустическому отпечатку звука (Chromaprint). Находит одинаковые песни в разных форматах и битрейтах.<br><br>"
+            "<b>Видео:</b> Сравнение по 10 ключевым кадрам, распределенным по всей длительности ролика."
+        )
+        media_layout.addWidget(self.lbl_info_icon)
+        media_layout.addStretch()
+        algo_layout.addLayout(media_layout)
+        
+        # Similarity Slider Line
+        sim_layout = QHBoxLayout()
+        sim_layout.setContentsMargins(0, 0, 0, 0)
+        sim_layout.setSpacing(6)
+        
+        self.lbl_similarity_title = QLabel("Схожесть:" if is_ru else "Similarity:")
+        self.lbl_similarity_title.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
+        sim_layout.addWidget(self.lbl_similarity_title)
+        
+        self.slider_similarity = QSlider(Qt.Orientation.Horizontal)
+        self.slider_similarity.setRange(70, 100)
+        self.slider_similarity.setValue(90)
+        self.slider_similarity.setFixedWidth(100)
+        self.slider_similarity.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.slider_similarity.setStyleSheet("""
+            QSlider::groove:horizontal { border: 1px solid #444; height: 4px; background: #222; border-radius: 2px; }
+            QSlider::sub-page:horizontal { background: #3b82f6; border-radius: 2px; }
+            QSlider::handle:horizontal { background: #bbb; width: 12px; height: 12px; margin: -4px 0; border-radius: 6px; }
+            QSlider::handle:horizontal:hover { background: white; }
+        """)
+        sim_layout.addWidget(self.slider_similarity)
+        
+        self.lbl_similarity_val = QLabel("90%")
+        self.lbl_similarity_val.setStyleSheet("color: white; font-size: 12px; font-weight: bold; min-width: 30px;")
+        self.slider_similarity.valueChanged.connect(lambda v: self.lbl_similarity_val.setText(f"{v}%"))
+        sim_layout.addWidget(self.lbl_similarity_val)
+        sim_layout.addStretch()
+        algo_layout.addLayout(sim_layout)
+        
+        # Size Filters
+        size_widget = QWidget()
+        size_layout = QHBoxLayout(size_widget)
+        size_layout.setContentsMargins(0, 0, 0, 0)
+        size_layout.setSpacing(6)
+        
+        self.lbl_size = QLabel(AppContext.tr("cln_size_filter"))
+        self.lbl_size.setStyleSheet("color: #ccc; font-size: 12px; font-weight: bold;")
+        size_layout.addWidget(self.lbl_size)
+        
+        self.size_widget = SizeFilterWidget()
+        self.size_widget.valueChanged.connect(self.validate_size_inputs)
+        size_layout.addWidget(self.size_widget)
+        size_layout.addStretch()
+        algo_layout.addWidget(size_widget)
+        
+        col_filters.addWidget(algo_frame)
+        
+        self.lbl_filter_status = QLabel(AppContext.tr("cln_filter_all"))
+        self.lbl_filter_status.setStyleSheet("font-size: 12px; color: #ccc; margin-left: 2px; font-weight: bold; margin-top: 2px;")
+        col_filters.addWidget(self.lbl_filter_status)
+        col_filters.addStretch()
+        
+        self.btn_filter = QPushButton()
+        self.btn_filter.setIcon(load_svg_icon(os.path.join(icons_dir, "loupe-color.svg"), QSize(16, 16)))
+        self.btn_filter.setIconSize(QSize(16, 16))
+        self.btn_filter.setFixedHeight(36)
+        self.btn_filter.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_filter.setEnabled(False)
+        self.btn_filter.clicked.connect(self.open_filter_clicked.emit)
+        self.btn_filter.setStyleSheet("QPushButton { background-color: #444; color: #fff; border: 1px solid #666; padding: 0 10px; border-radius: 4px; font-weight: bold; } QPushButton:hover { background-color: #555; color: white; border-color: #888; }")
+        col_filters.addWidget(self.btn_filter)
+        self.layout.addLayout(col_filters, stretch=3)
+        
+        # COL 3: Progress
+        self.col_prog = QVBoxLayout()
+        self.col_prog.setContentsMargins(0, 0, 0, 0)
+        self.col_prog.setSpacing(4)
+        prog_header = QHBoxLayout()
+        prog_header.setContentsMargins(0, 0, 0, 0)
+        prog_header.setSpacing(5)
+        self.lbl_prog_icon = QLabel()
+        self.lbl_prog_icon.setFixedSize(16, 16)
+        self.lbl_prog_icon.setStyleSheet("background: transparent; border: none;")
+        self.lbl_prog_header = QLabel()
+        self.lbl_prog_header.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI'; padding: 2px 0px;")
+        prog_header.addWidget(self.lbl_prog_icon)
+        prog_header.addWidget(self.lbl_prog_header)
+        prog_header.addStretch()
+        self.col_prog.addLayout(prog_header)
+        
+        metrics_frame = QFrame()
+        metrics_frame.setObjectName("metrics_frame")
+        metrics_frame.setStyleSheet("QFrame#metrics_frame { background: #252526; border: 1px solid #333; border-radius: 4px; }")
+        gl = QGridLayout(metrics_frame)
+        gl.setSpacing(6)
+        gl.setContentsMargins(8, 8, 8, 8)
+        
+        lbl_style = "color: #cccccc; font-size: 13px;"
+        val_style = "color: #cccccc; font-weight: bold; font-size: 13px;"
+        
+        self.lbl_scanned = QLabel(AppContext.tr("cln_lbl_scanned"))
+        self.lbl_scanned.setStyleSheet(lbl_style)
+        self.val_scanned = QLabel("0")
+        self.val_scanned.setStyleSheet(val_style)
+        self.val_scanned.setAlignment(Qt.AlignmentFlag.AlignRight)
+        gl.addWidget(self.lbl_scanned, 0, 0)
+        gl.addWidget(self.val_scanned, 0, 1)
+        
+        self.lbl_percent = QLabel("")
+        self.lbl_percent.hide()
+        self.lbl_dup = QLabel("Найдено групп похожих:" if is_ru else "Similar groups found:")
+        self.lbl_dup.setStyleSheet(lbl_style)
+        self.btn_duples = ModeBadgeButton("0")
+        self.btn_duples.set_mode('disabled')
+        cont_dup = QWidget()
+        l_dup = QHBoxLayout(cont_dup)
+        l_dup.setContentsMargins(0, 0, 0, 0)
+        l_dup.addStretch()
+        l_dup.addWidget(self.lbl_percent)
+        l_dup.addWidget(self.btn_duples)
+        gl.addWidget(self.lbl_dup, 1, 0)
+        gl.addWidget(cont_dup, 1, 1)
+        
+        self.lbl_wasted = QLabel(AppContext.tr("cln_lbl_wasted"))
+        self.lbl_wasted.setStyleSheet(lbl_style)
+        self.val_wasted = QLabel("0 B")
+        self.val_wasted.setStyleSheet(val_style)
+        self.val_wasted.setAlignment(Qt.AlignmentFlag.AlignRight)
+        gl.addWidget(self.lbl_wasted, 2, 0)
+        gl.addWidget(self.val_wasted, 2, 1)
+        
+        self.lbl_zero = QLabel("")
+        self.lbl_zero.hide()
+        self.btn_zero = ModeBadgeButton("0")
+        self.btn_zero.hide()
+        
+        self.lbl_empty = QLabel("")
+        self.lbl_empty.hide()
+        self.btn_empty = ModeBadgeButton("0")
+        self.btn_empty.hide()
+        
+        self.val_curr_path = QLabel("...")
+        self.val_curr_path.setStyleSheet("color: #888; font-style: italic; font-size: 12px;")
+        self.val_curr_path.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.val_curr_path.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        gl.addWidget(self.val_curr_path, 5, 0, 1, 2)
+        
+        self.lbl_time = QLabel(AppContext.tr("cln_lbl_time"))
+        self.lbl_time.setStyleSheet(lbl_style)
+        self.val_time = QLabel("00:00.000")
+        self.val_time.setStyleSheet(val_style)
+        self.val_time.setAlignment(Qt.AlignmentFlag.AlignRight)
+        gl.addWidget(self.lbl_time, 6, 0)
+        gl.addWidget(self.val_time, 6, 1)
+        
+        self.col_prog.addWidget(metrics_frame)
+        self.col_prog.addStretch()
+        
+        self.btn_scan = QPushButton(" " + AppContext.tr("cln_btn_start"))
+        self.btn_scan.setFixedHeight(36)
+        self.btn_scan.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_scan.clicked.connect(self.start_scan_clicked.emit)
+        self.btn_scan.setProperty("has_folders", False)
+        
+        self.col_prog.addWidget(self.btn_scan)
+        self.layout.addLayout(self.col_prog, stretch=3)
+        
+        self.scan_stale = False
+        self.update_ui_text()
+        self.validate_size_inputs()
+
+    def update_ui_text(self):
+        icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
+        
+        self.lbl_src_icon.setPixmap(load_svg_pixmap(os.path.join(icons_dir, "folder-color.svg"), QSize(16, 16)))
+        self.lbl_algo_icon.setPixmap(load_svg_pixmap(os.path.join(icons_dir, "gear-color.svg"), QSize(16, 16)))
+        self.lbl_prog_icon.setPixmap(load_svg_pixmap(os.path.join(icons_dir, "loupe-color.svg"), QSize(16, 16), mirror_horizontal=True))
+
+        raw_title = AppContext.tr("cln_src_title")
+        clean_title = raw_title.replace("1.", "").strip() if raw_title.startswith("1.") else raw_title
+        self.lbl_src.setText(f"1. {clean_title}")
+        
+        self.drop_zone.update_ui_text()
+        self.lbl_warn.setText(AppContext.tr("cln_warn_system_folders"))
+        
+        raw_algo = AppContext.tr("cln_algo_title")
+        clean = raw_algo.replace("2.", "").strip() if raw_algo.startswith("2.") else raw_algo
+        self.lbl_algo.setText(f"2. {clean}")
+
+        self.chk_cache.setText(AppContext.tr("cln_chk_cache"))
+        self.btn_clear_cache.setToolTip(AppContext.tr("cln_tip_clear_cache"))
+        self.btn_clear_cache.setIcon(load_svg_icon(os.path.join(icons_dir, "trash-color.svg"), QSize(16, 16)))
+        self.btn_clear_cache.setIconSize(QSize(16, 16))
+        
+        self.btn_filter.setText(AppContext.tr("cln_btn_scan_types"))
+        
+        raw_prog = AppContext.tr("cln_prog_title")
+        clean = raw_prog.replace("3.", "").strip() if raw_prog.startswith("3.") else raw_prog
+        self.lbl_prog_header.setText(f"3. {clean}")
+
+        self.lbl_scanned.setText(AppContext.tr("cln_lbl_scanned"))
+        self.lbl_wasted.setText(AppContext.tr("cln_lbl_wasted"))
+        self.lbl_time.setText(AppContext.tr("cln_lbl_time"))
+        self.lbl_size.setText(AppContext.tr("cln_size_filter"))
+        
+        if hasattr(self, 'btn_abort') and self.btn_abort:
+            self.btn_abort.setText(AppContext.tr("cln_btn_abort"))
+            self.btn_abort.setToolTip(AppContext.tr("cln_tip_abort"))
+        if hasattr(self, 'btn_stop_scan') and self.btn_stop_scan:
+            self.btn_stop_scan.setText(AppContext.tr("cln_btn_reset"))
+            self.btn_stop_scan.setToolTip(AppContext.tr("cln_tip_reset"))
+
+    def validate_size_inputs(self):
+        is_error = self.size_widget.has_error()
+        has_folders = self.btn_scan.property("has_folders")
+        should_enable = has_folders and not is_error
+        self.btn_scan.setEnabled(should_enable)
+        
+        if should_enable:
+            if getattr(self, 'scan_stale', False):
+                self.btn_scan.setStyleSheet("""
+                    QPushButton { background-color: #ea580c; color: white; font-weight: 900; font-size: 14px; border: 1px solid #f97316; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
+                    QPushButton:hover { background-color: #f97316; }
+                """)
+            else:
+                self.btn_scan.setStyleSheet("""
+                    QPushButton { background-color: #15803d; color: white; font-weight: 900; font-size: 14px; border: 1px solid #16a34a; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
+                    QPushButton:hover { background-color: #16a34a; }
+                """)
+        else:
+            self.btn_scan.setStyleSheet("""
+                QPushButton { background-color: #222; color: #555; font-weight: 900; font-size: 14px; border: 1px solid #333; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
+            """)
+
+    def get_size_limits(self):
+        return self.size_widget.get_min_bytes(), self.size_widget.get_max_bytes()
+
+    def set_scan_enabled(self, enabled):
+        self.btn_scan.setProperty("has_folders", enabled)
+        self.validate_size_inputs()
+
+    def set_current_path(self, path: str) -> None:
+        if not path:
+            self.val_curr_path.setText("...")
+            self.val_curr_path.setToolTip("")
+            return
+            
+        is_path = '/' in path or '\\' in path
+        if not is_path:
+            if self.val_curr_path.text() != "...": return
+            else:
+                self.val_curr_path.setText("...")
+                self.val_curr_path.setToolTip("")
+                return
+        
+        path_clean = path.replace('\\', '/')
+        if len(path_clean) > 42:
+            shrunk = path_clean[:12] + "..." + path_clean[-27:]
+        else:
+            shrunk = path_clean
+            
+        self.val_curr_path.setText(shrunk)
+        self.val_curr_path.setToolTip(AppContext.tr("cln_tip_curr_scanning").format(path))
+
+    def setup_scan_buttons(self, on_abort_click, on_stop_click) -> None:
+        """Заменяет кнопку Сканировать на кнопки Стоп/Сброс на время сканирования."""
+        self.btn_scan.hide()
+        if not hasattr(self, 'scan_buttons_widget'):
+            self.scan_buttons_widget = QWidget()
+            layout = QHBoxLayout(self.scan_buttons_widget)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(10)
+            self.btn_abort = QPushButton(AppContext.tr("cln_btn_abort"))
+            self.btn_abort.setFixedHeight(36)
+            self.btn_abort.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_abort.setToolTip(AppContext.tr("cln_tip_abort"))
+            self.btn_abort.setStyleSheet("""
+                QPushButton { background-color: #c2410c; color: white; font-weight: 900; font-size: 14px; border: 1px solid #9a3412; border-radius: 6px; padding: 4px; }
+                QPushButton:hover { background-color: #ea580c; }
+                QPushButton:disabled { background-color: #222; color: #555; border-color: #333; }
+            """)
+            self.btn_abort.clicked.connect(on_abort_click)
+            self.btn_stop_scan = QPushButton(AppContext.tr("cln_btn_reset"))
+            self.btn_stop_scan.setFixedHeight(36)
+            self.btn_stop_scan.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.btn_stop_scan.setToolTip(AppContext.tr("cln_tip_reset"))
+            self.btn_stop_scan.setStyleSheet("""
+                QPushButton { background-color: #991b1b; color: white; font-weight: 900; font-size: 14px; border: 1px solid #7f1d1d; border-radius: 6px; padding: 4px; }
+                QPushButton:hover { background-color: #b91c1c; }
+                QPushButton:disabled { background-color: #222; color: #555; border-color: #333; }
+            """)
+            self.btn_stop_scan.clicked.connect(on_stop_click)
+            layout.addWidget(self.btn_abort, 1)
+            layout.addWidget(self.btn_stop_scan, 1)
+            self.col_prog.addWidget(self.scan_buttons_widget)
+        self.btn_abort.setEnabled(True)
+        self.btn_abort.setText(AppContext.tr("cln_btn_abort"))
+        self.btn_stop_scan.setEnabled(True)
+        self.btn_stop_scan.setText(AppContext.tr("cln_btn_reset"))
+        self.scan_buttons_widget.show()
+
+    def restore_scan_buttons(self) -> None:
+        """Возвращает исходную кнопку Сканировать."""
+        if hasattr(self, 'scan_buttons_widget'):
+            self.scan_buttons_widget.hide()
+        self.btn_scan.show()
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls(): event.acceptProposedAction()
+        else: event.ignore()
+
+    def update_cache_info(self, size_str):
+        self.lbl_cache_size.setText(size_str)
+        self.btn_clear_cache.setVisible(size_str != "0 B")
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            for url in urls:
+                path = url.toLocalFile()
+                if os.path.isdir(path): self.folder_dropped.emit(path)
+            event.acceptProposedAction()
+        else: event.ignore()

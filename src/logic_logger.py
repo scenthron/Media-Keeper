@@ -269,12 +269,12 @@ def setup_logging():
     if getattr(sys, 'frozen', False):
         from logic_paths import get_app_data_dir
         log_path = os.path.join(get_app_data_dir(), "media_keeper.log")
-        file_log_level = logging.WARNING
+        file_log_level = logging.INFO
     else:
         log_path = "media_keeper.log"
         file_log_level = logging.DEBUG
         
-    root_logger.setLevel(logging.DEBUG if not getattr(sys, 'frozen', False) else logging.WARNING)
+    root_logger.setLevel(logging.INFO if getattr(sys, 'frozen', False) else logging.DEBUG)
 
     # 2. Форматтер
     log_formatter = SafeFormatter(

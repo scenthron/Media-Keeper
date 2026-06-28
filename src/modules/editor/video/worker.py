@@ -164,6 +164,7 @@ class ConversionWorker(QThread):
         print(f"[DEBUG] ConversionWorker started. FFmpeg path: {ffmpeg_exe}")
         
         if not os.path.exists(ffmpeg_exe):
+            logging.error(f"[VideoWorker] FFmpeg not found at {ffmpeg_exe}")
             print(f"[ERROR] FFmpeg not found at {ffmpeg_exe}")
             self.file_finished.emit("Global", False, f"FFmpeg.exe not found at {ffmpeg_exe}!")
             self.all_finished.emit()
@@ -443,6 +444,7 @@ class ConversionWorker(QThread):
                         self.progress_updated.emit(file_path, global_pct)
                     
                     elif "Error" in line or "Invalid" in line:
+                        logging.warning(f"[VideoWorker] FFmpeg log output error: {line.strip()}")
                         print(f"[FFMPEG LOG] {line.strip()}")
 
             if not self.is_running:
@@ -452,10 +454,13 @@ class ConversionWorker(QThread):
                 return False
 
             success = self.current_process.returncode == 0
+            if not success:
+                logging.error(f"[VideoWorker] FFmpeg process exited with code {self.current_process.returncode}")
             self.current_process = None
             return success
 
         except Exception as e:
+            logging.error(f"[VideoWorker] run_ffmpeg_with_progress failed: {e}", exc_info=True)
             print(f"[ERROR] run_ffmpeg_with_progress failed: {e}")
             if self.current_process:
                 self.current_process.kill()

@@ -527,6 +527,7 @@ class VideoConverterWidget(QWidget):
                 self.files[row]['status'] = 'Error'
                 self.table.item(row, 2).setText(f"❌ {AppContext.tr('msg_error')}")
                 self.table.item(row, 2).setToolTip(msg)
+                logging.error(f"[VideoConverter] Ошибка конвертации файла {path}: {msg}")
                 print(f"File Error: {msg}")
         else:
             print(f"Unknown file finished: {path} - {msg}")

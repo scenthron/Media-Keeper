@@ -461,47 +461,176 @@ class SizeFilterWidget(QWidget):
         super().__init__(parent)
         is_ru = (AppContext.LANG == "RU")
         
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        # Шаблоны иконок chevron в base64
+        UP_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtMTggMTUtNi02LTYgNiIvPjwvc3ZnPg=='
+        DOWN_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtNiA5IDYgNiA2LTYiLz48L3N2Zz4='
         
-        # Мин размер
+        import base64
+        from PyQt6.QtGui import QPixmap, QIcon
+        
+        def get_svg_icon(svg_b64):
+            pix = QPixmap()
+            pix.loadFromData(base64.b64decode(svg_b64))
+            return QIcon(pix)
+            
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(6)
+        
+        # --- БЛОК МИНИМУМА ---
+        self.frame_min = QFrame()
+        self.frame_min.setFixedHeight(26)
+        self.frame_min.setFixedWidth(128)
+        
+        layout_min = QHBoxLayout(self.frame_min)
+        layout_min.setContentsMargins(0, 0, 0, 0)
+        layout_min.setSpacing(0)
+        
+        # 1. Кнопки стрелок (слева)
+        arrows_min = QWidget()
+        arrows_min.setFixedWidth(18)
+        arrows_min.setFixedHeight(24)
+        layout_arrows_min = QVBoxLayout(arrows_min)
+        layout_arrows_min.setContentsMargins(0, 0, 0, 0)
+        layout_arrows_min.setSpacing(0)
+        
+        self.btn_up_min = QPushButton()
+        self.btn_up_min.setFixedHeight(12)
+        self.btn_up_min.setIcon(get_svg_icon(UP_BASE64))
+        self.btn_up_min.setIconSize(QSize(8, 8))
+        self.btn_up_min.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_up_min.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_up_min.setStyleSheet("""
+            QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-top-left-radius: 5px; }
+            QPushButton:hover { background: rgba(255, 255, 255, 0.1); }
+        """)
+        
+        self.btn_down_min = QPushButton()
+        self.btn_down_min.setFixedHeight(12)
+        self.btn_down_min.setIcon(get_svg_icon(DOWN_BASE64))
+        self.btn_down_min.setIconSize(QSize(8, 8))
+        self.btn_down_min.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_down_min.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_down_min.setStyleSheet("""
+            QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-bottom-left-radius: 5px; }
+            QPushButton:hover { background: rgba(255, 255, 255, 0.1); }
+        """)
+        
+        layout_arrows_min.addWidget(self.btn_up_min)
+        layout_arrows_min.addWidget(self.btn_down_min)
+        layout_min.addWidget(arrows_min)
+        
+        # 2. Спинбокс (поле ввода)
         self.spin_min = CleanSpinBox()
         self.spin_min.setRange(0.0, 999999.0)
         self.spin_min.setDecimals(1)
         self.spin_min.setSingleStep(0.1)
-        self.spin_min.setFixedWidth(70)
-        self.spin_min.setFixedHeight(26)
+        self.spin_min.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.spin_min.setFixedWidth(64)
+        self.spin_min.setFixedHeight(24)
+        self.spin_min.setStyleSheet("border: none; background: transparent; color: white; font-weight: bold; font-size: 12px; padding: 0 4px;")
         self.spin_min.valueChanged.connect(self.validate_inputs)
         
+        self.btn_up_min.clicked.connect(self.spin_min.stepUp)
+        self.btn_down_min.clicked.connect(self.spin_min.stepDown)
+        layout_min.addWidget(self.spin_min)
+        
+        # 3. Комбобокс выбора единиц
         self.combo_unit_min = QComboBox()
         self.combo_unit_min.addItems(["KB", "MB", "GB"] if not is_ru else ["КБ", "МБ", "ГБ"])
         self.combo_unit_min.setCurrentIndex(1)
-        self.combo_unit_min.setFixedWidth(55)
-        self.combo_unit_min.setFixedHeight(26)
+        self.combo_unit_min.setFixedWidth(42)
+        self.combo_unit_min.setFixedHeight(24)
+        self.combo_unit_min.setStyleSheet("""
+            QComboBox { border: none; background: transparent; color: white; padding-left: 2px; }
+            QComboBox::drop-down { border: none; width: 0px; }
+            QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; outline: none; }
+        """)
         self.combo_unit_min.currentIndexChanged.connect(self.validate_inputs)
+        layout_min.addWidget(self.combo_unit_min)
         
-        # Разделитель
+        main_layout.addWidget(self.frame_min)
+        
+        # --- РАЗДЕЛИТЕЛЬ ---
         self.lbl_separator = QLabel("-")
         self.lbl_separator.setStyleSheet("color: #888; font-weight: bold; background: transparent;")
+        main_layout.addWidget(self.lbl_separator)
         
-        # Макс размер
+        # --- БЛОК МАКСИМУМА ---
+        self.frame_max = QFrame()
+        self.frame_max.setFixedHeight(26)
+        self.frame_max.setFixedWidth(128)
+        
+        layout_max = QHBoxLayout(self.frame_max)
+        layout_max.setContentsMargins(0, 0, 0, 0)
+        layout_max.setSpacing(0)
+        
+        # 1. Кнопки стрелок (слева)
+        arrows_max = QWidget()
+        arrows_max.setFixedWidth(18)
+        arrows_max.setFixedHeight(24)
+        layout_arrows_max = QVBoxLayout(arrows_max)
+        layout_arrows_max.setContentsMargins(0, 0, 0, 0)
+        layout_arrows_max.setSpacing(0)
+        
+        self.btn_up_max = QPushButton()
+        self.btn_up_max.setFixedHeight(12)
+        self.btn_up_max.setIcon(get_svg_icon(UP_BASE64))
+        self.btn_up_max.setIconSize(QSize(8, 8))
+        self.btn_up_max.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_up_max.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_up_max.setStyleSheet("""
+            QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-top-left-radius: 5px; }
+            QPushButton:hover { background: rgba(255, 255, 255, 0.1); }
+        """)
+        
+        self.btn_down_max = QPushButton()
+        self.btn_down_max.setFixedHeight(12)
+        self.btn_down_max.setIcon(get_svg_icon(DOWN_BASE64))
+        self.btn_down_max.setIconSize(QSize(8, 8))
+        self.btn_down_max.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_down_max.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_down_max.setStyleSheet("""
+            QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-bottom-left-radius: 5px; }
+            QPushButton:hover { background: rgba(255, 255, 255, 0.1); }
+        """)
+        
+        layout_arrows_max.addWidget(self.btn_up_max)
+        layout_arrows_max.addWidget(self.btn_down_max)
+        layout_max.addWidget(arrows_max)
+        
+        # 2. Спинбокс (поле ввода)
         self.spin_max = CleanSpinBox()
         self.spin_max.setRange(0.0, 999999.0)
         self.spin_max.setDecimals(1)
         self.spin_max.setSingleStep(0.1)
-        self.spin_max.setFixedWidth(70)
-        self.spin_max.setFixedHeight(26)
+        self.spin_max.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.spin_max.setFixedWidth(64)
+        self.spin_max.setFixedHeight(24)
+        self.spin_max.setStyleSheet("border: none; background: transparent; color: white; font-weight: bold; font-size: 12px; padding: 0 4px;")
         self.spin_max.valueChanged.connect(self.validate_inputs)
         
+        self.btn_up_max.clicked.connect(self.spin_max.stepUp)
+        self.btn_down_max.clicked.connect(self.spin_max.stepDown)
+        layout_max.addWidget(self.spin_max)
+        
+        # 3. Комбобокс выбора единиц
         self.combo_unit_max = QComboBox()
         self.combo_unit_max.addItems(["KB", "MB", "GB"] if not is_ru else ["КБ", "МБ", "ГБ"])
         self.combo_unit_max.setCurrentIndex(1)
-        self.combo_unit_max.setFixedWidth(55)
-        self.combo_unit_max.setFixedHeight(26)
+        self.combo_unit_max.setFixedWidth(42)
+        self.combo_unit_max.setFixedHeight(24)
+        self.combo_unit_max.setStyleSheet("""
+            QComboBox { border: none; background: transparent; color: white; padding-left: 2px; }
+            QComboBox::drop-down { border: none; width: 0px; }
+            QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; outline: none; }
+        """)
         self.combo_unit_max.currentIndexChanged.connect(self.validate_inputs)
+        layout_max.addWidget(self.combo_unit_max)
         
-        # Кнопка сброса (крестик)
+        main_layout.addWidget(self.frame_max)
+        
+        # --- КНОПКА СБРОСА ---
         self.btn_reset = QPushButton()
         self.btn_reset.setFixedSize(26, 26)
         self.btn_reset.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -522,13 +651,7 @@ class SizeFilterWidget(QWidget):
                 border-color: #b91c1c; 
             }
         """)
-        
-        layout.addWidget(self.spin_min)
-        layout.addWidget(self.combo_unit_min)
-        layout.addWidget(self.lbl_separator)
-        layout.addWidget(self.spin_max)
-        layout.addWidget(self.combo_unit_max)
-        layout.addWidget(self.btn_reset)
+        main_layout.addWidget(self.btn_reset)
         
         self.validate_inputs()
 
@@ -600,38 +723,16 @@ class SizeFilterWidget(QWidget):
         max_b = self.get_max_bytes()
         is_error = self.has_error()
         
-        style_def = "background: #1a1a1a; color: white; border: 1px solid #444; font-weight: bold; border-radius: 4px; padding: 2px 2px 2px 6px;"
-        style_ok = "background: #14532d; color: white; border: 1px solid #16a34a; font-weight: bold; border-radius: 4px; padding: 2px 2px 2px 6px;"
-        style_err = "background: #451a1a; color: white; border: 1px solid #ef4444; font-weight: bold; border-radius: 4px; padding: 2px 2px 2px 6px;"
-        
-        arrow_style = (
-            "QDoubleSpinBox::up-button, QDoubleSpinBox::down-button { width: 16px; background: #2a2a2e; border: none; }"
-            "QDoubleSpinBox::up-button { border-top-right-radius: 3px; }"
-            "QDoubleSpinBox::down-button { border-bottom-right-radius: 3px; }"
-            "QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover { background: #3a3a5a; }"
-            "QDoubleSpinBox::up-arrow { image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%23ffffff\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m18 15-6-6-6 6\"/></svg>'); width: 8px; height: 8px; }"
-            "QDoubleSpinBox::down-arrow { image: url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"%23ffffff\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m6 9 6 6 6-6\"/></svg>'); width: 8px; height: 8px; }"
-        )
-        
-        combo_style_def = "QComboBox { background: #1a1a1a; color: white; border: 1px solid #444; border-radius: 4px; padding: 0px 4px; } QComboBox::drop-down { border: none; width: 15px; } QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; padding: 2px; outline: none; min-width: 50px; }"
-        combo_style_ok = "QComboBox { background: #14532d; color: white; border: 1px solid #16a34a; border-radius: 4px; padding: 0px 4px; } QComboBox::drop-down { border: none; width: 15px; } QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; padding: 2px; outline: none; min-width: 50px; }"
-        combo_style_err = "QComboBox { background: #451a1a; color: white; border: 1px solid #ef4444; border-radius: 4px; padding: 0px 4px; } QComboBox::drop-down { border: none; width: 15px; } QComboBox QAbstractItemView { background-color: #2b2b2b; color: white; selection-background-color: #3b82f6; padding: 2px; outline: none; min-width: 50px; }"
+        style_def = "QFrame { background: #1a1a1a; border: 1px solid #444; border-radius: 6px; }"
+        style_ok = "QFrame { background: #14532d; border: 1px solid #16a34a; border-radius: 6px; }"
+        style_err = "QFrame { background: #451a1a; border: 1px solid #ef4444; border-radius: 6px; }"
         
         if is_error:
-            self.spin_min.setStyleSheet(f"QDoubleSpinBox {{ {style_err} }} {arrow_style}")
-            self.spin_max.setStyleSheet(f"QDoubleSpinBox {{ {style_err} }} {arrow_style}")
-            self.combo_unit_min.setStyleSheet(combo_style_err)
-            self.combo_unit_max.setStyleSheet(combo_style_err)
+            self.frame_min.setStyleSheet(style_err)
+            self.frame_max.setStyleSheet(style_err)
         else:
-            style_m = style_ok if min_b > 0 else style_def
-            style_x = style_ok if max_b > 0 else style_def
-            combo_m = combo_style_ok if min_b > 0 else combo_style_def
-            combo_x = combo_style_ok if max_b > 0 else combo_style_def
-            
-            self.spin_min.setStyleSheet(f"QDoubleSpinBox {{ {style_m} }} {arrow_style}")
-            self.spin_max.setStyleSheet(f"QDoubleSpinBox {{ {style_x} }} {arrow_style}")
-            self.combo_unit_min.setStyleSheet(combo_m)
-            self.combo_unit_max.setStyleSheet(combo_x)
+            self.frame_min.setStyleSheet(style_ok if min_b > 0 else style_def)
+            self.frame_max.setStyleSheet(style_ok if max_b > 0 else style_def)
             
         self.valueChanged.emit()
 

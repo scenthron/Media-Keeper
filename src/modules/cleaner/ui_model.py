@@ -19,6 +19,7 @@ class DuplicateVirtualModel(QAbstractListModel):
         self._group_files_cache: dict[Any, list[dict[str, Any]]] = {}
         self.source_folders: dict[str, Any] = {}
         self._parent_widget: Any = parent
+        self.is_similar_mode: bool = False
 
     def set_items(self, items: list[dict[str, Any]], source_folders: dict[str, Any]) -> None:
         self.beginResetModel()
@@ -397,13 +398,49 @@ class DuplicateDelegate(QStyledItemDelegate):
             folder = os.path.dirname(item['path'])
             
             # Draw file name
-            painter.drawText(rect.left() + 75, rect.top(), 280, rect.height(), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, filename)
+            painter.drawText(rect.left() + 75, rect.top(), 230, rect.height(), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, filename)
             
-            # Draw folder path
-            path_font = QFont("Consolas", 8)
-            painter.setFont(path_font)
-            painter.setPen(QPen(QColor("#aaaaaa")))
-            painter.drawText(rect.left() + 365, rect.top(), rect.width() - 375, rect.height(), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, folder)
+            # Draw similarity percentage + size if in similar mode
+            if getattr(index.model(), 'is_similar_mode', False):
+                pct = item.get('similarity_pct', 100)
+                pct_str = f"{pct}%"
+                pct_font = QFont("Segoe UI", 9)
+                pct_font.setBold(True)
+                painter.setFont(pct_font)
+                
+                if pct == 100:
+                    pct_color = QColor("#10b981")
+                elif pct >= 90:
+                    pct_color = QColor("#3b82f6")
+                else:
+                    pct_color = QColor("#f59e0b")
+                    
+                painter.setPen(QPen(pct_color))
+                painter.drawText(rect.left() + 315, rect.top(), 45, rect.height(),
+                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, pct_str)
+
+                # Размер файла после процента
+                from utils_common import format_size
+                size_str = format_size(item.get('size', 0))
+                size_font = QFont("Segoe UI", 9)
+                painter.setFont(size_font)
+                painter.setPen(QPen(QColor("#cccccc")))
+                painter.drawText(rect.left() + 363, rect.top(), 80, rect.height(),
+                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, size_str)
+
+                # Путь к папке (сдвинут вправо в similar-режиме)
+                path_font = QFont("Consolas", 8)
+                painter.setFont(path_font)
+                painter.setPen(QPen(QColor("#888888")))
+                painter.drawText(rect.left() + 448, rect.top(), rect.width() - 458, rect.height(),
+                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, folder)
+            else:
+                # Draw folder path (обычный режим дублей)
+                path_font = QFont("Consolas", 8)
+                painter.setFont(path_font)
+                painter.setPen(QPen(QColor("#aaaaaa")))
+                painter.drawText(rect.left() + 375, rect.top(), rect.width() - 385, rect.height(),
+                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, folder)
 
         elif item['type'] == 'empty_folder':
             # --- Paint Empty Folder ---

@@ -967,7 +967,7 @@ class SimilarSettingsPanel(QWidget):
         
         self.slider_similarity = QSlider(Qt.Orientation.Horizontal)
         self.slider_similarity.setRange(70, 100)
-        self.slider_similarity.setValue(90)
+        self.slider_similarity.setValue(98)
         self.slider_similarity.setFixedWidth(100)
         self.slider_similarity.setCursor(Qt.CursorShape.PointingHandCursor)
         self.slider_similarity.setStyleSheet("""
@@ -978,7 +978,7 @@ class SimilarSettingsPanel(QWidget):
         """)
         sim_layout.addWidget(self.slider_similarity)
         
-        self.lbl_similarity_val = QLabel("90%")
+        self.lbl_similarity_val = QLabel("98%")
         self.lbl_similarity_val.setStyleSheet("color: white; font-size: 12px; font-weight: bold; min-width: 30px;")
         self.slider_similarity.valueChanged.connect(lambda v: self.lbl_similarity_val.setText(f"{v}%"))
         sim_layout.addWidget(self.lbl_similarity_val)

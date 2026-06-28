@@ -186,6 +186,9 @@ class ConversionWorker(QThread):
                 use_copy_stream = True
                 print(f"[DEBUG] File {file_size_mb:.1f}MB < Target {target_mb}MB - Using copy stream")
             
+            if input_path.lower().endswith('.gif'):
+                use_copy_stream = False
+            
             # 1. Determine Output Path
             output_dir = self.settings.get('output_dir', '')
             if not output_dir:

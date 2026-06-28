@@ -41,4 +41,19 @@ def test_safe_formatter_anonymize_string():
     msg8 = "Native getExistingDirectory returned: 'D:/Ппппппппп D NVME (Взял в мск SSD)/000 Забрал в м1'"
     anon8 = SafeFormatter.anonymize_string(msg8)
     assert "Native getExistingDirectory returned: 'D:/Ппппппппп I IIII (Пппп п ппп III)/000 Пппппп п п0'" in anon8
+    
+    # 9. Сложный путь без кавычек (багфикс утечки путей командной строки и логов сканирования)
+    msg9 = "Starting scan thread: D:\\Ппппппппп D NVME (Взял в мск SSD)\\000 Забрал в м1"
+    anon9 = SafeFormatter.anonymize_string(msg9)
+    assert "Starting scan thread: D:\\Ппппппппп I IIII (Пппп п ппп III)\\000 Пппппп п п0" in anon9
+
+    # 10. Путь без кавычек в логе автоматизации перед словарем
+    msg10 = "load_config - Конфигурация загружена для D:/Ппппппппппппп\\Ппппппппппп\\Пппппппппп кино: {'enabled': False}"
+    anon10 = SafeFormatter.anonymize_string(msg10)
+    assert "load_config - Конфигурация загружена для D:/Ппппппппппппп\\Ппппппппппп\\Пппппппппп пппп: {'enabled': False}" in anon10
+
+    # 11. Команда запуска FFmpeg без кавычек (багфикс утечки путей аргументов)
+    msg11 = "Запуск FFmpeg: C:\\bin\\ffmpeg.exe -i D:/Ппппппппп D NVME (Взял в мск SSD)/000 Забрал в м1 -c:v libx264"
+    anon11 = SafeFormatter.anonymize_string(msg11)
+    assert "Запуск FFmpeg: C:\\iii\\iiiiii.exe -i D:/Ппппппппп I IIII (Пппп п ппп III)/000 Пппппп п п0 -c:v libx264" in anon11
 

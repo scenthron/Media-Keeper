@@ -171,7 +171,7 @@ class SafeFormatter(logging.Formatter):
             
         saved_paths = []
         
-        # Функция-заменитель для путей внутри одинарных кавычек
+        # 1. Функция-заменитель для путей внутри одинарных кавычек
         def replacer_single(match):
             full_match = match.group(0)
             content = match.group(2)
@@ -181,7 +181,7 @@ class SafeFormatter(logging.Formatter):
                 return f"__LOG_PATH_REF_{len(saved_paths)-1}__"
             return full_match
 
-        # Функция-заменитель для путей внутри двойных кавычек
+        # 2. Функция-заменитель для путей внутри двойных кавычек
         def replacer_double(match):
             full_match = match.group(0)
             content = match.group(2)
@@ -191,11 +191,29 @@ class SafeFormatter(logging.Formatter):
                 return f"__LOG_PATH_REF_{len(saved_paths)-1}__"
             return full_match
 
-        # Ищем пути в одинарных и двойных кавычках
+        # 3. Функция-заменитель для путей без кавычек
+        def replacer_unquoted(match):
+            full_match = match.group(0)
+            content = match.group(1)
+            # Исключаем ложные срабатывания на короткие диски типа "C:"
+            if len(content) <= 3 and content.endswith(':'):
+                return full_match
+            # Исключаем случайные совпадения, если в пути нет слэшей
+            if '/' not in content and '\\' not in content:
+                return full_match
+            anon_content = SafeFormatter.anonymize_path_content(content)
+            saved_paths.append(anon_content)
+            return f"__LOG_PATH_REF_{len(saved_paths)-1}__"
+
+        # Шаг 1. Маскируем пути в кавычках
         message = re.sub(r"('(.*?)')", replacer_single, message)
         message = re.sub(r'("(.*?)")', replacer_double, message)
         
-        # Разделяем оставшийся текст по пробелам и кавычкам/скобкам
+        # Шаг 2. Маскируем пути БЕЗ кавычек (начинающиеся с диска или UNC-префикса)
+        path_pattern = r"((?:[A-Za-z]:[\\/]|[\\/]{2})[^\'\"<>|]*?)(?=\s+-|\s+to\s+|\s+->\s+|:(?:[\s\{\[]|$)|[\'\"<>]|$)"
+        message = re.sub(path_pattern, replacer_unquoted, message)
+        
+        # Шаг 3. Разделяем оставшийся текст по пробелам и кавычкам/скобкам
         tokens = re.split(r'(\s+|[\'\"()\[\]{}])', message)
         anonymized_tokens = []
         for token in tokens:
@@ -206,7 +224,7 @@ class SafeFormatter(logging.Formatter):
                 
         anon_message = "".join(anonymized_tokens)
         
-        # Возвращаем замаскированные пути на место плейсхолдеров
+        # Шаг 4. Возвращаем замаскированные пути на место плейсхолдеров
         for idx, path in enumerate(saved_paths):
             anon_message = anon_message.replace(f"__LOG_PATH_REF_{idx}__", path)
             
@@ -269,12 +287,12 @@ def setup_logging():
     if getattr(sys, 'frozen', False):
         from logic_paths import get_app_data_dir
         log_path = os.path.join(get_app_data_dir(), "media_keeper.log")
-        file_log_level = logging.INFO
+        file_log_level = logging.WARNING
     else:
         log_path = "media_keeper.log"
         file_log_level = logging.DEBUG
         
-    root_logger.setLevel(logging.INFO if getattr(sys, 'frozen', False) else logging.DEBUG)
+    root_logger.setLevel(logging.WARNING if getattr(sys, 'frozen', False) else logging.DEBUG)
 
     # 2. Форматтер
     log_formatter = SafeFormatter(

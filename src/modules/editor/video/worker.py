@@ -283,19 +283,22 @@ class ConversionWorker(QThread):
         
         # Логируем параметры кодирования
         scale_mode = self.settings.get('scale_mode', 'off')
-        logging.info(
-            f"[VideoWorker] Начало конвертации: {os.path.basename(inp)} -> {os.path.basename(out)}. "
-            f"Входной размер: {item_info.get('size', 0) / (1024*1024):.2f} MB, длительность: {duration} сек. "
-            f"Настройки: режим={mode}, расширение={self.settings.get('extension')}, "
+        self.current_settings_summary = (
+            f"режим={mode}, расширение={self.settings.get('extension')}, "
             f"copy_stream={use_copy_stream}, scale_mode={scale_mode}, "
             f"scale_percent={self.settings.get('scale_percent', 100)}, "
             f"target_resolution={self.settings.get('target_width')}x{self.settings.get('target_height')}, "
             f"mute={self.settings.get('mute', False)}, target_mb={self.settings.get('target_mb')}"
         )
+        logging.debug(
+            f"[VideoWorker] Начало конвертации: {os.path.basename(inp)} -> {os.path.basename(out)}. "
+            f"Входной размер: {item_info.get('size', 0) / (1024*1024):.2f} MB, длительность: {duration} сек. "
+            f"Настройки: {self.current_settings_summary}"
+        )
         
         if use_copy_stream:
             cmd = input_args + ["-c:v", "copy"] + audio_args + [out]
-            logging.info(f"[VideoWorker] Запуск копирования потока: {' '.join(cmd)}")
+            logging.debug(f"[VideoWorker] Запуск копирования потока: {' '.join(cmd)}")
             return self.run_ffmpeg_with_progress(cmd, duration, 0, 100, inp)
         else:
             # Re-encode
@@ -409,7 +412,7 @@ class ConversionWorker(QThread):
         if not self.is_running:
             return False
 
-        logging.info(f"[VideoWorker] Запуск FFmpeg: {' '.join(cmd)}")
+        logging.debug(f"[VideoWorker] Запуск FFmpeg: {' '.join(cmd)}")
         print(f"[DEBUG] Running FFmpeg: {' '.join(cmd)}")
         startupinfo = self.get_startupinfo()
         
@@ -458,12 +461,24 @@ class ConversionWorker(QThread):
 
             success = self.current_process.returncode == 0
             if not success:
-                logging.error(f"[VideoWorker] FFmpeg process exited with code {self.current_process.returncode}")
+                cmd_str = " ".join(f'"{x}"' if ' ' in x else x for x in cmd)
+                logging.error(
+                    f"[VideoWorker] Ошибка кодирования видео для {os.path.basename(file_path)}. "
+                    f"FFmpeg завершился с кодом {self.current_process.returncode}. "
+                    f"Настройки: {getattr(self, 'current_settings_summary', 'None')}. "
+                    f"Команда: {cmd_str}"
+                )
             self.current_process = None
             return success
 
         except Exception as e:
-            logging.error(f"[VideoWorker] run_ffmpeg_with_progress failed: {e}", exc_info=True)
+            cmd_str = " ".join(f'"{x}"' if ' ' in x else x for x in cmd)
+            logging.error(
+                f"[VideoWorker] Исключение при выполнении FFmpeg для {os.path.basename(file_path)}: {e}. "
+                f"Настройки: {getattr(self, 'current_settings_summary', 'None')}. "
+                f"Команда: {cmd_str}", 
+                exc_info=True
+            )
             print(f"[ERROR] run_ffmpeg_with_progress failed: {e}")
             if self.current_process:
                 self.current_process.kill()

@@ -169,6 +169,7 @@ class ImageConverterWorker(QThread):
             try:
                 self.process_file(file_info)
             except Exception as e:
+                logging.error(f"[ImageWorker] Ошибка при обработке изображения {path}: {e}", exc_info=True)
                 self.file_finished.emit(path, False, str(e))
         
         self.all_finished.emit()
@@ -224,7 +225,7 @@ class ImageConverterWorker(QThread):
                     'colors': 256,
                     'skip_frames': False
                 }
-                logging.info(
+                logging.debug(
                     f"[ImageWorker] Конвертация: {os.path.basename(src_path)} -> {os.path.basename(out_path)}. "
                     f"Настройки: формат={s['format']}, качество={s['quality']}, переименование={s['rename']}, "
                     f"анимированный={is_animated} ({len(src_frames)} кадров)"
@@ -234,7 +235,7 @@ class ImageConverterWorker(QThread):
                 self.file_finished.emit(src_path, True, out_path)
                 return
 
-            logging.info(f"[ImageWorker] Запущено сжатие под лимит {max_size_mb} MB для {src_path}. Приоритет ползунка: {s.get('compress_priority', 50)} (0=Качество, 100=Разрешение). Анимированный: {is_animated}")
+            logging.debug(f"[ImageWorker] Запущено сжатие под лимит {max_size_mb} MB для {src_path}. Приоритет ползунка: {s.get('compress_priority', 50)} (0=Качество, 100=Разрешение). Анимированный: {is_animated}")
             
             P = s.get('compress_priority', 50)
             steps = []

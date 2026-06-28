@@ -36,4 +36,9 @@ def test_safe_formatter_anonymize_string():
     msg7 = f'File "{PROJECT_ROOT}\\src\\main.py", line 123, in <module>'
     anon7 = SafeFormatter.anonymize_string(msg7)
     assert f'File "<PROJECT_ROOT>\\src\\main.py", line 123, in <module>' in anon7
+    
+    # 8. Сложный путь с пробелами и русскими буквами в кавычках (багфикс утечки пути)
+    msg8 = "Native getExistingDirectory returned: 'D:/Ппппппппп D NVME (Взял в мск SSD)/000 Забрал в м1'"
+    anon8 = SafeFormatter.anonymize_string(msg8)
+    assert "Native getExistingDirectory returned: 'D:/Ппппппппп I IIII (Пппп п ппп III)/000 Пппппп п п0'" in anon8
 

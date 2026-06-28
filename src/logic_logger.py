@@ -113,11 +113,89 @@ class SafeFormatter(logging.Formatter):
         return prefix + "".join(anonymized_root) + ext + suffix
 
     @staticmethod
+    def anonymize_path_content(inner):
+        if not inner:
+            return inner
+            
+        # 1. Проверяем, является ли путь частью нашего проекта (абсолютный путь)
+        try:
+            norm_inner = os.path.normpath(inner).lower()
+            norm_root = os.path.normpath(PROJECT_ROOT).lower()
+            if norm_inner.startswith(norm_root):
+                rel_path = inner[len(PROJECT_ROOT):].lstrip('\\/')
+                sep = '\\' if '\\' in inner else '/'
+                return "<PROJECT_ROOT>" + sep + rel_path
+        except Exception:
+            pass
+            
+        # Разделяем имя и расширение
+        dot_idx = inner.rfind('.')
+        last_slash = max(inner.rfind('\\'), inner.rfind('/'))
+        if dot_idx > last_slash and dot_idx > 0:
+            ext = inner[dot_idx:]
+            root = inner[:dot_idx]
+        else:
+            ext = ""
+            root = inner
+            
+        anonymized_root = []
+        i = 0
+        if len(root) >= 2 and root[1] == ':' and root[0].isalpha():
+            anonymized_root.append(root[0])
+            anonymized_root.append(':')
+            i = 2
+        elif root.startswith('\\\\?\\'):
+            anonymized_root.append('\\\\?\\')
+            i = 4
+            
+        while i < len(root):
+            c = root[i]
+            if c in '\\/':
+                anonymized_root.append(c)
+            elif c.isdigit():
+                anonymized_root.append('0')
+            elif 'a' <= c.lower() <= 'z':
+                anonymized_root.append('i' if c.islower() else 'I')
+            elif 'а' <= c.lower() <= 'я' or c.lower() == 'ё':
+                anonymized_root.append('п' if c.islower() else 'П')
+            else:
+                anonymized_root.append(c)
+            i += 1
+            
+        return "".join(anonymized_root) + ext
+
+    @staticmethod
     def anonymize_string(message):
         if not isinstance(message, str):
             return message
             
-        # Разделяем по пробелам и кавычкам/скобкам
+        saved_paths = []
+        
+        # Функция-заменитель для путей внутри одинарных кавычек
+        def replacer_single(match):
+            full_match = match.group(0)
+            content = match.group(2)
+            if '/' in content or '\\' in content or (len(content) >= 2 and content[1] == ':'):
+                anon_content = SafeFormatter.anonymize_path_content(content)
+                saved_paths.append("'" + anon_content + "'")
+                return f"__LOG_PATH_REF_{len(saved_paths)-1}__"
+            return full_match
+
+        # Функция-заменитель для путей внутри двойных кавычек
+        def replacer_double(match):
+            full_match = match.group(0)
+            content = match.group(2)
+            if '/' in content or '\\' in content or (len(content) >= 2 and content[1] == ':'):
+                anon_content = SafeFormatter.anonymize_path_content(content)
+                saved_paths.append('"' + anon_content + '"')
+                return f"__LOG_PATH_REF_{len(saved_paths)-1}__"
+            return full_match
+
+        # Ищем пути в одинарных и двойных кавычках
+        message = re.sub(r"('(.*?)')", replacer_single, message)
+        message = re.sub(r'("(.*?)")', replacer_double, message)
+        
+        # Разделяем оставшийся текст по пробелам и кавычкам/скобкам
         tokens = re.split(r'(\s+|[\'\"()\[\]{}])', message)
         anonymized_tokens = []
         for token in tokens:
@@ -126,7 +204,13 @@ class SafeFormatter(logging.Formatter):
             else:
                 anonymized_tokens.append(SafeFormatter.anonymize_token(token))
                 
-        return "".join(anonymized_tokens)
+        anon_message = "".join(anonymized_tokens)
+        
+        # Возвращаем замаскированные пути на место плейсхолдеров
+        for idx, path in enumerate(saved_paths):
+            anon_message = anon_message.replace(f"__LOG_PATH_REF_{idx}__", path)
+            
+        return anon_message
 
     def format(self, record):
         orig_msg = record.msg

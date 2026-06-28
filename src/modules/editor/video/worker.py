@@ -1,6 +1,7 @@
 
 import os
 import subprocess
+import logging
 import json
 import re
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -276,8 +277,21 @@ class ConversionWorker(QThread):
         duration = item_info.get('duration', 0)
         is_webm = self.settings.get('extension') == 'webm'
         
+        # Логируем параметры кодирования
+        scale_mode = self.settings.get('scale_mode', 'off')
+        logging.info(
+            f"[VideoWorker] Начало конвертации: {os.path.basename(inp)} -> {os.path.basename(out)}. "
+            f"Входной размер: {item_info.get('size', 0) / (1024*1024):.2f} MB, длительность: {duration} сек. "
+            f"Настройки: режим={mode}, расширение={self.settings.get('extension')}, "
+            f"copy_stream={use_copy_stream}, scale_mode={scale_mode}, "
+            f"scale_percent={self.settings.get('scale_percent', 100)}, "
+            f"target_resolution={self.settings.get('target_width')}x{self.settings.get('target_height')}, "
+            f"mute={self.settings.get('mute', False)}, target_mb={self.settings.get('target_mb')}"
+        )
+        
         if use_copy_stream:
             cmd = input_args + ["-c:v", "copy"] + audio_args + [out]
+            logging.info(f"[VideoWorker] Запуск копирования потока: {' '.join(cmd)}")
             return self.run_ffmpeg_with_progress(cmd, duration, 0, 100, inp)
         else:
             # Re-encode
@@ -391,6 +405,7 @@ class ConversionWorker(QThread):
         if not self.is_running:
             return False
 
+        logging.info(f"[VideoWorker] Запуск FFmpeg: {' '.join(cmd)}")
         print(f"[DEBUG] Running FFmpeg: {' '.join(cmd)}")
         startupinfo = self.get_startupinfo()
         

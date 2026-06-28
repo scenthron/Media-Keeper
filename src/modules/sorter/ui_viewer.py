@@ -1844,6 +1844,14 @@ class SorterBaseListView(QListWidget):
                 act_iconv = QAction(AppContext.tr("srt_ctx_convert_image"), self)
                 act_iconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("image_conv", p))
                 menu.addAction(act_iconv)
+                
+                if ext == '.gif':
+                    from PyQt6.QtGui import QImageReader
+                    reader = QImageReader(path)
+                    if reader.supportsAnimation() and reader.imageCount() > 1:
+                        act_vconv = QAction(AppContext.tr("srt_ctx_convert_video"), self)
+                        act_vconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("video_conv", p))
+                        menu.addAction(act_vconv)
         else:
             is_all_video = all(os.path.splitext(p)[1].lower() in video_exts for p in paths)
             is_all_audio = all(os.path.splitext(p)[1].lower() in audio_exts for p in paths)

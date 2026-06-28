@@ -1004,6 +1004,14 @@ class LargePreviewPopup(QDialog):
             act_iconv.triggered.connect(lambda: self.send_to_editor_main("image_conv"))
             menu.addAction(act_iconv)
             
+            if ext == '.gif':
+                from PyQt6.QtGui import QImageReader
+                reader = QImageReader(self.filepath)
+                if reader.supportsAnimation() and reader.imageCount() > 1:
+                    act_vconv = QAction(AppContext.tr("srt_ctx_convert_video"), self)
+                    act_vconv.triggered.connect(lambda: self.send_to_editor_main("video_conv"))
+                    menu.addAction(act_vconv)
+            
         elif ext in audio_exts:
             menu.addSeparator()
             act_aconv = QAction(AppContext.tr("srt_ctx_convert_audio"), self)

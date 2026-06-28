@@ -1210,6 +1210,29 @@ class SimilarSettingsPanel(QWidget):
         self.val_curr_path.setText(shrunk)
         self.val_curr_path.setToolTip(AppContext.tr("cln_tip_curr_scanning").format(path))
 
+    def refresh_list_alignment(self):
+        """Выравнивание ширины подписей папок в списке источников."""
+        layout = self.folder_list_layout
+        count = layout.count()
+        if count == 0: return
+        max_w = 0
+        items = []
+        for i in range(count):
+            item = layout.itemAt(i)
+            w = item.widget()
+            if w and hasattr(w, 'get_ideal_name_width'):
+                items.append(w)
+                max_w = max(max_w, w.get_ideal_name_width())
+        container_w = self.sources_list_widget.width()
+        if container_w <= 0: container_w = 400
+        limit = int(container_w * 0.5)
+        target_w = min(max_w, limit)
+        for w in items: w.set_name_label_width(target_w)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.refresh_list_alignment()
+
     def setup_scan_buttons(self, on_abort_click, on_stop_click) -> None:
         """Заменяет кнопку Сканировать на кнопки Стоп/Сброс на время сканирования."""
         self.btn_scan.hide()

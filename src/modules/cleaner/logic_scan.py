@@ -2,7 +2,7 @@ import os
 from typing import Any
 from config import AppContext
 from utils_common import format_size, format_compact_count
-from .workers import DuplicateFinderWorker, ExtensionScannerWorker, STAGE_ANALYSIS, STAGE_SCANNING
+from .workers import DuplicateFinderWorker, ExtensionScannerWorker, STAGE_ANALYSIS, STAGE_SCANNING, SimilarScanWorker
 from .ui_dialogs import MatrixFilterDialog
 
 class ScanMixin:
@@ -69,7 +69,6 @@ class ScanMixin:
         
         folders = list(self.source_folders.keys())
         use_cache = self.settings_panel.chk_cache.isChecked()
-        safe_scan = self.settings_panel.chk_safe_scan.isChecked()
         size_limits = self.settings_panel.get_size_limits()
         
         # Find reference folder
@@ -79,7 +78,14 @@ class ScanMixin:
                 reference_path = path
                 break
         
-        self.finder = DuplicateFinderWorker(folders, use_cache, self.filter_config, size_limits=size_limits, safe_scan=safe_scan)
+        if self.current_tab == 1:
+            media_type = self.settings_panel.combo_media_type.currentIndex()
+            threshold = self.settings_panel.slider_similarity.value()
+            self.finder = SimilarScanWorker(self.source_folders, use_cache, self.filter_config, size_limits=size_limits, media_type=media_type, threshold=threshold)
+        else:
+            safe_scan = self.settings_panel.chk_safe_scan.isChecked()
+            self.finder = DuplicateFinderWorker(folders, use_cache, self.filter_config, size_limits=size_limits, safe_scan=safe_scan)
+            
         if reference_path:
             self.finder.reference_path = reference_path
             
@@ -221,7 +227,9 @@ class ScanMixin:
             
             count = len(res['exts'])
             if count > 0:
-                self.settings_panel.chk_safe_scan.setChecked(False)
+                # chk_safe_scan есть только у CleanerSettingsPanel
+                if hasattr(self.settings_panel, 'chk_safe_scan'):
+                    self.settings_panel.chk_safe_scan.setChecked(False)
                 
             if count == 0:
                 self.settings_panel.lbl_filter_status.setText(AppContext.tr("cln_filter_all"))

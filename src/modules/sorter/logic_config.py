@@ -20,7 +20,8 @@ class ConfigManager:
         "sort_type": "type_asc",
         "hover_delay": 0.4,
         "session_loop": False,
-        "session_all_videos_active": False
+        "session_all_videos_active": False,
+        "collapse_groups": False
     }
     
     @staticmethod
@@ -63,6 +64,8 @@ class ConfigManager:
                             elif k == "session_loop":
                                 config[k] = (v.lower() == "true")
                             elif k == "session_all_videos_active":
+                                config[k] = (v.lower() == "true")
+                            elif k == "collapse_groups":
                                 config[k] = (v.lower() == "true")
                             else:
                                 config[k] = v

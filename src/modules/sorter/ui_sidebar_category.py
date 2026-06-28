@@ -27,7 +27,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         self.app = parent_app
         self.level = level 
         self.parent_cat = parent_cat
-        self.is_collapsed = False
+        self.is_collapsed = self.app.config.get("collapse_groups", False)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setAcceptDrops(True)
         self._drag_start_pos = None
@@ -46,6 +46,10 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         # Connect to Cache Update
         DirCache.inst().updated.connect(self._on_cache_updated)
         
+        if self.is_collapsed:
+            self.sections_container.setVisible(False)
+            self.btn_collapse.setText("▶")
+            
         self.update_visual_state()
 
     def generate_random_color(self):

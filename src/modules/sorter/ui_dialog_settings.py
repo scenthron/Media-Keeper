@@ -310,7 +310,17 @@ class PathSettingsDialog(QDialog):
         self.e_sort = self.add_path_new(l, 1, "lbl_sort", "path_sort")
         self.e_todel = self.add_path_new(l, 2, "lbl_todel", "path_todel")
 
-        l.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 3, 0, 1, 3)
+        # Чекбокс: Сворачивать группы
+        self.chk_collapse_groups = QCheckBox("Сворачивать группы по умолчанию" if is_ru else "Collapse groups by default")
+        self.chk_collapse_groups.setChecked(self.config.get("collapse_groups", False))
+        self.chk_collapse_groups.setStyleSheet("""
+            QCheckBox { color: white; font-size: 13px; font-weight: bold; margin-top: 10px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        """)
+        l.addWidget(self.chk_collapse_groups, 3, 0, 1, 3)
+
+        l.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 4, 0, 1, 3)
 
         # Подсказка о смене языка
         lbl_lang_hint = QLabel(
@@ -576,5 +586,6 @@ class PathSettingsDialog(QDialog):
             "affix_text": self.config.get("affix_text", ""),
             "path_unsort": self.config.get("path_unsort", ""),
             "path_sort": self.e_sort.text(),
-            "path_todel": self.e_todel.text()
+            "path_todel": self.e_todel.text(),
+            "collapse_groups": self.chk_collapse_groups.isChecked()
         }

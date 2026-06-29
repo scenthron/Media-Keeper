@@ -436,6 +436,10 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         action_bar.delete_clicked.connect(self.delete_selected)
         action_bar.browse_clicked.connect(self.browse_dest)
         action_bar.drop_zone.path_changed.connect(self.validate_move_state)
+        
+        if is_similar and hasattr(action_bar, 'chk_preserve'):
+            action_bar.chk_preserve.setChecked(False)
+            
         results_layout.addWidget(action_bar)
         
         res_splitter = QSplitter(Qt.Orientation.Horizontal)

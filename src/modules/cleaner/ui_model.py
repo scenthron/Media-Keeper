@@ -294,7 +294,8 @@ class DuplicateDelegate(QStyledItemDelegate):
                 size_fmt = format_size(item['size'] * item['file_count'])
                 display_text = f"{display_name}  ({item['file_count']} / {size_fmt})"
             
-            painter.drawText(rect.left() + 28, rect.top(), rect.width() - 150, rect.height(), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, display_text)
+            # Hardcoded width 600 instead of rect.width() - 150 to prevent negative width clipping
+            painter.drawText(rect.left() + 28, rect.top(), 600, rect.height(), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, display_text)
 
             # Draw participating color indicators
             indicators_x = rect.right() - 120

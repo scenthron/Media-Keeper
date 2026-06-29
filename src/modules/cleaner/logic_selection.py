@@ -387,6 +387,34 @@ class CleanerSelectionMixin:
         finally:
             self.overlay.hide()
 
+    def deselect_by_source_root(self, reference_path: str) -> None:
+        found_root = None
+        for src in self.source_folders.keys():
+            if is_subpath(reference_path, src):
+                found_root = src
+                break
+        if found_root:
+            self._batch_deselect(lambda p: is_subpath(p, found_root))
+
+    def _batch_deselect(self, condition_func: Callable[[str], bool]) -> None:
+        self.overlay.start_loading_mode(0)
+        self.overlay.lbl_title.setText("Снятие выделения...")
+        QCoreApplication.processEvents()
+        QTimer.singleShot(20, lambda: self._batch_deselect_impl(condition_func))
+
+    def _batch_deselect_impl(self, condition_func: Callable[[str], bool]) -> None:
+        self._load_cancelled = False
+        self.overlay.btn_stop.hide()
+        try:
+            if not hasattr(self, 'in_memory_selection'):
+                return
+            self.in_memory_selection.remove_path_filter(condition_func)
+            self.refresh_selection_from_memory()
+        except Exception as e:
+            logging.error(f"[Selection] _batch_deselect_impl error: {e}\n{traceback.format_exc()}")
+        finally:
+            self.overlay.hide()
+
     # ------------------------------------------------------------------
     # Single-file checkbox toggle (called from ui_main._on_tree_checkbox_clicked)
     # ------------------------------------------------------------------

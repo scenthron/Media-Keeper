@@ -118,6 +118,18 @@ class ActionMixin:
         is_ref = self.source_folders[path].get('reference', False)
         is_system = self.source_folders[path].get('is_system', False)
 
+        if getattr(self, 'current_tab', 0) == 1:
+            act_sel_cat = QAction("Выбрать все файлы в категории" if AppContext.LANG == "RU" else "Select all files in category", self)
+            act_sel_cat.triggered.connect(lambda: self.select_by_source_root(path))
+            act_sel_cat.setEnabled(not is_prot and not is_system)
+            menu.addAction(act_sel_cat)
+            
+            act_desel_cat = QAction("Снять выделение в категории" if AppContext.LANG == "RU" else "Deselect files in category", self)
+            act_desel_cat.triggered.connect(lambda: self.deselect_by_source_root(path))
+            menu.addAction(act_desel_cat)
+            
+            menu.addSeparator()
+
         # 1. Открыть в проводнике
         act_open = QAction(AppContext.tr("menu_open_explorer"), self)
         act_open.triggered.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(path)))

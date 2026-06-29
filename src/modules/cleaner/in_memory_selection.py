@@ -251,11 +251,26 @@ class InMemorySelection:
         for gid, files in self._group_files.items():
             if not self._can_mark_more(gid):
                 continue
+
+            candidates = [f for f in files
+                          if f['id'] not in self._protected_files
+                          and f['id'] not in self._marked
+                          and condition_func(f['path'])]
+
+            for f in candidates:
+                if not self.mark_file(f['id'], gid):
+                    break  # Stop if iron rule prevents further marking in this group
+
+    def remove_path_filter(self, condition_func: Callable[[str], bool]) -> None:
+        """Apply a path-based cumulative deselect filter.
+        
+        ``condition_func`` receives a file path and returns ``True`` for files
+        that should be unmarked.
+        """
+        for gid, files in self._group_files.items():
             for f in files:
-                if f['id'] in self._protected_files:
-                    continue
                 if condition_func(f['path']):
-                    self.mark_file(f['id'], gid)
+                    self.unmark_file(f['id'])
 
     # ------------------------------------------------------------------
     # Accessors for UI rendering and move worker

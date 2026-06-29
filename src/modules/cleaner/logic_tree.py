@@ -148,7 +148,14 @@ class CleanerTreeMixin:
             
             menu.addSeparator()
             act_move_to = QAction("Переместить в..." if AppContext.LANG == "RU" else "Move to...", self)
-            act_move_to.triggered.connect(lambda: self.move_single_file_to_dir_from_context(path, item.get('group_id', -1)))
+            
+            if getattr(self, 'current_view_mode', 0) == 0 and hasattr(self, 'in_memory_selection'):
+                has_sel = self.in_memory_selection.get_marked_count() > 0
+            else:
+                has_sel = self.session_db.get_global_selection_stats()['count'] > 0
+                
+            act_move_to.setEnabled(has_sel)
+            act_move_to.triggered.connect(self.prompt_move_selected)
             menu.addAction(act_move_to)
             
         if getattr(self, 'current_view_mode', 0) == 0:

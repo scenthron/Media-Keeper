@@ -572,15 +572,18 @@ class SimilarScanWorker(QThread):
                         except Exception:
                             pass
                 elif sig and self.media_type == 2:
-                    from .vhash import get_video_resolution, get_video_bitrate
-                    from logic_paths import get_ffprobe_exe
-                    ffprobe_exe = get_ffprobe_exe()
-                    if os.path.exists(ffprobe_exe):
-                        res_str = get_video_resolution(file_data['real_path'], ffprobe_exe)
-                        bit_str = get_video_bitrate(file_data['real_path'], ffprobe_exe)
-                        if bit_str:
-                            res_str = f"{res_str} | {bit_str}"
-                        meta = res_str
+                    try:
+                        from .vhash import get_video_resolution, get_video_bitrate
+                        from logic_paths import get_ffprobe_exe
+                        ffprobe_exe = get_ffprobe_exe()
+                        if os.path.exists(ffprobe_exe):
+                            res_str = get_video_resolution(file_data['real_path'], ffprobe_exe)
+                            bit_str = get_video_bitrate(file_data['real_path'], ffprobe_exe)
+                            if bit_str:
+                                res_str = f"{res_str} | {bit_str}"
+                            meta = res_str
+                    except Exception as e:
+                        logging.error(f"Error loading cached metadata for video {file_data['real_path']}: {e}")
                 
             if not sig:
                 if self.media_type == 0: # Изображения
@@ -660,11 +663,17 @@ class SimilarScanWorker(QThread):
         total_sigs = len(files_with_signatures)
         
         # Заранее импортируем функции сравнения
-        if self.media_type == 1:
-            from .ahash_audio import compare_audio_fingerprints
-        elif self.media_type == 2:
-            from .vhash import compare_video_fingerprints
-        else:
+        try:
+            if self.media_type == 1:
+                from .ahash_audio import compare_audio_fingerprints
+            elif self.media_type == 2:
+                from .vhash import compare_video_fingerprints
+        except ImportError as e:
+            logging.error(f"Failed to import comparison module for media_type {self.media_type}: {e}")
+            self.finished.emit({})
+            return
+
+        if self.media_type != 1 and self.media_type != 2:
             threshold_bits = int((100 - self.threshold) / 100.0 * self.total_bits)
         
         for i in range(total_sigs):

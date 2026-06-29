@@ -91,6 +91,12 @@ def get_ffmpeg_bin_dir():
 def get_project_bin_dir():
     """Returns path to the bundled bin directory inside the source code (src/bin)"""
     if getattr(sys, 'frozen', False):
+        # Сначала проверяем внутри распакованного EXE (sys._MEIPASS для PyInstaller --onefile)
+        meipass = getattr(sys, '_MEIPASS', None)
+        if meipass:
+            cand = os.path.join(meipass, "bin")
+            if os.path.exists(cand):
+                return cand
         base_dir = os.path.dirname(sys.executable)
     else:
         base_dir = os.path.dirname(os.path.abspath(__file__))

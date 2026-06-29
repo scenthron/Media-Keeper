@@ -54,10 +54,11 @@ def build():
             pyinstaller_cmd.extend(["--add-data", f"{d}{os.pathsep}{d}"])
             
     # Добавляем исполняемые утилиты (только fpcalc)
-    binaries = ["fpcalc.exe"]
-    for b in binaries:
-        if os.path.exists(b):
-            pyinstaller_cmd.extend(["--add-binary", f"{b}{os.pathsep}."])
+    fpcalc_path = os.path.join("bin", "fpcalc.exe")
+    if os.path.exists(fpcalc_path):
+        pyinstaller_cmd.extend(["--add-binary", f"{fpcalc_path}{os.pathsep}bin"])
+    else:
+        print(f"[WARN] fpcalc.exe not found at {fpcalc_path}, it will not be bundled!")
 
     # Скрытые импорты PyQt6, необходимые для динамической загрузки модулей в рантайме
     hidden_imports = [
@@ -106,6 +107,18 @@ def build():
                 print(f"Executable successfully copied to root folder: {dest_exe}")
             except Exception as e:
                 print(f"Warning: Failed to copy executable to root dist folder: {e}")
+                
+            # Также копируем папку bin в папку dist рядом с exe
+            src_bin = os.path.join(script_dir, "bin")
+            dest_bin = os.path.join(root_dist, "bin")
+            if os.path.exists(src_bin):
+                try:
+                    if os.path.exists(dest_bin):
+                        shutil.rmtree(dest_bin)
+                    shutil.copytree(src_bin, dest_bin)
+                    print(f"Bin folder successfully copied to dist folder: {dest_bin}")
+                except Exception as e:
+                    print(f"Warning: Failed to copy bin folder to root dist folder: {e}")
     else:
         print("\nAn error occurred during build.")
         sys.exit(result.returncode)

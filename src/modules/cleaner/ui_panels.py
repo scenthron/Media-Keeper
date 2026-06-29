@@ -964,7 +964,7 @@ class SimilarSettingsPanel(QWidget):
             item = model.item(2)
             if item:
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
-                item.setToolTip("Требуется ffmpeg.exe в системе" if is_ru else "ffmpeg.exe is required")
+                item.setToolTip("Требуется скачать ffmpeg и поместить в папку .mediakeeper/bin" if is_ru else "ffmpeg is required. Please download and place in .mediakeeper/bin")
                 
         self.combo_media_type.setFixedHeight(24)
         self.combo_media_type.setFixedWidth(135)

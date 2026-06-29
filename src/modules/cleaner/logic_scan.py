@@ -83,7 +83,18 @@ class ScanMixin:
             threshold = self.settings_panel.spin_similarity.value()
             res_idx = self.settings_panel.combo_resolution.currentIndex()
             hash_size = 3 if res_idx == 0 else (8 if res_idx == 1 else (16 if res_idx == 2 else (32 if res_idx == 3 else 64)))
-            self.finder = SimilarScanWorker(self.source_folders, use_cache, self.filter_config, size_limits=size_limits, media_type=media_type, threshold=threshold, hash_size=hash_size)
+            
+            # Чтение алгоритма и фильтра монотонности
+            alg_idx = self.settings_panel.combo_algorithm.currentIndex()
+            algorithm = "phash" if alg_idx == 0 else ("dhash" if alg_idx == 1 else "ahash")
+            monotone_filter = self.settings_panel.chk_monotone.isChecked()
+            
+            self.finder = SimilarScanWorker(
+                self.source_folders, use_cache, self.filter_config, 
+                size_limits=size_limits, media_type=media_type, 
+                threshold=threshold, hash_size=hash_size,
+                algorithm=algorithm, monotone_filter=monotone_filter
+            )
         else:
             safe_scan = self.settings_panel.chk_safe_scan.isChecked()
             self.finder = DuplicateFinderWorker(folders, use_cache, self.filter_config, size_limits=size_limits, safe_scan=safe_scan)

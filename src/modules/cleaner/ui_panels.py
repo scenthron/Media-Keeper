@@ -955,6 +955,75 @@ class SimilarSettingsPanel(QWidget):
         cache_layout.addWidget(self.btn_clear_cache)
         algo_layout.addLayout(cache_layout)
         
+        # Описания для тултипов алгоритмов и монотонности
+        algo_info_tooltip = (
+            "<b>Сравнение алгоритмов поиска:</b><br><br>"
+            "• <b>pHash (Частотный)</b> — <i>Рекомендуемый по умолчанию</i>.<br>"
+            "Анализирует частотные характеристики изображения. Обладает высочайшей точностью.<br>"
+            "<b>Плюсы:</b> Идеален для скриншотов с текстом и водяных знаков. Практически исключает ложные коллизии.<br>"
+            "<b>Минусы:</b> Работает чуть медленнее других на больших объемах данных.<br><br>"
+            "• <b>dHash (Градиентный)</b> — <i>Быстрый структурный поиск</i>.<br>"
+            "Сравнивает яркость соседних пикселей.<br>"
+            "<b>Плюсы:</b> Отлично находит масштабированные и сжатые копии одной фотографии.<br>"
+            "<b>Минусы:</b> Может давать ложные срабатывания на монотонных скриншотах на низких разрешениях.<br><br>"
+            "• <b>aHash (Средний)</b> — <i>Простой хэш по средней яркости</i>.<br>"
+            "<b>Плюсы:</b> Самый быстрый в расчете.<br>"
+            "<b>Минусы:</b> Менее точный, чувствителен к изменению экспозиции и баланса белого."
+        )
+        monotone_info_tooltip = (
+            "<b>Фильтр монотонных коллизий:</b><br>"
+            "Анализирует дисперсию (контрастность) кадра.<br>"
+            "Если картинка почти одноцветная (белый лист с текстом, чистое серое небо), "
+            "программа автоматически повышает требования к сходству до 99-100%, "
+            "чтобы предотвратить ложное объединение разных монотонных скриншотов в одну группу."
+        )
+
+        # Algorithm selection line
+        algo_select_layout = QHBoxLayout()
+        algo_select_layout.setContentsMargins(0, 0, 0, 0)
+        algo_select_layout.setSpacing(6)
+        
+        self.lbl_algorithm = QLabel("Метод:" if is_ru else "Method:")
+        self.lbl_algorithm.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
+        algo_select_layout.addWidget(self.lbl_algorithm)
+        
+        self.combo_algorithm = QComboBox()
+        self.combo_algorithm.addItems(["pHash (Частотный)", "dHash (Градиентный)", "aHash (Средний)"] if is_ru else ["pHash (Perceptual)", "dHash (Difference)", "aHash (Average)"])
+        self.combo_algorithm.setCurrentIndex(0) # pHash по умолчанию
+        self.combo_algorithm.setFixedHeight(24)
+        self.combo_algorithm.setFixedWidth(155)
+        self.combo_algorithm.setStyleSheet("""
+            QComboBox { background-color: #333; color: white; border: 1px solid #555; border-radius: 4px; padding-left: 5px; font-weight: bold; }
+            QComboBox QAbstractItemView { background-color: #222; color: white; selection-background-color: #3b82f6; }
+        """)
+        algo_select_layout.addWidget(self.combo_algorithm)
+        
+        # Info icon for algorithm
+        self.lbl_algo_info = ToolTipLabel("?")
+        self.lbl_algo_info.setFixedSize(18, 18)
+        self.lbl_algo_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_algo_info.setStyleSheet("""
+            QLabel { background-color: #3b82f6; color: white; border-radius: 4px; font-weight: bold; font-size: 13px; font-family: 'Segoe UI', Arial; margin-left: 5px; }
+            QLabel:hover { background-color: #2563eb; }
+        """)
+        self.lbl_algo_info.setToolTip(algo_info_tooltip)
+        algo_select_layout.addWidget(self.lbl_algo_info)
+        algo_select_layout.addStretch()
+        
+        # Monotone filter checkbox
+        self.chk_monotone = QCheckBox("Фильтр монотонных" if is_ru else "Filter monotone")
+        self.chk_monotone.setChecked(True) # Включен по умолчанию для тестирования
+        self.chk_monotone.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_monotone.setStyleSheet("""
+            QCheckBox { color: white; font-weight: bold; font-size: 13px; margin-left: 5px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        """)
+        self.chk_monotone.setToolTip(monotone_info_tooltip)
+        algo_select_layout.addWidget(self.chk_monotone)
+        
+        algo_layout.addLayout(algo_select_layout)
+        
         # Media Type Selection Line
         media_layout = QHBoxLayout()
         media_layout.setContentsMargins(0, 0, 0, 0)
@@ -1133,6 +1202,8 @@ class SimilarSettingsPanel(QWidget):
         self.spin_similarity.valueChanged.connect(self._on_spin_changed)
         self.spin_similarity.valueChanged.connect(lambda: self.settings_changed_for_rescan.emit())
         self.combo_resolution.currentIndexChanged.connect(lambda: self.settings_changed_for_rescan.emit())
+        self.combo_algorithm.currentIndexChanged.connect(lambda: self.settings_changed_for_rescan.emit())
+        self.chk_monotone.stateChanged.connect(lambda: self.settings_changed_for_rescan.emit())
         self.combo_media_type.currentIndexChanged.connect(self._on_media_type_changed)
         self._slider_updating = False
         self._update_slider_range()
@@ -1420,6 +1491,8 @@ class SimilarSettingsPanel(QWidget):
         # Блокируем все настройки
         self.combo_media_type.setEnabled(False)
         self.combo_resolution.setEnabled(False)
+        self.combo_algorithm.setEnabled(False)
+        self.chk_monotone.setEnabled(False)
         self.combo_range.setEnabled(False)
         self.slider_similarity.setEnabled(False)
         self.spin_similarity.setEnabled(False)
@@ -1480,11 +1553,15 @@ class SimilarSettingsPanel(QWidget):
         idx = self.combo_media_type.currentIndex()
         if idx == 1: # Аудио
             self.combo_resolution.setEnabled(False)
+            self.combo_algorithm.setEnabled(False)
+            self.chk_monotone.setEnabled(False)
             self.spin_similarity.setEnabled(False)
             self.slider_similarity.setEnabled(False)
             self.combo_range.setEnabled(False)
         else:
             self.combo_resolution.setEnabled(True)
+            self.combo_algorithm.setEnabled(idx == 0) # Только для изображений
+            self.chk_monotone.setEnabled(idx == 0)    # Только для изображений
             self.spin_similarity.setEnabled(True)
             self.slider_similarity.setEnabled(True)
             self.combo_range.setEnabled(True)
@@ -1553,6 +1630,14 @@ class SimilarSettingsPanel(QWidget):
             self.spin_similarity.setEnabled(True)
             self.slider_similarity.setEnabled(True)
             self.combo_range.setEnabled(True)
+            
+        # Алгоритм хэширования и фильтр монотонности применимы ТОЛЬКО для изображений (idx == 0)
+        if idx == 0:
+            self.combo_algorithm.setEnabled(True)
+            self.chk_monotone.setEnabled(True)
+        else:
+            self.combo_algorithm.setEnabled(False)
+            self.chk_monotone.setEnabled(False)
             
         if idx == 2: # Видео
             self.combo_range.setCurrentIndex(3) # Диапазон 30%

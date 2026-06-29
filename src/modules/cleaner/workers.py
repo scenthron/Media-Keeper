@@ -427,7 +427,7 @@ class SimilarScanWorker(QThread):
     progress = pyqtSignal(int, float, str, int, int, object, object, int, int)
     finished = pyqtSignal(dict)
     
-    def __init__(self, folders_dict, use_cache=True, filter_config=None, size_limits=(0, 0), media_type=0, threshold=90, hash_size=16):
+    def __init__(self, folders_dict, use_cache=True, filter_config=None, size_limits=(0, 0), media_type=0, threshold=90, hash_size=16, algorithm="phash", monotone_filter=False, monotone_threshold=15.0):
         super().__init__()
         self.folders_dict = folders_dict
         self.folders = list(folders_dict.keys())
@@ -438,12 +438,20 @@ class SimilarScanWorker(QThread):
         self.media_type = media_type # 0: Images, 1: Audio, 2: Video
         self.threshold = threshold
         self.hash_size = hash_size
-        self.total_bits = self.hash_size * self.hash_size
+        self.algorithm = algorithm.lower()
+        self.monotone_filter = monotone_filter
+        self.monotone_threshold = monotone_threshold
+        
+        if media_type == 0 and self.algorithm == "phash":
+            self.total_bits = self.hash_size * self.hash_size - 1
+        else:
+            self.total_bits = self.hash_size * self.hash_size
+            
         self.reference_path = None
         self.is_running = True
         
         from .db_cache import SimilarDB
-        self.db = SimilarDB(hash_size=self.hash_size) if use_cache else None
+        self.db = SimilarDB(hash_size=self.hash_size, algorithm=self.algorithm) if use_cache else None
 
     def stop(self):
         self.is_running = False
@@ -531,8 +539,6 @@ class SimilarScanWorker(QThread):
         total_files = len(valid_files)
         self.progress.emit(STAGE_ANALYSIS, 10.0, f"Анализ {total_files} медиафайлов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
         
-        from .dhash import get_image_ahash
-        
         # 1. Сбор хэшей (подпись)
         processed_count = 0
         files_with_signatures = []
@@ -548,15 +554,24 @@ class SimilarScanWorker(QThread):
                 
             sig = None
             meta = ""
+            std_dev = 999.0
             if self.use_cache:
-                sig = self.db.get_cached_signature(file_data['real_path'], file_data['size'], file_data['mtime'])
-                if sig and self.media_type == 0:
-                    try:
-                        from PIL import Image
-                        with Image.open(file_data['real_path']) as img:
-                            meta = f"{img.size[0]}x{img.size[1]}"
-                    except:
-                        pass
+                cached_sig = self.db.get_cached_signature(file_data['real_path'], file_data['size'], file_data['mtime'])
+                if cached_sig:
+                    if self.media_type == 0 and ':' in cached_sig:
+                        sig, std_dev_str = cached_sig.split(':', 1)
+                        try: std_dev = float(std_dev_str)
+                        except: std_dev = 999.0
+                    else:
+                        sig = cached_sig
+                        
+                    if sig and self.media_type == 0:
+                        try:
+                            from PIL import Image
+                            with Image.open(file_data['real_path']) as img:
+                                meta = f"{img.size[0]}x{img.size[1]}"
+                        except:
+                            pass
                 elif sig and self.media_type == 1:
                     from logic_paths import get_ffprobe_exe
                     ffprobe_exe = get_ffprobe_exe()
@@ -584,12 +599,21 @@ class SimilarScanWorker(QThread):
                             meta = res_str
                     except Exception as e:
                         logging.error(f"Error loading cached metadata for video {file_data['real_path']}: {e}")
-                
+                 
             if not sig:
                 if self.media_type == 0: # Изображения
-                    res = get_image_ahash(file_data['real_path'], hash_size=self.hash_size)
+                    if self.algorithm == "dhash":
+                        from .dhash import get_image_dhash
+                        res = get_image_dhash(file_data['real_path'], hash_size=self.hash_size)
+                    elif self.algorithm == "phash":
+                        from .dhash import get_image_phash
+                        res = get_image_phash(file_data['real_path'], hash_size=self.hash_size)
+                    else:
+                        from .dhash import get_image_ahash
+                        res = get_image_ahash(file_data['real_path'], hash_size=self.hash_size)
+                        
                     if res:
-                        sig, meta = res
+                        sig, meta, std_dev = res
                 elif self.media_type == 1: # Аудио
                     try:
                         from .ahash_audio import extract_audio_fingerprint
@@ -630,11 +654,16 @@ class SimilarScanWorker(QThread):
                         logging.error(f"Error extracting video fingerprint for {file_data['real_path']}: {e}")
 
                 if sig and self.use_cache:
-                    self.db.upsert_signature(file_data['real_path'], file_data['size'], file_data['mtime'], sig)
+                    if self.media_type == 0:
+                        sig_to_store = f"{sig}:{std_dev}"
+                    else:
+                        sig_to_store = sig
+                    self.db.upsert_signature(file_data['real_path'], file_data['size'], file_data['mtime'], sig_to_store)
                     
             if sig:
                 file_data['signature'] = sig
                 file_data['metadata'] = meta
+                file_data['std_dev'] = std_dev
                 
                 # Подготавливаем хэш для быстрого сравнения в зависимости от типа медиа
                 if self.media_type == 0:
@@ -696,9 +725,19 @@ class SimilarScanWorker(QThread):
                 f2, h2 = files_with_signatures[j]
                 
                 sim = 0.0
+                current_threshold_bits = threshold_bits
                 if self.media_type == 0:
                     dist = bin(h1 ^ h2).count('1')
-                    if dist <= threshold_bits:
+                    
+                    # Проверка на монотонность (дисперсию)
+                    if self.monotone_filter:
+                        dev1 = f1.get('std_dev', 999.0)
+                        dev2 = f2.get('std_dev', 999.0)
+                        if dev1 < self.monotone_threshold or dev2 < self.monotone_threshold:
+                            # Для монотонных изображений требуем строгое совпадение (>= 99.0%)
+                            current_threshold_bits = int((100.0 - 99.0) / 100.0 * self.total_bits)
+                            
+                    if dist <= current_threshold_bits:
                         sim = (self.total_bits - dist) / self.total_bits * 100.0
                 elif self.media_type == 1:
                     sim = compare_audio_fingerprints(h1, h2)
@@ -708,7 +747,7 @@ class SimilarScanWorker(QThread):
                 if self.media_type != 0 and sim >= self.threshold:
                     current_group.append(f2)
                     visited.add(j)
-                elif self.media_type == 0 and dist <= threshold_bits:
+                elif self.media_type == 0 and dist <= current_threshold_bits:
                     current_group.append(f2)
                     visited.add(j)
                     

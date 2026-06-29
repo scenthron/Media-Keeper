@@ -28,33 +28,15 @@ def get_image_ahash(image_path: str, hash_size: int = 16) -> tuple[str | None, s
                     row.append(left > right)
                 m0.append(row)
                 
-            # Функция поворота матрицы на 90 градусов по часовой стрелке
-            def rotate(m):
-                return [[m[hash_size - 1 - c][r] for c in range(hash_size)] for r in range(hash_size)]
-                
-            m90 = rotate(m0)
-            m180 = rotate(m90)
-            m270 = rotate(m180)
-            
-            # Преобразуем каждую из 4-х матриц в целое число
-            def to_int(m):
-                val = 0
-                for r in range(hash_size):
-                    for c in range(hash_size):
-                        val = (val << 1) | m[r][c]
-                return val
-                
-            v0 = to_int(m0)
-            v90 = to_int(m90)
-            v180 = to_int(m180)
-            v270 = to_int(m270)
-            
-            # Выбираем минимальное число как нормализованный хэш
-            min_val = min(v0, v90, v180, v270)
+            # Преобразуем базовую матрицу разниц m0 в целое число (классический dHash без ложной инвариантности к поворотам)
+            val = 0
+            for r in range(hash_size):
+                for c in range(hash_size):
+                    val = (val << 1) | m0[r][c]
 
             total_pixels = hash_size * hash_size
             hex_len = total_pixels // 4
-            return f"{min_val:0{hex_len}x}", resolution_str
+            return f"{val:0{hex_len}x}", resolution_str
     except Exception as e:
         logging.error(f"Error computing aHash for {image_path}: {e}")
         return None, ""

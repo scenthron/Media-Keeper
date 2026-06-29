@@ -205,8 +205,9 @@ class DuplicateVirtualModel(QAbstractListModel):
 
 
 class DuplicateDelegate(QStyledItemDelegate):
-    def __init__(self, parent: Any = None) -> None:
+    def __init__(self, parent: Any = None, is_similar_mode: bool = False) -> None:
         super().__init__(parent)
+        self.is_similar_mode = is_similar_mode
         self.icons_dir = AppContext.find_resource_dir("icons")
         self.renderers = {}
 
@@ -240,20 +241,23 @@ class DuplicateDelegate(QStyledItemDelegate):
             marked_files, effective_unmarked, total_files = index.model().calculate_group_status(item['id'])
             
             # Подбираем цвет фона в зависимости от статуса группы
-            if marked_files == 0:
-                # Стандартный темно-серый
+            if self.is_similar_mode:
                 bg_color = QColor("#2a2a2a") if not is_hovered else QColor("#333333")
-            elif effective_unmarked == 1:
-                # Зеленоватый приглушенный (выделено все, кроме одного логического файла)
-                bg_color = QColor("#1e3a24") if not is_hovered else QColor("#274d30")
             else:
-                # Красноватый приглушенный (выделены некоторые, но осталось больше одного логического файла)
-                bg_color = QColor("#3c1e1e") if not is_hovered else QColor("#4f2727")
+                if marked_files == 0:
+                    # Стандартный темно-серый
+                    bg_color = QColor("#2a2a2a") if not is_hovered else QColor("#333333")
+                elif effective_unmarked == 1:
+                    # Зеленоватый приглушенный (выделено все, кроме одного логического файла)
+                    bg_color = QColor("#1e3a24") if not is_hovered else QColor("#274d30")
+                else:
+                    # Красноватый приглушенный (выделены некоторые, но осталось больше одного логического файла)
+                    bg_color = QColor("#3c1e1e") if not is_hovered else QColor("#4f2727")
                 
             painter.fillRect(rect, bg_color)
             
             # Левая акцентная полоска для яркого визуального индикатора
-            if marked_files > 0:
+            if marked_files > 0 and not self.is_similar_mode:
                 accent_color = QColor("#10b981") if effective_unmarked == 1 else QColor("#ef4444")
                 painter.fillRect(rect.left(), rect.top(), 4, rect.height(), accent_color)
             

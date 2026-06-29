@@ -114,11 +114,11 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
         self.virtual_model_dupes = DuplicateVirtualModel(self)
         self.virtual_model_dupes.is_similar_mode = False
-        self.virtual_delegate_dupes = DuplicateDelegate(self)
+        self.virtual_delegate_dupes = DuplicateDelegate(self, is_similar_mode=False)
         
         self.virtual_model_similar = DuplicateVirtualModel(self)
         self.virtual_model_similar.is_similar_mode = True
-        self.virtual_delegate_similar = DuplicateDelegate(self)
+        self.virtual_delegate_similar = DuplicateDelegate(self, is_similar_mode=True)
 
         self.scan_timer: QElapsedTimer = QElapsedTimer()
         self.move_timer: QElapsedTimer = QElapsedTimer()

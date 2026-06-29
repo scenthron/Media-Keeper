@@ -616,7 +616,6 @@ class CleanerActionBar(QFrame):
 
         self.btn_move = QPushButton(AppContext.tr("cln_btn_move_icon") + " ")
         self.btn_move.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.set_move_button_enabled(False)
         self.btn_move.clicked.connect(self.move_clicked.emit)
         layout.addWidget(self.btn_move)
         
@@ -630,6 +629,8 @@ class CleanerActionBar(QFrame):
         """)
         self.btn_move_to.clicked.connect(self.move_to_clicked.emit)
         layout.addWidget(self.btn_move_to)
+        
+        self.set_move_button_enabled(False)
         
         self.drop_zone = CompactDropZone()
         self.drop_zone.setFixedWidth(280) 

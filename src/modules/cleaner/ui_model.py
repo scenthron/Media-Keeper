@@ -423,7 +423,6 @@ class DuplicateDelegate(QStyledItemDelegate):
                                  Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, pct_str)
 
                 # Размер файла после процента
-                from utils_common import format_size
                 size_str = format_size(item.get('size', 0))
                 size_font = QFont("Segoe UI", 9)
                 painter.setFont(size_font)

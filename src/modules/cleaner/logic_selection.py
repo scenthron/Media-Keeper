@@ -322,9 +322,10 @@ class CleanerSelectionMixin:
         """Handle group header context menu actions (per-group, not global)."""
         group_id = item['id']
         current_mode = getattr(self, 'current_view_mode', 0)
+        current_tab = getattr(self, 'current_tab', 0)
 
         # In duplicate mode, 'all' means 'all except one survivor' to enforce iron rule
-        if current_mode == 0 and action == 'all':
+        if current_mode == 0 and current_tab == 0 and action == 'all':
             action = 'all_except_first'
 
         if not hasattr(self, 'in_memory_selection'):

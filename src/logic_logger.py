@@ -41,19 +41,33 @@ class SafeFormatter(logging.Formatter):
         if not inner:
             return token
             
-        # 1. Проверяем, является ли путь частью нашего проекта (абсолютный путь)
+        # 1. Проверяем, является ли это путем, файлом или модулем внутри нашего проекта
         try:
-            norm_inner = os.path.normpath(inner).lower()
-            norm_root = os.path.normpath(PROJECT_ROOT).lower()
-            if norm_inner.startswith(norm_root):
-                rel_path = inner[len(PROJECT_ROOT):].lstrip('\\/')
-                # Определяем разделитель, который использовался в исходном пути
-                sep = '\\' if '\\' in inner else '/'
-                return prefix + "<PROJECT_ROOT>" + sep + rel_path + suffix
-                
-            # 2. Проверяем, является ли путь относительным путем внутри проекта
-            if norm_inner.startswith(('src\\', 'src/', 'tests\\', 'tests/')):
+            if re.match(r'^(modules|tests|languages|logic|utils|ui|config|main|bin)\b', inner.lower()):
                 return token
+                
+            abs_path = None
+            if not os.path.isabs(inner):
+                cand = os.path.normpath(os.path.join(PROJECT_ROOT, 'src', inner))
+                if os.path.exists(cand):
+                    abs_path = cand
+                else:
+                    cand = os.path.normpath(os.path.join(PROJECT_ROOT, inner))
+                    if os.path.exists(cand):
+                        abs_path = cand
+            else:
+                abs_path = os.path.normpath(inner)
+                
+            if abs_path:
+                norm_abs = abs_path.lower()
+                norm_root = os.path.normpath(PROJECT_ROOT).lower()
+                if norm_abs.startswith(norm_root):
+                    if os.path.isabs(inner):
+                        rel_path = inner[len(PROJECT_ROOT):].lstrip('\\/')
+                        sep = '\\' if '\\' in inner else '/'
+                        return prefix + "<PROJECT_ROOT>" + sep + rel_path + suffix
+                    else:
+                        return token
         except Exception:
             pass
             
@@ -117,14 +131,33 @@ class SafeFormatter(logging.Formatter):
         if not inner:
             return inner
             
-        # 1. Проверяем, является ли путь частью нашего проекта (абсолютный путь)
+        # 1. Проверяем, является ли это путем, файлом или модулем внутри нашего проекта
         try:
-            norm_inner = os.path.normpath(inner).lower()
-            norm_root = os.path.normpath(PROJECT_ROOT).lower()
-            if norm_inner.startswith(norm_root):
-                rel_path = inner[len(PROJECT_ROOT):].lstrip('\\/')
-                sep = '\\' if '\\' in inner else '/'
-                return "<PROJECT_ROOT>" + sep + rel_path
+            if re.match(r'^(modules|tests|languages|logic|utils|ui|config|main|bin)\b', inner.lower()):
+                return inner
+                
+            abs_path = None
+            if not os.path.isabs(inner):
+                cand = os.path.normpath(os.path.join(PROJECT_ROOT, 'src', inner))
+                if os.path.exists(cand):
+                    abs_path = cand
+                else:
+                    cand = os.path.normpath(os.path.join(PROJECT_ROOT, inner))
+                    if os.path.exists(cand):
+                        abs_path = cand
+            else:
+                abs_path = os.path.normpath(inner)
+                
+            if abs_path:
+                norm_abs = abs_path.lower()
+                norm_root = os.path.normpath(PROJECT_ROOT).lower()
+                if norm_abs.startswith(norm_root):
+                    if os.path.isabs(inner):
+                        rel_path = inner[len(PROJECT_ROOT):].lstrip('\\/')
+                        sep = '\\' if '\\' in inner else '/'
+                        return "<PROJECT_ROOT>" + sep + rel_path
+                    else:
+                        return inner
         except Exception:
             pass
             

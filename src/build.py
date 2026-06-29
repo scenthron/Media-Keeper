@@ -66,7 +66,9 @@ def build():
         "PyQt6.QtMultimedia",
         "PyQt6.QtMultimediaWidgets",
         "PyQt6.sip",
-        "PIL"
+        "PIL",
+        "modules.cleaner.vhash",
+        "modules.cleaner.ahash_audio"
     ]
     for imp in hidden_imports:
         pyinstaller_cmd.extend(["--hidden-import", imp])

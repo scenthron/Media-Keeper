@@ -384,15 +384,9 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.filter_config = None
         self.on_safe_scan_toggled()
         
-        # Очищаем модель и сессионную БД при смене медиа-типа
-        self.virtual_model.set_items([], {})
-        self.session_db.clear_db()
-        self.preview_widget.show_empty("...")
-        self.update_view_stats()
-        
-        # Сбрасываем текст кнопки сканирования на "Сканировать" вместо "Пересчитать"
-        if hasattr(self, 'reset_scan_button'):
-            self.reset_scan_button()
+        # Данные в таблице не меняем до нового сканирования, только переименовываем кнопку
+        if hasattr(self, 'on_settings_changed_for_rescan'):
+            self.on_settings_changed_for_rescan()
 
     def create_page(self, is_similar: bool):
         page_widget = QWidget()

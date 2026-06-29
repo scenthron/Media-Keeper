@@ -588,10 +588,14 @@ class SimilarScanWorker(QThread):
                     if res:
                         sig, meta = res
                 elif self.media_type == 1: # Аудио
-                    from .ahash_audio import extract_audio_fingerprint
-                    from logic_paths import get_fpcalc_exe, get_ffprobe_exe
-                    fp_exe = get_fpcalc_exe()
-                    fp = extract_audio_fingerprint(file_data['real_path'], fp_exe)
+                    try:
+                        from .ahash_audio import extract_audio_fingerprint
+                        from logic_paths import get_fpcalc_exe, get_ffprobe_exe
+                        fp_exe = get_fpcalc_exe()
+                        fp = extract_audio_fingerprint(file_data['real_path'], fp_exe)
+                    except Exception as e:
+                        logging.error(f"Error extracting audio fingerprint for {file_data['real_path']}: {e}")
+                        fp = None
                     
                     ffprobe_exe = get_ffprobe_exe()
                     if os.path.exists(ffprobe_exe):
@@ -610,14 +614,17 @@ class SimilarScanWorker(QThread):
                         import json
                         sig = json.dumps(fp)
                 elif self.media_type == 2: # Видео
-                    from .vhash import extract_video_fingerprint
-                    from logic_paths import get_ffmpeg_exe, get_ffprobe_exe
-                    res = extract_video_fingerprint(file_data['real_path'], get_ffmpeg_exe(), get_ffprobe_exe(), self.hash_size)
-                    if res:
-                        fp_list, meta = res
-                        if fp_list:
-                            import json
-                            sig = json.dumps(fp_list)
+                    try:
+                        from .vhash import extract_video_fingerprint
+                        from logic_paths import get_ffmpeg_exe, get_ffprobe_exe
+                        res = extract_video_fingerprint(file_data['real_path'], get_ffmpeg_exe(), get_ffprobe_exe(), self.hash_size)
+                        if res:
+                            fp_list, meta = res
+                            if fp_list:
+                                import json
+                                sig = json.dumps(fp_list)
+                    except Exception as e:
+                        logging.error(f"Error extracting video fingerprint for {file_data['real_path']}: {e}")
 
                 if sig and self.use_cache:
                     self.db.upsert_signature(file_data['real_path'], file_data['size'], file_data['mtime'], sig)

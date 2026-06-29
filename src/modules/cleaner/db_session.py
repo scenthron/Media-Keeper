@@ -1123,3 +1123,16 @@ class SessionDB:
 
 class SimilarSessionDB(SessionDB):
     DB_NAME = "session_similar.db"
+
+    def init_db(self) -> None:
+        super().init_db()
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            # Убираем правило обязательного выжившего для режима поиска похожих
+            cursor.execute("DROP TRIGGER IF EXISTS enforce_survivor_rule")
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            import logging
+            logging.error(f"SimilarSessionDB Init Error: {e}")

@@ -138,16 +138,17 @@ class ActionMixin:
         menu.addAction(act_prot)
 
         # 3. Поиск по эталону
-        act_ref = QAction(AppContext.tr("cln_ctx_unset_reference") if is_ref else AppContext.tr("cln_ctx_set_reference"), self)
-        act_ref.triggered.connect(lambda: self.toggle_source_reference(path))
-        act_ref.setEnabled(not (is_prot and not is_ref) and not is_system)
-        
-        if AppContext.LANG == "RU":
-            ref_tip = "<b>Поиск по эталону</b><br>Назначает папку образцовой (эталоном). Все её файлы защищаются от удаления, позволяя вам безопасно очищать дубликаты в других папках при помощи фильтров авто-выбора."
-        else:
-            ref_tip = "<b>Search by Reference</b><br>Designates this folder as reference/sample. All files here are protected, allowing you to safely clean duplicate copies in other folders using auto-selection filters."
-        act_ref.setToolTip(ref_tip)
-        menu.addAction(act_ref)
+        if getattr(self, 'current_tab', 0) == 0:
+            act_ref = QAction(AppContext.tr("cln_ctx_unset_reference") if is_ref else AppContext.tr("cln_ctx_set_reference"), self)
+            act_ref.triggered.connect(lambda: self.toggle_source_reference(path))
+            act_ref.setEnabled(not (is_prot and not is_ref) and not is_system)
+            
+            if AppContext.LANG == "RU":
+                ref_tip = "<b>Поиск по эталону</b><br>Назначает папку образцовой (эталоном). Все её файлы защищаются от удаления, позволяя вам безопасно очищать дубликаты в других папках при помощи фильтров авто-выбора."
+            else:
+                ref_tip = "<b>Search by Reference</b><br>Designates this folder as reference/sample. All files here are protected, allowing you to safely clean duplicate copies in other folders using auto-selection filters."
+            act_ref.setToolTip(ref_tip)
+            menu.addAction(act_ref)
 
         menu.addSeparator()
 

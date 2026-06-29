@@ -432,6 +432,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         action_bar.deselect_clicked.connect(self.deselect_all)
         action_bar.select_all_clicked.connect(self.select_all_items)
         action_bar.move_clicked.connect(self.move_selected)
+        action_bar.move_to_clicked.connect(self.prompt_move_selected)
         action_bar.delete_clicked.connect(self.delete_selected)
         action_bar.browse_clicked.connect(self.browse_dest)
         action_bar.drop_zone.path_changed.connect(self.validate_move_state)

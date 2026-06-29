@@ -135,6 +135,11 @@ class CleanerTreeMixin:
             act_rename.triggered.connect(lambda: self.rename_file_in_tree(index))
             menu.addAction(act_rename)
             
+            menu.addSeparator()
+            act_move_to = QAction("Переместить в..." if AppContext.LANG == "RU" else "Move to...", self)
+            act_move_to.triggered.connect(lambda: self.move_single_file_to_dir_from_context(path, item.get('group_id', -1)))
+            menu.addAction(act_move_to)
+            
         if getattr(self, 'current_view_mode', 0) == 0:
             menu.addSeparator()
             act_select_path = QAction(AppContext.tr("cln_ctx_select_same_path"), self)

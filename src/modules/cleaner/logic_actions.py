@@ -246,6 +246,52 @@ class ActionMixin:
 
         self.action_bar.set_move_button_enabled(has_path and has_selection)
 
+    def prompt_move_selected(self) -> None:
+        if self.current_view_mode == 2: return
+        title = "Переместить в..." if AppContext.LANG == "RU" else "Move to..."
+        start = self.action_bar.drop_zone.get_path() if self.action_bar.drop_zone.get_path() else ""
+        if not start:
+            start = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            
+        d = QFileDialog.getExistingDirectory(self, title, start)
+        if d:
+            self.action_bar.drop_zone.set_path(d)
+            self.move_selected()
+
+    def move_single_file_to_dir_from_context(self, path: str, group_index: int = -1) -> None:
+        if self.current_view_mode == 2: return
+        title = "Переместить в..." if AppContext.LANG == "RU" else "Move to..."
+        start = self.action_bar.drop_zone.get_path() if self.action_bar.drop_zone.get_path() else ""
+        if not start:
+            start = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            
+        d = QFileDialog.getExistingDirectory(self, title, start)
+        if d:
+            self.action_bar.drop_zone.set_path(d)
+            
+            items_to_process = [{'src': path, 'group_index': group_index}]
+            self.preview_widget.show_empty("Moving...")
+            QCoreApplication.processEvents()
+
+            self.overlay.start_process(1)
+            rename_idx = self.action_bar.combo_collision.currentIndex()
+            preserve_struct = self.action_bar.chk_preserve.isChecked()
+            self.move_timer.start()
+
+            self.mover = SessionMoveWorker(items_to_process, d, rename_idx, preserve_struct)
+            self.mover.progress_total.connect(self.overlay.update_total)
+            self.mover.file_started.connect(self.overlay.start_file)
+            self.mover.file_progress.connect(self.overlay.update_file_progress)
+            self.mover.finished.connect(self.on_move_finished)
+            
+            try:
+                self.overlay.cancel_requested.disconnect()
+            except Exception:
+                pass
+            self.overlay.cancel_requested.connect(self.on_overlay_cancel)
+            
+            self.mover.start()
+
     def move_selected(self) -> None:
         if self.current_view_mode == 2:
             self.delete_empty_folders()

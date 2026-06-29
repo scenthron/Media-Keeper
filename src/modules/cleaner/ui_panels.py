@@ -522,6 +522,7 @@ class CleanerActionBar(QFrame):
     deselect_clicked = pyqtSignal()
     select_all_clicked = pyqtSignal()
     move_clicked = pyqtSignal()
+    move_to_clicked = pyqtSignal()
     browse_clicked = pyqtSignal()
     delete_clicked = pyqtSignal()
     
@@ -619,6 +620,17 @@ class CleanerActionBar(QFrame):
         self.btn_move.clicked.connect(self.move_clicked.emit)
         layout.addWidget(self.btn_move)
         
+        self.btn_move_to = QPushButton("Переместить в..." if AppContext.LANG == "RU" else "Move to...")
+        self.btn_move_to.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_move_to.setEnabled(False)
+        self.btn_move_to.setStyleSheet("""
+            QPushButton { background: #333; color: #ddd; border: 1px solid #555; padding: 5px 10px; border-radius: 4px; }
+            QPushButton:hover { background-color: #444; border-color: #666; }
+            QPushButton:disabled { color: #555; background: #2a2a2a; border-color: #333; }
+        """)
+        self.btn_move_to.clicked.connect(self.move_to_clicked.emit)
+        layout.addWidget(self.btn_move_to)
+        
         self.drop_zone = CompactDropZone()
         self.drop_zone.setFixedWidth(280) 
         self.drop_zone.clicked.connect(self.browse_clicked.emit) 
@@ -653,6 +665,7 @@ class CleanerActionBar(QFrame):
 
     def set_move_button_enabled(self, enabled, text=None):
         self.btn_move.setEnabled(enabled)
+        self.btn_move_to.setEnabled(enabled)
         if text: self.btn_move.setText(text)
         else: self.btn_move.setText(AppContext.tr("cln_btn_move_icon") + " ")
         

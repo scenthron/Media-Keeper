@@ -615,6 +615,9 @@ class CleanerActionBar(QFrame):
         layout.addWidget(self.btn_delete)
 
         self.btn_move_to = QPushButton("Переместить в..." if AppContext.LANG == "RU" else "Move to...")
+        self.btn_move_to.setIcon(load_svg_icon(os.path.join(icons_dir, "folder-color.svg"), QSize(16, 16)))
+        self.btn_move_to.setIconSize(QSize(16, 16))
+        self.btn_move_to.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.btn_move_to.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_move_to.setEnabled(False)
         self.btn_move_to.setStyleSheet("""

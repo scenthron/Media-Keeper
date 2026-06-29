@@ -1445,10 +1445,21 @@ class SimilarSettingsPanel(QWidget):
         self._on_spin_changed(self.spin_similarity.value())
 
     def _on_media_type_changed(self, idx):
+        if idx == 1: # Аудио
+            self.combo_resolution.setEnabled(False)
+            self.spin_similarity.setEnabled(False)
+            self.slider_similarity.setEnabled(False)
+            self.combo_range.setEnabled(False)
+        else:
+            self.combo_resolution.setEnabled(True)
+            self.spin_similarity.setEnabled(True)
+            self.slider_similarity.setEnabled(True)
+            self.combo_range.setEnabled(True)
+            
         if idx == 2: # Видео
             self.combo_range.setCurrentIndex(3) # Диапазон 30%
             self.spin_similarity.setValue(70.0)
-        else: # Аудио или Изображения
+        elif idx == 0: # Изображения
             self.combo_range.setCurrentIndex(0) # Диапазон 5%
             self.spin_similarity.setValue(97.5)
         self.settings_changed_for_rescan.emit()

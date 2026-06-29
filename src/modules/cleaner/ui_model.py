@@ -288,14 +288,18 @@ class DuplicateDelegate(QStyledItemDelegate):
                 display_name = f"Копии: {first_file}" if is_ru else f"Copies: {first_file}"
             
             # Formatted text e.g. (5 / 6.5mb)
-            if item.get('size', 0) == 0:
-                display_text = f"{display_name}  ({item['file_count']})"
-            else:
-                size_fmt = format_size(item['size'] * item['file_count'])
-                display_text = f"{display_name}  ({item['file_count']} / {size_fmt})"
-            
-            # Hardcoded width 600 instead of rect.width() - 150 to prevent negative width clipping
-            painter.drawText(rect.left() + 28, rect.top(), 600, rect.height(), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, display_text)
+            try:
+                g_size = item.get('size')
+                if not g_size:
+                    display_text = f"{display_name}  ({item.get('file_count', 0)})"
+                else:
+                    size_fmt = format_size(g_size * item.get('file_count', 0))
+                    display_text = f"{display_name}  ({item.get('file_count', 0)} / {size_fmt})"
+                
+                text_rect = QRect(rect.left() + 28, rect.top(), 600, rect.height())
+                painter.drawText(text_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, str(display_text))
+            except Exception as e:
+                logging.error(f"Draw Group Text Error: {e}")
 
             # Draw participating color indicators
             indicators_x = rect.right() - 120

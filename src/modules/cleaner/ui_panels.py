@@ -1033,7 +1033,7 @@ class SimilarSettingsPanel(QWidget):
         
         self.slider_similarity = QSlider(Qt.Orientation.Horizontal)
         self.slider_similarity.setRange(0, 500) # 0 to 500 mapped dynamically
-        self.slider_similarity.setValue(250) # default 95% + 2.5% = 97.5%
+        self.slider_similarity.setValue(416) # 95% mapped from 70-100 range
         self.slider_similarity.setCursor(Qt.CursorShape.PointingHandCursor)
         self.slider_similarity.setStyleSheet("""
             QSlider::groove:horizontal { border: 1px solid #444; height: 6px; background: #222; border-radius: 3px; }
@@ -1094,7 +1094,7 @@ class SimilarSettingsPanel(QWidget):
         self.spin_similarity.setRange(70.00, 100.00)
         self.spin_similarity.setDecimals(2)
         self.spin_similarity.setSingleStep(0.01)
-        self.spin_similarity.setValue(97.50)
+        self.spin_similarity.setValue(95.00)
         self.spin_similarity.setSuffix("%")
         self.spin_similarity.setFixedWidth(64)
         self.spin_similarity.setFixedHeight(24)
@@ -1475,7 +1475,7 @@ class SimilarSettingsPanel(QWidget):
             self.spin_similarity.setValue(70.0)
         elif idx == 0: # Изображения
             self.combo_range.setCurrentIndex(0) # Диапазон 5%
-            self.spin_similarity.setValue(97.5)
+            self.spin_similarity.setValue(95.0)
         self.settings_changed_for_rescan.emit()
 
     def dropEvent(self, event):

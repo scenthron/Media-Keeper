@@ -4,10 +4,20 @@ import sys
 import shutil
 
 def build():
-    print("Starting Media Keeper build from src folder...")
-
     # Определяем директорию скрипта (папка src)
     script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Удаляем старый EXE-файл перед сборкой, чтобы гарантировать актуальность результата
+    app_name = "Media_Keeper"
+    root_dist = os.path.join(os.path.dirname(script_dir), "dist")
+    dest_exe = os.path.join(root_dist, f"{app_name}.exe")
+    if os.path.exists(dest_exe):
+        try:
+            os.remove(dest_exe)
+            print(f"[INFO] Removed old executable at {dest_exe}")
+        except Exception as e:
+            print(f"[WARN] Failed to remove old executable: {e}")
+            
     # Переходим в директорию src, чтобы все пути определялись относительно неё
     os.chdir(script_dir)
     print(f"Working directory changed to: {os.getcwd()}")

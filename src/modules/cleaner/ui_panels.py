@@ -444,6 +444,14 @@ class CleanerSettingsPanel(QWidget):
     def setup_scan_buttons(self, on_abort_click, on_stop_click) -> None:
         self.btn_scan.hide()
         
+        # Блокируем настройки на время сканирования
+        self.chk_safe_scan.setEnabled(False)
+        self.btn_filter.setEnabled(False)
+        self.chk_cache.setEnabled(False)
+        self.btn_clear_cache.setEnabled(False)
+        self.size_widget.setEnabled(False)
+        self.drop_zone.setEnabled(False)
+        
         if not hasattr(self, 'scan_buttons_widget'):
             self.scan_buttons_widget = QWidget()
             layout = QHBoxLayout(self.scan_buttons_widget)
@@ -489,6 +497,14 @@ class CleanerSettingsPanel(QWidget):
         if hasattr(self, 'scan_buttons_widget'):
             self.scan_buttons_widget.hide()
         self.btn_scan.show()
+        
+        # Разблокируем настройки
+        self.chk_safe_scan.setEnabled(True)
+        self.btn_filter.setEnabled(True)
+        self.chk_cache.setEnabled(True)
+        self.btn_clear_cache.setEnabled(True)
+        self.size_widget.setEnabled(True)
+        self.drop_zone.setEnabled(True)
 
 class CollisionComboBox(QComboBox):
     def showPopup(self):
@@ -1369,9 +1385,50 @@ class SimilarSettingsPanel(QWidget):
         super().resizeEvent(event)
         self.refresh_list_alignment()
 
+    def update_media_types_availability(self):
+        """Динамически включает или отключает форматы в выпадающем списке в зависимости от наличия исполняемых файлов."""
+        from logic_paths import get_fpcalc_exe, get_ffmpeg_exe
+        has_audio = os.path.exists(get_fpcalc_exe())
+        has_video = os.path.exists(get_ffmpeg_exe())
+        model = self.combo_media_type.model()
+        is_ru = (AppContext.LANG == "RU")
+        
+        # Аудио (индекс 1)
+        item_audio = model.item(1)
+        if item_audio:
+            if has_audio:
+                item_audio.setFlags(item_audio.flags() | Qt.ItemFlag.ItemIsEnabled)
+                item_audio.setToolTip("")
+            else:
+                item_audio.setFlags(item_audio.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                item_audio.setToolTip("Требуется fpcalc.exe в папке src/bin/" if is_ru else "fpcalc.exe is required in src/bin/")
+                
+        # Видео (индекс 2)
+        item_video = model.item(2)
+        if item_video:
+            if has_video:
+                item_video.setFlags(item_video.flags() | Qt.ItemFlag.ItemIsEnabled)
+                item_video.setToolTip("")
+            else:
+                item_video.setFlags(item_video.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                item_video.setToolTip("Требуется скачать ffmpeg и поместить в папку .mediakeeper/bin" if is_ru else "ffmpeg is required. Please download and place in .mediakeeper/bin")
+
     def setup_scan_buttons(self, on_abort_click, on_stop_click) -> None:
-        """Заменяет кнопку Сканировать на кнопки Стоп/Сброс на время сканирования."""
+        """Заменяет кнопку Сканировать на кнопки Стоп/Сброс на время сканирования и блокирует настройки."""
         self.btn_scan.hide()
+        
+        # Блокируем все настройки
+        self.combo_media_type.setEnabled(False)
+        self.combo_resolution.setEnabled(False)
+        self.combo_range.setEnabled(False)
+        self.slider_similarity.setEnabled(False)
+        self.spin_similarity.setEnabled(False)
+        self.chk_cache.setEnabled(False)
+        self.btn_clear_cache.setEnabled(False)
+        self.btn_filter.setEnabled(False)
+        self.size_widget.setEnabled(False)
+        self.drop_zone.setEnabled(False)
+        
         if not hasattr(self, 'scan_buttons_widget'):
             self.scan_buttons_widget = QWidget()
             layout = QHBoxLayout(self.scan_buttons_widget)
@@ -1406,10 +1463,34 @@ class SimilarSettingsPanel(QWidget):
         self.scan_buttons_widget.show()
 
     def restore_scan_buttons(self) -> None:
-        """Возвращает исходную кнопку Сканировать."""
+        """Возвращает исходную кнопку Сканировать и разблокирует настройки."""
         if hasattr(self, 'scan_buttons_widget'):
             self.scan_buttons_widget.hide()
         self.btn_scan.show()
+        
+        # Разблокируем настройки
+        self.combo_media_type.setEnabled(True)
+        self.chk_cache.setEnabled(True)
+        self.btn_clear_cache.setEnabled(True)
+        self.btn_filter.setEnabled(True)
+        self.size_widget.setEnabled(True)
+        self.drop_zone.setEnabled(True)
+        
+        # Разблокируем остальные элементы с учетом выбранного типа медиа
+        idx = self.combo_media_type.currentIndex()
+        if idx == 1: # Аудио
+            self.combo_resolution.setEnabled(False)
+            self.spin_similarity.setEnabled(False)
+            self.slider_similarity.setEnabled(False)
+            self.combo_range.setEnabled(False)
+        else:
+            self.combo_resolution.setEnabled(True)
+            self.spin_similarity.setEnabled(True)
+            self.slider_similarity.setEnabled(True)
+            self.combo_range.setEnabled(True)
+            
+        # Обновим доступность медиа-форматов на случай, если за время работы сканера что-то изменилось
+        self.update_media_types_availability()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls(): event.acceptProposedAction()

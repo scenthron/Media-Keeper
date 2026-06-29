@@ -339,10 +339,15 @@ class MediaKeeperShell(QMainWindow):
         if hasattr(self.cleaner_tab, "update_ui_text"): self.cleaner_tab.update_ui_text()
 
     def on_ffmpeg_downloaded(self) -> None:
-        """Вызывается при успешном скачивании FFmpeg для обновления превью видеофайлов в Сортировщике."""
+        """Вызывается при успешном скачивании FFmpeg для обновления превью видеофайлов в Сортировщике и активации видео-режима в Cleaner."""
         logging.info("FFmpeg скачан. Обновляем превью для видеофайлов в Сортировщике.")
         if hasattr(self.sorter_tab, 'refresh_video_thumbnails'):
             self.sorter_tab.refresh_video_thumbnails()
+            
+        if hasattr(self, 'cleaner_tab'):
+            cleaner = self.cleaner_tab
+            if hasattr(cleaner, 'settings_panel_similar') and hasattr(cleaner.settings_panel_similar, 'update_media_types_availability'):
+                cleaner.settings_panel_similar.update_media_types_availability()
 
     def closeEvent(self, event):
         logging.info("Завершение работы приложения.")

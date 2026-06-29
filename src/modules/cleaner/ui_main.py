@@ -375,10 +375,24 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.update_toggle_settings_button()
         self.update_cache_info()
         self.on_safe_scan_toggled()
+        
+        # Обновляем доступность медиа-форматов при открытии вкладки похожих
+        if index == 1 and hasattr(self, 'settings_panel_similar'):
+            self.settings_panel_similar.update_media_types_availability()
 
     def on_media_type_changed(self, index: int) -> None:
         self.filter_config = None
         self.on_safe_scan_toggled()
+        
+        # Очищаем модель и сессионную БД при смене медиа-типа
+        self.virtual_model.set_items([], {})
+        self.session_db.clear_db()
+        self.preview_widget.show_empty("...")
+        self.update_view_stats()
+        
+        # Сбрасываем текст кнопки сканирования на "Сканировать" вместо "Пересчитать"
+        if hasattr(self, 'reset_scan_button'):
+            self.reset_scan_button()
 
     def create_page(self, is_similar: bool):
         page_widget = QWidget()

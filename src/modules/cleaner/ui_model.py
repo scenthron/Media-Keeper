@@ -430,20 +430,20 @@ class DuplicateDelegate(QStyledItemDelegate):
                 painter.drawText(rect.left() + 363, rect.top(), 60, rect.height(),
                                  Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, size_str)
 
-                # Метаданные (например, разрешение 1920x1080)
+                # Метаданные (например, разрешение 1920x1080 | 5000 kbps)
                 meta_str = item.get('metadata', '')
                 if meta_str:
                     meta_font = QFont("Segoe UI", 8)
                     painter.setFont(meta_font)
                     painter.setPen(QPen(QColor("#8b5cf6"))) # Светло-фиолетовый акцент для метаданных
-                    painter.drawText(rect.left() + 425, rect.top(), 80, rect.height(),
+                    painter.drawText(rect.left() + 425, rect.top(), 130, rect.height(),
                                      Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, meta_str)
 
                 # Путь к папке (еще правее в similar-режиме)
                 path_font = QFont("Consolas", 8)
                 painter.setFont(path_font)
                 painter.setPen(QPen(QColor("#888888")))
-                painter.drawText(rect.left() + 505, rect.top(), rect.width() - 515, rect.height(),
+                painter.drawText(rect.left() + 555, rect.top(), rect.width() - 565, rect.height(),
                                  Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, folder)
             else:
                 # Draw folder path (обычный режим дублей)

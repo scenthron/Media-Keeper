@@ -166,7 +166,7 @@ class AudioSettingsWidget(QWidget):
         self.combo_rename_type.setStyleSheet(APP_DESIGN['nativelike_combo'])
         row_nam.addWidget(self.combo_rename_type)
         
-        self.inp_name_tmpl = QLineEdit("_audio")
+        self.inp_name_tmpl = QLineEdit("_compress")
         self.inp_name_tmpl.setStyleSheet(APP_DESIGN['nativelike_input'])
         row_nam.addWidget(self.inp_name_tmpl, 1)
         adv_layout.addLayout(row_nam)

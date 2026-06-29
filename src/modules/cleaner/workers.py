@@ -565,9 +565,23 @@ class SimilarScanWorker(QThread):
                         sig, meta = res
                 elif self.media_type == 1: # Аудио
                     from .ahash_audio import extract_audio_fingerprint
-                    from logic_paths import get_fpcalc_exe
+                    from logic_paths import get_fpcalc_exe, get_ffprobe_exe
                     fp_exe = get_fpcalc_exe()
                     fp = extract_audio_fingerprint(file_data['real_path'], fp_exe)
+                    
+                    ffprobe_exe = get_ffprobe_exe()
+                    if os.path.exists(ffprobe_exe):
+                        import subprocess
+                        cmd = [ffprobe_exe, "-v", "error", "-show_entries", "format=bit_rate", "-of", "default=noprint_wrappers=1:nokey=1", file_data['real_path']]
+                        try:
+                            cr_flags = 0x08000000 if os.name == 'nt' else 0
+                            res = subprocess.run(cmd, capture_output=True, text=True, creationflags=cr_flags, timeout=5)
+                            if res.returncode == 0 and res.stdout.strip() and res.stdout.strip() != "N/A":
+                                bitrate_bps = int(res.stdout.strip())
+                                meta = f"{bitrate_bps // 1000} kbps"
+                        except Exception:
+                            pass
+                    
                     if fp:
                         import json
                         sig = json.dumps(fp)

@@ -171,6 +171,17 @@ class CleanerTreeMixin:
             act_keep_this.triggered.connect(lambda: self.keep_only_this_file(index))
             menu.addAction(act_keep_this)
 
+            if getattr(self, 'current_tab', 0) == 1:
+                group_item = {'id': item['group_id']}
+                menu.addSeparator()
+                act_sel_all = QAction("Выделить всё в этой группе" if AppContext.LANG == "RU" else "Select all in this group", self)
+                act_sel_all.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'all'))
+                menu.addAction(act_sel_all)
+                
+                act_desel_all = QAction("Снять выделение в этой группе" if AppContext.LANG == "RU" else "Deselect all in this group", self)
+                act_desel_all.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'none'))
+                menu.addAction(act_desel_all)
+
         menu.addSeparator()
         act_delete = QAction(AppContext.tr("cln_ctx_delete_files"), self)
         

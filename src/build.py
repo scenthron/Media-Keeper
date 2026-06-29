@@ -43,6 +43,7 @@ def build():
         "--noconfirm",
         "--onefile",
         "--windowed",
+        "--paths", ".",
         "--name", app_name
     ]
 

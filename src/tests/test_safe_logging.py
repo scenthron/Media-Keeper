@@ -57,3 +57,19 @@ def test_safe_formatter_anonymize_string():
     anon11 = SafeFormatter.anonymize_string(msg11)
     assert "Запуск FFmpeg: C:\\iii\\iiiiii.exe -i D:/Ппппппппп I IIII (Пппп п ппп III)/000 Пппппп п п0 -c:v libx264" in anon11
 
+    # 12. Исключение импорта модуля проекта не должно маскироваться
+    msg12 = "ModuleNotFoundError: No module named 'modules.cleaner.vhash'"
+    anon12 = SafeFormatter.anonymize_string(msg12)
+    assert "modules.cleaner.vhash" in anon12
+
+    # 13. Относительный путь к файлу проекта в стек-трейсе не должен маскироваться
+    msg13 = '  File "modules\\cleaner\\workers.py", line 613, in run'
+    anon13 = SafeFormatter.anonymize_string(msg13)
+    assert 'modules\\cleaner\\workers.py' in anon13
+
+    # 14. Динамический импорт в логах не должен маскироваться
+    msg14 = "from .vhash import compare_video_fingerprints"
+    anon14 = SafeFormatter.anonymize_string(msg14)
+    assert "vhash" in anon14
+    assert "compare_video_fingerprints" in anon14
+

@@ -7,7 +7,10 @@ import queue
 import re
 from logging.handlers import RotatingFileHandler, QueueHandler, QueueListener
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if getattr(sys, 'frozen', False):
+    PROJECT_ROOT = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+else:
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class SafeFormatter(logging.Formatter):
     """

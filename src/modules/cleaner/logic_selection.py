@@ -158,7 +158,8 @@ class CleanerSelectionMixin:
             if item.get('is_protected'):
                 protected_file_ids.add(fid)
 
-        self.in_memory_selection = InMemorySelection(group_files, protected_file_ids)
+        enforce_rule = getattr(self, 'current_tab', 0) == 0
+        self.in_memory_selection = InMemorySelection(group_files, protected_file_ids, enforce_survivor_rule=enforce_rule)
         logging.info(
             f"[InMemory] Создан InMemorySelection: {len(group_files)} групп, "
             f"{sum(len(v) for v in group_files.values())} файлов, "

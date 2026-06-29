@@ -19,7 +19,8 @@ class InMemorySelection:
         protected_files: Set of ``file_id`` that are marked as protected.
     """
 
-    def __init__(self, group_files: Dict[int, List[dict]], protected_files: Set[int]):
+    def __init__(self, group_files: Dict[int, List[dict]], protected_files: Set[int], enforce_survivor_rule: bool = True):
+        self.enforce_survivor_rule = enforce_survivor_rule
         # Store full item dicts so filters have access to all metadata
         self._group_files: Dict[int, List[dict]] = {
             gid: list(files) for gid, files in group_files.items()
@@ -59,6 +60,14 @@ class InMemorySelection:
         files = self._group_files.get(group_id, [])
         if not files:
             return False
+            
+        if not self.enforce_survivor_rule:
+            # When rule is disabled, we can mark everything except protected files
+            non_protected_unmarked = [f for f in files
+                                      if f['id'] not in self._protected_files
+                                      and f['id'] not in self._marked]
+            return len(non_protected_unmarked) > 0
+            
         protected_ids = {f['id'] for f in files if f['id'] in self._protected_files}
         if protected_ids:
             # With protected files: group is blocked only when ALL non-protected are marked
@@ -87,6 +96,9 @@ class InMemorySelection:
         # Already marked – technically can un-mark, but this method is for marking only
         if file_id in self._marked:
             return True  # Already marked, idempotent
+            
+        if not self.enforce_survivor_rule:
+            return True
 
         protected_ids = {f['id'] for f in files if f['id'] in self._protected_files}
         if protected_ids:

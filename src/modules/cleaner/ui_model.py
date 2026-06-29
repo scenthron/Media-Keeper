@@ -275,26 +275,24 @@ class DuplicateDelegate(QStyledItemDelegate):
             painter.setFont(name_font)
             painter.setPen(QPen(QColor("#eeeeee")))
             
-            # Safe Group Display Name resolution to prevent KeyError: 'hash' on zero_files and empty_folders
             display_name = item.get('display_name')
-            if not display_name:
-                h = item.get('hash')
-                if h:
-                    display_name = os.path.basename(h)
-                else:
-                    display_name = item.get('extension') or "No Extension"
+            group_files = index.model()._group_files_cache.get(item['id'], [])
+            first_file = "Unknown"
+            if group_files:
+                first_file = os.path.basename(group_files[0].get('path', 'Unknown'))
             
-            # Zero-size groups don't need wasted size metrics
+            is_ru = (AppContext.LANG == "RU")
+            if getattr(index.model(), 'is_similar_mode', False):
+                display_name = f"Похожие на: {first_file}" if is_ru else f"Similar to: {first_file}"
+            elif not display_name:
+                display_name = f"Копии: {first_file}" if is_ru else f"Copies: {first_file}"
+            
+            # Formatted text e.g. (5 / 6.5mb)
             if item.get('size', 0) == 0:
-                files_word = "файлов" if AppContext.LANG == "RU" else "files"
-                display_text = f"{display_name}  ({item['file_count']} {files_word})"
+                display_text = f"{display_name}  ({item['file_count']})"
             else:
-                wasted_fmt = format_size(item['wasted_size'])
                 size_fmt = format_size(item['size'] * item['file_count'])
-                if AppContext.LANG == "RU":
-                    display_text = f"{display_name}  ({item['file_count']} файлов, размер: {size_fmt}, дубликаты: {wasted_fmt})"
-                else:
-                    display_text = f"{display_name}  ({item['file_count']} files, size: {size_fmt}, duplicates: {wasted_fmt})"
+                display_text = f"{display_name}  ({item['file_count']} / {size_fmt})"
             
             painter.drawText(rect.left() + 28, rect.top(), rect.width() - 150, rect.height(), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, display_text)
 
@@ -425,14 +423,23 @@ class DuplicateDelegate(QStyledItemDelegate):
                 size_font = QFont("Segoe UI", 9)
                 painter.setFont(size_font)
                 painter.setPen(QPen(QColor("#cccccc")))
-                painter.drawText(rect.left() + 363, rect.top(), 80, rect.height(),
+                painter.drawText(rect.left() + 363, rect.top(), 60, rect.height(),
                                  Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, size_str)
 
-                # Путь к папке (сдвинут вправо в similar-режиме)
+                # Метаданные (например, разрешение 1920x1080)
+                meta_str = item.get('metadata', '')
+                if meta_str:
+                    meta_font = QFont("Segoe UI", 8)
+                    painter.setFont(meta_font)
+                    painter.setPen(QPen(QColor("#8b5cf6"))) # Светло-фиолетовый акцент для метаданных
+                    painter.drawText(rect.left() + 425, rect.top(), 80, rect.height(),
+                                     Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, meta_str)
+
+                # Путь к папке (еще правее в similar-режиме)
                 path_font = QFont("Consolas", 8)
                 painter.setFont(path_font)
                 painter.setPen(QPen(QColor("#888888")))
-                painter.drawText(rect.left() + 448, rect.top(), rect.width() - 458, rect.height(),
+                painter.drawText(rect.left() + 505, rect.top(), rect.width() - 515, rect.height(),
                                  Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, folder)
             else:
                 # Draw folder path (обычный режим дублей)

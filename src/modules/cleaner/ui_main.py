@@ -396,6 +396,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
             settings_panel.start_scan_clicked.connect(self.toggle_scan)
             settings_panel.clear_cache_clicked.connect(self.clear_cache)
             settings_panel.combo_media_type.currentIndexChanged.connect(self.on_media_type_changed)
+            settings_panel.settings_changed_for_rescan.connect(self.on_settings_changed_for_rescan)
         else:
             settings_panel = CleanerSettingsPanel()
             settings_panel.add_folder_clicked.connect(self.add_folder)
@@ -590,7 +591,10 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         prev_l.addWidget(info_panel)
         
         res_splitter.addWidget(preview_container)
-        res_splitter.setSizes([850, 350])
+        if is_similar:
+            res_splitter.setSizes([600, 600])
+        else:
+            res_splitter.setSizes([850, 350])
         
         results_layout.addWidget(res_splitter)
         page_layout.addWidget(results_widget, 1)

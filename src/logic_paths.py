@@ -88,12 +88,27 @@ def get_ffmpeg_bin_dir():
     os.makedirs(bin_dir, exist_ok=True)
     return bin_dir
 
+def get_project_bin_dir():
+    """Returns path to the bundled bin directory inside the source code (src/bin)"""
+    if getattr(sys, 'frozen', False):
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_dir, "bin")
+
 def _find_binary_path(filename):
     """
     Search for binary in priority order:
-    1. Local Project Root/.mediakeeper/bin (Standard)
-    2. Global PATH search
+    1. Bundled in source code (src/bin/)
+    2. Local Project Root/.mediakeeper/bin (Downloaded by app)
+    3. Global PATH search
     """
+    # 1. Bundled inside source code
+    bundled_path = os.path.join(get_project_bin_dir(), filename)
+    if os.path.exists(bundled_path):
+        return bundled_path
+
+    # 2. Local AppData bin
     local_bin = get_ffmpeg_bin_dir()
     local_path = os.path.join(local_bin, filename)
     
@@ -114,3 +129,6 @@ def get_ffmpeg_exe():
 
 def get_ffprobe_exe():
     return _find_binary_path("ffprobe.exe")
+
+def get_fpcalc_exe():
+    return _find_binary_path("fpcalc.exe")

@@ -24,46 +24,46 @@ class ViewMixin:
         self.btn_exp.setVisible(tree_nav_visible)
         self.btn_col.setVisible(tree_nav_visible)
 
-        if mode == 0: # Duples
+        if mode == 0: # Duples / Similar groups
             self.action_bar.combo_autoselect.show()
-            self.action_bar.chk_preserve.show()
-            self.action_bar.combo_collision.show()
+            if hasattr(self.action_bar, 'chk_preserve'): self.action_bar.chk_preserve.show()
+            if hasattr(self.action_bar, 'combo_collision'): self.action_bar.combo_collision.show()
             self.action_bar.drop_zone.show()
             self.action_bar.btn_delete.show()
             self.action_bar.set_move_button_enabled(False, AppContext.tr("cln_btn_move_icon") + " ")
             self.btn_sort_v.show()
-            self.btn_types.show()
+            if hasattr(self, 'btn_types'): self.btn_types.show()
             self.lbl_show.setVisible(False)
             self.combo_limit.setVisible(False)
-            self.lbl_groups_found.show()
+            if hasattr(self, 'lbl_groups_found'): self.lbl_groups_found.show()
             self.action_bar.btn_select_all.hide()
             
         elif mode == 1: # Zero
             self.action_bar.combo_autoselect.hide()
-            self.action_bar.chk_preserve.hide() 
-            self.action_bar.combo_collision.hide()
+            if hasattr(self.action_bar, 'chk_preserve'): self.action_bar.chk_preserve.hide()
+            if hasattr(self.action_bar, 'combo_collision'): self.action_bar.combo_collision.hide()
             self.action_bar.drop_zone.show()
             self.action_bar.btn_delete.show()
             self.action_bar.set_move_button_enabled(False, AppContext.tr("cln_act_move"))
             self.btn_sort_v.hide()
-            self.btn_types.hide()
+            if hasattr(self, 'btn_types'): self.btn_types.hide()
             self.lbl_show.setVisible(False)
             self.combo_limit.setVisible(False)
-            self.lbl_groups_found.hide()
+            if hasattr(self, 'lbl_groups_found'): self.lbl_groups_found.hide()
             self.action_bar.btn_select_all.show()
             
         elif mode == 2: # Empty
             self.action_bar.combo_autoselect.hide()
-            self.action_bar.chk_preserve.hide()
-            self.action_bar.combo_collision.hide()
+            if hasattr(self.action_bar, 'chk_preserve'): self.action_bar.chk_preserve.hide()
+            if hasattr(self.action_bar, 'combo_collision'): self.action_bar.combo_collision.hide()
             self.action_bar.drop_zone.hide()
             self.action_bar.btn_delete.hide()
             self.action_bar.set_move_button_enabled(False, AppContext.tr("cln_act_delete_folders"))
             self.btn_sort_v.hide()
-            self.btn_types.hide()
+            if hasattr(self, 'btn_types'): self.btn_types.hide()
             self.lbl_show.setVisible(False)
             self.combo_limit.setVisible(False)
-            self.lbl_groups_found.hide()
+            if hasattr(self, 'lbl_groups_found'): self.lbl_groups_found.hide()
             self.action_bar.btn_select_all.show()
             
         self.refresh_tree_view()
@@ -195,21 +195,22 @@ class ViewMixin:
         displayed_groups = sum(1 for item in self.virtual_model._all_items if item['type'] == 'group')
         displayed_files = sum(1 for item in self.virtual_model._all_items if item['type'] == 'file')
         
-        if self.current_view_mode == 0:
-            display_str = f"{displayed_groups} ({displayed_files})"
-            self.lbl_groups_found.setText(AppContext.tr("cln_lbl_groups").format(display_str))
-        elif self.current_view_mode == 1:
-            display_str = f"{displayed_groups} ({displayed_files})"
-            self.lbl_groups_found.setText(AppContext.tr("cln_lbl_groups").format(display_str))
-        else:
-            displayed_folders = len(self.virtual_model._all_items)
-            self.lbl_groups_found.setText(f"Папок: {displayed_folders}")
+        if hasattr(self, 'lbl_groups_found'):
+            if self.current_view_mode == 0:
+                display_str = f"{displayed_groups} ({displayed_files})"
+                self.lbl_groups_found.setText(AppContext.tr("cln_lbl_groups").format(display_str))
+            elif self.current_view_mode == 1:
+                display_str = f"{displayed_groups} ({displayed_files})"
+                self.lbl_groups_found.setText(AppContext.tr("cln_lbl_groups").format(display_str))
+            else:
+                displayed_folders = len(self.virtual_model._all_items)
+                self.lbl_groups_found.setText(f"Папок: {displayed_folders}")
         
         # Update Left Sidebar Stats
         stats = self.session_db.get_active_stats()
         
         # Enable/disable Type Filter button based on availability of data
-        if self.current_view_mode == 0:
+        if self.current_view_mode == 0 and hasattr(self, 'btn_types'):
             self.btn_types.setEnabled(stats['groups_count'] > 0)
         
         g_count = stats['groups_count']
@@ -223,3 +224,4 @@ class ViewMixin:
         
         self.settings_panel.val_wasted.setText(format_size(stats['wasted']))
         self.update_selection_info()
+

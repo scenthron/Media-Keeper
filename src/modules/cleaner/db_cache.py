@@ -77,7 +77,9 @@ class CleanerDB:
 
 class SimilarDB:
     DB_NAME = "similar_cache.db"
-    def __init__(self, root_dir=None):
+    def __init__(self, root_dir=None, hash_size=16):
+        self.hash_size = hash_size
+        self.table_name = f"file_signatures_{self.hash_size}"
         if root_dir is None:
             from logic_paths import get_app_data_dir
             self.db_dir = get_app_data_dir()
@@ -93,8 +95,8 @@ class SimilarDB:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS file_signatures (
+            cursor.execute(f'''
+                CREATE TABLE IF NOT EXISTS {self.table_name} (
                     path TEXT PRIMARY KEY,
                     size INTEGER,
                     mtime REAL,
@@ -109,7 +111,7 @@ class SimilarDB:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            cursor.execute('SELECT size, mtime, signature FROM file_signatures WHERE path = ?', (path,))
+            cursor.execute(f'SELECT size, mtime, signature FROM {self.table_name} WHERE path = ?', (path,))
             row = cursor.fetchone()
             conn.close()
             if row:
@@ -125,8 +127,8 @@ class SimilarDB:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            cursor.execute('''
-                INSERT OR REPLACE INTO file_signatures (path, size, mtime, signature)
+            cursor.execute(f'''
+                INSERT OR REPLACE INTO {self.table_name} (path, size, mtime, signature)
                 VALUES (?, ?, ?, ?)
             ''', (path, size, mtime, signature))
             conn.commit()
@@ -139,7 +141,7 @@ class SimilarDB:
             pattern = f"{folder_path}%"
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            cursor.execute("SELECT 1 FROM file_signatures WHERE path LIKE ? LIMIT 1", (pattern,))
+            cursor.execute(f"SELECT 1 FROM {self.table_name} WHERE path LIKE ? LIMIT 1", (pattern,))
             row = cursor.fetchone()
             conn.close()
             return row is not None

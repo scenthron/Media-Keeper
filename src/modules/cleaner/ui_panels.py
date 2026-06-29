@@ -408,7 +408,7 @@ class CleanerSettingsPanel(QWidget):
 
     def update_cache_info(self, size_str):
         self.lbl_cache_size.setText(size_str)
-        self.btn_clear_cache.setVisible(size_str != "0 B")
+        self.btn_clear_cache.setEnabled(size_str != "0 B")
 
     def dropEvent(self, event):
         if event.mimeData().hasUrls():
@@ -787,6 +787,13 @@ class CleanerActionBar(QFrame):
         self.update_autoselect_items()
         self.update_collision_items()
 
+from PyQt6.QtWidgets import QToolTip
+
+class ToolTipLabel(QLabel):
+    def enterEvent(self, event):
+        QToolTip.showText(event.globalPosition().toPoint(), self.toolTip(), self)
+        super().enterEvent(event)
+
 class SimilarSettingsPanel(QWidget):
     add_folder_clicked = pyqtSignal()
     folder_dropped = pyqtSignal(str)
@@ -794,7 +801,8 @@ class SimilarSettingsPanel(QWidget):
     open_filter_clicked = pyqtSignal()
     start_scan_clicked = pyqtSignal()
     clear_cache_clicked = pyqtSignal()
-    
+    settings_changed_for_rescan = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptDrops(True)
@@ -924,7 +932,26 @@ class SimilarSettingsPanel(QWidget):
         media_layout.addWidget(self.lbl_media_type)
         
         self.combo_media_type = QComboBox()
-        self.combo_media_type.addItems(["Изображения", "Аудио (заглушка)", "Видео (заглушка)"] if is_ru else ["Images", "Audio (stub)", "Video (stub)"])
+        self.combo_media_type.addItems(["Изображения", "Аудио", "Видео"] if is_ru else ["Images", "Audio", "Video"])
+        
+        from logic_paths import get_fpcalc_exe, get_ffmpeg_exe
+        
+        has_audio = os.path.exists(get_fpcalc_exe())
+        has_video = os.path.exists(get_ffmpeg_exe())
+        model = self.combo_media_type.model()
+        
+        if not has_audio:
+            item = model.item(1)
+            if item:
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                item.setToolTip("Требуется fpcalc.exe в папке src/bin/" if is_ru else "fpcalc.exe is required in src/bin/")
+                
+        if not has_video:
+            item = model.item(2)
+            if item:
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+                item.setToolTip("Требуется ffmpeg.exe в системе" if is_ru else "ffmpeg.exe is required")
+                
         self.combo_media_type.setFixedHeight(24)
         self.combo_media_type.setFixedWidth(135)
         self.combo_media_type.setStyleSheet("""
@@ -933,57 +960,148 @@ class SimilarSettingsPanel(QWidget):
         """)
         media_layout.addWidget(self.combo_media_type)
         
+        self.lbl_resolution = QLabel("Точность:" if is_ru else "Depth:")
+        self.lbl_resolution.setStyleSheet("color: white; font-weight: bold; font-size: 13px; margin-left: 10px;")
+        media_layout.addWidget(self.lbl_resolution)
+        
+        self.combo_resolution = QComboBox()
+        self.combo_resolution.addItems(["3x3", "8x8", "16x16", "32x32", "64x64"])
+        self.combo_resolution.setCurrentIndex(1) # 8x8 by default (теперь это индекс 1)
+        self.combo_resolution.setFixedHeight(24)
+        self.combo_resolution.setFixedWidth(70)
+        self.combo_resolution.setStyleSheet(self.combo_media_type.styleSheet())
+        media_layout.addWidget(self.combo_resolution)
+        
         # Info icon
-        self.lbl_info_icon = QLabel("!")
-        self.lbl_info_icon.setFixedSize(16, 16)
+        self.lbl_info_icon = ToolTipLabel("?")
+        self.lbl_info_icon.setFixedSize(18, 18)
         self.lbl_info_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_info_icon.setStyleSheet("""
-            QLabel {
-                background-color: #3b82f6; 
-                color: white; 
-                border-radius: 8px; 
-                font-weight: bold; 
-                font-size: 11px; 
-                font-family: 'Segoe UI', Arial;
-            }
+            QLabel { background-color: #3b82f6; color: white; border-radius: 4px; font-weight: bold; font-size: 13px; font-family: 'Segoe UI', Arial; margin-left: 5px; }
+            QLabel:hover { background-color: #2563eb; }
         """)
         self.lbl_info_icon.setToolTip(
-            "<b>Изображения:</b> Сравнение по визуальному контенту (aHash) с автоповоротом (90/180/270°). Позволяет находить одинаковые фото в разном разрешении и качестве.<br><br>"
-            "<b>Аудио:</b> Поиск дубликатов музыки по акустическому отпечатку звука (Chromaprint). Находит одинаковые песни в разных форматах и битрейтах.<br><br>"
-            "<b>Видео:</b> Сравнение по 10 ключевым кадрам, распределенным по всей длительности ролика."
+            "<b>Точность (Глубина):</b><br>"
+            "3x3 — Сверхбыстро (только общие очертания).<br>"
+            "8x8 — Очень быстро, грубый поиск (64 бит).<br>"
+            "16x16 — Баланс, стандарт (256 бит).<br>"
+            "32x32 — Высокая детализация (1024 бит).<br>"
+            "64x64 — Экстремальная точность (4096 бит).<br><br>"
+            "<i>Примечание: Данная настройка влияет на Изображения и Видео (анализ кадров). Для Аудио применяется универсальный акустический слепок.</i>"
         )
         media_layout.addWidget(self.lbl_info_icon)
         media_layout.addStretch()
         algo_layout.addLayout(media_layout)
         
-        # Similarity Slider Line
-        sim_layout = QHBoxLayout()
-        sim_layout.setContentsMargins(0, 0, 0, 0)
-        sim_layout.setSpacing(6)
+        # Range and Details Line
+        range_layout = QHBoxLayout()
+        range_layout.setContentsMargins(0, 0, 0, 0)
+        range_layout.setSpacing(6)
         
-        self.lbl_similarity_title = QLabel("Схожесть:" if is_ru else "Similarity:")
-        self.lbl_similarity_title.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
-        sim_layout.addWidget(self.lbl_similarity_title)
+        self.lbl_range = QLabel("Диапазон:" if is_ru else "Range:")
+        self.lbl_range.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
+        range_layout.addWidget(self.lbl_range)
+        
+        self.combo_range = QComboBox()
+        self.combo_range.addItems(["5%", "10%", "20%", "30%", "100%"])
+        self.combo_range.setCurrentIndex(0) # 5%
+        self.combo_range.setFixedHeight(24)
+        self.combo_range.setFixedWidth(70)
+        self.combo_range.setStyleSheet(self.combo_media_type.styleSheet())
+        range_layout.addWidget(self.combo_range)
+        range_layout.addStretch()
+        algo_layout.addLayout(range_layout)
+        
+        # Wide Slider Line
+        slider_layout = QHBoxLayout()
+        slider_layout.setContentsMargins(0, 0, 0, 0)
+        slider_layout.setSpacing(6)
         
         self.slider_similarity = QSlider(Qt.Orientation.Horizontal)
-        self.slider_similarity.setRange(70, 100)
-        self.slider_similarity.setValue(98)
-        self.slider_similarity.setFixedWidth(100)
+        self.slider_similarity.setRange(0, 500) # 0 to 500 mapped dynamically
+        self.slider_similarity.setValue(250) # default 95% + 2.5% = 97.5%
         self.slider_similarity.setCursor(Qt.CursorShape.PointingHandCursor)
         self.slider_similarity.setStyleSheet("""
-            QSlider::groove:horizontal { border: 1px solid #444; height: 4px; background: #222; border-radius: 2px; }
-            QSlider::sub-page:horizontal { background: #3b82f6; border-radius: 2px; }
-            QSlider::handle:horizontal { background: #bbb; width: 12px; height: 12px; margin: -4px 0; border-radius: 6px; }
+            QSlider::groove:horizontal { border: 1px solid #444; height: 6px; background: #222; border-radius: 3px; }
+            QSlider::sub-page:horizontal { background: #3b82f6; border-radius: 3px; }
+            QSlider::handle:horizontal { background: #bbb; width: 14px; height: 14px; margin: -4px 0; border-radius: 7px; }
             QSlider::handle:horizontal:hover { background: white; }
         """)
-        sim_layout.addWidget(self.slider_similarity)
+        slider_layout.addWidget(self.slider_similarity)
         
-        self.lbl_similarity_val = QLabel("98%")
-        self.lbl_similarity_val.setStyleSheet("color: white; font-size: 12px; font-weight: bold; min-width: 30px;")
-        self.slider_similarity.valueChanged.connect(lambda v: self.lbl_similarity_val.setText(f"{v}%"))
-        sim_layout.addWidget(self.lbl_similarity_val)
-        sim_layout.addStretch()
-        algo_layout.addLayout(sim_layout)
+        # Custom SpinBox block for Similarity
+        UP_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtMTggMTUtNi02LTYgNiIvPjwvc3ZnPg=='
+        DOWN_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtNiA5IDYgNiA2LTYiLz48L3N2Zz4='
+        import base64
+        from PyQt6.QtGui import QPixmap, QIcon
+        def get_svg_icon(svg_b64):
+            pix = QPixmap()
+            pix.loadFromData(base64.b64decode(svg_b64))
+            return QIcon(pix)
+            
+        spin_container = QFrame()
+        spin_container.setFixedHeight(26)
+        spin_container.setFixedWidth(84)
+        spin_container.setStyleSheet("QFrame { background-color: #333; border: 1px solid #555; border-radius: 4px; }")
+        sc_layout = QHBoxLayout(spin_container)
+        sc_layout.setContentsMargins(0, 0, 0, 0)
+        sc_layout.setSpacing(0)
+        
+        arrows_w = QWidget()
+        arrows_w.setFixedWidth(20)
+        arrows_w.setFixedHeight(24)
+        al = QVBoxLayout(arrows_w)
+        al.setContentsMargins(0, 0, 0, 0)
+        al.setSpacing(0)
+        
+        self.btn_up_sim = QPushButton()
+        self.btn_up_sim.setFixedHeight(12)
+        self.btn_up_sim.setIcon(get_svg_icon(UP_BASE64))
+        self.btn_up_sim.setIconSize(QSize(8, 8))
+        self.btn_up_sim.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_up_sim.setAutoRepeat(True)
+        self.btn_up_sim.setStyleSheet("QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-top-left-radius: 4px; border-bottom: 1px solid #444; } QPushButton:hover { background: rgba(255, 255, 255, 0.1); }")
+        
+        self.btn_down_sim = QPushButton()
+        self.btn_down_sim.setFixedHeight(12)
+        self.btn_down_sim.setIcon(get_svg_icon(DOWN_BASE64))
+        self.btn_down_sim.setIconSize(QSize(8, 8))
+        self.btn_down_sim.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_down_sim.setAutoRepeat(True)
+        self.btn_down_sim.setStyleSheet("QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-bottom-left-radius: 4px; } QPushButton:hover { background: rgba(255, 255, 255, 0.1); }")
+        
+        al.addWidget(self.btn_up_sim)
+        al.addWidget(self.btn_down_sim)
+        sc_layout.addWidget(arrows_w)
+        
+        from PyQt6.QtWidgets import QDoubleSpinBox
+        self.spin_similarity = QDoubleSpinBox()
+        self.spin_similarity.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.spin_similarity.setRange(70.00, 100.00)
+        self.spin_similarity.setDecimals(2)
+        self.spin_similarity.setSingleStep(0.01)
+        self.spin_similarity.setValue(97.50)
+        self.spin_similarity.setSuffix("%")
+        self.spin_similarity.setFixedWidth(64)
+        self.spin_similarity.setFixedHeight(24)
+        self.spin_similarity.setStyleSheet("border: none; background: transparent; color: white; font-weight: bold; font-size: 13px; padding-left: 2px;")
+        sc_layout.addWidget(self.spin_similarity)
+        
+        self.btn_up_sim.clicked.connect(self.spin_similarity.stepUp)
+        self.btn_down_sim.clicked.connect(self.spin_similarity.stepDown)
+        
+        slider_layout.addWidget(spin_container)
+        algo_layout.addLayout(slider_layout)
+        
+        # Connect Range logic
+        self.combo_range.currentIndexChanged.connect(self._update_slider_range)
+        self.combo_range.currentIndexChanged.connect(lambda: self.settings_changed_for_rescan.emit())
+        self.slider_similarity.valueChanged.connect(self._on_slider_changed)
+        self.spin_similarity.valueChanged.connect(self._on_spin_changed)
+        self.spin_similarity.valueChanged.connect(lambda: self.settings_changed_for_rescan.emit())
+        self.combo_resolution.currentIndexChanged.connect(lambda: self.settings_changed_for_rescan.emit())
+        self._slider_updating = False
+        self._update_slider_range()
         
         # Size Filters
         size_widget = QWidget()
@@ -1043,8 +1161,8 @@ class SimilarSettingsPanel(QWidget):
         gl.setSpacing(6)
         gl.setContentsMargins(8, 8, 8, 8)
         
-        lbl_style = "color: #cccccc; font-size: 13px;"
-        val_style = "color: #cccccc; font-weight: bold; font-size: 13px;"
+        lbl_style = "color: #cccccc; font-size: 15px;"
+        val_style = "color: #ffffff; font-weight: bold; font-size: 15px;"
         
         self.lbl_scanned = QLabel(AppContext.tr("cln_lbl_scanned"))
         self.lbl_scanned.setStyleSheet(lbl_style)
@@ -1251,6 +1369,8 @@ class SimilarSettingsPanel(QWidget):
                 QPushButton:disabled { background-color: #222; color: #555; border-color: #333; }
             """)
             self.btn_abort.clicked.connect(on_abort_click)
+            self.btn_abort.hide() # Скрываем кнопку Прервать для поиска похожих
+            
             self.btn_stop_scan = QPushButton(AppContext.tr("cln_btn_reset"))
             self.btn_stop_scan.setFixedHeight(36)
             self.btn_stop_scan.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1261,11 +1381,8 @@ class SimilarSettingsPanel(QWidget):
                 QPushButton:disabled { background-color: #222; color: #555; border-color: #333; }
             """)
             self.btn_stop_scan.clicked.connect(on_stop_click)
-            layout.addWidget(self.btn_abort, 1)
             layout.addWidget(self.btn_stop_scan, 1)
             self.col_prog.addWidget(self.scan_buttons_widget)
-        self.btn_abort.setEnabled(True)
-        self.btn_abort.setText(AppContext.tr("cln_btn_abort"))
         self.btn_stop_scan.setEnabled(True)
         self.btn_stop_scan.setText(AppContext.tr("cln_btn_reset"))
         self.scan_buttons_widget.show()
@@ -1282,7 +1399,49 @@ class SimilarSettingsPanel(QWidget):
 
     def update_cache_info(self, size_str):
         self.lbl_cache_size.setText(size_str)
-        self.btn_clear_cache.setVisible(size_str != "0 B")
+        self.btn_clear_cache.setEnabled(size_str != "0 B")
+
+    def _update_slider_range(self):
+        idx = self.combo_range.currentIndex()
+        if idx == 0: span = 5.0
+        elif idx == 1: span = 10.0
+        elif idx == 2: span = 20.0
+        elif idx == 3: span = 30.0
+        else: span = 100.0
+        
+        min_val = 100.0 - span
+        self.spin_similarity.setRange(min_val, 100.00)
+        
+        curr_val = self.spin_similarity.value()
+        if curr_val < min_val:
+            self.spin_similarity.setValue(min_val)
+            
+        self._sync_slider_from_spin()
+
+    def _on_slider_changed(self, v):
+        if self._slider_updating: return
+        self._slider_updating = True
+        
+        min_val = self.spin_similarity.minimum()
+        pct = min_val + (v / 500.0) * (100.0 - min_val)
+        self.spin_similarity.setValue(pct)
+        self._slider_updating = False
+
+    def _on_spin_changed(self, v):
+        if self._slider_updating: return
+        self._slider_updating = True
+        
+        min_val = self.spin_similarity.minimum()
+        span = 100.0 - min_val
+        if span > 0:
+            sv = int(((v - min_val) / span) * 500)
+            self.slider_similarity.setValue(sv)
+        else:
+            self.slider_similarity.setValue(500)
+        self._slider_updating = False
+        
+    def _sync_slider_from_spin(self):
+        self._on_spin_changed(self.spin_similarity.value())
 
     def dropEvent(self, event):
         if event.mimeData().hasUrls():

@@ -106,6 +106,8 @@ class ActionMixin:
         is_ok = bool(self.source_folders) and not has_error and not has_system_error
         self.settings_panel.set_scan_enabled(is_ok)
         self.settings_panel.btn_filter.setEnabled(is_ok)
+        if hasattr(self, 'reset_scan_button'):
+            self.reset_scan_button()
 
     def show_source_menu(self, pos: QPoint, path: str) -> None:
         menu = QMenu(self)

@@ -427,7 +427,7 @@ class SimilarScanWorker(QThread):
     progress = pyqtSignal(int, float, str, int, int, object, object, int, int)
     finished = pyqtSignal(dict)
     
-    def __init__(self, folders_dict, use_cache=True, filter_config=None, size_limits=(0, 0), media_type=0, threshold=90):
+    def __init__(self, folders_dict, use_cache=True, filter_config=None, size_limits=(0, 0), media_type=0, threshold=90, hash_size=16):
         super().__init__()
         self.folders_dict = folders_dict
         self.folders = list(folders_dict.keys())
@@ -437,11 +437,13 @@ class SimilarScanWorker(QThread):
         self.max_size = size_limits[1]
         self.media_type = media_type # 0: Images, 1: Audio, 2: Video
         self.threshold = threshold
+        self.hash_size = hash_size
+        self.total_bits = self.hash_size * self.hash_size
         self.reference_path = None
         self.is_running = True
         
         from .db_cache import SimilarDB
-        self.db = SimilarDB() if use_cache else None
+        self.db = SimilarDB(hash_size=self.hash_size) if use_cache else None
 
     def stop(self):
         self.is_running = False
@@ -545,28 +547,63 @@ class SimilarScanWorker(QThread):
                 last_emit_time = current_time
                 
             sig = None
+            meta = ""
             if self.use_cache:
                 sig = self.db.get_cached_signature(file_data['real_path'], file_data['size'], file_data['mtime'])
+                if sig and self.media_type == 0:
+                    try:
+                        from PIL import Image
+                        with Image.open(file_data['real_path']) as img:
+                            meta = f"{img.size[0]}x{img.size[1]}"
+                    except:
+                        pass
                 
             if not sig:
                 if self.media_type == 0: # Изображения
-                    sig = get_image_ahash(file_data['real_path'])
-                # В будущем добавим Аудио и Видео
+                    res = get_image_ahash(file_data['real_path'], hash_size=self.hash_size)
+                    if res:
+                        sig, meta = res
+                elif self.media_type == 1: # Аудио
+                    from .ahash_audio import extract_audio_fingerprint
+                    from logic_paths import get_fpcalc_exe
+                    fp_exe = get_fpcalc_exe()
+                    fp = extract_audio_fingerprint(file_data['real_path'], fp_exe)
+                    if fp:
+                        import json
+                        sig = json.dumps(fp)
+                elif self.media_type == 2: # Видео
+                    from .vhash import extract_video_fingerprint
+                    from logic_paths import get_ffmpeg_exe, get_ffprobe_exe
+                    res = extract_video_fingerprint(file_data['real_path'], get_ffmpeg_exe(), get_ffprobe_exe(), self.hash_size)
+                    if res:
+                        fp_list, meta = res
+                        if fp_list:
+                            import json
+                            sig = json.dumps(fp_list)
+
                 if sig and self.use_cache:
                     self.db.upsert_signature(file_data['real_path'], file_data['size'], file_data['mtime'], sig)
                     
             if sig:
                 file_data['signature'] = sig
-                files_with_signatures.append((file_data, int(sig, 16)))
+                file_data['metadata'] = meta
+                
+                # Подготавливаем хэш для быстрого сравнения в зависимости от типа медиа
+                if self.media_type == 0:
+                    parsed_hash = int(sig, 16)
+                else:
+                    import json
+                    parsed_hash = json.loads(sig)
+                    
+                files_with_signatures.append((file_data, parsed_hash))
 
         if not self.is_running:
             self.finished.emit({'groups': [], 'zero_files': [], 'empty_folders': []})
             return
 
-        # 2. Группировка по сходству (расстояние Хэмминга)
+        # 2. Группировка по сходству (расстояние Хэмминга / BER)
         groups = []
         visited = set()
-        threshold_bits = int((100 - self.threshold) / 100.0 * 64)
         
         protected_folders = [os.path.normcase(os.path.normpath(p)) for p, d in self.folders_dict.items() if d.get('protected')]
         norm_ref = None
@@ -575,31 +612,55 @@ class SimilarScanWorker(QThread):
             
         found_matches_count = 0
         current_wasted_bytes = 0
+        total_sigs = len(files_with_signatures)
         
-        for i in range(len(files_with_signatures)):
+        # Заранее импортируем функции сравнения
+        if self.media_type == 1:
+            from .ahash_audio import compare_audio_fingerprints
+        elif self.media_type == 2:
+            from .vhash import compare_video_fingerprints
+        else:
+            threshold_bits = int((100 - self.threshold) / 100.0 * self.total_bits)
+        
+        for i in range(total_sigs):
             if not self.is_running: break
+            
+            # Эмитим прогресс от 80% до 100%
+            current_time = time.time()
+            if current_time - last_emit_time > emit_interval:
+                percent = 80.0 + (i / max(1, total_sigs)) * 20.0
+                self.progress.emit(STAGE_ANALYSIS, percent, "Группировка результатов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
+                last_emit_time = current_time
+                
             if i in visited: continue
             
             f1, h1 = files_with_signatures[i]
             current_group = [f1]
             
-            for j in range(i + 1, len(files_with_signatures)):
+            for j in range(i + 1, total_sigs):
                 if j in visited: continue
                 f2, h2 = files_with_signatures[j]
                 
-                # Считаем расстояние Хэмминга через XOR и count
-                dist = bin(h1 ^ h2).count('1')
-                if dist <= threshold_bits:
+                sim = 0.0
+                if self.media_type == 0:
+                    dist = bin(h1 ^ h2).count('1')
+                    if dist <= threshold_bits:
+                        sim = (self.total_bits - dist) / self.total_bits * 100.0
+                elif self.media_type == 1:
+                    sim = compare_audio_fingerprints(h1, h2)
+                elif self.media_type == 2:
+                    sim = compare_video_fingerprints(h1, h2, self.hash_size)
+                    
+                if self.media_type != 0 and sim >= self.threshold:
+                    current_group.append(f2)
+                    visited.add(j)
+                elif self.media_type == 0 and dist <= threshold_bits:
                     current_group.append(f2)
                     visited.add(j)
                     
             if len(current_group) > 1:
                 visited.add(i)
                 
-                # Сортируем файлы в группе:
-                # 1. Сначала эталонный (is_ref)
-                # 2. Затем защищенный (is_prot)
-                # 3. Затем по убыванию размера файла
                 def get_sort_key(f):
                     path_norm = os.path.normcase(os.path.normpath(f['path']))
                     is_ref = norm_ref and is_subpath(path_norm, norm_ref)
@@ -610,13 +671,20 @@ class SimilarScanWorker(QThread):
                 
                 # Задаем проценты схожести относительно первого файла (оригинала)
                 base_file = current_group[0]
-                base_file['similarity_pct'] = 100
-                base_hash = int(base_file['signature'], 16)
+                base_file['similarity_pct'] = 100.0
+                base_hash = [h for f, h in files_with_signatures if f == base_file][0]
                 
                 for other in current_group[1:]:
-                    other_hash = int(other['signature'], 16)
-                    d = bin(base_hash ^ other_hash).count('1')
-                    other['similarity_pct'] = int((64 - d) / 64.0 * 100)
+                    other_hash = [h for f, h in files_with_signatures if f == other][0]
+                    sim = 0.0
+                    if self.media_type == 0:
+                        dist = bin(base_hash ^ other_hash).count('1')
+                        sim = (self.total_bits - dist) / float(self.total_bits) * 100.0
+                    elif self.media_type == 1:
+                        sim = compare_audio_fingerprints(base_hash, other_hash)
+                    elif self.media_type == 2:
+                        sim = compare_video_fingerprints(base_hash, other_hash, self.hash_size)
+                    other['similarity_pct'] = round(sim, 2)
                     
                 # Фильтруем группу по эталону
                 if norm_ref:

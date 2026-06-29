@@ -80,8 +80,10 @@ class ScanMixin:
         
         if self.current_tab == 1:
             media_type = self.settings_panel.combo_media_type.currentIndex()
-            threshold = self.settings_panel.slider_similarity.value()
-            self.finder = SimilarScanWorker(self.source_folders, use_cache, self.filter_config, size_limits=size_limits, media_type=media_type, threshold=threshold)
+            threshold = self.settings_panel.spin_similarity.value()
+            res_idx = self.settings_panel.combo_resolution.currentIndex()
+            hash_size = 3 if res_idx == 0 else (8 if res_idx == 1 else (16 if res_idx == 2 else (32 if res_idx == 3 else 64)))
+            self.finder = SimilarScanWorker(self.source_folders, use_cache, self.filter_config, size_limits=size_limits, media_type=media_type, threshold=threshold, hash_size=hash_size)
         else:
             safe_scan = self.settings_panel.chk_safe_scan.isChecked()
             self.finder = DuplicateFinderWorker(folders, use_cache, self.filter_config, size_limits=size_limits, safe_scan=safe_scan)
@@ -236,3 +238,12 @@ class ScanMixin:
             else:
                 key = "cln_filter_status_inc" if res['mode'] == 'include' else "cln_filter_status_exc"
                 self.settings_panel.lbl_filter_status.setText(AppContext.tr(key).format(count))
+
+    def on_settings_changed_for_rescan(self) -> None:
+        if self.last_scanned_count > 0 and not (self.finder and self.finder.isRunning()):
+            if hasattr(self, 'settings_panel') and hasattr(self.settings_panel, 'btn_scan'):
+                self.settings_panel.btn_scan.setText(" Пересчитать")
+
+    def reset_scan_button(self) -> None:
+        if hasattr(self, 'settings_panel') and hasattr(self.settings_panel, 'btn_scan'):
+            self.settings_panel.btn_scan.setText(" " + AppContext.tr("cln_btn_start"))

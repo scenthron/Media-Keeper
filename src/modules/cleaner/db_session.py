@@ -30,7 +30,7 @@ class SessionDB:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             cursor.execute('CREATE TABLE IF NOT EXISTS groups (id INTEGER PRIMARY KEY AUTOINCREMENT, hash TEXT, size INTEGER, file_count INTEGER, wasted_size INTEGER, extension TEXT)')
-            cursor.execute('CREATE TABLE IF NOT EXISTS files (id INTEGER PRIMARY KEY AUTOINCREMENT, group_id INTEGER, path TEXT, is_deleted INTEGER DEFAULT 0, is_marked INTEGER DEFAULT 0, similarity_pct INTEGER DEFAULT 100, FOREIGN KEY(group_id) REFERENCES groups(id))')
+            cursor.execute('CREATE TABLE IF NOT EXISTS files (id INTEGER PRIMARY KEY AUTOINCREMENT, group_id INTEGER, path TEXT, is_deleted INTEGER DEFAULT 0, is_marked INTEGER DEFAULT 0, similarity_pct INTEGER DEFAULT 100, file_size INTEGER DEFAULT 0, metadata TEXT DEFAULT \'\', FOREIGN KEY(group_id) REFERENCES groups(id))')
             cursor.execute('CREATE TABLE IF NOT EXISTS zero_files (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, extension TEXT, is_deleted INTEGER DEFAULT 0, is_marked INTEGER DEFAULT 0)')
             cursor.execute('CREATE TABLE IF NOT EXISTS empty_folders (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, is_deleted INTEGER DEFAULT 0, is_marked INTEGER DEFAULT 0)')
             
@@ -72,6 +72,8 @@ class SessionDB:
             ("zero_files",    "ALTER TABLE zero_files ADD COLUMN is_deleted INTEGER DEFAULT 0"),
             ("empty_folders", "ALTER TABLE empty_folders ADD COLUMN is_deleted INTEGER DEFAULT 0"),
             ("files",         "ALTER TABLE files ADD COLUMN similarity_pct INTEGER DEFAULT 100"),
+            ("files",         "ALTER TABLE files ADD COLUMN file_size INTEGER DEFAULT 0"),
+            ("files",         "ALTER TABLE files ADD COLUMN metadata TEXT DEFAULT ''"),
         ]
         for _table, sql in migrations:
             try:
@@ -153,11 +155,13 @@ class SessionDB:
                     for f in grp['files']:
                         real_path = f.get('real_path', f.get('path', ''))
                         similarity_pct = f.get('similarity_pct', 100)
-                        files_data.append((g_id, real_path, similarity_pct))
+                        file_size = f.get('size', grp.get('size', 0))
+                        metadata = f.get('metadata', '')
+                        files_data.append((g_id, real_path, similarity_pct, file_size, metadata))
             
             # Шаг 5. Пакетно вставляем все файлы
             cursor.executemany(
-                "INSERT INTO files (group_id, path, similarity_pct) VALUES (?, ?, ?)",
+                "INSERT INTO files (group_id, path, similarity_pct, file_size, metadata) VALUES (?, ?, ?, ?, ?)",
                 files_data
             )
             
@@ -273,7 +277,7 @@ class SessionDB:
                 return []
                 
             # Загружаем абсолютно все активные файлы за 1 запрос!
-            cursor.execute("SELECT id, group_id, path, is_marked, similarity_pct FROM files WHERE is_deleted = 0")
+            cursor.execute("SELECT id, group_id, path, is_marked, similarity_pct, file_size, metadata FROM files WHERE is_deleted = 0")
             all_files = cursor.fetchall()
             
             # Быстро группируем файлы по group_id в оперативной памяти Python
@@ -314,7 +318,8 @@ class SessionDB:
                             'id': f['id'],
                             'group_id': g['id'],
                             'path': f['path'],
-                            'size': g['size'],
+                            'size': f['file_size'] if 'file_size' in f.keys() and f['file_size'] > 0 else g['size'],
+                            'metadata': f['metadata'] if 'metadata' in f.keys() else '',
                             'is_marked': f['is_marked'],
                             'similarity_pct': f['similarity_pct'] if 'similarity_pct' in f.keys() else 100
                         })

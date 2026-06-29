@@ -120,6 +120,17 @@ class CleanerTreeMixin:
         menu = QMenu(self.tree)
         menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; } QMenu::separator { height: 1px; background: #666; margin: 4px 8px; }")
         
+        if getattr(self, 'current_tab', 0) == 1:
+            group_item = {'id': item['group_id']}
+            act_sel_all = QAction("Выделить всё в этой группе" if AppContext.LANG == "RU" else "Select all in this group", self)
+            act_sel_all.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'all'))
+            menu.addAction(act_sel_all)
+            
+            act_desel_all = QAction("Снять выделение в этой группе" if AppContext.LANG == "RU" else "Deselect all in this group", self)
+            act_desel_all.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'none'))
+            menu.addAction(act_desel_all)
+            menu.addSeparator()
+        
         if not is_empty_mode:
             act_open = QAction(AppContext.tr("anl_ctx_file_open"), self)
             act_open.triggered.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(path)))
@@ -171,17 +182,6 @@ class CleanerTreeMixin:
             act_keep_this.triggered.connect(lambda: self.keep_only_this_file(index))
             menu.addAction(act_keep_this)
 
-            if getattr(self, 'current_tab', 0) == 1:
-                group_item = {'id': item['group_id']}
-                menu.addSeparator()
-                act_sel_all = QAction("Выделить всё в этой группе" if AppContext.LANG == "RU" else "Select all in this group", self)
-                act_sel_all.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'all'))
-                menu.addAction(act_sel_all)
-                
-                act_desel_all = QAction("Снять выделение в этой группе" if AppContext.LANG == "RU" else "Deselect all in this group", self)
-                act_desel_all.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'none'))
-                menu.addAction(act_desel_all)
-
         menu.addSeparator()
         act_delete = QAction(AppContext.tr("cln_ctx_delete_files"), self)
         
@@ -207,14 +207,6 @@ class CleanerTreeMixin:
         menu = QMenu(self)
         menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; }")
         
-        act_expand = QAction(AppContext.tr("cln_ctx_expand"), self)
-        act_expand.triggered.connect(lambda: self.toggle_tree(True))
-        menu.addAction(act_expand)
-        act_collapse = QAction(AppContext.tr("cln_ctx_collapse"), self)
-        act_collapse.triggered.connect(lambda: self.toggle_tree(False))
-        menu.addAction(act_collapse)
-        
-        menu.addSeparator()
         current_mode = getattr(self, 'current_view_mode', 0)
         current_tab = getattr(self, 'current_tab', 0)
         
@@ -235,6 +227,15 @@ class CleanerTreeMixin:
         act_desel = QAction("Снять выделение со всех в группе" if AppContext.LANG == "RU" and current_tab == 1 else AppContext.tr("cln_ctx_deselect_all"), self)
         act_desel.triggered.connect(lambda: self._header_group_action(item, 'none'))
         menu.addAction(act_desel)
+        menu.addSeparator()
+
+        act_expand = QAction(AppContext.tr("cln_ctx_expand"), self)
+        act_expand.triggered.connect(lambda: self.toggle_tree(True))
+        menu.addAction(act_expand)
+        act_collapse = QAction(AppContext.tr("cln_ctx_collapse"), self)
+        act_collapse.triggered.connect(lambda: self.toggle_tree(False))
+        menu.addAction(act_collapse)
+        
         menu.exec(pos)
 
     def keep_only_this_file(self, index: QModelIndex) -> None:

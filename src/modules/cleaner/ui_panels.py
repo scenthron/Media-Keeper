@@ -614,11 +614,6 @@ class CleanerActionBar(QFrame):
         self.btn_delete.clicked.connect(self.delete_clicked.emit)
         layout.addWidget(self.btn_delete)
 
-        self.btn_move = QPushButton(AppContext.tr("cln_btn_move_icon") + " ")
-        self.btn_move.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_move.clicked.connect(self.move_clicked.emit)
-        layout.addWidget(self.btn_move)
-        
         self.btn_move_to = QPushButton("Переместить в..." if AppContext.LANG == "RU" else "Move to...")
         self.btn_move_to.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_move_to.setEnabled(False)
@@ -629,6 +624,11 @@ class CleanerActionBar(QFrame):
         """)
         self.btn_move_to.clicked.connect(self.move_to_clicked.emit)
         layout.addWidget(self.btn_move_to)
+        
+        self.btn_move = QPushButton(AppContext.tr("cln_btn_move_icon") + " ")
+        self.btn_move.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_move.clicked.connect(self.move_clicked.emit)
+        layout.addWidget(self.btn_move)
         
         self.set_move_button_enabled(False)
         

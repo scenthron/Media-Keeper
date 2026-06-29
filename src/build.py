@@ -107,18 +107,6 @@ def build():
                 print(f"Executable successfully copied to root folder: {dest_exe}")
             except Exception as e:
                 print(f"Warning: Failed to copy executable to root dist folder: {e}")
-                
-            # Также копируем папку bin в папку dist рядом с exe
-            src_bin = os.path.join(script_dir, "bin")
-            dest_bin = os.path.join(root_dist, "bin")
-            if os.path.exists(src_bin):
-                try:
-                    if os.path.exists(dest_bin):
-                        shutil.rmtree(dest_bin)
-                    shutil.copytree(src_bin, dest_bin)
-                    print(f"Bin folder successfully copied to dist folder: {dest_bin}")
-                except Exception as e:
-                    print(f"Warning: Failed to copy bin folder to root dist folder: {e}")
     else:
         print("\nAn error occurred during build.")
         sys.exit(result.returncode)

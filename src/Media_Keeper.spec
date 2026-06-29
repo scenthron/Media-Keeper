@@ -4,7 +4,7 @@
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[],
+    binaries=[('bin\\fpcalc.exe', 'bin')],
     datas=[('icons', 'icons'), ('launcher', 'launcher'), ('languages', 'languages')],
     hiddenimports=['PyQt6.QtSvg', 'PyQt6.QtSvgWidgets', 'PyQt6.QtMultimedia', 'PyQt6.QtMultimediaWidgets', 'PyQt6.sip', 'PIL', 'modules.cleaner.vhash', 'modules.cleaner.ahash_audio'],
     hookspath=[],

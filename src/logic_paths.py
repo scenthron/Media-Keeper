@@ -137,4 +137,24 @@ def get_ffprobe_exe():
     return _find_binary_path("ffprobe.exe")
 
 def get_fpcalc_exe():
-    return _find_binary_path("fpcalc.exe")
+    filename = "fpcalc.exe"
+    if getattr(sys, 'frozen', False):
+        meipass = getattr(sys, '_MEIPASS', None)
+        if meipass:
+            bundled = os.path.join(meipass, "bin", filename)
+            if os.path.exists(bundled):
+                dest_dir = get_ffmpeg_bin_dir()
+                dest_path = os.path.join(dest_dir, filename)
+                if not os.path.exists(dest_path):
+                    try:
+                        import shutil
+                        import logging
+                        shutil.copy2(bundled, dest_path)
+                        logging.info(f"Copied fpcalc.exe from _MEIPASS to {dest_path}")
+                    except Exception as e:
+                        try:
+                            import logging
+                            logging.error(f"Failed to copy fpcalc.exe to app bin dir: {e}")
+                        except Exception:
+                            print(f"[ERROR] Failed to copy fpcalc.exe: {e}", file=sys.stderr)
+    return _find_binary_path(filename)

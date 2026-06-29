@@ -52,6 +52,12 @@ def build():
         if os.path.exists(d):
             # Используем os.pathsep (; для Windows, : для Unix)
             pyinstaller_cmd.extend(["--add-data", f"{d}{os.pathsep}{d}"])
+            
+    # Добавляем исполняемые утилиты (ffmpeg, ffprobe, fpcalc)
+    binaries = ["ffmpeg.exe", "ffprobe.exe", "fpcalc.exe"]
+    for b in binaries:
+        if os.path.exists(b):
+            pyinstaller_cmd.extend(["--add-binary", f"{b}{os.pathsep}."])
 
     # Скрытые импорты PyQt6, необходимые для динамической загрузки модулей в рантайме
     hidden_imports = [

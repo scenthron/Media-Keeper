@@ -344,6 +344,8 @@ class CleanerPreviewWidget(QWidget):
         Ensures content occupies available space correctly.
         """
         self.view.resetTransform() # 1:1 Scale
+        self.view.horizontalScrollBar().setValue(0)
+        self.view.verticalScrollBar().setValue(0)
         
         active_item = None
         if self.video_item.isVisible(): 

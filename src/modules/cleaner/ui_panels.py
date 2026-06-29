@@ -1100,6 +1100,7 @@ class SimilarSettingsPanel(QWidget):
         self.spin_similarity.valueChanged.connect(self._on_spin_changed)
         self.spin_similarity.valueChanged.connect(lambda: self.settings_changed_for_rescan.emit())
         self.combo_resolution.currentIndexChanged.connect(lambda: self.settings_changed_for_rescan.emit())
+        self.combo_media_type.currentIndexChanged.connect(self._on_media_type_changed)
         self._slider_updating = False
         self._update_slider_range()
         
@@ -1442,6 +1443,15 @@ class SimilarSettingsPanel(QWidget):
         
     def _sync_slider_from_spin(self):
         self._on_spin_changed(self.spin_similarity.value())
+
+    def _on_media_type_changed(self, idx):
+        if idx == 2: # Видео
+            self.combo_range.setCurrentIndex(3) # Диапазон 30%
+            self.spin_similarity.setValue(70.0)
+        else: # Аудио или Изображения
+            self.combo_range.setCurrentIndex(0) # Диапазон 5%
+            self.spin_similarity.setValue(97.5)
+        self.settings_changed_for_rescan.emit()
 
     def dropEvent(self, event):
         if event.mimeData().hasUrls():

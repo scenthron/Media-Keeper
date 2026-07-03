@@ -50,16 +50,18 @@ class SafeFormatter(logging.Formatter):
                 return token
                 
             abs_path = None
-            if not os.path.isabs(inner):
-                cand = os.path.normpath(os.path.join(PROJECT_ROOT, 'src', inner))
-                if os.path.exists(cand):
-                    abs_path = cand
-                else:
-                    cand = os.path.normpath(os.path.join(PROJECT_ROOT, inner))
+            # Файлы логов, конфигураций и БД всегда подлежат анонимизации
+            if not inner.lower().endswith(('.log', '.db', '.sqlite', '.ini')):
+                if not os.path.isabs(inner):
+                    cand = os.path.normpath(os.path.join(PROJECT_ROOT, 'src', inner))
                     if os.path.exists(cand):
                         abs_path = cand
-            else:
-                abs_path = os.path.normpath(inner)
+                    else:
+                        cand = os.path.normpath(os.path.join(PROJECT_ROOT, inner))
+                        if os.path.exists(cand):
+                            abs_path = cand
+                else:
+                    abs_path = os.path.normpath(inner)
                 
             if abs_path:
                 norm_abs = abs_path.lower()
@@ -140,16 +142,18 @@ class SafeFormatter(logging.Formatter):
                 return inner
                 
             abs_path = None
-            if not os.path.isabs(inner):
-                cand = os.path.normpath(os.path.join(PROJECT_ROOT, 'src', inner))
-                if os.path.exists(cand):
-                    abs_path = cand
-                else:
-                    cand = os.path.normpath(os.path.join(PROJECT_ROOT, inner))
+            # Файлы логов, конфигураций и БД всегда подлежат анонимизации
+            if not inner.lower().endswith(('.log', '.db', '.sqlite', '.ini')):
+                if not os.path.isabs(inner):
+                    cand = os.path.normpath(os.path.join(PROJECT_ROOT, 'src', inner))
                     if os.path.exists(cand):
                         abs_path = cand
-            else:
-                abs_path = os.path.normpath(inner)
+                    else:
+                        cand = os.path.normpath(os.path.join(PROJECT_ROOT, inner))
+                        if os.path.exists(cand):
+                            abs_path = cand
+                else:
+                    abs_path = os.path.normpath(inner)
                 
             if abs_path:
                 norm_abs = abs_path.lower()

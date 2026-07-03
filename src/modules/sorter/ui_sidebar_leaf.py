@@ -128,7 +128,7 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
         is_inbox, is_trash = self.check_if_blocked()
         
         if not is_inbox and not is_trash:
-            self.btn_action.setStyleSheet("""
+            new_btn_style = """
                 QPushButton { 
                     text-align: left; 
                     padding: 6px; 
@@ -143,7 +143,10 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
                     background-color: rgba(255, 255, 255, 0.1); 
                     color: white; 
                 }
-            """)
+            """
+            if getattr(self, '_applied_btn_style', None) != new_btn_style:
+                self.btn_action.setStyleSheet(new_btn_style)
+                self._applied_btn_style = new_btn_style
         
         custom_icon = AutomationConfig.load_icon(self.path)
         
@@ -162,7 +165,7 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
         
         # Highlight Logic for Last Move
         if self.check_if_last_target():
-            self.lbl_count.setStyleSheet("""
+            new_count_style = """
                 background-color: rgba(0,0,0,0.3); 
                 color: #4ade80; 
                 font-size: 12px; 
@@ -171,9 +174,9 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
                 padding-left: 0px; 
                 border-top-right-radius: 4px; 
                 border-bottom-right-radius: 4px;
-            """)
+            """
         else:
-            self.lbl_count.setStyleSheet("""
+            new_count_style = """
                 background-color: rgba(0,0,0,0.3); 
                 color: #aaa; 
                 font-size: 12px; 
@@ -181,7 +184,11 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
                 padding-left: 0px; 
                 border-top-right-radius: 4px; 
                 border-bottom-right-radius: 4px;
-            """)
+            """
+            
+        if getattr(self, '_applied_count_style', None) != new_count_style:
+            self.lbl_count.setStyleSheet(new_count_style)
+            self._applied_count_style = new_count_style
         
         self.apply_rich_tooltip(is_inbox, is_trash)
 

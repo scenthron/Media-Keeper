@@ -453,9 +453,13 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         
         # Restore visual nesting: darken children but keep them visible
         if self.level > 0:
-            self.setStyleSheet(f"CategoryWidget {{ background-color: {bg}; border-radius: 6px; margin: 0px; color: {APP_DESIGN['text_color']}; }} QWidget#HeaderPart {{ background-color: rgba(0,0,0,0.2); border-top-left-radius: 6px; border-bottom-left-radius: 6px; }}")
+            new_style = f"CategoryWidget {{ background-color: {bg}; border-radius: 6px; margin: 0px; color: {APP_DESIGN['text_color']}; }} QWidget#HeaderPart {{ background-color: rgba(0,0,0,0.2); border-top-left-radius: 6px; border-bottom-left-radius: 6px; }}"
         else:
-            self.setStyleSheet(f"CategoryWidget {{ background-color: {bg}; border-radius: 6px; margin: 0px; color: {APP_DESIGN['text_color']}; }}")
+            new_style = f"CategoryWidget {{ background-color: {bg}; border-radius: 6px; margin: 0px; color: {APP_DESIGN['text_color']}; }}"
+            
+        if getattr(self, '_applied_style', None) != new_style:
+            self.setStyleSheet(new_style)
+            self._applied_style = new_style
 
     def randomize_color(self):
         self.current_color = self.generate_random_color()

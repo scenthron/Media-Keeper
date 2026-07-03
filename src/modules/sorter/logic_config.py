@@ -112,11 +112,20 @@ class ConfigManager:
         path = ConfigManager.get_config_path()
         logging.info(f"Сохранение конфигурации в файл: {path}")
         cp = configparser.ConfigParser(interpolation=None)
+        old_path_unsort = ""
         if os.path.exists(path):
             try:
                 cp.read(path, encoding='utf-8')
+                if "Main" in cp and "path_unsort" in cp["Main"]:
+                    old_path_unsort = cp["Main"]["path_unsort"]
             except Exception as e:
                 logging.error(f"Ошибка чтения settings.ini перед сохранением: {e}")
+                
+        # Если входящая папка изменилась (выбрана новая или обнулена), принудительно сбрасываем рекурсию
+        new_path_unsort = config.get("path_unsort", "")
+        if old_path_unsort != new_path_unsort:
+            logging.info(f"Входящая папка изменилась ('{old_path_unsort}' -> '{new_path_unsort}'). Сбрасываем scan_subfolders в False.")
+            config["scan_subfolders"] = False
         
         # Разделяем основные настройки и секции горячих клавиш
         main_settings = {}

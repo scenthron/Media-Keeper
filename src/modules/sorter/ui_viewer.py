@@ -1965,6 +1965,12 @@ class SorterGridView(SorterBaseListView):
         self.tile_size = 128
         self._update_grid_sizes()
         
+        self.zoom_commit_timer = QTimer(self)
+        self.zoom_commit_timer.setSingleShot(True)
+        self.zoom_commit_timer.timeout.connect(self._commit_zoom)
+        self._commit_index = 0
+        self._zoom_session_id = 0
+        
         # Make items background and border transparent in Grid mode to avoid selection overlays
         self.setStyleSheet("""
             QListWidget {
@@ -2017,15 +2023,26 @@ class SorterGridView(SorterBaseListView):
             else:
                 self.tile_size = max(64, self.tile_size - 16)
             self._update_grid_sizes()
+            self._zoom_session_id += 1
             
-            # Scale all item custom widgets
+            # Scale only visible item custom widgets for ultra-smooth zoom
+            viewport_rect = self.viewport().rect()
+            start_index = self.indexAt(viewport_rect.topLeft())
+            end_index = self.indexAt(viewport_rect.bottomRight())
+            
+            start_row = start_index.row() if start_index.isValid() else 0
+            end_row = end_index.row() if end_index.isValid() else self.count() - 1
+            if end_row < 0:
+                end_row = self.count() - 1
+            
             _thumb_exts = {
                 '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
                 '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
                 '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
             }
             target_thumb_size = QSize(max(256, self.tile_size), max(256, self.tile_size))
-            for i in range(self.count()):
+            
+            for i in range(max(0, start_row), min(self.count(), end_row + 1)):
                 item = self.item(i)
                 widget = self.itemWidget(item)
                 if widget and hasattr(widget, 'set_tile_size'):
@@ -2037,10 +2054,8 @@ class SorterGridView(SorterBaseListView):
                     ext = os.path.splitext(filepath)[1].lower()
                     
                     if norm_path in ThumbnailLoader.inst().cache:
-                        # Thumbnail в кэше — применяем сразу
                         widget.set_preview_image(ThumbnailLoader.inst().cache[norm_path])
                     elif ext in _thumb_exts:
-                        # Thumbnail отсутствует (вытеснен FIFO или ещё не готов) — перезапрашиваем
                         ThumbnailLoader.inst().get_thumbnail(filepath, target_thumb_size)
                         if widget.placeholder_pixmap:
                             widget.set_placeholder(widget.placeholder_pixmap)
@@ -2049,6 +2064,8 @@ class SorterGridView(SorterBaseListView):
             
             self.doItemsLayout()
             self.viewport().update()
+            
+            self.zoom_commit_timer.start(250)
             
             if viewer_area and hasattr(viewer_area, 'sync_files_queue'):
                 main_app = viewer_area.get_main_app()
@@ -2066,6 +2083,51 @@ class SorterGridView(SorterBaseListView):
 
     def _update_grid_sizes(self):
         self.setGridSize(QSize(self.tile_size + 4, self.tile_size + 42))
+
+    def _commit_zoom(self):
+        self._commit_index = 0
+        self._commit_batch(self._zoom_session_id)
+
+    def _commit_batch(self, session_id):
+        if session_id != self._zoom_session_id:
+            return
+            
+        if self._commit_index >= self.count():
+            self.doItemsLayout()
+            self.viewport().update()
+            return
+            
+        end = min(self.count(), self._commit_index + 500)
+        _thumb_exts = {
+            '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
+            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
+            '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
+        }
+        target_thumb_size = QSize(max(256, self.tile_size), max(256, self.tile_size))
+        
+        for i in range(self._commit_index, end):
+            item = self.item(i)
+            widget = self.itemWidget(item)
+            if widget and hasattr(widget, 'set_tile_size'):
+                if widget.tile_size != self.tile_size:
+                    widget.set_tile_size(self.tile_size)
+                    item.setSizeHint(widget.sizeHint())
+                    
+                    filepath = widget.filepath
+                    norm_path = os.path.normpath(filepath)
+                    ext = os.path.splitext(filepath)[1].lower()
+                    
+                    if norm_path in ThumbnailLoader.inst().cache:
+                        widget.set_preview_image(ThumbnailLoader.inst().cache[norm_path])
+                    elif ext in _thumb_exts:
+                        ThumbnailLoader.inst().get_thumbnail(filepath, target_thumb_size)
+                        if widget.placeholder_pixmap:
+                            widget.set_placeholder(widget.placeholder_pixmap)
+                    elif widget.placeholder_pixmap:
+                        widget.set_placeholder(widget.placeholder_pixmap)
+                        
+        self._commit_index = end
+        QTimer.singleShot(0, lambda: self._commit_batch(session_id))
 
 
 class SorterListView(SorterBaseListView):

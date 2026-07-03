@@ -773,6 +773,9 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         elif item and item['type'] == 'empty_folder':
             self.preview_widget.show_empty(item['path'])
             self.update_file_info(item['path'])
+        else:
+            self.preview_widget.show_empty("")
+            self.info_panel.clear()
             
     def on_current_changed(self, current: QModelIndex, previous: QModelIndex) -> None:
         if current.isValid():
@@ -860,6 +863,10 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
     def pause_playback(self) -> None:
         if hasattr(self, 'preview_widget') and self.preview_widget:
             self.preview_widget.pause_playback()
+
+    def stop_playback(self) -> None:
+        if hasattr(self, 'preview_widget') and self.preview_widget:
+            self.preview_widget.stop_playback()
 
     def resizeEvent(self, event: Any) -> None:
         super().resizeEvent(event)

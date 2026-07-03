@@ -267,13 +267,13 @@ class MediaKeeperShell(QMainWindow):
                  logging.debug("Остановка воспроизведения при уходе со вкладки Сортировщика.")
                  self.sorter_tab.stop_playback()
         elif current_widget == self.cleaner_tab and index != 2:
-             if hasattr(self.cleaner_tab, "pause_playback"):
-                 logging.debug("Пауза воспроизведения при уходе со вкладки Поиска дубликатов.")
-                 self.cleaner_tab.pause_playback()
+             if hasattr(self.cleaner_tab, "stop_playback"):
+                 logging.debug("Остановка воспроизведения при уходе со вкладки Поиска дубликатов.")
+                 self.cleaner_tab.stop_playback()
         elif current_widget == self.analyzer_tab and index != 3:
-             if hasattr(self.analyzer_tab, "pause_playback"):
-                 logging.debug("Пауза воспроизведения при уходе со вкладки Анализатора.")
-                 self.analyzer_tab.pause_playback()
+             if hasattr(self.analyzer_tab, "stop_playback"):
+                 logging.debug("Остановка воспроизведения при уходе со вкладки Анализатора.")
+                 self.analyzer_tab.stop_playback()
 
         self.stack.setCurrentIndex(index)
         self.drawer.set_active_tab(index)

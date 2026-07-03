@@ -739,6 +739,10 @@ class AnalyzerWidget(QWidget):
         if hasattr(self, 'preview_widget') and self.preview_widget:
             self.preview_widget.pause_playback()
 
+    def stop_playback(self):
+        if hasattr(self, 'preview_widget') and self.preview_widget:
+            self.preview_widget.stop_playback()
+
     def move_selected_files(self, destination_dir):
         if not destination_dir or not os.path.exists(destination_dir):
             self.silent_info(AppContext.tr("anl_toolbar_title"), AppContext.tr("msg_trash_not_set") if "todel" in str(destination_dir) else AppContext.tr("anl_msg_select_folder"))

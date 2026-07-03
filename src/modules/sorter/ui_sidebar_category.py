@@ -174,10 +174,15 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         is_inbox, _ = self.check_if_blocked()
         if is_inbox: return
 
+        import time
+        import logging
+        start_time = time.perf_counter()
+        logging.info(f"[PROFILER] Клик по категории в сайдбаре: {self.name} ({self.path})")
+
         # Multi-module support: Sorter vs Analyzer
         if hasattr(self.app, 'move_current_file'):
             # Sorter mode: Move active single file
-            self.app.move_current_file(self.path)
+            self.app.move_current_file(self.path, start_time=start_time)
         elif hasattr(self.app, 'move_selected_files'):
             # Analyzer mode: Move all checked files
             self.app.move_selected_files(self.path)

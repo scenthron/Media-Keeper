@@ -549,7 +549,12 @@ class FileOpsMixin:
             
         QApplication.processEvents()
 
-    def move_current_file(self, destination_dir):
+    def move_current_file(self, destination_dir, start_time=None):
+        import time
+        if start_time is None:
+            start_time = time.perf_counter()
+        logging.info(f"[PROFILER] Начало move_current_file. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
+
         if not destination_dir or not os.path.exists(destination_dir): 
             logging.error(f"Destination not found: {destination_dir}")
             return
@@ -680,9 +685,10 @@ class FileOpsMixin:
         
         # Блокируем watcher перед запуском потока
         self._ignore_watcher = True
-        self.move_thread = MoveThread(pairs)
+        self.move_thread = MoveThread(pairs, start_time=start_time)
         self.move_thread.progress_update.connect(self.on_move_progress)
         self.move_thread.finished_move.connect(self.on_move_finished)
+        logging.info(f"[PROFILER] Запуск MoveThread. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
         self.move_thread.start()
 
     def on_move_progress(self, current, total, filename):
@@ -692,6 +698,12 @@ class FileOpsMixin:
             self.move_dlg.bar.setValue(current)
 
     def on_move_finished(self, success, error_msg, succeeded_pairs, failed_pairs=None):
+        import time
+        start_time = getattr(self.move_thread, 'start_time', None)
+        if start_time is None:
+            start_time = time.perf_counter()
+        logging.info(f"[PROFILER] on_move_finished запущен. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
+
         try:
             if hasattr(self, 'move_progress_timer') and self.move_progress_timer and self.move_progress_timer.isActive():
                 self.move_progress_timer.stop()
@@ -746,19 +758,25 @@ class FileOpsMixin:
                     
                 self.files_queue = new_queue
                 self.current_index = new_current_index
+                logging.info(f"[PROFILER] Шаг 1: optimistic_update и files_queue завершены. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
                 
                 # Refresh Sidebar styling to apply highlighting
                 self.refresh_sidebar_styling()
+                logging.info(f"[PROFILER] Шаг 2: refresh_sidebar_styling завершен. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
                 
                 # Синхронизируем очередь в UI точечно без полной перерисовки
                 succeeded_srcs = [src for src, dst in succeeded_pairs]
                 self.viewer.remove_files_from_view(succeeded_srcs)
+                logging.info(f"[PROFILER] Шаг 3: remove_files_from_view завершен (плитка скрыта). Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
+                
                 self.viewer.sync_active_index(self.current_index)
                 
                 if self.viewer.stack.currentIndex() == 0:
                     self.show_current_file()
+                    logging.info(f"[PROFILER] Шаг 4: show_current_file (одиночный) завершен. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
                 else:
                     self.on_selection_changed()
+                    logging.info(f"[PROFILER] Шаг 4: on_selection_changed (плитки) завершен. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
             
             if not success:
                 if failed_pairs:

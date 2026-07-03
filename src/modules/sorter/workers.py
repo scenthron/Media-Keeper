@@ -106,8 +106,9 @@ class MoveThread(QThread):
     progress_update = pyqtSignal(int, int, str)
     finished_move = pyqtSignal(bool, str, list, list)
 
-    def __init__(self, src, dst=None):
+    def __init__(self, src, dst=None, start_time=None):
         super().__init__()
+        self.start_time = start_time
         if isinstance(src, list):
             self.pairs = src
         else:
@@ -118,8 +119,18 @@ class MoveThread(QThread):
         succeeded = []
         failed = []
         
-        # Даем фоновым потокам декодирования WMF время закрыть файлы перед перемещением
-        time.sleep(0.25)
+        # Проверяем, все ли файлы являются изображениями
+        is_only_images = True
+        image_extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif', '.tiff', '.tif', '.heic', '.avif', '.apng', '.jfif'}
+        for src, dst in self.pairs:
+            ext = os.path.splitext(src)[1].lower()
+            if ext not in image_extensions:
+                is_only_images = False
+                break
+
+        # Паузу даем только для видео/аудио файлов, картинки перемещаем мгновенно
+        if not is_only_images:
+            time.sleep(0.25)
         
         to_retry = []
         total = len(self.pairs)
@@ -129,16 +140,12 @@ class MoveThread(QThread):
             filename = os.path.basename(src)
             self.progress_update.emit(idx + 1, total, filename)
             
-            if is_file_locked(src):
-                logging.warning(f"File detected as locked on first pass, postponing: {src}")
-                to_retry.append((idx, src, dst, "Файл заблокирован внешним процессом"))
-                continue
-                
+            # Полагаемся на встроенную логику retry в smart_move_file, не вызывая is_file_locked
             success = smart_move_file(src, dst)
             if success:
                 succeeded.append((src, dst))
             else:
-                to_retry.append((idx, src, dst, "Ошибка файлового ввода-вывода"))
+                to_retry.append((idx, src, dst, "Файл заблокирован или произошла ошибка ввода-вывода"))
                 
         # 2. Пауза и второй проход (если есть неудавшиеся файлы)
         if to_retry:

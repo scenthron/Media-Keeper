@@ -118,7 +118,11 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
     def handle_click(self):
         is_inbox, _ = self.check_if_blocked()
         if not is_inbox:
-            self.app.move_current_file(self.path)
+            import time
+            import logging
+            start_time = time.perf_counter()
+            logging.info(f"[PROFILER] Клик по листу в сайдбаре: {self.name} ({self.path})")
+            self.app.move_current_file(self.path, start_time=start_time)
 
     def update_visual_state(self):
         is_inbox, is_trash = self.check_if_blocked()

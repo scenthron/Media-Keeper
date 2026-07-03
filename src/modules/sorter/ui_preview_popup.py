@@ -44,7 +44,15 @@ class PopupImageViewer(QGraphicsView):
 
     def reset_view(self):
         if not self.pixmap_item.pixmap().isNull():
+            self.resetTransform()
+            self.horizontalScrollBar().setValue(0)
+            self.verticalScrollBar().setValue(0)
+            self.pixmap_item.setPos(0, 0)
+            if hasattr(self.pixmap_item, 'setTransform'):
+                from PyQt6.QtGui import QTransform
+                self.pixmap_item.setTransform(QTransform())
             self.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
+            self.centerOn(self.pixmap_item)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -103,6 +111,12 @@ class PopupVideoViewer(QGraphicsView):
         content_rect = self.scene.sceneRect()
         if content_rect.width() > 0 and content_rect.height() > 0:
             self.resetTransform()
+            self.horizontalScrollBar().setValue(0)
+            self.verticalScrollBar().setValue(0)
+            self.video_item.setPos(0, 0)
+            if hasattr(self.video_item, 'setTransform'):
+                from PyQt6.QtGui import QTransform
+                self.video_item.setTransform(QTransform())
             self.fitInView(content_rect, Qt.AspectRatioMode.KeepAspectRatio)
             self.centerOn(content_rect.center())
 

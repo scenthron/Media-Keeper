@@ -17,7 +17,12 @@ from .thumbnail_loader import ThumbnailLoader
 from .ui_player import VideoPlayerControls
 
 from .ui_preview_popup import LargePreviewPopup
-from utils_io import ensure_long_path
+from utils_io import ensure_long_path, strip_long_path_prefix
+
+def safe_relpath(path: str, start: str) -> str:
+    p = strip_long_path_prefix(path)
+    s = strip_long_path_prefix(start)
+    return os.path.relpath(p, s)
 class FileIconManager:
     _instance = None
 
@@ -1078,7 +1083,11 @@ class ZoomableGraphicsView(QGraphicsView):
         self.pixmap_item.setPixmap(QPixmap())
         for item in self.scene.items():
             if isinstance(item, QGraphicsProxyWidget):
+                w = item.widget()
                 self.scene.removeItem(item)
+                if w:
+                    w.deleteLater()
+                item.deleteLater()
 
     def _fit_video_size_changed(self, size):
         self.video_item.setSize(size)
@@ -1087,6 +1096,9 @@ class ZoomableGraphicsView(QGraphicsView):
 
     def reset_view(self):
         self.resetTransform()
+        self.horizontalScrollBar().setValue(0)
+        self.verticalScrollBar().setValue(0)
+        
         active_item = None
         if self.video_item.isVisible():
             active_item = self.video_item
@@ -1094,6 +1106,12 @@ class ZoomableGraphicsView(QGraphicsView):
             active_item = self.pixmap_item
         elif self.text_item.isVisible():
             active_item = self.text_item
+            
+        if active_item:
+            active_item.setPos(0, 0)
+            if hasattr(active_item, 'setTransform'):
+                from PyQt6.QtGui import QTransform
+                active_item.setTransform(QTransform())
             
         content_rect = self.scene.sceneRect()
         view_rect = self.viewport().rect()
@@ -2450,7 +2468,7 @@ class SorterViewerArea(QWidget):
         if selected:
             p = selected[0].data(Qt.ItemDataRole.UserRole)
             if p and hasattr(self, 'loading_files') and self.loading_files and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir:
-                rel = os.path.relpath(p, self.current_inbox_dir)
+                rel = safe_relpath(p, self.current_inbox_dir)
                 norm_rel = os.path.normpath(rel)
                 for idx, f in enumerate(self.loading_files):
                     if os.path.normpath(f) == norm_rel:
@@ -3157,7 +3175,7 @@ class SorterViewerArea(QWidget):
         self.list_view.setUpdatesEnabled(False)
         try:
             for path in paths:
-                norm_path = os.path.normpath(path)
+                norm_path = os.path.normpath(strip_long_path_prefix(path))
                 
                 # 1. Удаляем из Grid View
                 item_grid = self.grid_items_map.pop(norm_path, None)
@@ -3182,10 +3200,10 @@ class SorterViewerArea(QWidget):
                             widget.deleteLater()
                             
             # Удаляем из списка загруженных файлов в памяти
-            norm_paths_set = set(os.path.normpath(p) for p in paths)
+            norm_paths_set = set(os.path.normpath(strip_long_path_prefix(p)) for p in paths)
             self.loading_files = [
                 f for f in self.loading_files 
-                if os.path.normpath(os.path.join(self.current_inbox_dir, f)) not in norm_paths_set
+                if os.path.normpath(strip_long_path_prefix(os.path.join(self.current_inbox_dir, f))) not in norm_paths_set
             ]
         finally:
             self.grid_view.setUpdatesEnabled(True)
@@ -3247,7 +3265,7 @@ class SorterViewerArea(QWidget):
                     
             # Также обновим self.loading_files в памяти
             for full_path, idx in files_to_insert:
-                rel = os.path.relpath(full_path, self.current_inbox_dir)
+                rel = safe_relpath(full_path, self.current_inbox_dir)
                 if rel not in self.loading_files:
                     self.loading_files.insert(idx, rel)
         finally:
@@ -3320,8 +3338,8 @@ class SorterViewerArea(QWidget):
             # 3. Обновляем список загруженных файлов в памяти
             if hasattr(self, 'loading_files') and self.loading_files and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir:
                 # Находим относительные пути
-                rel_old = os.path.relpath(old_path, self.current_inbox_dir)
-                rel_new = os.path.relpath(new_path, self.current_inbox_dir)
+                rel_old = safe_relpath(old_path, self.current_inbox_dir)
+                rel_new = safe_relpath(new_path, self.current_inbox_dir)
                 for idx, f in enumerate(self.loading_files):
                     if os.path.normpath(f) == os.path.normpath(rel_old):
                         self.loading_files[idx] = rel_new
@@ -3388,7 +3406,7 @@ class SorterViewerArea(QWidget):
         if not main_app:
             return
             
-        rel_path = os.path.relpath(filepath, main_app.UNSORT_DIR)
+        rel_path = safe_relpath(filepath, main_app.UNSORT_DIR)
         rel_path_norm = os.path.normpath(rel_path)
         
         for idx, f in enumerate(main_app.files_queue):

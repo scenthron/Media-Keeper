@@ -357,6 +357,12 @@ class CleanerPreviewWidget(QWidget):
             
         if not active_item: return
 
+        # Reset item position and transform to prevent offset bugs
+        active_item.setPos(0, 0)
+        if hasattr(active_item, 'setTransform'):
+            from PyQt6.QtGui import QTransform
+            active_item.setTransform(QTransform())
+
         # 1. Update Scene Rect to match Item exactly
         item_rect = active_item.boundingRect()
         if item_rect.width() <= 0 or item_rect.height() <= 0: return

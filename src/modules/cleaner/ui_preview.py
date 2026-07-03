@@ -138,6 +138,7 @@ class CleanerPreviewWidget(QWidget):
         self.player.positionChanged.connect(self.video_controls.update_position)
         self.player.durationChanged.connect(self.video_controls.update_duration)
         self.player.playbackStateChanged.connect(self._on_player_state_changed)
+        self.player.mediaStatusChanged.connect(self._on_media_status_changed)
         self.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
         
         self.movie = None
@@ -330,6 +331,12 @@ class CleanerPreviewWidget(QWidget):
             if self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState: self.player.pause()
             else: self.player.play()
 
+    def _on_media_status_changed(self, status):
+        if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
+            if self.video_item.isVisible() and self.video_item.nativeSize().isValid():
+                sz = self.video_item.nativeSize()
+                self._fit_video_size_changed(sz)
+
     def _on_player_state_changed(self, state):
         is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
         self.video_controls.set_playing_state(is_playing)
@@ -379,8 +386,8 @@ class CleanerPreviewWidget(QWidget):
         
         # If content is video -> Always Fit
         if active_item == self.video_item:
-            self.view.fitInView(item_rect, Qt.AspectRatioMode.KeepAspectRatio)
-            self.view.centerOn(item_rect.center())
+            self.view.fitInView(active_item, Qt.AspectRatioMode.KeepAspectRatio)
+            self.view.centerOn(active_item)
             return
 
         # If Image/Text -> Fit only if larger than viewport
@@ -388,9 +395,10 @@ class CleanerPreviewWidget(QWidget):
         height_diff = item_rect.height() - viewport_rect.height()
         
         if width_diff > 0 or height_diff > 0:
-            self.view.fitInView(item_rect, Qt.AspectRatioMode.KeepAspectRatio)
+            self.view.fitInView(active_item, Qt.AspectRatioMode.KeepAspectRatio)
+            self.view.centerOn(active_item)
         else:
-            self.view.centerOn(item_rect.center())
+            self.view.centerOn(active_item)
 
     def change_volume(self, val):
         self.audio_output.setVolume(val / 100.0)

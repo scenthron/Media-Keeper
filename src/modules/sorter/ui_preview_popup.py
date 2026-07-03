@@ -51,7 +51,7 @@ class PopupImageViewer(QGraphicsView):
             if hasattr(self.pixmap_item, 'setTransform'):
                 from PyQt6.QtGui import QTransform
                 self.pixmap_item.setTransform(QTransform())
-            self.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
+            self.fitInView(self.pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
             self.centerOn(self.pixmap_item)
 
     def resizeEvent(self, event):
@@ -117,8 +117,8 @@ class PopupVideoViewer(QGraphicsView):
             if hasattr(self.video_item, 'setTransform'):
                 from PyQt6.QtGui import QTransform
                 self.video_item.setTransform(QTransform())
-            self.fitInView(content_rect, Qt.AspectRatioMode.KeepAspectRatio)
-            self.centerOn(content_rect.center())
+            self.fitInView(self.video_item, Qt.AspectRatioMode.KeepAspectRatio)
+            self.centerOn(self.video_item)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -590,6 +590,7 @@ class LargePreviewPopup(QDialog):
             self.audio_output = QAudioOutput()
             self.media_player.setAudioOutput(self.audio_output)
             self.media_player.setVideoOutput(self.video_viewer.video_item)
+            self.media_player.mediaStatusChanged.connect(self._on_media_status_changed_popup)
             
             self.controls = VideoPlayerControls()
             self._install_key_event_filters(self.controls)
@@ -1088,6 +1089,13 @@ class LargePreviewPopup(QDialog):
                 self.movie.setPaused(True)
             else:
                 self.movie.setPaused(False)
+
+    def _on_media_status_changed_popup(self, status):
+        if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
+            if hasattr(self, 'video_viewer') and self.video_viewer:
+                sz = self.video_viewer.video_item.nativeSize()
+                if sz.isValid():
+                    self.video_viewer._on_native_size_changed(sz)
 
     def _on_playback_state_changed(self, state):
         is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)

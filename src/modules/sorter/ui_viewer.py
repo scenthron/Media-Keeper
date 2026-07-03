@@ -1119,14 +1119,14 @@ class ZoomableGraphicsView(QGraphicsView):
             width_diff = content_rect.width() - view_rect.width()
             height_diff = content_rect.height() - view_rect.height()
             if active_item == self.video_item:
-                self.fitInView(content_rect, Qt.AspectRatioMode.KeepAspectRatio)
-                self.centerOn(content_rect.center())
+                self.fitInView(active_item, Qt.AspectRatioMode.KeepAspectRatio)
+                self.centerOn(active_item)
             elif active_item in (self.pixmap_item, self.text_item):
                 if width_diff > 0 or height_diff > 0:
-                    self.fitInView(content_rect, Qt.AspectRatioMode.KeepAspectRatio)
-                    self.centerOn(content_rect.center())
+                    self.fitInView(active_item, Qt.AspectRatioMode.KeepAspectRatio)
+                    self.centerOn(active_item)
                 else:
-                    self.centerOn(content_rect.center())
+                    self.centerOn(active_item)
             else:
                 self.centerOn(content_rect.center())
 

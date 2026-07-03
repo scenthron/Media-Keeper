@@ -273,8 +273,8 @@ class ActionMixin:
         if d:
             AppContext.last_moved_dir = d
             self.last_moved_dir = d
-            self.action_bar.drop_zone.set_path(d)
-            self.move_selected()
+            # НЕ перезаписываем путь быстрого перемещения в интерфейсе
+            self.move_selected(dest_folder=d)
 
     def move_single_file_to_dir_from_context(self, path: str, group_index: int = -1) -> None:
         if self.current_view_mode == 2: return
@@ -289,7 +289,7 @@ class ActionMixin:
         if d:
             AppContext.last_moved_dir = d
             self.last_moved_dir = d
-            self.action_bar.drop_zone.set_path(d)
+            # НЕ перезаписываем путь быстрого перемещения в интерфейсе
             
             items_to_process = [{'src': path, 'group_index': group_index}]
             self.preview_widget.show_empty("Moving...")
@@ -314,12 +314,12 @@ class ActionMixin:
             
             self.mover.start()
 
-    def move_selected(self) -> None:
+    def move_selected(self, dest_folder: str = None) -> None:
         if self.current_view_mode == 2:
             self.delete_empty_folders()
             return
 
-        dest_root = self.action_bar.drop_zone.get_path()
+        dest_root = dest_folder if dest_folder else self.action_bar.drop_zone.get_path()
         if not dest_root or not os.path.exists(dest_root):
             QMessageBox.warning(self, AppContext.tr("err_title"), AppContext.tr("msg_trash_not_set"))
             return
@@ -430,6 +430,7 @@ class ActionMixin:
             deleted_set = set(deleted_paths)
 
             if self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
+                self.session_db.mark_files_deleted(deleted_paths)
                 moved_ids: set[int] = set()
                 for files in self.virtual_model._group_files_cache.values():
                     for f in files:
@@ -494,6 +495,7 @@ class ActionMixin:
             moved_set = set(moved)
 
             if self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
+                self.session_db.mark_files_deleted(moved)
                 # Remove moved files from in-memory state
                 # Map paths to file_ids using group_files_cache
                 moved_ids: set[int] = set()

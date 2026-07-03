@@ -361,9 +361,6 @@ class LargePreviewPopup(QDialog):
         self.top_overlay.setStyleSheet("""
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(15, 15, 15, 0.85), stop:0.7 rgba(15, 15, 15, 0.4), stop:1 rgba(15, 15, 15, 0));
         """)
-        self.top_opacity_effect = QGraphicsOpacityEffect(self.top_overlay)
-        self.top_opacity_effect.setOpacity(1.0)
-        self.top_overlay.setGraphicsEffect(self.top_opacity_effect)
         self.top_overlay.installEventFilter(self)
         top_layout = QHBoxLayout(self.top_overlay)
         top_layout.setContentsMargins(4, 4, 4, 0)
@@ -401,6 +398,9 @@ class LargePreviewPopup(QDialog):
         self.lbl_title = QLabel(os.path.basename(filepath), self.top_overlay)
         self.lbl_title.setStyleSheet("color: white; font-weight: bold; font-size: 12px; background: transparent;")
         self.lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_opacity_effect = QGraphicsOpacityEffect(self.lbl_title)
+        self.title_opacity_effect.setOpacity(1.0)
+        self.lbl_title.setGraphicsEffect(self.title_opacity_effect)
         top_layout.addWidget(self.lbl_title, stretch=1)
         
         self.right_btn_container = QWidget(self.top_overlay)
@@ -874,11 +874,15 @@ class LargePreviewPopup(QDialog):
         
         if obj == getattr(self, 'top_overlay', None):
             if event.type() == QEvent.Type.Enter:
-                if hasattr(self, 'top_opacity_effect') and self.top_opacity_effect:
-                    self.top_opacity_effect.setOpacity(0.0)
+                if hasattr(self, 'title_opacity_effect') and self.title_opacity_effect:
+                    self.title_opacity_effect.setOpacity(0.0)
+                self.top_overlay.setStyleSheet("background: transparent;")
             elif event.type() == QEvent.Type.Leave:
-                if hasattr(self, 'top_opacity_effect') and self.top_opacity_effect:
-                    self.top_opacity_effect.setOpacity(1.0)
+                if hasattr(self, 'title_opacity_effect') and self.title_opacity_effect:
+                    self.title_opacity_effect.setOpacity(1.0)
+                self.top_overlay.setStyleSheet("""
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(15, 15, 15, 0.85), stop:0.7 rgba(15, 15, 15, 0.4), stop:1 rgba(15, 15, 15, 0));
+                """)
         
         is_viewer = False
         if obj == getattr(self, 'video_viewer', None):

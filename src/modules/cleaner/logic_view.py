@@ -197,14 +197,21 @@ class ViewMixin:
         
         if hasattr(self, 'lbl_groups_found'):
             if self.current_view_mode == 0:
-                display_str = f"{displayed_groups} ({displayed_files})"
-                self.lbl_groups_found.setText(AppContext.tr("cln_lbl_groups").format(display_str))
+                total_size = sum(
+                    item.get('size', 0)
+                    for item in self.virtual_model._all_items
+                    if item['type'] == 'file'
+                )
+                size_str = format_size(total_size)
+                self.lbl_groups_found.setText(f"Групп: {displayed_groups} ({displayed_files} файлов) • {size_str}")
+                self.lbl_groups_found.setToolTip(f"В таблице результатов:\nГрупп: {displayed_groups}\nФайлов: {displayed_files}\nРазмер: {size_str}")
             elif self.current_view_mode == 1:
-                display_str = f"{displayed_groups} ({displayed_files})"
-                self.lbl_groups_found.setText(AppContext.tr("cln_lbl_groups").format(display_str))
+                self.lbl_groups_found.setText(f"Файлов: {displayed_files} • 0 B")
+                self.lbl_groups_found.setToolTip(f"Файлов с нулевым размером: {displayed_files}")
             else:
                 displayed_folders = len(self.virtual_model._all_items)
                 self.lbl_groups_found.setText(f"Папок: {displayed_folders}")
+                self.lbl_groups_found.setToolTip(f"Пустых папок найдено: {displayed_folders}")
         
         # Update Left Sidebar Stats
         stats = self.session_db.get_active_stats()

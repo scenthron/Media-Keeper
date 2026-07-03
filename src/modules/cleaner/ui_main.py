@@ -517,7 +517,6 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
         lbl_groups_found = QLabel(AppContext.tr("cln_lbl_groups").format("0 (0)"))
         lbl_groups_found.setStyleSheet("color: #aaa; font-size: 11px; margin-right: 15px;")
-        lbl_groups_found.setFixedWidth(160)
         lbl_groups_found.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         tt_layout.addWidget(lbl_groups_found)
 

@@ -287,18 +287,29 @@ class CleanerTreeMixin:
         self.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
 
         if hasattr(self, 'in_memory_selection') and getattr(self, 'current_view_mode', 0) == 0:
-            # Fast RAM count: no DB access
-            count = self.in_memory_selection.get_marked_count()
-            # Calculate total size of marked files from virtual model items
-            total_size = sum(
-                item.get('size', 0)
-                for item in self.virtual_model._all_items
+            marked_files = [
+                item for item in self.virtual_model._all_items
                 if item['type'] == 'file' and item.get('is_marked', 0)
-            )
+            ]
+            marked_files_count = len(marked_files)
+            marked_groups_count = len(set(f['group_id'] for f in marked_files if 'group_id' in f))
+            total_size = sum(f.get('size', 0) for f in marked_files)
+            size_str = format_size(total_size)
+            
+            # Выбрано: 3 (14 файлов) • 240.4 MB
+            self.lbl_selection_info.setText(f"Выбрано: {marked_groups_count} ({marked_files_count} файлов) • {size_str}")
+            self.lbl_selection_info.setToolTip(f"Выделено:\nГрупп: {marked_groups_count}\nФайлов: {marked_files_count}\nРазмер: {size_str}")
+            count = marked_files_count
         else:
             stats = self.session_db.get_global_selection_stats()
             count = stats['count']
             total_size = stats['size']
+            size_str = format_size(total_size)
+            if getattr(self, 'current_view_mode', 0) == 1:
+                self.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}")
+                self.lbl_selection_info.setToolTip(f"Выбрано файлов: {count}\nРазмер: {size_str}")
+            else:
+                self.lbl_selection_info.setText(f"Выбрано: {count} папок")
+                self.lbl_selection_info.setToolTip(f"Выбрано пустых папок: {count}")
 
-        self.lbl_selection_info.setText(AppContext.tr("cln_lbl_selected").format(count, format_size(total_size)))
         self.validate_move_state(selected_count_cache=count)

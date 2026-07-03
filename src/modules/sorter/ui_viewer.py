@@ -330,7 +330,7 @@ class SorterGridItemWidget(QWidget):
         ext_lower = os.path.splitext(filepath)[1].lower()
         is_previewable = ext_lower in [
             '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
+            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
             '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
         ]
         
@@ -626,7 +626,7 @@ class SorterListItemWidget(QWidget):
         ext_lower = os.path.splitext(filepath)[1].lower()
         is_previewable = ext_lower in [
             '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
+            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
             '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
         ]
         
@@ -1627,7 +1627,7 @@ class SorterBaseListView(QListWidget):
         ext = os.path.splitext(self.current_hover_path)[1].lower()
         is_media = ext in [
             '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
+            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
             '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
         ]
         if not is_media:
@@ -2021,7 +2021,7 @@ class SorterGridView(SorterBaseListView):
             # Scale all item custom widgets
             _thumb_exts = {
                 '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-                '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
+                '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
                 '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
             }
             target_thumb_size = QSize(max(256, self.tile_size), max(256, self.tile_size))
@@ -2892,7 +2892,7 @@ class SorterViewerArea(QWidget):
                     return "#"
                     
                 elif sort_type == "type_asc":
-                    video_exts = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
+                    video_exts = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
                     audio_exts = ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.wma']
                     image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.ico']
                     
@@ -3056,7 +3056,7 @@ class SorterViewerArea(QWidget):
                     ext = os.path.splitext(rel_path)[1].lower()
                     if ext in [
                         '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-                        '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
+                        '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
                         '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
                     ]:
                         ThumbnailLoader.inst().get_thumbnail(full_path, QSize(256, 256))
@@ -3144,7 +3144,7 @@ class SorterViewerArea(QWidget):
     def refresh_video_thumbnails(self) -> None:
         """Перегенерирует превью для всех видеофайлов в текущем каталоге."""
         logging.info("Начато обновление видео-превью после скачивания FFmpeg.")
-        video_extensions = {'.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v'}
+        video_extensions = {'.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v'}
         
         # Собираем все видеофайлы из текущего кэша отображения
         paths_to_refresh = []
@@ -3258,7 +3258,7 @@ class SorterViewerArea(QWidget):
                 ext = os.path.splitext(full_path)[1].lower()
                 if ext in [
                     '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-                    '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
+                    '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
                     '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
                 ]:
                     ThumbnailLoader.inst().get_thumbnail(full_path, QSize(256, 256))

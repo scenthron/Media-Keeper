@@ -579,7 +579,7 @@ class LargePreviewPopup(QDialog):
             
             bottom_layout.addStretch(1)
             
-        elif ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']:
+        elif ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']:
             self.video_viewer = PopupVideoViewer()
             self.video_viewer.double_clicked.connect(self.open_file_system)
             self.video_viewer.middle_clicked.connect(self.open_folder_with_file)
@@ -1115,7 +1115,7 @@ class LargePreviewPopup(QDialog):
                 
     def on_speed_changed(self, speed):
         ext = os.path.splitext(self.filepath)[1].lower()
-        is_video = ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
+        is_video = ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
         
         if self.media_player:
             self.media_player.setPlaybackRate(speed)
@@ -1134,7 +1134,7 @@ class LargePreviewPopup(QDialog):
 
     def on_loop_toggled(self, enabled):
         ext = os.path.splitext(self.filepath)[1].lower()
-        is_video = ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
+        is_video = ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
         
         if self.media_player:
             self.media_player.setLoops(QMediaPlayer.Loops.Infinite if enabled else QMediaPlayer.Loops.Once)
@@ -1156,7 +1156,7 @@ class LargePreviewPopup(QDialog):
 
     def on_apply_all_toggled(self, enabled):
         ext = os.path.splitext(self.filepath)[1].lower()
-        is_video = ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
+        is_video = ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
         
         if self.main_app:
             self.main_app.session_all_videos_active = enabled

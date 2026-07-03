@@ -19,7 +19,12 @@ from .workers import ScanThread, MoveThread
 from .logic_automation import AutomationConfig, TemplateEngine
 from utils_common import format_size, get_unique_filepath
 from logic_cache import DirCache
-from utils_io import smart_move_file, ensure_long_path
+from utils_io import smart_move_file, ensure_long_path, strip_long_path_prefix
+
+def safe_relpath(path: str, start: str) -> str:
+    p = strip_long_path_prefix(path)
+    s = strip_long_path_prefix(start)
+    return os.path.relpath(p, s)
 
 class FileOpsMixin:
     def _safe_close_dialog(self, dialog_attr_name):
@@ -115,7 +120,7 @@ class FileOpsMixin:
                     ext = os.path.splitext(norm_p)[1].lower()
                     if ext in [
                         '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-                        '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
+                        '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
                         '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
                     ]:
                         loader.get_thumbnail(f_path, QSize(256, 256))
@@ -214,7 +219,7 @@ class FileOpsMixin:
                 ext = os.path.splitext(rel_path)[1].lower()
                 
                 if sort_type == "type_asc":
-                    video_exts = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
+                    video_exts = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
                     audio_exts = ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.wma']
                     image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.ico']
                     if ext in video_exts:
@@ -408,8 +413,8 @@ class FileOpsMixin:
                 self.history.append([(new_path, self.current_file_path)])
                 
                 long_unsort = ensure_long_path(self.UNSORT_DIR)
-                rel_old = os.path.relpath(long_current, long_unsort)
-                rel_new = os.path.relpath(long_new_path, long_unsort)
+                rel_old = safe_relpath(long_current, long_unsort)
+                rel_new = safe_relpath(long_new_path, long_unsort)
                 if rel_old in self.files_queue:
                     idx = self.files_queue.index(rel_old)
                     self.files_queue[idx] = rel_new
@@ -460,9 +465,13 @@ class FileOpsMixin:
         try:
             if hasattr(self, 'viewer') and self.viewer:
                 if hasattr(self.viewer, 'grid_view') and self.viewer.grid_view:
-                    self.viewer.grid_view._stop_hover_playback(force=True)
+                    if hasattr(self.viewer.grid_view, '_stop_hover_playback'):
+                        try: self.viewer.grid_view._stop_hover_playback(force=True)
+                        except: pass
                 if hasattr(self.viewer, 'list_view') and self.viewer.list_view:
-                    self.viewer.list_view._stop_hover_playback(force=True)
+                    if hasattr(self.viewer.list_view, '_stop_hover_playback'):
+                        try: self.viewer.list_view._stop_hover_playback(force=True)
+                        except: pass
                 self.viewer.clear_scene_content()
         except Exception as e:
             logging.error(f"Error stopping hover players: {e}")
@@ -671,7 +680,7 @@ class FileOpsMixin:
                 self.history.append(history_entry)
 
                 # Перестраиваем files_queue
-                succeeded_src_rels = [os.path.relpath(src, self.UNSORT_DIR) for src, dst in succeeded_pairs]
+                succeeded_src_rels = [safe_relpath(src, self.UNSORT_DIR) for src, dst in succeeded_pairs]
                 succeeded_src_rels_set = set(os.path.normpath(r) for r in succeeded_src_rels)
                 
                 # Удаляем перемещенные файлы из RAM-кэша
@@ -894,7 +903,7 @@ class FileOpsMixin:
                     try:
                         long_curr = ensure_long_path(current_loc)
                         long_unsort = ensure_long_path(self.UNSORT_DIR)
-                        rel_current = os.path.relpath(long_curr, long_unsort)
+                        rel_current = safe_relpath(long_curr, long_unsort)
                         if not rel_current.startswith('..') and not os.path.isabs(rel_current):
                             current_locs_to_remove.append(current_loc)
                     except Exception:
@@ -904,7 +913,7 @@ class FileOpsMixin:
                     self.viewer.remove_files_from_view(current_locs_to_remove)
                     if hasattr(self, '_raw_dir_files') and self._raw_dir_files:
                         long_unsort = ensure_long_path(self.UNSORT_DIR)
-                        norm_removes = {os.path.normpath(os.path.relpath(ensure_long_path(p), long_unsort)) for p in current_locs_to_remove}
+                        norm_removes = {os.path.normpath(safe_relpath(p, long_unsort)) for p in current_locs_to_remove}
                         self._raw_dir_files = [f for f in self._raw_dir_files if os.path.normpath(f['rel_path']) not in norm_removes]
 
                 if not hasattr(self, '_raw_dir_files') or self._raw_dir_files is None:
@@ -915,7 +924,7 @@ class FileOpsMixin:
                 for current_loc, target_path, file_size in succeeded:
                     long_target = ensure_long_path(target_path)
                     long_unsort = ensure_long_path(self.UNSORT_DIR)
-                    rel_path = os.path.relpath(long_target, long_unsort)
+                    rel_path = safe_relpath(long_target, long_unsort)
                     norm_rel = os.path.normpath(rel_path)
                     if norm_rel not in existing_rels:
                         try:
@@ -943,7 +952,7 @@ class FileOpsMixin:
                 main_app = self.viewer.get_main_app()
                 group_enabled = main_app.config.get("group_by_sort", False) if main_app and hasattr(main_app, 'config') else False
                 
-                first_target_rel = os.path.relpath(succeeded[0][1], self.UNSORT_DIR)
+                first_target_rel = safe_relpath(succeeded[0][1], self.UNSORT_DIR)
                 if first_target_rel in self.files_queue:
                     self.current_index = self.files_queue.index(first_target_rel)
                 else:
@@ -960,7 +969,7 @@ class FileOpsMixin:
                     # Если группировка выключена, делаем точечную вставку
                     files_to_insert = []
                     for current_loc, target_path, file_size in succeeded:
-                        rel_path = os.path.relpath(target_path, self.UNSORT_DIR)
+                        rel_path = safe_relpath(target_path, self.UNSORT_DIR)
                         if rel_path in self.files_queue:
                             idx = self.files_queue.index(rel_path)
                             files_to_insert.append((target_path, idx))
@@ -1104,8 +1113,8 @@ class FileOpsMixin:
             
             # Обновляем RAM-кэш и UI
             for new_path, old_path in rename_pairs:
-                rel_old = os.path.relpath(old_path, self.UNSORT_DIR)
-                rel_new = os.path.relpath(new_path, self.UNSORT_DIR)
+                rel_old = safe_relpath(old_path, self.UNSORT_DIR)
+                rel_new = safe_relpath(new_path, self.UNSORT_DIR)
                 
                 # Обновляем files_queue
                 if rel_old in self.files_queue:

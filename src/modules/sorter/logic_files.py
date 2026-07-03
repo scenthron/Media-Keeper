@@ -452,12 +452,36 @@ class FileOpsMixin:
                 QTimer.singleShot(500, lambda: setattr(self, '_ignore_watcher', False))
         self.setFocus()
 
-    def _stop_all_media_players(self):
+    def _stop_all_media_players(self, is_only_images=False, is_single_file=False):
         """Останавливает все плееры (основной, ховер, попапы) и освобождает хэндлы файлов."""
+        # Если перемещаются только изображения, пропускаем долгое ожидание в QThreadPool и плеерах,
+        # так как изображения не блокируются QMediaPlayer-ом на диске.
+        if is_only_images:
+            try:
+                self.media_player.stop()
+                self.media_player.setSource(QUrl())
+            except Exception:
+                pass
+            try:
+                if hasattr(self, 'viewer') and self.viewer:
+                    self.viewer.clear_scene_content()
+                    if hasattr(self.viewer, 'grid_view') and self.viewer.grid_view:
+                        try: self.viewer.grid_view._stop_hover_playback(force=True)
+                        except: pass
+                    if hasattr(self.viewer, 'list_view') and self.viewer.list_view:
+                        try: self.viewer.list_view._stop_hover_playback(force=True)
+                        except: pass
+            except Exception:
+                pass
+            QApplication.processEvents()
+            return
+
         try:
             from PyQt6.QtCore import QThreadPool
+            # Очищаем очередь, но не ждем завершения активных задач, если перемещается один файл
             QThreadPool.globalInstance().clear()
-            QThreadPool.globalInstance().waitForDone(500)
+            if not is_single_file:
+                QThreadPool.globalInstance().waitForDone(500)
         except Exception as e:
             logging.error(f"Error clearing QThreadPool: {e}")
 
@@ -551,10 +575,23 @@ class FileOpsMixin:
         if not selected_paths:
             return
 
-        self._stop_all_media_players()
+        # Проверяем, все ли перемещаемые файлы являются изображениями
+        is_only_images = True
+        image_extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif', '.tiff', '.tif', '.heic', '.avif', '.apng', '.jfif'}
+        for path in selected_paths:
+            ext = os.path.splitext(path)[1].lower()
+            if ext not in image_extensions:
+                is_only_images = False
+                break
+
+        is_single_file = (len(selected_paths) == 1)
+
+        self._stop_all_media_players(is_only_images=is_only_images, is_single_file=is_single_file)
 
         pairs = []
         conflicts = []
+
+        automation_cfg = AutomationConfig.load_config(destination_dir)
 
         for path in selected_paths:
             if not os.path.exists(path):
@@ -562,7 +599,6 @@ class FileOpsMixin:
             original_filename = os.path.basename(path)
             name_no_ext, ext = os.path.splitext(original_filename)
             
-            automation_cfg = AutomationConfig.load_config(destination_dir)
             if automation_cfg and automation_cfg["enabled"]:
                 template = automation_cfg["template"]
                 collision = automation_cfg["collision"]

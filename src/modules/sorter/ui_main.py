@@ -26,6 +26,7 @@ from .logic_ui import UiSetupMixin
 from .logic_files import FileOpsMixin
 from .logic_player import PlayerMixin
 from .logic_hotkeys import SorterHotkeysMixin
+from .logic_automation import AutomationConfig
 
 class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotkeysMixin):
     def __init__(self, parent=None):
@@ -507,18 +508,33 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         else:
             self.create_category()
 
-    def reload_categories_ui(self):
-        collapsed_states = {}
+    def _collect_collapsed_states(self) -> dict[str, bool]:
+        states = {}
         layout = self.cats_container.v_layout
+        
+        def traverse(w):
+            if isinstance(w, CategoryWidget):
+                states[w.path] = w.is_collapsed
+                if hasattr(w, 'sections_container') and w.sections_container:
+                    sec_layout = w.sections_container.layout
+                    if sec_layout:
+                        for i in range(sec_layout.count()):
+                            child_w = sec_layout.itemAt(i).widget()
+                            if child_w:
+                                traverse(child_w)
+                                
         for i in range(layout.count()):
-            w = layout.itemAt(i).widget()
-            if isinstance(w, CategoryWidget): 
-                collapsed_states[w.path] = w.is_collapsed
+            widget = layout.itemAt(i).widget()
+            if widget:
+                traverse(widget)
+        return states
 
-        while layout.count():
-            child = layout.takeAt(0)
-            if child.widget(): child.widget().deleteLater()
-
+    def reload_categories_ui(self):
+        # Очищаем кэш автоматизации перед перерисовкой дерева
+        AutomationConfig.clear_cache()
+        # Сохраняем состояние свернутости для всех уровней
+        self.collapsed_states_cache = self._collect_collapsed_states()
+        
         # Update btn_new_cat style based on state (Sync with Analyzer)
         has_any_root = bool(self.SORT_DIR and os.path.exists(self.SORT_DIR)) or bool(self.temp_roots)
         
@@ -529,93 +545,126 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
              self.btn_refresh.setStyleSheet("QPushButton { background-color: #333; border-radius: 5px; border: 1px solid #444; padding: 0px; }")
              self.btn_refresh.setEnabled(False)
         elif self.temp_roots:
-            self.btn_new_cat.setText(AppContext.tr("btn_reset_view"))
-            self.btn_new_cat.setStyleSheet("background-color: #555; color: #ddd; font-weight: bold; border-radius: 5px; border: 1px solid #777;")
-            self.btn_new_cat.setToolTip(AppContext.tr("tooltip_reset_view"))
-            self.btn_new_cat.setEnabled(True)
-            self.btn_refresh.setStyleSheet("QPushButton { background-color: #15803d; border-radius: 5px; padding: 0px; } QPushButton:hover { background-color: #166534; }")
-            self.btn_refresh.setEnabled(True)
+             self.btn_new_cat.setText(AppContext.tr("btn_reset_view"))
+             self.btn_new_cat.setStyleSheet("background-color: #555; color: #ddd; font-weight: bold; border-radius: 5px; border: 1px solid #777;")
+             self.btn_new_cat.setToolTip(AppContext.tr("tooltip_reset_view"))
+             self.btn_new_cat.setEnabled(True)
+             self.btn_refresh.setStyleSheet("QPushButton { background-color: #15803d; border-radius: 5px; padding: 0px; } QPushButton:hover { background-color: #166534; }")
+             self.btn_refresh.setEnabled(True)
         else:
-            self.btn_new_cat.setText(AppContext.tr("btn_create_cat"))
-            self.btn_new_cat.setStyleSheet(f"background-color: {APP_DESIGN['btn_create_bg']}; color: white; font-weight: bold; border-radius: 5px;")
-            self.btn_new_cat.setToolTip("")
-            self.btn_new_cat.setEnabled(True)
-            self.btn_refresh.setStyleSheet("QPushButton { background-color: #15803d; border-radius: 5px; padding: 0px; } QPushButton:hover { background-color: #166534; }")
-            self.btn_refresh.setEnabled(True)
-        
+             self.btn_new_cat.setText(AppContext.tr("btn_create_cat"))
+             self.btn_new_cat.setStyleSheet(f"background-color: {APP_DESIGN['btn_create_bg']}; color: white; font-weight: bold; border-radius: 5px;")
+             self.btn_new_cat.setToolTip("")
+             self.btn_new_cat.setEnabled(True)
+             self.btn_refresh.setStyleSheet("QPushButton { background-color: #15803d; border-radius: 5px; padding: 0px; } QPushButton:hover { background-color: #166534; }")
+             self.btn_refresh.setEnabled(True)
+         
         self.btn_new_cat.show()
+
+        # 1. Собираем целевой список элементов
+        target_items = []
 
         fresh_roots = []
         if self.SORT_DIR and os.path.exists(self.SORT_DIR):
-            fresh_roots.append(self.SORT_DIR)
+             fresh_roots.append(self.SORT_DIR)
         for t in self.temp_roots:
-            if os.path.exists(t) and t not in fresh_roots:
-                fresh_roots.append(t)
-                
+             if os.path.exists(t) and t not in fresh_roots:
+                 fresh_roots.append(t)
+                 
         new_order = []
         for p in self.ui_root_order:
-            if p in fresh_roots:
-                new_order.append(p)
-                fresh_roots.remove(p) 
-        
+             if p in fresh_roots:
+                 new_order.append(p)
+                 fresh_roots.remove(p) 
+         
         new_order.extend(fresh_roots)
         self.ui_root_order = new_order
-        
+         
         for path in self.ui_root_order:
-            is_main_sort = (path == self.SORT_DIR)
+             is_main_sort = (path == self.SORT_DIR)
+             
+             if self.temp_roots and is_main_sort:
+                 name = f"📍 {os.path.basename(path)}"
+             elif not is_main_sort: 
+                 name = f"⚡ {os.path.basename(path)}"
+             else:
+                 name = ""
+             
+             if self.temp_roots or (is_main_sort and self.temp_roots):
+                 target_items.append((name, path, "category"))
+                 
+             elif is_main_sort and not self.temp_roots:
+                 try: items = os.listdir(path)
+                 except: items = []
+                 
+                 key_path = os.path.normpath(path)
+                 
+                 if key_path in self.custom_orders:
+                     order = self.custom_orders[key_path]
+                     ordered_items = [i for i in order if i in items]
+                     new_items = sorted([i for i in items if i not in order])
+                     final_items = ordered_items + new_items
+                     self.custom_orders[key_path] = final_items
+                     items = final_items
+                 else: items = sorted(items)
+
+                 for cat_name in items:
+                     cat_path = os.path.join(path, cat_name)
+                     if os.path.isdir(cat_path):
+                         target_items.append((cat_name, cat_path, "category"))
+
+        target_items.append(("", self.SORT_DIR, "drop_zone"))
+
+        # 2. Находим текущие виджеты в cats_container
+        layout = self.cats_container.v_layout
+        current_widgets = {}
+        for i in range(layout.count()):
+            w = layout.itemAt(i).widget()
+            if w:
+                if hasattr(w, 'path'):
+                    current_widgets[w.path] = w
+                elif w.__class__.__name__ == "DropZoneWidget":
+                    current_widgets["__drop_zone__"] = w
+
+        # 3. Удаляем те виджеты, которых больше нет в целевом списке
+        target_keys = {item[1] if item[2] != "drop_zone" else "__drop_zone__" for item in target_items}
+        for key, w in list(current_widgets.items()):
+            if key not in target_keys:
+                layout.removeWidget(w)
+                w.deleteLater()
+                del current_widgets[key]
+
+        # 4. Инкрементально вставляем и синхронизируем
+        for idx, (name, path, item_type) in enumerate(target_items):
+            key = path if item_type != "drop_zone" else "__drop_zone__"
             
-            if self.temp_roots and is_main_sort:
-                name = f"📍 {os.path.basename(path)}"
-            elif not is_main_sort: 
-                name = f"⚡ {os.path.basename(path)}"
+            if key in current_widgets:
+                widget = current_widgets[key]
+                layout.removeWidget(widget)
+                layout.insertWidget(idx, widget)
+                if item_type == "category" and isinstance(widget, CategoryWidget):
+                    widget.refresh_sections()
             else:
-                name = ""
-            
-            if self.temp_roots or (is_main_sort and self.temp_roots):
-                widget = CategoryWidget(name, path, self, level=0)
-                
-                if path in collapsed_states:
-                    if collapsed_states[path]: widget.toggle_collapse()
-                elif self.temp_roots:
-                    widget.toggle_collapse()
-                    
-                layout.addWidget(widget)
-                
-            elif is_main_sort and not self.temp_roots:
-                try: items = os.listdir(path)
-                except: items = []
-                
-                key_path = os.path.normpath(path)
-                
-                if key_path in self.custom_orders:
-                    order = self.custom_orders[key_path]
-                    ordered_items = [i for i in order if i in items]
-                    new_items = sorted([i for i in items if i not in order])
-                    final_items = ordered_items + new_items
-                    self.custom_orders[key_path] = final_items
-                    items = final_items
-                else: items = sorted(items)
-
-                for cat_name in items:
-                    cat_path = os.path.join(path, cat_name)
-                    if os.path.isdir(cat_path):
-                        widget = CategoryWidget(cat_name, cat_path, self, level=0)
-                        if cat_path in collapsed_states and collapsed_states[cat_path]:
+                if item_type == "category":
+                    widget = CategoryWidget(name, path, self, level=0)
+                    if path not in getattr(self, 'collapsed_states_cache', {}) and self.temp_roots:
+                        if not widget.is_collapsed:
                             widget.toggle_collapse()
-                        layout.addWidget(widget)
+                    layout.insertWidget(idx, widget)
+                else:
+                    drop_zone = DropZoneWidget()
+                    drop_zone.set_folder_info(self.SORT_DIR)
+                    drop_zone.clicked.connect(self.browse_and_add_temp_root)
+                    drop_zone.clear_default_requested.connect(self.clear_default_sort)
+                    drop_zone.files_dropped.connect(self.on_drop_zone_files_dropped)
+                    
+                    if self.config.get("path_sort", ""):
+                        drop_zone.btn_clear.show()
+                    else:
+                        drop_zone.btn_clear.hide()
+                    layout.insertWidget(idx, drop_zone)
 
-        drop_zone = DropZoneWidget()
-        drop_zone.set_folder_info(self.SORT_DIR)
-        drop_zone.clicked.connect(self.browse_and_add_temp_root)
-        drop_zone.clear_default_requested.connect(self.clear_default_sort)
-        drop_zone.files_dropped.connect(self.on_drop_zone_files_dropped)
-        
-        if self.config.get("path_sort", ""):
-            drop_zone.btn_clear.show()
-        else:
-            drop_zone.btn_clear.hide()
 
-        layout.addWidget(drop_zone)
 
     def closeEvent(self, event):
         if hasattr(self, 'affix_window') and self.affix_window:

@@ -11,6 +11,15 @@ class AutomationConfig:
     META_DIR = ".mediakeeper"
     CONF_FILE = "automation.ini"
 
+    _config_cache = {}  # folder_path -> config_dict (or None)
+    _icon_cache = {}    # folder_path -> icon_str
+
+    @staticmethod
+    def clear_cache():
+        AutomationConfig._config_cache.clear()
+        AutomationConfig._icon_cache.clear()
+        logging.info("AutomationConfig cache cleared.")
+
     @staticmethod
     def get_cfg_path(folder_path):
         """Returns the standard path: folder/.mediakeeper/automation.ini"""
@@ -22,14 +31,20 @@ class AutomationConfig:
         Loads config directly from the .mediakeeper folder.
         No legacy migration support.
         """
+        folder_path = os.path.normpath(folder_path)
+        if folder_path in AutomationConfig._config_cache:
+            return AutomationConfig._config_cache[folder_path]
+
         if not os.path.exists(folder_path): 
             logging.debug(f"Путь для загрузки конфига автоматизации не существует: {folder_path}")
+            AutomationConfig._config_cache[folder_path] = None
             return None
 
         target_path = AutomationConfig.get_cfg_path(folder_path)
         
         if not os.path.exists(target_path):
             logging.debug(f"Файл конфигурации автоматизации не найден в {target_path}")
+            AutomationConfig._config_cache[folder_path] = None
             return None 
 
         # Load Data
@@ -43,14 +58,19 @@ class AutomationConfig:
                     "collision": cp["Automation"].get("collision", "Increment")
                 }
                 logging.info(f"Конфигурация автоматизации успешно загружена для {folder_path}: {config_data}")
+                AutomationConfig._config_cache[folder_path] = config_data
                 return config_data
         except Exception as e: 
             logging.error(f"Ошибка загрузки конфига автоматизации из {target_path}: {e}")
         
+        AutomationConfig._config_cache[folder_path] = None
         return None
 
     @staticmethod
     def save_config(folder_path: str, enabled: bool, template: str, collision: str) -> None:
+        folder_path = os.path.normpath(folder_path)
+        AutomationConfig._config_cache.pop(folder_path, None)
+
         meta_dir = os.path.join(folder_path, AutomationConfig.META_DIR)
         
         # Ensure Meta Directory Exists
@@ -96,26 +116,37 @@ class AutomationConfig:
     @staticmethod
     def load_icon(folder_path: str) -> str:
         """Loads custom folder icon from automation.ini"""
+        folder_path = os.path.normpath(folder_path)
+        if folder_path in AutomationConfig._icon_cache:
+            return AutomationConfig._icon_cache[folder_path]
+
         if not os.path.exists(folder_path):
+            AutomationConfig._icon_cache[folder_path] = ""
             return ""
             
         target_path = AutomationConfig.get_cfg_path(folder_path)
         if not os.path.exists(target_path):
+            AutomationConfig._icon_cache[folder_path] = ""
             return ""
             
         cp = configparser.ConfigParser(interpolation=None)
         try:
             cp.read(target_path, encoding='utf-8')
             if "Automation" in cp:
-                return cp["Automation"].get("icon", "")
+                icon_symbol = cp["Automation"].get("icon", "")
+                AutomationConfig._icon_cache[folder_path] = icon_symbol
+                return icon_symbol
         except Exception as e:
             logging.error(f"Ошибка загрузки иконки из {target_path}: {e}")
             
+        AutomationConfig._icon_cache[folder_path] = ""
         return ""
 
     @staticmethod
     def save_icon(folder_path: str, icon_symbol: str) -> None:
         """Saves custom folder icon to automation.ini"""
+        folder_path = os.path.normpath(folder_path)
+        AutomationConfig._icon_cache.pop(folder_path, None)
         meta_dir = os.path.join(folder_path, AutomationConfig.META_DIR)
         
         if not os.path.exists(meta_dir):

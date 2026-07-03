@@ -27,7 +27,10 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         self.app = parent_app
         self.level = level 
         self.parent_cat = parent_cat
-        self.is_collapsed = self.app.config.get("collapse_groups", False)
+        if hasattr(self.app, 'collapsed_states_cache') and self.path in self.app.collapsed_states_cache:
+            self.is_collapsed = self.app.collapsed_states_cache[self.path]
+        else:
+            self.is_collapsed = self.app.config.get("collapse_groups", False)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setAcceptDrops(True)
         self._drag_start_pos = None
@@ -455,12 +458,14 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         self.update_style()
 
     def refresh_sections(self):
-        layout = self.sections_container.layout
-        while layout.count():
-            item = layout.takeAt(0)
-            if item.widget(): item.widget().deleteLater()
-        
-        if not os.path.exists(self.path): return
+        if not os.path.exists(self.path):
+            layout = self.sections_container.layout
+            while layout.count():
+                item = layout.takeAt(0)
+                if item.widget(): item.widget().deleteLater()
+            self.btn_collapse.setVisible(False)
+            return
+
         max_level = self.app.config.get("max_nesting", 10)
         try: items = os.listdir(self.path)
         except: items = []
@@ -477,33 +482,77 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         else:
             items = sorted(items)
 
-        folders = [d for d in items if os.path.isdir(os.path.join(self.path, d)) and d != ".mediakeeper"]
-        
-        has_any_folders = bool(folders)
-        for f in folders:
+        folders_info = []
+        for f in items:
             fp = os.path.join(self.path, f)
-            has_sub = False
-            if self.level + 1 < max_level:
-                try:
-                    sub = os.listdir(fp)
-                    has_sub = any(
-                        os.path.isdir(os.path.join(fp, i)) for i in sub
-                        if i != ".mediakeeper"
-                    )
-                except:
-                    pass
-            
-            if has_sub:
-                layout.addWidget(CategoryWidget(f, fp, self.app, self.level + 1, parent_cat=self))
+            if os.path.isdir(fp) and f != ".mediakeeper":
+                has_sub = False
+                if self.level + 1 < max_level:
+                    try:
+                        sub = os.listdir(fp)
+                        has_sub = any(
+                            os.path.isdir(os.path.join(fp, i)) for i in sub
+                            if i != ".mediakeeper"
+                        )
+                    except:
+                        pass
+                folders_info.append((f, fp, has_sub))
+
+        # Находим текущие виджеты в контейнере
+        layout = self.sections_container.layout
+        current_widgets = {}
+        for i in range(layout.count()):
+            w = layout.itemAt(i).widget()
+            if w and hasattr(w, 'path'):
+                current_widgets[w.path] = w
+
+        # Удаляем те виджеты, папки которых больше нет на диске
+        target_paths = {info[1] for info in folders_info}
+        for path, w in list(current_widgets.items()):
+            if path not in target_paths:
+                layout.removeWidget(w)
+                w.deleteLater()
+                del current_widgets[path]
+
+        # Инкрементально обновляем/добавляем
+        for idx, (name, fp, has_sub) in enumerate(folders_info):
+            if fp in current_widgets:
+                widget = current_widgets[fp]
+                is_currently_cat = isinstance(widget, CategoryWidget)
+                if is_currently_cat != has_sub:
+                    # Пересоздаем, если тип изменился
+                    layout.removeWidget(widget)
+                    widget.deleteLater()
+                    if has_sub:
+                        widget = CategoryWidget(name, fp, self.app, self.level + 1, parent_cat=self)
+                    else:
+                        widget = LeafNodeWidget(name, fp, self.app, self, self.level + 1)
+                    layout.insertWidget(idx, widget)
+                else:
+                    # Перемещаем на правильный индекс
+                    layout.removeWidget(widget)
+                    layout.insertWidget(idx, widget)
+                    if has_sub:
+                        widget.refresh_sections()
             else:
-                layout.addWidget(LeafNodeWidget(f, fp, self.app, self, self.level + 1))
-        
-        self.btn_collapse.setVisible(has_any_folders)
+                # Добавляем новый
+                if has_sub:
+                    widget = CategoryWidget(name, fp, self.app, self.level + 1, parent_cat=self)
+                else:
+                    widget = LeafNodeWidget(name, fp, self.app, self, self.level + 1)
+                layout.insertWidget(idx, widget)
+
+        self.btn_collapse.setVisible(bool(folders_info))
 
     def toggle_collapse(self):
         self.is_collapsed = not self.is_collapsed
         self.sections_container.setVisible(not self.is_collapsed)
         self.btn_collapse.setText("▶" if self.is_collapsed else "▼")
+        
+        # Обновляем кэш состояний в рамках сессии
+        if not hasattr(self.app, 'collapsed_states_cache'):
+            self.app.collapsed_states_cache = {}
+        self.app.collapsed_states_cache[self.path] = self.is_collapsed
 
     def create_section(self):
         dlg = SmartNameDialog("dlg_new_sub_title", "dlg_enter_name", self.path, "", self)

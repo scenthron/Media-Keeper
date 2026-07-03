@@ -1621,6 +1621,11 @@ class SorterBaseListView(QListWidget):
         self.large_preview_popup = None
 
     def _show_large_preview(self):
+        # Если идет загрузка файлов — не открываем окно быстрого просмотра
+        viewer_area = self.get_viewer_area()
+        if viewer_area and hasattr(viewer_area, 'loading_overlay') and not viewer_area.loading_overlay.isHidden():
+            return
+            
         if not self.current_hover_path or not os.path.exists(self.current_hover_path):
             return
             
@@ -3160,6 +3165,11 @@ class SorterViewerArea(QWidget):
                     widget.set_selected(item.isSelected())
                     
             self.selection_changed.emit()
+            
+            if self.stack.currentIndex() == 0:
+                main_window = self.window()
+                if main_window and hasattr(main_window, 'show_current_file'):
+                    main_window.show_current_file()
             
             # Schedule hover check after load finishes
             from PyQt6.QtCore import QTimer

@@ -113,7 +113,9 @@ class PlayerMixin:
                 self.media_player.setLoops(QMediaPlayer.Loops.Once)
                 
             self.viewer.set_video_mode()
-            self.media_player.play()
+            is_loading = hasattr(self, 'viewer') and hasattr(self.viewer, 'loading_overlay') and not self.viewer.loading_overlay.isHidden()
+            if not is_loading:
+                self.media_player.play()
             
         # 4. Audio
         elif ext in ['.mp3', '.wav', '.ogg', '.flac']:
@@ -125,7 +127,9 @@ class PlayerMixin:
             
             self.media_player.setSource(QUrl.fromLocalFile(self.current_file_path))
             self.viewer.set_audio_mode(filename)
-            self.media_player.play()
+            is_loading = hasattr(self, 'viewer') and hasattr(self.viewer, 'loading_overlay') and not self.viewer.loading_overlay.isHidden()
+            if not is_loading:
+                self.media_player.play()
             
         else:
             self.video_controls.hide()

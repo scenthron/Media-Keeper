@@ -2,7 +2,7 @@ import os
 import logging
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFrame, QLabel,
-    QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QDialog, QMenu, QDoubleSpinBox
+    QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QDialog, QMenu, QDoubleSpinBox, QGraphicsOpacityEffect
 )
 from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF, pyqtSignal, QSize, QUrl, QPoint, QSizeF, QRect
 from PyQt6.QtGui import QPixmap, QMovie, QPainter, QIcon, QCursor, QAction, QDesktopServices, QImageReader, QKeySequence
@@ -361,6 +361,10 @@ class LargePreviewPopup(QDialog):
         self.top_overlay.setStyleSheet("""
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(15, 15, 15, 0.85), stop:0.7 rgba(15, 15, 15, 0.4), stop:1 rgba(15, 15, 15, 0));
         """)
+        self.top_opacity_effect = QGraphicsOpacityEffect(self.top_overlay)
+        self.top_opacity_effect.setOpacity(1.0)
+        self.top_overlay.setGraphicsEffect(self.top_opacity_effect)
+        self.top_overlay.installEventFilter(self)
         top_layout = QHBoxLayout(self.top_overlay)
         top_layout.setContentsMargins(4, 4, 4, 0)
         top_layout.setSpacing(10)
@@ -867,6 +871,14 @@ class LargePreviewPopup(QDialog):
 
     def eventFilter(self, obj, event):
         from PyQt6.QtCore import QEvent
+        
+        if obj == getattr(self, 'top_overlay', None):
+            if event.type() == QEvent.Type.Enter:
+                if hasattr(self, 'top_opacity_effect') and self.top_opacity_effect:
+                    self.top_opacity_effect.setOpacity(0.0)
+            elif event.type() == QEvent.Type.Leave:
+                if hasattr(self, 'top_opacity_effect') and self.top_opacity_effect:
+                    self.top_opacity_effect.setOpacity(1.0)
         
         is_viewer = False
         if obj == getattr(self, 'video_viewer', None):

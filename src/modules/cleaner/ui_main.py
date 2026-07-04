@@ -400,14 +400,14 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
     def on_tab_changed(self, index: int) -> None:
         self.stacked_widget.setCurrentIndex(index)
+        self.btn_toggle_settings.show()
+        self.update_toggle_settings_button()
+        
         if index == 2:
-            self.btn_toggle_settings.hide()
             self.page_ai.update_folders_label(self.get_active_source_folders())
             if hasattr(self.page_ai, 'check_models_status'):
                 self.page_ai.check_models_status()
         else:
-            self.btn_toggle_settings.show()
-            self.update_toggle_settings_button()
             self.update_cache_info()
             self.on_safe_scan_toggled()
             
@@ -697,7 +697,11 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         return QIcon(QPixmap.fromImage(mirrored_image))
 
     def update_toggle_settings_button(self) -> None:
-        visible = self.settings_panel.isVisible()
+        if self.current_tab == 2:
+            visible = self.page_ai.top_settings.isVisible()
+        else:
+            visible = self.settings_panel.isVisible()
+            
         text_key = "cln_toggle_settings_hide" if visible else "cln_toggle_settings_show"
         self.btn_toggle_settings.setText(AppContext.tr(text_key))
         
@@ -737,12 +741,18 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.on_safe_scan_toggled()
 
     def toggle_settings(self) -> None:
-        if self.settings_panel.isVisible():
-            self.settings_panel.hide()
-            self.settings_separator.hide()
+        if self.current_tab == 2:
+            if self.page_ai.top_settings.isVisible():
+                self.page_ai.top_settings.hide()
+            else:
+                self.page_ai.top_settings.show()
         else:
-            self.settings_panel.show()
-            self.settings_separator.show()
+            if self.settings_panel.isVisible():
+                self.settings_panel.hide()
+                self.settings_separator.hide()
+            else:
+                self.settings_panel.show()
+                self.settings_separator.show()
         self.update_toggle_settings_button()
 
     def on_safe_scan_toggled(self) -> None:

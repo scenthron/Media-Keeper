@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QListWidget, QListWidgetItem, QFileDialog, QMessageBox, QSlider,
     QTreeWidget, QTreeWidgetItem, QProgressBar, QDialog, QLineEdit,
     QRadioButton, QButtonGroup, QAbstractItemView, QMenu, QSplitter,
-    QScrollArea, QSizePolicy, QComboBox
+    QScrollArea, QSizePolicy, QComboBox, QCheckBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor
@@ -897,6 +897,66 @@ class AiClassificationTab(QWidget):
         self.combo_match_mode.currentIndexChanged.connect(self.on_match_mode_changed)
         params_sub_layout.addWidget(self.combo_match_mode)
         
+        # Галочка "Использовать кэш" (включена по умолчанию)
+        self.chk_use_cache = QCheckBox("Использовать кэш" if AppContext.is_ru() else "Use Cache")
+        self.chk_use_cache.setChecked(True)
+        self.chk_use_cache.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_use_cache.setStyleSheet("""
+            QCheckBox {
+                color: #ccc;
+                font-weight: bold;
+                font-size: 11px;
+                background-color: transparent;
+                border: none;
+                spacing: 6px;
+                margin-top: 4px;
+            }
+            QCheckBox::indicator {
+                width: 14px;
+                height: 14px;
+                border: 1px solid #666;
+                background-color: #222;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #3b82f6;
+                border-color: #3b82f6;
+            }
+        """)
+        params_sub_layout.addWidget(self.chk_use_cache)
+        
+        # Панель размера и очистки кэша
+        cache_layout = QHBoxLayout()
+        cache_layout.setSpacing(6)
+        
+        self.lbl_cache_info_ai = QLabel("Кэш ИИ: 0 B" if AppContext.is_ru() else "AI Cache: 0 B")
+        self.lbl_cache_info_ai.setStyleSheet("color: #aaa; font-size: 11px; background: transparent; border: none;")
+        cache_layout.addWidget(self.lbl_cache_info_ai)
+        
+        self.btn_clear_cache_ai = QPushButton("🧹")
+        self.btn_clear_cache_ai.setFixedSize(20, 20)
+        self.btn_clear_cache_ai.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear_cache_ai.setToolTip("Очистить кэш ИИ" if AppContext.is_ru() else "Clear AI Cache")
+        self.btn_clear_cache_ai.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+                color: #ef4444;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                color: #f87171;
+            }
+        """)
+        self.btn_clear_cache_ai.clicked.connect(self.clear_ai_cache_ui)
+        cache_layout.addWidget(self.btn_clear_cache_ai)
+        cache_layout.addStretch()
+        
+        params_sub_layout.addLayout(cache_layout)
+        
+        # Инициализируем размер кэша
+        QTimer.singleShot(100, self.update_cache_info_ai)
+        
         self.btn_start_scan = QPushButton("Начать ИИ Поиск" if AppContext.is_ru() else "Start AI Search")
         self.btn_start_scan.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_start_scan.setStyleSheet("""
@@ -1162,6 +1222,35 @@ class AiClassificationTab(QWidget):
         settings["match_mode"] = mode
         save_ai_settings(settings)
 
+    def update_cache_info_ai(self):
+        try:
+            db_path = self.cache.db_path
+            if os.path.exists(db_path):
+                size = os.path.getsize(db_path)
+                from utils_common import format_size
+                self.lbl_cache_info_ai.setText(f"Кэш ИИ: {format_size(size)}" if AppContext.is_ru() else f"AI Cache: {format_size(size)}")
+            else:
+                self.lbl_cache_info_ai.setText("Кэш ИИ: 0 B" if AppContext.is_ru() else "AI Cache: 0 B")
+        except Exception as e:
+            logging.error(f"Ошибка получения размера ИИ-кэша: {e}")
+            self.lbl_cache_info_ai.setText("Кэш ИИ: 0 B" if AppContext.is_ru() else "AI Cache: 0 B")
+
+    def clear_ai_cache_ui(self):
+        is_ru = AppContext.is_ru()
+        reply = QMessageBox.question(
+            self,
+            "Очистить кэш ИИ" if is_ru else "Clear AI Cache",
+            "Вы уверены, что хотите полностью очистить кэш ИИ? Это сбросит кэшированные признаки всех изображений и при повторном сканировании потребуется их полный анализ."
+            if is_ru else
+            "Are you sure you want to clear the AI cache? This will reset all cached features and require full analysis next time.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self.cache.clear_cache()
+            self.update_cache_info_ai()
+            self.reload_groups()
+
     def set_scan_enabled(self, enabled: bool):
         self.btn_start_scan.setEnabled(enabled)
 
@@ -1258,7 +1347,8 @@ class AiClassificationTab(QWidget):
         threshold = float(self.slider_threshold.value())
         
         match_mode = self.combo_match_mode.currentData() or "centroid"
-        self.active_worker = AiScanWorker(folders, self.classifier, threshold=threshold, filter_config=filter_cfg, match_mode=match_mode)
+        use_cache = self.chk_use_cache.isChecked()
+        self.active_worker = AiScanWorker(folders, self.classifier, threshold=threshold, filter_config=filter_cfg, match_mode=match_mode, use_cache=use_cache)
         self.active_worker.progress.connect(self.on_scan_progress)
         self.active_worker.finished.connect(self.on_scan_finished)
         self.active_worker.start()
@@ -1298,6 +1388,7 @@ class AiClassificationTab(QWidget):
         
         self.active_worker = None
         self.scan_finished.emit()
+        self.update_cache_info_ai()
         
         self.populate_results(results)
 

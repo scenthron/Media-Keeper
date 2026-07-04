@@ -813,13 +813,14 @@ class AiScanWorker(QThread):
     # finished: { group_name: [ { 'path': ..., 'size': ..., 'confidence': ..., 'type': ... }, ... ] }
     finished = pyqtSignal(dict)
     
-    def __init__(self, folders, classifier, threshold=75.0, filter_config=None, match_mode="centroid"):
+    def __init__(self, folders, classifier, threshold=75.0, filter_config=None, match_mode="centroid", use_cache=True):
         super().__init__()
         self.folders = folders
         self.classifier = classifier
         self.threshold = threshold
         self.filter_config = filter_config
         self.match_mode = match_mode
+        self.use_cache = use_cache
         self.is_running = True
 
     def stop(self):
@@ -911,7 +912,7 @@ class AiScanWorker(QThread):
                 size = stat.st_size
                 
                 # Запускаем ИИ сопоставление
-                best_group, confidence, details = self.classifier.match_image(fp, mtime, size, match_mode=self.match_mode, threshold=self.threshold)
+                best_group, confidence, details = self.classifier.match_image(fp, mtime, size, match_mode=self.match_mode, threshold=self.threshold, use_cache=self.use_cache)
                 
                 if best_group and confidence >= self.threshold:
                     if best_group not in results:

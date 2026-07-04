@@ -224,7 +224,7 @@ class AiClassifier:
                     
         return len(self.general_embeddings) > 0 or len(self.face_reference_descriptors) > 0
 
-    def match_image(self, filepath: str, mtime: float, size: int, match_mode: str = "centroid", threshold: float = 75.0) -> tuple:
+    def match_image(self, filepath: str, mtime: float, size: int, match_mode: str = "centroid", threshold: float = 75.0, use_cache: bool = True) -> tuple:
         """
         Сопоставляет сканируемый файл с активными группами эталонов.
         Возвращает кортеж: (best_group_name, confidence_percent, details)
@@ -232,10 +232,14 @@ class AiClassifier:
         """
         # 1. Сначала проверяем классификацию лица (если есть активные face-группы)
         if self.face_reference_descriptors:
-            faces = self.cache.get_file_faces(filepath, mtime, size)
+            faces = None
+            if use_cache:
+                faces = self.cache.get_file_faces(filepath, mtime, size)
+                
             if faces is None:
                 faces = self.ai.detect_and_extract_faces(filepath)
-                self.cache.save_file_faces(filepath, mtime, size, faces)
+                if use_cache:
+                    self.cache.save_file_faces(filepath, mtime, size, faces)
                 
             if faces:
                 best_face_group = None
@@ -256,10 +260,14 @@ class AiClassifier:
                     
         # 2. Если лица не распознаны, делаем общее сопоставление картинок с учетом выбранного режима
         if self.general_embeddings or self.general_centroids:
-            emb = self.cache.get_image_embedding(filepath, mtime, size)
+            emb = None
+            if use_cache:
+                emb = self.cache.get_image_embedding(filepath, mtime, size)
+                
             if emb is None:
                 emb = self.ai.extract_image_embedding(filepath)
-                self.cache.save_image_embedding(filepath, mtime, size, emb)
+                if use_cache:
+                    self.cache.save_image_embedding(filepath, mtime, size, emb)
                 
             best_group = None
             best_score = 0.0

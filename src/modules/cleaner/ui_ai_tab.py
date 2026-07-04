@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QListWidget, QListWidgetItem, QFileDialog, QMessageBox, QSlider,
     QTreeWidget, QTreeWidgetItem, QProgressBar, QDialog, QLineEdit,
     QRadioButton, QButtonGroup, QAbstractItemView, QMenu, QSplitter,
-    QScrollArea, QSizePolicy
+    QScrollArea, QSizePolicy, QComboBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor
@@ -833,6 +833,70 @@ class AiClassificationTab(QWidget):
         self.slider_threshold.valueChanged.connect(self.on_threshold_changed)
         params_sub_layout.addWidget(self.slider_threshold)
         
+        # Выбор режима сопоставления
+        self.lbl_match_mode = QLabel("Режим сопоставления:" if AppContext.is_ru() else "Matching Mode:")
+        self.lbl_match_mode.setStyleSheet("color: #ccc; font-weight: bold; font-size: 11px; border: none; background: transparent; margin-top: 4px;")
+        params_sub_layout.addWidget(self.lbl_match_mode)
+        
+        self.combo_match_mode = QComboBox()
+        self.combo_match_mode.setMinimumHeight(24)
+        self.combo_match_mode.setStyleSheet("""
+            QComboBox {
+                background-color: #2b2b2b;
+                border: 1px solid #444;
+                border-radius: 4px;
+                padding: 2px 8px;
+                color: white;
+                font-size: 11px;
+            }
+            QComboBox:hover {
+                border-color: #555;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2b2b2b;
+                color: white;
+                selection-background-color: #3b82f6;
+            }
+        """)
+        
+        is_ru = AppContext.is_ru()
+        self.combo_match_mode.addItem("Средний образ" if is_ru else "Average Centroid", "centroid")
+        self.combo_match_mode.setItemData(0, 
+            "Сравнивает изображение со средним арифметическим всех эталонов.\nПодходит для поиска однотипных скриншотов или портретов одного человека."
+            if is_ru else
+            "Compares with the average vector of all references.\nBest for uniform images (e.g. same face, same UI).",
+            Qt.ItemDataRole.ToolTipRole
+        )
+        
+        self.combo_match_mode.addItem("Любое совпадение" if is_ru else "Best Match (Any)", "best_match")
+        self.combo_match_mode.setItemData(1, 
+            "Сравнивает с каждым эталоном отдельно и берет максимальное сходство.\nПозволяет искать разнородные объекты в одной группе (разные ракурсы, цвета, машины)."
+            if is_ru else
+            "Compares with each reference individually and takes the maximum similarity.\nBest for diverse images in one group.",
+            Qt.ItemDataRole.ToolTipRole
+        )
+        
+        self.combo_match_mode.addItem("Большинство совпадений" if is_ru else "Majority Match", "majority")
+        self.combo_match_mode.setItemData(2, 
+            "Файл должен быть похож минимум на половину (50%) всех эталонов в группе.\nИсключает случайные ложные совпадения."
+            if is_ru else
+            "Requires the file to match at least 50% of the reference images.\nPrevents accidental false positives.",
+            Qt.ItemDataRole.ToolTipRole
+        )
+        
+        # Загружаем сохраненный режим из настроек
+        settings = load_ai_settings()
+        saved_mode = settings.get("match_mode", "centroid")
+        idx = self.combo_match_mode.findData(saved_mode)
+        if idx >= 0:
+            self.combo_match_mode.setCurrentIndex(idx)
+            
+        self.combo_match_mode.currentIndexChanged.connect(self.on_match_mode_changed)
+        params_sub_layout.addWidget(self.combo_match_mode)
+        
         self.btn_start_scan = QPushButton("Начать ИИ Поиск" if AppContext.is_ru() else "Start AI Search")
         self.btn_start_scan.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_start_scan.setStyleSheet("""
@@ -1084,6 +1148,12 @@ class AiClassificationTab(QWidget):
     def on_threshold_changed(self, value):
         self.lbl_threshold.setText(f"Схожесть: {value}%" if AppContext.is_ru() else f"Similarity: {value}%")
 
+    def on_match_mode_changed(self, index):
+        mode = self.combo_match_mode.itemData(index)
+        settings = load_ai_settings()
+        settings["match_mode"] = mode
+        save_ai_settings(settings)
+
     def set_scan_enabled(self, enabled: bool):
         self.btn_start_scan.setEnabled(enabled)
 
@@ -1179,7 +1249,8 @@ class AiClassificationTab(QWidget):
         filter_cfg = getattr(self.cleaner, 'filter_config', None)
         threshold = float(self.slider_threshold.value())
         
-        self.active_worker = AiScanWorker(folders, self.classifier, threshold=threshold, filter_config=filter_cfg)
+        match_mode = self.combo_match_mode.currentData() or "centroid"
+        self.active_worker = AiScanWorker(folders, self.classifier, threshold=threshold, filter_config=filter_cfg, match_mode=match_mode)
         self.active_worker.progress.connect(self.on_scan_progress)
         self.active_worker.finished.connect(self.on_scan_finished)
         self.active_worker.start()

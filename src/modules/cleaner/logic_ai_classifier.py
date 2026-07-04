@@ -41,6 +41,7 @@ class AiClassifier:
         
         # Кэш готовых эталонов в ОЗУ для быстрого сопоставления во время сканирования
         self.general_centroids = {}  # group_name -> mean_embedding
+        self.general_embeddings = {}  # group_name -> list(embedding)
         self.face_reference_descriptors = {}  # group_name -> list(descriptor)
 
     def get_group_status(self, group_name: str) -> tuple:
@@ -159,6 +160,7 @@ class AiClassifier:
         Возвращает True, если есть хотя бы один активный класс для поиска.
         """
         self.general_centroids.clear()
+        self.general_embeddings.clear()
         self.face_reference_descriptors.clear()
         
         settings = load_ai_settings()
@@ -210,6 +212,8 @@ class AiClassifier:
                     except Exception:
                         pass
                 if embeddings:
+                    self.general_embeddings[group_name] = embeddings
+                    
                     # Считаем средний центроид
                     mean_emb = np.mean(embeddings, axis=0)
                     # Нормализуем центроид
@@ -218,9 +222,9 @@ class AiClassifier:
                         mean_emb /= norm
                     self.general_centroids[group_name] = mean_emb
                     
-        return len(self.general_centroids) > 0 or len(self.face_reference_descriptors) > 0
+        return len(self.general_embeddings) > 0 or len(self.face_reference_descriptors) > 0
 
-    def match_image(self, filepath: str, mtime: float, size: int) -> tuple:
+    def match_image(self, filepath: str, mtime: float, size: int, match_mode: str = "centroid", threshold: float = 75.0) -> tuple:
         """
         Сопоставляет сканируемый файл с активными группами эталонов.
         Возвращает кортеж: (best_group_name, confidence_percent, details)
@@ -230,11 +234,9 @@ class AiClassifier:
         if self.face_reference_descriptors:
             faces = self.cache.get_file_faces(filepath, mtime, size)
             if faces is None:
-                # Если файла нет в кэше лиц, извлекаем через ONNX
                 faces = self.ai.detect_and_extract_faces(filepath)
                 self.cache.save_file_faces(filepath, mtime, size, faces)
                 
-            # Если лица найдены на фото, сопоставляем их
             if faces:
                 best_face_group = None
                 best_face_score = 0.0
@@ -243,9 +245,7 @@ class AiClassifier:
                     desc = face["descriptor"]
                     for group_name, ref_descs in self.face_reference_descriptors.items():
                         for ref_desc in ref_descs:
-                            # Евклидово расстояние между векторами лиц единичной длины
                             dist = np.linalg.norm(desc - ref_desc)
-                            # Перевод в проценты: d=0.0 -> 100%, d>=1.2 -> 0%
                             score = max(0.0, (1.2 - dist) / 1.2) * 100.0
                             if score > best_face_score:
                                 best_face_score = score
@@ -254,8 +254,8 @@ class AiClassifier:
                 if best_face_group and best_face_score > 0.0:
                     return best_face_group, best_face_score, {"type": "face"}
                     
-        # 2. Если лица не распознаны (или нет активных групп лиц), делаем общее сопоставление картинок
-        if self.general_centroids:
+        # 2. Если лица не распознаны, делаем общее сопоставление картинок с учетом выбранного режима
+        if self.general_embeddings or self.general_centroids:
             emb = self.cache.get_image_embedding(filepath, mtime, size)
             if emb is None:
                 emb = self.ai.extract_image_embedding(filepath)
@@ -264,15 +264,44 @@ class AiClassifier:
             best_group = None
             best_score = 0.0
             
-            for group_name, centroid in self.general_centroids.items():
-                # Косинусное сходство (скалярное произведение единичных векторов)
-                similarity = np.dot(emb, centroid)
-                # Переводим в интуитивную шкалу: similarity=0.3 -> 0%, similarity=1.0 -> 100%
-                score = max(0.0, (similarity - 0.3) / 0.7) * 100.0
-                if score > best_score:
-                    best_score = score
-                    best_group = group_name
-                    
+            # Собираем все доступные группы
+            all_groups = set(self.general_embeddings.keys()) | set(self.general_centroids.keys())
+            
+            for group_name in all_groups:
+                if match_mode == "centroid" or group_name not in self.general_embeddings:
+                    # Режим "Средний образ" или если у нас есть только предрассчитанный центроид (например, в тестах)
+                    centroid = self.general_centroids.get(group_name)
+                    if centroid is not None:
+                        similarity = np.dot(emb, centroid)
+                        score = max(0.0, (similarity - 0.3) / 0.7) * 100.0
+                        if score > best_score:
+                            best_score = score
+                            best_group = group_name
+                else:
+                    embs = self.general_embeddings[group_name]
+                    scores = []
+                    for ref_emb in embs:
+                        similarity = np.dot(emb, ref_emb)
+                        score = max(0.0, (similarity - 0.3) / 0.7) * 100.0
+                        scores.append(score)
+                        
+                    if not scores:
+                        continue
+                        
+                    if match_mode == "majority":
+                        # Должно быть выше threshold для >= 50% эталонов
+                        passed = [s for s in scores if s >= threshold]
+                        if len(passed) >= max(1, len(scores) / 2.0):
+                            mean_passed = np.mean(passed)
+                            if mean_passed > best_score:
+                                best_score = mean_passed
+                                best_group = group_name
+                    else:  # "best_match"
+                        max_score = max(scores)
+                        if max_score > best_score:
+                            best_score = max_score
+                            best_group = group_name
+                            
             if best_group and best_score > 0.0:
                 return best_group, best_score, {"type": "general"}
                 

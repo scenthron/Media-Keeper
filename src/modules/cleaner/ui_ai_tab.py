@@ -590,14 +590,22 @@ class AiClassificationTab(QWidget):
         self.combo_match_mode.currentIndexChanged.connect(self.on_match_mode_changed)
         params_sub_layout.addWidget(self.combo_match_mode)
         
-        self.chk_auto_cluster = QCheckBox("Умная авто-кластеризация" if AppContext.is_ru() else "Smart Auto-Clustering")
-        self.chk_auto_cluster.setStyleSheet("color: white; font-size: 11px; margin-top: 5px;")
+        self.chk_auto_cluster = QCheckBox("Умный поиск по людям" if AppContext.is_ru() else "Smart Auto-Clustering")
+        self.chk_auto_cluster.setStyleSheet("""
+            QCheckBox { color: white; font-weight: bold; font-size: 11px; margin-top: 5px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; margin-top: 5px; }
+            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        """)
         self.chk_auto_cluster.setToolTip("Искать лица без эталонов и группировать их автоматически." if AppContext.is_ru() else "Group faces automatically without references.")
         self.chk_auto_cluster.stateChanged.connect(self.on_auto_cluster_changed)
         params_sub_layout.addWidget(self.chk_auto_cluster)
         
         self.chk_use_gpu = QCheckBox("Аппаратное ускорение (GPU)" if AppContext.is_ru() else "Hardware Acceleration (GPU)")
-        self.chk_use_gpu.setStyleSheet("color: white; font-size: 11px;")
+        self.chk_use_gpu.setStyleSheet("""
+            QCheckBox { color: white; font-weight: bold; font-size: 11px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        """)
         self.chk_use_gpu.setToolTip("Использовать CUDA/DirectML для ускорения ИИ (если доступно)." if AppContext.is_ru() else "Use CUDA/DirectML to accelerate AI (if available).")
         self.chk_use_gpu.setChecked(True)
         params_sub_layout.addWidget(self.chk_use_gpu)
@@ -646,6 +654,9 @@ class AiClassificationTab(QWidget):
         self.action_bar = CleanerActionBar()
         self.action_bar.is_similar_mode = False
         self.action_bar.combo_autoselect.hide()
+        self.action_bar.btn_select_all.hide()
+        self.action_bar.btn_deselect.hide()
+        self.action_bar.layout().insertWidget(0, self.post_filter_widget)
         
         # Динамически добавляем лейбл выделения в CleanerActionBar для вкладки ИИ
         self.action_bar.lbl_selection_info = QLabel("Выбрано: 0 файлов • 0 B" if AppContext.is_ru() else "Selected: 0 files • 0 B")
@@ -759,7 +770,6 @@ class AiClassificationTab(QWidget):
         self.post_filter_widget.setLayout(post_filter_layout)
         self.post_filter_widget.hide() # Hidden until scan is done
         
-        tree_layout.addWidget(self.post_filter_widget)
         tree_layout.addWidget(self.tree_results)
         
         self.right_splitter.addWidget(tree_container)
@@ -1270,7 +1280,9 @@ class AiClassificationTab(QWidget):
             self.spin_post_filter.setSingleStep(1.0)
             self.spin_post_filter.setRange(float(min_size), float(max_size))
             self.slider_post_filter.setRange(0, len(sizes) - 1 if sizes else 0)
-            default_val = float(max(2, min_size))
+            default_val = 2.0
+            if max_size < 2:
+                default_val = float(max_size)
             self.spin_post_filter.setValue(default_val)
             try:
                 idx = min(range(len(sizes)), key=lambda i: abs(sizes[i] - default_val))

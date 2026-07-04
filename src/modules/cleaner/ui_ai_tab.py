@@ -115,6 +115,37 @@ class AiAdvancedSettingsDialog(QDialog):
         layout.addWidget(self.chk_merge)
         layout.addWidget(lbl_desc)
         
+        # Deep Merge Threshold
+        l_merge_thresh = QLabel("Сила объединения (чем меньше, тем строже):")
+        l_merge_thresh.setStyleSheet("color: #ccc; font-size: 11px;")
+        
+        self.slider_merge = QSlider(Qt.Orientation.Horizontal)
+        self.slider_merge.setRange(0, 100)
+        self.slider_merge.setValue(int(self.settings.get("deep_merge_threshold", 75.0)))
+        self.slider_merge.setStyleSheet("""
+            QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
+            QSlider::handle:horizontal { background: #8b5cf6; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
+        """)
+        
+        self.spin_merge = CleanSpinBox()
+        self.spin_merge.setRange(0.0, 1.0)
+        self.spin_merge.setDecimals(2)
+        self.spin_merge.setSingleStep(0.01)
+        self.spin_merge.setValue(float(self.settings.get("deep_merge_threshold", 75.0)) / 100.0)
+        self.spin_merge.setFixedWidth(65)
+        self.spin_merge.setStyleSheet("border: none; background: transparent; color: #f0f0f0; font-weight: bold; font-size: 12px; padding: 0 4px;")
+        
+        self.slider_merge.valueChanged.connect(lambda v: self.spin_merge.setValue(v / 100.0))
+        self.spin_merge.valueChanged.connect(lambda v: self.slider_merge.setValue(int(v * 100.0)))
+        
+        h3 = QHBoxLayout()
+        h3.addWidget(l_merge_thresh)
+        h3.addStretch()
+        h3.addWidget(self.spin_merge)
+        
+        layout.addLayout(h3)
+        layout.addWidget(self.slider_merge)
+        
         layout.addStretch()
         
         btn_box = QHBoxLayout()
@@ -135,12 +166,24 @@ class AiAdvancedSettingsDialog(QDialog):
         self.slider_det.setValue(65)
         self.slider_match.setValue(1128)
         self.chk_merge.setChecked(True)
+        self.slider_merge.setValue(75)
         
     def save_and_close(self):
-        self.settings["face_det_threshold"] = float(self.slider_det.value())
+        old_det = float(self.settings.get("face_det_threshold", 65.0))
+        new_det = float(self.slider_det.value())
+        
+        self.settings["face_det_threshold"] = new_det
         self.settings["face_match_threshold"] = float(self.slider_match.value()) / 1000.0
         self.settings["deep_merge_enabled"] = self.chk_merge.isChecked()
+        self.settings["deep_merge_threshold"] = float(self.slider_merge.value())
         save_ai_settings(self.settings)
+        
+        # Auto-clear cache if detection threshold changed
+        if old_det != new_det and hasattr(self.parent(), 'cache'):
+            self.parent().cache.clear_cache()
+            if hasattr(self.parent(), 'update_cache_info_ai'):
+                self.parent().update_cache_info_ai()
+                
         self.accept()
 
 

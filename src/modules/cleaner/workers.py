@@ -1020,7 +1020,7 @@ class AiScanWorker(QThread):
                 from .logic_ai_classifier import load_ai_settings
                 settings = load_ai_settings()
                 if settings.get("deep_merge_enabled", True):
-                    merge_threshold = self.threshold / 100.0
+                    merge_threshold = settings.get("deep_merge_threshold", 75.0) / 100.0
                     merged = True
                     while merged:
                         merged = False

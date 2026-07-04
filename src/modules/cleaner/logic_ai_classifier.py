@@ -21,7 +21,8 @@ def load_ai_settings() -> dict:
         "groups": {},
         "face_det_threshold": 65.0,
         "face_match_threshold": 1.128,
-        "deep_merge_enabled": True
+        "deep_merge_enabled": True,
+        "deep_merge_threshold": 75.0
     }
     if os.path.exists(settings_path):
         try:

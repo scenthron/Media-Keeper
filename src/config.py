@@ -77,6 +77,10 @@ class AppContext:
     session_all_videos_active = False
     
     @staticmethod
+    def is_ru():
+        return AppContext.LANG == "RU"
+        
+    @staticmethod
     def save_media_settings():
         try:
             from modules.sorter.logic_config import ConfigManager

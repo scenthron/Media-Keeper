@@ -12,7 +12,6 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor
 
 from config import AppContext, APP_DESIGN
-from ui_widgets_base import DropZoneWidget
 from .logic_ai import AiEngine
 from .logic_ai_cache import AiCacheManager
 from .logic_ai_classifier import AiClassifier, load_ai_settings, save_ai_settings, get_ai_assets_dir
@@ -40,14 +39,82 @@ class ImageHoverToolTip(QLabel):
                 scaled = pixmap.scaled(250, 250, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                 self.setPixmap(scaled)
                 self.setFixedSize(scaled.width() + 8, scaled.height() + 8)
-                
-                # Позиционируем правее и ниже курсора, чтобы не перекрывать его
                 self.move(pos.x() + 15, pos.y() + 15)
                 self.show()
             else:
                 self.hide()
         except Exception:
             self.hide()
+
+
+# -----------------------------------------------------------------------------
+# Компактная область перетаскивания папок (DropZone)
+# -----------------------------------------------------------------------------
+class CompactFolderDropZone(QFrame):
+    folder_dropped = pyqtSignal(str)
+    clicked = pyqtSignal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setStyleSheet("""
+            QFrame {
+                background-color: rgba(255, 255, 255, 0.02);
+                border: 1px dashed #555;
+                border-radius: 4px;
+            }
+            QFrame:hover {
+                background-color: rgba(255, 255, 255, 0.05);
+                border-color: #3b82f6;
+            }
+        """)
+        self.setFixedHeight(30)
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(5, 0, 5, 0)
+        
+        self.lbl = QLabel("Перетащите папки сюда или кликните" if AppContext.is_ru() else "Drag folders here or click")
+        self.lbl.setStyleSheet("color: #777; font-size: 11px; border: none; background: transparent;")
+        self.lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.lbl)
+        
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+            
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+            self.setStyleSheet("""
+                QFrame {
+                    background-color: rgba(59, 130, 246, 0.1);
+                    border: 1px dashed #3b82f6;
+                    border-radius: 4px;
+                }
+            """)
+            
+    def dragLeaveEvent(self, event):
+        self.setStyleSheet("""
+            QFrame {
+                background-color: rgba(255, 255, 255, 0.02);
+                border: 1px dashed #555;
+                border-radius: 4px;
+            }
+            QFrame:hover {
+                background-color: rgba(255, 255, 255, 0.05);
+                border-color: #3b82f6;
+            }
+        """)
+        
+    def dropEvent(self, event):
+        self.dragLeaveEvent(None)
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                fp = url.toLocalFile()
+                if os.path.isdir(fp):
+                    self.folder_dropped.emit(fp)
+            event.acceptProposedAction()
 
 
 # -----------------------------------------------------------------------------
@@ -113,7 +180,6 @@ class RefImagesListWidget(QListWidget):
         if item:
             path = item.data(Qt.ItemDataRole.UserRole)
             if path:
-                # Переводим координаты в глобальные
                 glob_pos = self.mapToGlobal(event.pos())
                 self.item_hovered.emit(path, glob_pos)
         else:
@@ -136,7 +202,7 @@ class EditAiGroupDialog(QDialog):
         self.has_changes = False
         
         self.setWindowTitle(f"Настройка эталона: {group_name}" if self.is_ru else f"Edit Reference: {group_name}")
-        self.setFixedSize(500, 480)
+        self.setFixedSize(500, 520)
         self.setStyleSheet("background-color: #202020; color: white;")
         
         layout = QVBoxLayout(self)
@@ -171,7 +237,7 @@ class EditAiGroupDialog(QDialog):
         
         self.btn_group = QButtonGroup(self)
         self.rad_general = QRadioButton("Общее сходство изображений" if self.is_ru else "General Image Similarity")
-        self.rad_face = QRadioButton("Поиск конкретных лиц людей" if self.is_ru_face() else "Face Recognition (People)")
+        self.rad_face = QRadioButton("Поиск конкретных лиц людей" if self.is_ru else "Face Recognition (People)")
         
         self.btn_group.addButton(self.rad_general, 0)
         self.btn_group.addButton(self.rad_face, 1)
@@ -211,8 +277,14 @@ class EditAiGroupDialog(QDialog):
         self.btn_del_file.setStyleSheet("background-color: #ef4444; border: none; padding: 6px 12px; border-radius: 4px;")
         self.btn_del_file.clicked.connect(self.delete_selected_files)
         
+        # НОВАЯ КНОПКА: Обучить эталон!
+        self.btn_train = QPushButton("Обучить" if self.is_ru else "Train")
+        self.btn_train.setStyleSheet("background-color: #16a34a; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;")
+        self.btn_train.clicked.connect(self.train_group_ui)
+        
         btn_list_layout.addWidget(self.btn_add_file)
         btn_list_layout.addWidget(self.btn_del_file)
+        btn_list_layout.addWidget(self.btn_train)
         btn_list_layout.addStretch()
         layout.addLayout(btn_list_layout)
         
@@ -233,9 +305,6 @@ class EditAiGroupDialog(QDialog):
         layout.addLayout(buttons_layout)
         
         self.reload_thumbnails()
-
-    def is_ru_face(self) -> bool:
-        return AppContext.is_ru()
 
     def reload_thumbnails(self):
         """Загружает миниатюры картинок эталона."""
@@ -261,7 +330,6 @@ class EditAiGroupDialog(QDialog):
             logging.error(f"Ошибка загрузки миниатюр эталона: {e}")
 
     def add_dropped_files(self, paths: list):
-        """Копирует файлы, перетащенные в DropZone списка."""
         group_dir = os.path.join(get_ai_assets_dir(), self.group_name)
         os.makedirs(group_dir, exist_ok=True)
         
@@ -276,7 +344,6 @@ class EditAiGroupDialog(QDialog):
         self.has_changes = True
 
     def choose_files(self):
-        """Открывает диалог для ручного выбора файлов-примеров."""
         files, _ = QFileDialog.getOpenFileNames(
             self, 
             "Выберите картинки-эталоны" if self.is_ru else "Select Reference Images",
@@ -287,7 +354,6 @@ class EditAiGroupDialog(QDialog):
             self.add_dropped_files(files)
 
     def delete_selected_files(self):
-        """Удаляет выбранные картинки-примеры с диска."""
         selected = self.list_ref_images.selectedItems()
         if not selected:
             return
@@ -303,8 +369,39 @@ class EditAiGroupDialog(QDialog):
         self.reload_thumbnails()
         self.has_changes = True
 
+    def train_group_ui(self):
+        """Локальное обучение прямо из окна настроек эталона."""
+        # Перед расчетом проверяем модели
+        main_tab = self.parent()
+        if main_tab and hasattr(main_tab, 'check_and_download_models_ui'):
+            if not main_tab.check_and_download_models_ui():
+                return
+                
+        status, count = self.classifier.get_group_status(self.group_name)
+        if count == 0:
+            QMessageBox.warning(self, "Внимание" if self.is_ru else "Warning", 
+                                "Добавьте картинки-примеры перед расчетом!" if self.is_ru else "Add reference images first!")
+            return
+            
+        self.btn_train.setEnabled(False)
+        self.btn_train.setText("Расчет..." if self.is_ru else "Processing...")
+        
+        def on_prog(curr, tot):
+            self.btn_train.setText(f"Расчет ({curr}/{tot})..." if self.is_ru else f"Proc ({curr}/{tot})...")
+            from PyQt6.QtWidgets import QApplication
+            QApplication.processEvents()
+            
+        # Запускаем расчет
+        success = self.classifier.train_group(self.group_name, progress_callback=on_prog)
+        
+        self.btn_train.setEnabled(True)
+        self.btn_train.setText("Обучить" if self.is_ru else "Train")
+        
+        if success:
+            QMessageBox.information(self, "Успех" if self.is_ru else "Success", 
+                                    "Обучение эталона завершено!" if self.is_ru else "Reference training completed!")
+
     def save_settings(self):
-        """Сохраняет новое имя группы и её тип."""
         new_name = self.txt_name.text().strip()
         new_name = "".join(c for c in new_name if c.isalnum() or c in " _-").strip()
         if not new_name:
@@ -312,18 +409,15 @@ class EditAiGroupDialog(QDialog):
                                 "Некорректное имя группы!" if self.is_ru else "Invalid group name!")
             return
             
-        # Обновляем имя и тип в json
         settings = load_ai_settings()
         groups = settings.get("groups", {})
         
-        # Если имя изменилось
         if new_name != self.group_name:
             if new_name in groups:
                 QMessageBox.warning(self, "Ошибка" if self.is_ru else "Error", 
                                     "Группа с таким именем уже существует!" if self.is_ru else "Group already exists!")
                 return
                 
-            # Переименовываем папку
             old_dir = os.path.join(get_ai_assets_dir(), self.group_name)
             new_dir = os.path.join(get_ai_assets_dir(), new_name)
             if os.path.exists(old_dir):
@@ -335,13 +429,11 @@ class EditAiGroupDialog(QDialog):
                                          "Не удалось переименовать каталог эталона!" if self.is_ru else "Failed to rename reference directory!")
                     return
             
-            # Переносим запись в json
             info = groups.pop(self.group_name)
             groups[new_name] = info
             self.group_name = new_name
             self.has_changes = True
             
-        # Обновляем тип
         selected_type = "face" if self.rad_face.isChecked() else "general"
         if groups[self.group_name].get("type") != selected_type:
             groups[self.group_name]["type"] = selected_type
@@ -351,95 +443,6 @@ class EditAiGroupDialog(QDialog):
             save_ai_settings(settings)
             
         self.accept()
-
-
-# -----------------------------------------------------------------------------
-# Диалог создания нового эталона
-# -----------------------------------------------------------------------------
-class CreateAiGroupDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        is_ru = AppContext.is_ru()
-        self.setWindowTitle("Создать группу эталонов" if is_ru else "Create Reference Group")
-        self.setFixedSize(350, 210)
-        self.setStyleSheet("background-color: #2b2b2b; color: white;")
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 15, 15, 15)
-        layout.setSpacing(10)
-        
-        layout.addWidget(QLabel("Имя группы:" if is_ru else "Group Name:"))
-        self.txt_name = QLineEdit()
-        self.txt_name.setMinimumHeight(32) # Защита от обрезания на Windows
-        self.txt_name.setStyleSheet("""
-            QLineEdit {
-                background-color: #333; 
-                border: 1px solid #555; 
-                padding: 4px 8px; 
-                border-radius: 4px; 
-                color: white;
-                font-size: 13px;
-            }
-        """)
-        layout.addWidget(self.txt_name)
-        
-        layout.addWidget(QLabel("Тип анализа:" if is_ru else "Analysis Type:"))
-        
-        self.btn_group = QButtonGroup(self)
-        self.rad_general = QRadioButton("Общее сходство изображений" if is_ru else "General Image Similarity")
-        self.rad_general.setChecked(True)
-        self.rad_face = QRadioButton("Поиск конкретных лиц людей" if is_ru else "Face Recognition (People)")
-        
-        self.btn_group.addButton(self.rad_general, 0)
-        self.btn_group.addButton(self.rad_face, 1)
-        
-        layout.addWidget(self.rad_general)
-        layout.addWidget(self.rad_face)
-        
-        buttons_layout = QHBoxLayout()
-        buttons_layout.addStretch()
-        
-        self.btn_cancel = QPushButton("Отмена" if is_ru else "Cancel")
-        self.btn_cancel.setStyleSheet("background-color: #444; border: none; padding: 6px 12px; border-radius: 4px;")
-        self.btn_cancel.clicked.connect(self.reject)
-        
-        self.btn_ok = QPushButton("Создать" if is_ru else "Create")
-        self.btn_ok.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;")
-        self.btn_ok.clicked.connect(self.accept)
-        
-        buttons_layout.addWidget(self.btn_cancel)
-        buttons_layout.addWidget(self.btn_ok)
-        layout.addLayout(buttons_layout)
-
-
-# -----------------------------------------------------------------------------
-# Чекбокс с кастомным дизайном в стиле Cleaner
-# -----------------------------------------------------------------------------
-class QCheckBoxCustom(QPushButton):
-    toggled = pyqtSignal(bool)
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setCheckable(True)
-        self.setFixedSize(16, 16)
-        self.clicked.connect(self._on_clicked)
-        self.update_style()
-        
-    def _on_clicked(self):
-        self.toggled.emit(self.isChecked())
-        self.update_style()
-        
-    def setChecked(self, checked):
-        super().setChecked(checked)
-        self.update_style()
-        
-    def update_style(self):
-        if self.isChecked():
-            self.setStyleSheet("background-color: #3b82f6; border: 1px solid #2563eb; border-radius: 3px; color: white; font-size: 10px; font-weight: bold;")
-            self.setText("✓")
-        else:
-            self.setStyleSheet("background-color: #333; border: 1px solid #555; border-radius: 3px;")
-            self.setText("")
 
 
 # -----------------------------------------------------------------------------
@@ -522,6 +525,25 @@ class AiGroupChipWidget(QFrame):
             border: 1px solid rgba(0,0,0,0.5);
         """)
 
+    def set_error_highlight(self, enabled: bool):
+        """Подсвечивает рамку плашки красным цветом при ошибке."""
+        if enabled:
+            self.setStyleSheet("""
+                QFrame {
+                    background-color: #2d1e1e;
+                    border: 1.5px solid #ef4444;
+                    border-radius: 4px;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                QFrame {
+                    background-color: #2b2b2b;
+                    border: 1px solid #444;
+                    border-radius: 4px;
+                }
+            """)
+
 
 # -----------------------------------------------------------------------------
 # Основная вкладка ИИ-классификации с новым дизайном (по аналогии с Cleaner)
@@ -541,6 +563,7 @@ class AiClassificationTab(QWidget):
         self.classifier = AiClassifier(self.cache, self.ai)
         
         self.active_worker = None
+        self.chips_map = {} # Название -> виджет плашки
         
         self._init_ui()
         self.reload_groups()
@@ -551,17 +574,17 @@ class AiClassificationTab(QWidget):
         main_layout.setSpacing(0)
         
         # =====================================================================
-        # ВЕРХНЯЯ ЧАСТЬ: Настройки (3 колонки настроек бок о бок)
+        # ВЕРХНЯЯ ЧАСТЬ: Настройки (фиксированная высота 155px для стабильности верстки)
         # =====================================================================
         self.top_settings = QFrame()
-        self.top_settings.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        self.top_settings.setFixedHeight(155)
         self.top_settings.setStyleSheet("background-color: #1e1e1e; border-bottom: 1px solid #2d2d2d;")
         top_layout = QHBoxLayout(self.top_settings)
         top_layout.setContentsMargins(15, 6, 15, 6)
         top_layout.setSpacing(12)
         
         # ---------------------------------------------------------------------
-        # КОЛОНКА 1: Группы эталонов
+        # КОЛОНКА 1: Группы эталонов (высота 100px)
         # ---------------------------------------------------------------------
         col_ref = QVBoxLayout()
         col_ref.setContentsMargins(0, 0, 0, 0)
@@ -593,10 +616,9 @@ class AiClassificationTab(QWidget):
         ref_header.addStretch()
         col_ref.addLayout(ref_header)
         
-        # Scroll area для чипов эталонов
         scroll_ref = QScrollArea()
         scroll_ref.setWidgetResizable(True)
-        scroll_ref.setFixedHeight(120)
+        scroll_ref.setFixedHeight(105)
         scroll_ref.setStyleSheet("QScrollArea { border: 1px solid #333; background-color: #111; border-radius: 4px; }")
         
         self.ref_container = QWidget()
@@ -611,7 +633,7 @@ class AiClassificationTab(QWidget):
         top_layout.addLayout(col_ref, 1)
         
         # ---------------------------------------------------------------------
-        # КОЛОНКА 2: Каталоги для поиска (ИИ-каталоги)
+        # КОЛОНКА 2: Каталоги для поиска (DropZone + ScrollArea в одном QScrollArea)
         # ---------------------------------------------------------------------
         col_dirs = QVBoxLayout()
         col_dirs.setContentsMargins(0, 0, 0, 0)
@@ -621,32 +643,56 @@ class AiClassificationTab(QWidget):
         dirs_title = QLabel("Каталоги для поиска" if AppContext.is_ru() else "Folders to Search")
         dirs_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI';")
         dirs_header.addWidget(dirs_title)
+        
+        self.btn_add_dir = QPushButton("Добавить" if AppContext.is_ru() else "Add")
+        self.btn_add_dir.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_add_dir.setStyleSheet("""
+            QPushButton { background-color: #444; color: #eee; border: 1px solid #555; padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+            QPushButton:hover { background-color: #555; }
+        """)
+        self.btn_add_dir.clicked.connect(self.cleaner.add_folder)
+        dirs_header.addWidget(self.btn_add_dir)
+        
+        self.btn_clear_dirs = QPushButton("Очистить" if AppContext.is_ru() else "Clear")
+        self.btn_clear_dirs.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear_dirs.setStyleSheet("""
+            QPushButton { background-color: #444; color: #eee; border: 1px solid #555; padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+            QPushButton:hover { background-color: #ef4444; border-color: #ef4444; }
+        """)
+        self.btn_clear_dirs.clicked.connect(self.cleaner.clear_folders)
+        dirs_header.addWidget(self.btn_clear_dirs)
         dirs_header.addStretch()
         col_dirs.addLayout(dirs_header)
         
-        # Интегрируем DropZone и ScrollArea для папок (аналогично дубликаторам)
-        self.sources_list_widget_ai = QWidget()
-        self.sources_list_widget_ai.setStyleSheet("QWidget { background-color: #111111; }")
-        self.folder_list_layout_ai = QVBoxLayout(self.sources_list_widget_ai)
-        self.folder_list_layout_ai.setContentsMargins(2, 2, 2, 2)
-        self.folder_list_layout_ai.setSpacing(4)
-        self.folder_list_layout_ai.setAlignment(Qt.AlignmentFlag.AlignTop)
-        
+        # Единый scroll area для отображения папок и компактной дроп-зоны
         scroll_dirs = QScrollArea()
         scroll_dirs.setWidgetResizable(True)
-        scroll_dirs.setFixedHeight(75)
+        scroll_dirs.setFixedHeight(105)
         scroll_dirs.setStyleSheet("QScrollArea { border: 1px solid #333; background-color: #111; border-radius: 4px; }")
-        scroll_dirs.setWidget(self.sources_list_widget_ai)
-        col_dirs.addWidget(scroll_dirs)
         
-        # Дроп-зона папок
-        self.drop_zone_ai = DropZoneWidget()
-        self.drop_zone_ai.setFixedHeight(40)
+        self.sources_list_widget_ai = QWidget()
+        self.sources_list_widget_ai.setStyleSheet("background-color: #111;")
+        
+        dirs_container_layout = QVBoxLayout(self.sources_list_widget_ai)
+        dirs_container_layout.setContentsMargins(5, 5, 5, 5)
+        dirs_container_layout.setSpacing(4)
+        dirs_container_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        
+        # Лейаут для чипов добавленных папок
+        self.folder_list_layout_ai = QVBoxLayout()
+        self.folder_list_layout_ai.setContentsMargins(0, 0, 0, 0)
+        self.folder_list_layout_ai.setSpacing(4)
+        self.folder_list_layout_ai.setAlignment(Qt.AlignmentFlag.AlignTop)
+        dirs_container_layout.addLayout(self.folder_list_layout_ai)
+        
+        # Компактная DropZone
+        self.drop_zone_ai = CompactFolderDropZone()
         self.drop_zone_ai.clicked.connect(self.cleaner.add_folder)
         self.drop_zone_ai.folder_dropped.connect(self.cleaner.add_folder_path)
-        self.drop_zone_ai.btn_clear.clicked.connect(self.cleaner.clear_folders)
-        self.drop_zone_ai.setStyleSheet(self.drop_zone_ai.styleSheet() + "margin: 0px; padding: 0px;")
-        col_dirs.addWidget(self.drop_zone_ai)
+        dirs_container_layout.addWidget(self.drop_zone_ai)
+        
+        scroll_dirs.setWidget(self.sources_list_widget_ai)
+        col_dirs.addWidget(scroll_dirs)
         
         top_layout.addLayout(col_dirs, 1)
         
@@ -658,17 +704,17 @@ class AiClassificationTab(QWidget):
         col_params.setSpacing(4)
         
         params_title = QLabel("Параметры ИИ поиска" if AppContext.is_ru() else "AI Search Parameters")
-        params_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI'; padding: 2px 0px;")
+        params_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI';")
         col_params.addWidget(params_title)
         
         params_container = QFrame()
-        params_container.setFixedHeight(120)
+        params_container.setFixedHeight(105)
         params_container.setStyleSheet("QFrame { background-color: #111; border: 1px solid #333; border-radius: 4px; }")
         params_sub_layout = QVBoxLayout(params_container)
         params_sub_layout.setContentsMargins(8, 8, 8, 8)
         params_sub_layout.setSpacing(8)
         
-        # Ползунок минимальной схожести
+        # Ползунок схожести
         self.lbl_threshold = QLabel("Схожесть: 75%" if AppContext.is_ru() else "Similarity: 75%")
         self.lbl_threshold.setStyleSheet("color: #ccc; font-weight: bold; font-size: 11px; border: none; background: transparent;")
         params_sub_layout.addWidget(self.lbl_threshold)
@@ -716,16 +762,8 @@ class AiClassificationTab(QWidget):
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedHeight(18)
         self.progress_bar.setStyleSheet("""
-            QProgressBar {
-                border: none;
-                background-color: #151515;
-                text-align: center;
-                color: white;
-                font-size: 11px;
-            }
-            QProgressBar::chunk {
-                background-color: #3b82f6;
-            }
+            QProgressBar { border: none; background-color: #151515; text-align: center; color: white; font-size: 11px; }
+            QProgressBar::chunk { background-color: #3b82f6; }
         """)
         self.progress_bar.hide()
         main_layout.addWidget(self.progress_bar)
@@ -773,19 +811,9 @@ class AiClassificationTab(QWidget):
         self.tree_results.setColumnWidth(1, 100)
         self.tree_results.setColumnWidth(2, 90)
         self.tree_results.setStyleSheet("""
-            QTreeWidget {
-                background-color: #1a1a1a;
-                border: none;
-                outline: none;
-                color: #eee;
-            }
-            QTreeWidget::item {
-                padding: 6px;
-                border-bottom: 1px solid #222;
-            }
-            QTreeWidget::item:selected {
-                background-color: #2b2b2b;
-            }
+            QTreeWidget { background-color: #1a1a1a; border: none; outline: none; color: #eee; }
+            QTreeWidget::item { padding: 6px; border-bottom: 1px solid #222; }
+            QTreeWidget::item:selected { background-color: #2b2b2b; }
         """)
         self.tree_results.itemSelectionChanged.connect(self.on_tree_selection_changed)
         self.tree_results.itemChanged.connect(self.on_tree_item_changed)
@@ -802,7 +830,7 @@ class AiClassificationTab(QWidget):
 
     def reload_groups(self):
         """Перезагружает список эталонов на панели настроек."""
-        # Очищаем layout
+        self.chips_map.clear()
         while self.group_list_layout_ai.count():
             item = self.group_list_layout_ai.takeAt(0)
             if item.widget():
@@ -820,21 +848,24 @@ class AiClassificationTab(QWidget):
             widget.state_changed.connect(self.on_group_state_changed)
             widget.settings_clicked.connect(self.open_edit_group_dialog)
             self.group_list_layout_ai.addWidget(widget)
+            self.chips_map[name] = widget
 
     def on_group_state_changed(self, group_name: str, is_enabled: bool):
         settings = load_ai_settings()
         if group_name in settings.get("groups", {}):
             settings["groups"][group_name]["enabled"] = is_enabled
             save_ai_settings(settings)
+            
+        # Убираем красную подсветку ошибки при изменении состояния
+        if group_name in self.chips_map:
+            self.chips_map[group_name].set_error_highlight(False)
 
     def open_edit_group_dialog(self, group_name: str):
-        """Открывает диалог редактирования группы."""
         dlg = EditAiGroupDialog(group_name, self.classifier, self)
         if dlg.exec():
             self.reload_groups()
 
     def create_group(self):
-        """Создает новую группу эталонов."""
         dlg = CreateAiGroupDialog(self)
         if dlg.exec():
             name = dlg.txt_name.text().strip()
@@ -868,7 +899,6 @@ class AiClassificationTab(QWidget):
         self.lbl_threshold.setText(f"Схожесть: {value}%" if AppContext.is_ru() else f"Similarity: {value}%")
 
     def set_scan_enabled(self, enabled: bool):
-        """Включает/выключает кнопку запуска на основе наличия выбранных каталогов."""
         self.btn_start_scan.setEnabled(enabled)
 
     def check_and_download_models_ui(self) -> bool:
@@ -920,8 +950,6 @@ class AiClassificationTab(QWidget):
             return False
 
     def update_folders_label(self, folders: list):
-        """В новом дизайне мы отображаем выбранные папки списком во 2-й колонке."""
-        # Этот метод больше не пишет текст в QLabel, так как папки отображаются карточками SourceListItem.
         pass
 
     def toggle_scan(self):
@@ -933,24 +961,78 @@ class AiClassificationTab(QWidget):
         if not folders:
             return
             
-        # Проверяем, обучены ли эталоны
+        # Сбрасываем старую подсветку ошибок
+        for widget in self.chips_map.values():
+            widget.set_error_highlight(False)
+            
+        # ПРОВЕРКА И АВТОМАТИЧЕСКОЕ ОБУЧЕНИЕ ЭТАЛОНОВ ПЕРЕД СКАНИРОВАНИЕМ
         settings = load_ai_settings()
-        has_active_trained = False
-        for name, info in settings.get("groups", {}).items():
-            if info.get("enabled", True):
-                status, count = self.classifier.get_group_status(name)
-                if status == "green":
-                    has_active_trained = True
-                    break
-                    
-        if not has_active_trained:
+        enabled_groups = [name for name, info in settings.get("groups", {}).items() if info.get("enabled", True)]
+        
+        if not enabled_groups:
             QMessageBox.warning(self, "Ошибка" if AppContext.is_ru() else "Error", 
-                                "Нет активных обученных групп эталонов! Обучите хотя бы одну группу (зеленый статус)." if AppContext.is_ru() else "No active trained reference groups found! Please train at least one group (green status).")
+                                "Выберите хотя бы одну группу эталонов для поиска!" if AppContext.is_ru() else "Select at least one reference group to search!")
             return
             
-        if not self.check_and_download_models_ui():
-            return
+        # 1. Проверяем пустые группы эталонов (gray)
+        for name in enabled_groups:
+            status, count = self.classifier.get_group_status(name)
+            if status == "gray":
+                # Подсвечиваем чип группы красным
+                if name in self.chips_map:
+                    self.chips_map[name].set_error_highlight(True)
+                QMessageBox.critical(
+                    self, 
+                    "Ошибка" if AppContext.is_ru() else "Error", 
+                    f"Группа '{name}' включена в поиск, но не содержит картинок-примеров! Загрузите картинки или выключите группу." if AppContext.is_ru()
+                    else f"Group '{name}' is enabled but contains no reference images! Load images or disable the group."
+                )
+                return
+                
+        # 2. Автоматически обучаем неочищенные группы (orange)
+        needs_training = []
+        for name in enabled_groups:
+            status, count = self.classifier.get_group_status(name)
+            if status == "orange":
+                needs_training.append(name)
+                
+        if needs_training:
+            # Сначала проверяем/скачиваем модели нейросети
+            if not self.check_and_download_models_ui():
+                return
+                
+            # Показываем оверлей/диалог автообучения
+            dlg = QDialog(self)
+            dlg.setWindowTitle("Автоматическое обучение ИИ" if AppContext.is_ru() else "AI Auto-training")
+            dlg.setFixedSize(300, 100)
+            dlg_layout = QVBoxLayout(dlg)
             
+            lbl_title = QLabel("Идет подготовка эталонов..." if AppContext.is_ru() else "Preparing reference groups...")
+            bar = QProgressBar()
+            bar.setRange(0, len(needs_training))
+            
+            dlg_layout.addWidget(lbl_title)
+            dlg_layout.addWidget(bar)
+            dlg.show()
+            
+            for idx, name in enumerate(needs_training):
+                lbl_title.setText(f"Обучение эталона ({idx + 1}/{len(needs_training)}): {name}")
+                from PyQt6.QtWidgets import QApplication
+                QApplication.processEvents()
+                
+                # Обучаем группу
+                success = self.classifier.train_group(name)
+                if not success:
+                    dlg.close()
+                    QMessageBox.critical(self, "Ошибка" if AppContext.is_ru() else "Error", 
+                                         f"Не удалось обучить группу '{name}'!" if AppContext.is_ru() else f"Failed to train group '{name}'!")
+                    return
+                bar.setValue(idx + 1)
+                
+            dlg.close()
+            self.reload_groups() # Перерисовываем статусы на зеленые
+            
+        # Начинаем сканирование
         self.scan_started.emit()
         self.btn_start_scan.setText("Остановить" if AppContext.is_ru() else "Stop")
         self.btn_start_scan.setStyleSheet("background-color: #ef4444; color: white; border: none; padding: 6px; border-radius: 4px; font-weight: bold;")
@@ -1006,7 +1088,6 @@ class AiClassificationTab(QWidget):
         self.populate_results(results)
 
     def populate_results(self, results):
-        """Заполняет дерево результатов группированными ИИ-классами."""
         self.tree_results.clear()
         if not results:
             return
@@ -1151,3 +1232,33 @@ class AiClassificationTab(QWidget):
                 
         self.preview_widget.show_empty("Выберите файл для предпросмотра" if AppContext.is_ru() else "Select a file to preview")
         self.update_cleaner_action_bar_info()
+
+
+# -----------------------------------------------------------------------------
+# Кнопка чекбокса, использующаяся в чипах эталонов
+# -----------------------------------------------------------------------------
+class QCheckBoxCustom(QPushButton):
+    toggled = pyqtSignal(bool)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCheckable(True)
+        self.setFixedSize(16, 16)
+        self.clicked.connect(self._on_clicked)
+        self.update_style()
+        
+    def _on_clicked(self):
+        self.toggled.emit(self.isChecked())
+        self.update_style()
+        
+    def setChecked(self, checked):
+        super().setChecked(checked)
+        self.update_style()
+        
+    def update_style(self):
+        if self.isChecked():
+            self.setStyleSheet("background-color: #3b82f6; border: 1px solid #2563eb; border-radius: 3px; color: white; font-size: 10px; font-weight: bold;")
+            self.setText("✓")
+        else:
+            self.setStyleSheet("background-color: #333; border: 1px solid #555; border-radius: 3px;")
+            self.setText("")

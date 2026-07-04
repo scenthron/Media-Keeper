@@ -53,7 +53,7 @@ class ActionMixin:
         item_widget.removed.connect(self.remove_folder)
         item_widget.context_menu_requested.connect(self.show_source_menu)
         
-        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 2:
             self.page_ai.folder_list_layout_ai.addWidget(item_widget)
         else:
             self.settings_panel.folder_list_layout.addWidget(item_widget)
@@ -63,7 +63,7 @@ class ActionMixin:
     def remove_folder(self, path: str) -> None:
         if path in self.source_folders:
             del self.source_folders[path]
-        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 2:
             layout = self.page_ai.folder_list_layout_ai
         else:
             layout = self.settings_panel.folder_list_layout
@@ -77,7 +77,7 @@ class ActionMixin:
 
     def clear_folders(self) -> None:
         self.source_folders.clear()
-        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 2:
             layout = self.page_ai.folder_list_layout_ai
         else:
             layout = self.settings_panel.folder_list_layout
@@ -89,7 +89,7 @@ class ActionMixin:
     def revalidate_sources(self) -> None:
         has_error = False
         paths = list(self.source_folders.keys())
-        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 2:
             layout = self.page_ai.folder_list_layout_ai
         else:
             layout = self.settings_panel.folder_list_layout
@@ -116,7 +116,7 @@ class ActionMixin:
 
         has_system_error = any(data.get('is_system', False) for data in self.source_folders.values())
         is_ok = bool(self.source_folders) and not has_error and not has_system_error
-        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 2:
             self.page_ai.set_scan_enabled(is_ok)
         else:
             self.settings_panel.set_scan_enabled(is_ok)
@@ -344,7 +344,7 @@ class ActionMixin:
 
         items_to_process: list[dict[str, Any]] = []
 
-        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 2:
             files = self.page_ai.get_selected_files_paths()
             for idx, p in enumerate(files):
                 items_to_process.append({
@@ -395,7 +395,7 @@ class ActionMixin:
 
         file_paths: list[str] = []
 
-        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 2:
             file_paths = self.page_ai.get_selected_files_paths()
         elif self.current_view_mode == 0:
             if hasattr(self, 'in_memory_selection'):
@@ -453,7 +453,7 @@ class ActionMixin:
         try:
             deleted_set = set(deleted_paths)
 
-            if hasattr(self, 'page_ai') and self.current_tab() == 2:
+            if hasattr(self, 'page_ai') and self.current_tab == 2:
                 self.page_ai.remove_processed_files(deleted_paths)
             elif self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
                 self.session_db.mark_files_deleted(deleted_paths)
@@ -520,7 +520,7 @@ class ActionMixin:
         try:
             moved_set = set(moved)
 
-            if hasattr(self, 'page_ai') and self.current_tab() == 2:
+            if hasattr(self, 'page_ai') and self.current_tab == 2:
                 self.page_ai.remove_processed_files(moved)
             elif self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
                 self.session_db.mark_files_deleted(moved)

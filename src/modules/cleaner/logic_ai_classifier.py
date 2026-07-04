@@ -250,7 +250,13 @@ class AiClassifier:
                     for group_name, ref_descs in self.face_reference_descriptors.items():
                         for ref_desc in ref_descs:
                             dist = np.linalg.norm(desc - ref_desc)
-                            score = max(0.0, (1.2 - dist) / 1.2) * 100.0
+                            # Калибровка схожести лиц: порог верификации dist=0.6 соответствует 75% схожести
+                            if dist <= 0.6:
+                                score = 100.0 - (dist / 0.6) * 25.0
+                            else:
+                                score = 75.0 - ((dist - 0.6) / 0.6) * 75.0
+                            score = max(0.0, score)
+                            
                             if score > best_face_score:
                                 best_face_score = score
                                 best_face_group = group_name

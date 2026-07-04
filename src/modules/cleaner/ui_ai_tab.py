@@ -223,6 +223,24 @@ class EditAiGroupDialog(QDialog):
         
         # Кнопки сохранения
         buttons_layout = QHBoxLayout()
+        
+        self.btn_delete_group = QPushButton("Удалить эталон" if self.is_ru else "Delete Reference")
+        self.btn_delete_group.setStyleSheet("""
+            QPushButton {
+                background-color: #ef4444; 
+                border: none; 
+                padding: 6px 16px; 
+                border-radius: 4px; 
+                font-weight: bold;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #dc2626;
+            }
+        """)
+        self.btn_delete_group.clicked.connect(self.delete_group_ui)
+        buttons_layout.addWidget(self.btn_delete_group)
+        
         buttons_layout.addStretch()
         
         self.btn_cancel = QPushButton("Отмена" if self.is_ru else "Cancel")
@@ -372,6 +390,42 @@ class EditAiGroupDialog(QDialog):
             save_ai_settings(settings)
             
         self.accept()
+
+    def delete_group_ui(self):
+        reply = QMessageBox.question(
+            self,
+            "Удалить группу эталонов" if self.is_ru else "Delete Reference Group",
+            f"Вы уверены, что хотите полностью удалить группу эталонов '{self.group_name}'?\nЭто приведет к безвозвратному удалению всех файлов-примеров и настроек этой группы."
+            if self.is_ru else
+            f"Are you sure you want to delete the reference group '{self.group_name}'?\nAll reference image files and configurations for this group will be permanently deleted.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            # 1. Удаляем физическую папку со всеми файлами
+            group_dir = os.path.join(get_ai_assets_dir(), self.group_name)
+            if os.path.exists(group_dir):
+                try:
+                    shutil.rmtree(group_dir)
+                except Exception as e:
+                    logging.error(f"Не удалось удалить директорию эталона {group_dir}: {e}")
+            
+            # 2. Удаляем из ai_settings.json
+            settings = load_ai_settings()
+            if "groups" in settings and self.group_name in settings["groups"]:
+                del settings["groups"][self.group_name]
+                save_ai_settings(settings)
+                
+            # 3. Очищаем эмбеддинги группы из памяти классификатора
+            if self.group_name in self.classifier.face_reference_descriptors:
+                del self.classifier.face_reference_descriptors[self.group_name]
+            if self.group_name in self.classifier.general_embeddings:
+                del self.classifier.general_embeddings[self.group_name]
+            if self.group_name in self.classifier.general_centroids:
+                del self.classifier.general_centroids[self.group_name]
+            
+            self.has_changes = True
+            self.accept()
 
 
 # -----------------------------------------------------------------------------

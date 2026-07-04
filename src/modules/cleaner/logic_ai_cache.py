@@ -124,7 +124,13 @@ class AiCacheManager:
                 faces = []
                 for row in rows:
                     face_idx, _, _, bbox_str, desc_blob = row
-                    bbox = [int(x) for x in bbox_str.split(',')]
+                    if face_idx == -1:
+                        continue
+                    
+                    bbox = []
+                    if bbox_str:
+                        bbox = [int(x) for x in bbox_str.split(',')]
+                        
                     descriptor = np.frombuffer(desc_blob, dtype=np.float32)
                     faces.append({
                         "bbox": bbox,

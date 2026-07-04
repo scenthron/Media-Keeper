@@ -82,27 +82,6 @@ class AiEngine:
         if not self.are_models_present():
             logging.error("Невозможно инициализировать ИИ: отсутствуют файлы моделей.")
             return False
-            
-        try:
-            # 1. Общая классификация через ONNX Runtime
-            # Отключаем лишнее логирование ORT
-            opts = ort.SessionOptions()
-            opts.log_severity_level = 3
-            self.ort_session = ort.InferenceSession(self.mobilenet_path, sess_options=opts, providers=['CPUExecutionProvider'])
-            
-            # 2. Детектор лиц YuNet (OpenCV)
-            # Устанавливаем минимальный порог 0.1, чтобы фильтровать вручную (гибкость)
-            self.face_detector = cv2.FaceDetectorYN.create(self.yunet_path, "", (320, 320), score_threshold=0.1)
-            
-            # 3. Распознаватель лиц SFace (OpenCV)
-            self.face_recognizer = cv2.FaceRecognizerSF.create(self.sface_path, "")
-            
-            self._is_initialized = True
-            logging.info("ИИ-модели успешно инициализированы.")
-            return True
-        except Exception as e:
-            logging.error(f"Ошибка инициализации ИИ-сессий: {e}", exc_info=True)
-            return False
 
     def extract_image_embedding(self, image_path: str) -> np.ndarray:
         """
@@ -172,66 +151,52 @@ class AiEngine:
                 
             bgr_img_orig = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR)
             
-            # Гибкий алгоритм поиска лиц: пробуем разные настройки, пока не найдем лицо.
-            # Если оригинал не сработал с порогом 0.6, пробуем снизить порог или изменить масштаб
-            configs = [
-                {"scale": 1.0, "threshold": 0.6},
-                {"scale": 1.0, "threshold": 0.3},
-                {"scale": 0.5, "threshold": 0.4},
-                {"scale": 2.0, "threshold": 0.3},
-                {"scale": 1.0, "threshold": 0.15}
-            ]
+            # YuNet лучше всего работает с изображениями среднего размера.
+            # Если картинка огромная (например 4K), сеть может не найти лицо.
+            # Поэтому мы приводим картинку к оптимальному размеру (max 1200px по большей стороне)
+            max_dim = 1200
+            scale = 1.0
             
-            for config in configs:
-                scale = config["scale"]
-                threshold = config["threshold"]
-                
-                if scale != 1.0:
-                    new_w = int(width * scale)
-                    new_h = int(height * scale)
-                    # Ограничиваем максимальный размер для scale > 1.0, чтобы избежать OutOfMemory
-                    if new_w > 3000 or new_h > 3000:
-                        continue
-                    bgr_img = cv2.resize(bgr_img_orig, (new_w, new_h))
-                    w, h = new_w, new_h
+            if width > max_dim or height > max_dim:
+                if width > height:
+                    scale = max_dim / width
                 else:
-                    bgr_img = bgr_img_orig
-                    w, h = width, height
+                    scale = max_dim / height
                     
-                self.face_detector.setInputSize((w, h))
-                # Убрали вызов setScoreThreshold, так как он может быть нестабилен в некоторых сборках OpenCV
+            if scale != 1.0:
+                new_w = int(width * scale)
+                new_h = int(height * scale)
+                bgr_img = cv2.resize(bgr_img_orig, (new_w, new_h))
+            else:
+                bgr_img = bgr_img_orig
+                new_w, new_h = width, height
                 
-                retval, faces = self.face_detector.detect(bgr_img)
-                
-                if retval and faces is not None and len(faces) > 0:
-                    for face in faces:
-                        score = face[14]
-                        if score < threshold:
-                            continue
-                            
-                        # Масштабируем bbox обратно к оригинальному размеру
-                        bbox = [int(face[0]/scale), int(face[1]/scale), int(face[2]/scale), int(face[3]/scale)]
-                        
-                        # Выравниваем и обрезаем лицо (по масштабированному изображению, т.к. координаты в face для него)
-                        aligned_face = self.face_recognizer.alignCrop(bgr_img, face)
-                        
-                        # Извлекаем 128-мерный вектор лица
-                        feat = self.face_recognizer.feature(aligned_face)
-                        descriptor = feat.flatten()
-                        
-                        # Нормализуем дескриптор лица
-                        norm = np.linalg.norm(descriptor)
-                        if norm > 0:
-                            descriptor /= norm
-                            
-                        results.append({
-                            "bbox": bbox,
-                            "descriptor": descriptor
-                        })
+            # Устанавливаем точный размер в детектор
+            self.face_detector.setInputSize((new_w, new_h))
+            
+            retval, faces = self.face_detector.detect(bgr_img)
+            
+            if retval and faces is not None and len(faces) > 0:
+                for face in faces:
+                    # Масштабируем bbox обратно к оригинальному размеру
+                    bbox = [int(face[0]/scale), int(face[1]/scale), int(face[2]/scale), int(face[3]/scale)]
                     
-                    # Если нашли лица на текущих настройках, прекращаем перебор
-                    if len(results) > 0:
-                        break
+                    # Выравниваем и обрезаем лицо (по масштабированному изображению!)
+                    aligned_face = self.face_recognizer.alignCrop(bgr_img, face)
+                    
+                    # Извлекаем 128-мерный вектор лица
+                    feat = self.face_recognizer.feature(aligned_face)
+                    descriptor = feat.flatten()
+                    
+                    # Нормализуем дескриптор лица
+                    norm = np.linalg.norm(descriptor)
+                    if norm > 0:
+                        descriptor /= norm
+                        
+                    results.append({
+                        "bbox": bbox,
+                        "descriptor": descriptor
+                    })
                         
             return results
         except Exception as e:

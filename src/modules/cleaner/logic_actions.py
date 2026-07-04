@@ -42,6 +42,8 @@ class ActionMixin:
         
         idx = len(self.source_folders)
         color = generate_vibrant_color(idx)
+        self.source_folders[path] = {'protected': False, 'color': color, 'is_system': is_system}
+        
         if hasattr(self, 'cache'):
             is_cached, is_face_cached = self.cache.has_cached_files_for_folder(path)
         else:

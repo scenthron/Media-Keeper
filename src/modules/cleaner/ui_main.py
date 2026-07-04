@@ -290,11 +290,21 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
     @property
     def lbl_groups_found(self):
-        return self.lbl_groups_found_similar if self.current_tab == 1 else self.lbl_groups_found_dupes
+        if self.current_tab == 1:
+            return self.lbl_groups_found_similar
+        elif self.current_tab == 2:
+            return self.page_ai.lbl_stats
+        else:
+            return self.lbl_groups_found_dupes
 
     @property
     def lbl_selection_info(self):
-        return self.lbl_selection_info_similar if self.current_tab == 1 else self.lbl_selection_info_dupes
+        if self.current_tab == 1:
+            return self.lbl_selection_info_similar
+        elif self.current_tab == 2:
+            return self.page_ai.action_bar.lbl_selection_info
+        else:
+            return self.lbl_selection_info_dupes
 
     def init_ui(self) -> None:
         self.main_layout = QVBoxLayout(self)

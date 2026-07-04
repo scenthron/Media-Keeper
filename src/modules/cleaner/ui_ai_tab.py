@@ -948,6 +948,14 @@ class AiClassificationTab(QWidget):
         self.action_bar = CleanerActionBar()
         self.action_bar.is_similar_mode = False
         self.action_bar.combo_autoselect.hide()
+        
+        # Динамически добавляем лейбл выделения в CleanerActionBar для вкладки ИИ
+        self.action_bar.lbl_selection_info = QLabel("Выбрано: 0 файлов • 0 B" if AppContext.is_ru() else "Selected: 0 files • 0 B")
+        self.action_bar.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
+        ab_layout = self.action_bar.layout()
+        if ab_layout:
+            ab_layout.insertWidget(3, self.action_bar.lbl_selection_info)
+            
         self.action_bar.deselect_clicked.connect(lambda: self.select_all_results(False))
         self.action_bar.select_all_clicked.connect(lambda: self.select_all_results(True))
         

@@ -1061,6 +1061,9 @@ class AiClassificationTab(QWidget):
         self.drop_zone_ai.setStyleSheet(self.drop_zone_ai.styleSheet() + "margin: 0px; padding: 2px;")
         dirs_container_layout.addWidget(self.drop_zone_ai)
         
+        scroll_dirs.setWidget(self.sources_list_widget_ai)
+        col_dirs.addWidget(scroll_dirs)
+        
         # Фильтр типов файлов (по аналогии с CleanerSettingsPanel)
         filter_layout_ai = QHBoxLayout()
         filter_layout_ai.setContentsMargins(0, 0, 0, 0)
@@ -1085,10 +1088,8 @@ class AiClassificationTab(QWidget):
         filter_layout_ai.addWidget(self.lbl_filter_status_ai)
         filter_layout_ai.addStretch()
         
-        dirs_container_layout.addLayout(filter_layout_ai)
+        col_dirs.addLayout(filter_layout_ai)
         
-        scroll_dirs.setWidget(self.sources_list_widget_ai)
-        col_dirs.addWidget(scroll_dirs)
         top_layout.addLayout(col_dirs, 1)
         
         # КОЛОНКА 3: Параметры поиска (С КНОПКОЙ-ИНФОРМАЦИЕЙ ℹ️)

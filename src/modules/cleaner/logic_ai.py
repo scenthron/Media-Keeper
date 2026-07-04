@@ -93,14 +93,16 @@ class AiEngine:
             
             # Функция-помощник для обхода бага OpenCV с кириллицей в путях на Windows
             def get_ascii_path(path_str):
-                import sys
+                import sys, os
                 if sys.platform == 'win32':
                     try:
                         import ctypes
                         buffer_size = 256
                         buffer = ctypes.create_unicode_buffer(buffer_size)
-                        if ctypes.windll.kernel32.GetShortPathNameW(path_str, buffer, buffer_size):
-                            return buffer.value
+                        dir_name = os.path.dirname(path_str)
+                        base_name = os.path.basename(path_str)
+                        if ctypes.windll.kernel32.GetShortPathNameW(dir_name, buffer, buffer_size):
+                            return os.path.join(buffer.value, base_name)
                     except Exception:
                         pass
                 return path_str

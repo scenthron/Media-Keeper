@@ -661,6 +661,7 @@ class RefImagesListWidget(QListWidget):
     def _emit_hover(self):
         if self._pending_hover_path:
             self.item_hovered.emit(self._pending_hover_path, self._pending_hover_pos)
+            self._is_tooltip_visible = True
             
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -698,18 +699,20 @@ class RefImagesListWidget(QListWidget):
 
         if item:
             path = item.data(Qt.ItemDataRole.UserRole)
-            if path:
-                glob_pos = self.mapToGlobal(event.pos())
-                if path != self._pending_hover_path:
-                    self._pending_hover_path = path
-                    self._pending_hover_pos = glob_pos
-                    self.hover_timer.start()
-                else:
-                    # Update position in case it changed slightly, but don't restart timer
-                    self._pending_hover_pos = glob_pos
+            if hasattr(self, "_is_tooltip_visible") and self._is_tooltip_visible:
+                if hasattr(self.parent(), "hover_tooltip") and self.parent().hover_tooltip.isVisible():
+                    self.parent().hover_tooltip.hide()
+                self._is_tooltip_visible = False
+                
+            self._pending_hover_path = path
+            self._pending_hover_pos = event.globalPosition().toPoint()
+            self.hover_timer.start()
         else:
-            self._pending_hover_path = None
             self.hover_timer.stop()
+            self._pending_hover_path = None
+            self._is_tooltip_visible = False
+            if hasattr(self.parent(), "hover_tooltip") and self.parent().hover_tooltip.isVisible():
+                self.parent().hover_tooltip.hide()
             self.hover_left.emit()
 
     def leaveEvent(self, event):

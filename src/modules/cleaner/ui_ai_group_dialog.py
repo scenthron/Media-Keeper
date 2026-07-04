@@ -250,6 +250,15 @@ class AiGroupSettingsDialog(QDialog):
                 item = QListWidgetItem()
                 item.setIcon(QIcon(path))
                 item.setData(Qt.ItemDataRole.UserRole, path)
+                is_face = self.rad_face.isChecked()
+                item.setData(Qt.ItemDataRole.UserRole + 1, is_face)
+                if is_face:
+                    try:
+                        stat = os.stat(path)
+                        faces = self.classifier.cache.get_file_faces(path, stat.st_mtime, stat.st_size)
+                        item.setData(Qt.ItemDataRole.UserRole + 2, bool(faces))
+                    except:
+                        item.setData(Qt.ItemDataRole.UserRole + 2, False)
                 item.setToolTip(os.path.basename(path))
                 target_widget.addItem(item)
                 
@@ -290,6 +299,15 @@ class AiGroupSettingsDialog(QDialog):
                     item = QListWidgetItem()
                     item.setIcon(QIcon(fp))
                     item.setData(Qt.ItemDataRole.UserRole, fp)
+                    is_face = self.rad_face.isChecked()
+                    item.setData(Qt.ItemDataRole.UserRole + 1, is_face)
+                    if is_face:
+                        try:
+                            stat = os.stat(fp)
+                            faces = self.classifier.cache.get_file_faces(fp, stat.st_mtime, stat.st_size)
+                            item.setData(Qt.ItemDataRole.UserRole + 2, bool(faces))
+                        except:
+                            item.setData(Qt.ItemDataRole.UserRole + 2, False)
                     item.setToolTip(f)
                     self.list_pos.addItem(item)
                     
@@ -300,6 +318,15 @@ class AiGroupSettingsDialog(QDialog):
                     item = QListWidgetItem()
                     item.setIcon(QIcon(fp))
                     item.setData(Qt.ItemDataRole.UserRole, fp)
+                    is_face = self.rad_face.isChecked()
+                    item.setData(Qt.ItemDataRole.UserRole + 1, is_face)
+                    if is_face:
+                        try:
+                            stat = os.stat(fp)
+                            faces = self.classifier.cache.get_file_faces(fp, stat.st_mtime, stat.st_size)
+                            item.setData(Qt.ItemDataRole.UserRole + 2, bool(faces))
+                        except:
+                            item.setData(Qt.ItemDataRole.UserRole + 2, False)
                     item.setToolTip(f)
                     self.list_neg.addItem(item)
                     

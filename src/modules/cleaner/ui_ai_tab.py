@@ -590,10 +590,11 @@ class AiClassificationTab(QWidget):
         self.combo_match_mode.currentIndexChanged.connect(self.on_match_mode_changed)
         params_sub_layout.addWidget(self.combo_match_mode)
         
-        self.chk_auto_cluster = QCheckBox("Умный поиск по людям" if AppContext.is_ru() else "Smart Auto-Clustering")
+        self.chk_auto_cluster = QCheckBox("Умный поиск похожих людей" if AppContext.is_ru() else "Smart People Search")
+        self.chk_auto_cluster.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_auto_cluster.setStyleSheet("""
-            QCheckBox { color: white; font-weight: bold; font-size: 11px; margin-top: 5px; }
-            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; margin-top: 5px; }
+            QCheckBox { color: white; font-weight: bold; font-size: 13px; margin-top: 2px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; margin-top: 2px; }
             QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
         """)
         self.chk_auto_cluster.setToolTip("Искать лица без эталонов и группировать их автоматически." if AppContext.is_ru() else "Group faces automatically without references.")
@@ -601,8 +602,9 @@ class AiClassificationTab(QWidget):
         params_sub_layout.addWidget(self.chk_auto_cluster)
         
         self.chk_use_gpu = QCheckBox("Аппаратное ускорение (GPU)" if AppContext.is_ru() else "Hardware Acceleration (GPU)")
+        self.chk_use_gpu.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_use_gpu.setStyleSheet("""
-            QCheckBox { color: white; font-weight: bold; font-size: 11px; }
+            QCheckBox { color: white; font-weight: bold; font-size: 13px; }
             QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
             QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
         """)

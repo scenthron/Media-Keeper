@@ -53,14 +53,20 @@ class ActionMixin:
         item_widget.removed.connect(self.remove_folder)
         item_widget.context_menu_requested.connect(self.show_source_menu)
         
-        self.settings_panel.folder_list_layout.addWidget(item_widget)
-        self.settings_panel.refresh_list_alignment()
+        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+            self.page_ai.folder_list_layout_ai.addWidget(item_widget)
+        else:
+            self.settings_panel.folder_list_layout.addWidget(item_widget)
+            self.settings_panel.refresh_list_alignment()
         self.revalidate_sources()
 
     def remove_folder(self, path: str) -> None:
         if path in self.source_folders:
             del self.source_folders[path]
-        layout = self.settings_panel.folder_list_layout
+        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+            layout = self.page_ai.folder_list_layout_ai
+        else:
+            layout = self.settings_panel.folder_list_layout
         for i in range(layout.count()):
             item = layout.itemAt(i)
             widget = item.widget()
@@ -71,7 +77,10 @@ class ActionMixin:
 
     def clear_folders(self) -> None:
         self.source_folders.clear()
-        layout = self.settings_panel.folder_list_layout
+        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+            layout = self.page_ai.folder_list_layout_ai
+        else:
+            layout = self.settings_panel.folder_list_layout
         while layout.count():
             item = layout.takeAt(0)
             if item.widget(): item.widget().deleteLater()
@@ -80,7 +89,10 @@ class ActionMixin:
     def revalidate_sources(self) -> None:
         has_error = False
         paths = list(self.source_folders.keys())
-        layout = self.settings_panel.folder_list_layout
+        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+            layout = self.page_ai.folder_list_layout_ai
+        else:
+            layout = self.settings_panel.folder_list_layout
         
         for i in range(layout.count()):
             item = layout.itemAt(i)
@@ -104,8 +116,11 @@ class ActionMixin:
 
         has_system_error = any(data.get('is_system', False) for data in self.source_folders.values())
         is_ok = bool(self.source_folders) and not has_error and not has_system_error
-        self.settings_panel.set_scan_enabled(is_ok)
-        self.settings_panel.btn_filter.setEnabled(is_ok)
+        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+            self.page_ai.set_scan_enabled(is_ok)
+        else:
+            self.settings_panel.set_scan_enabled(is_ok)
+            self.settings_panel.btn_filter.setEnabled(is_ok)
         if hasattr(self, 'reset_scan_button'):
             self.reset_scan_button()
 

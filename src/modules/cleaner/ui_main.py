@@ -86,6 +86,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
         self.source_folders_dupes: dict[str, dict[str, Any]] = {}
         self.source_folders_similar: dict[str, dict[str, Any]] = {}
+        self.source_folders_ai: dict[str, dict[str, Any]] = {}
         self.filter_config: dict[str, Any] | None = None
         self.last_scanned_count: int = 0
         self.current_view_mode: int = VIEW_MODE_DUPLES

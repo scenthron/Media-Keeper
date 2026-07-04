@@ -74,14 +74,18 @@ class AiEngine:
                 return False
         return True
 
-    def initialize_sessions(self) -> bool:
+    def initialize_sessions(self, use_gpu: bool = True) -> bool:
         """Инициализирует сессии ONNX Runtime и OpenCV для моделей."""
-        if self._is_initialized:
+        if self._is_initialized and getattr(self, "_last_gpu_flag", None) == use_gpu:
             return True
             
         if not self.are_models_present():
             logging.error("Невозможно инициализировать ИИ: отсутствуют файлы моделей.")
             return False
+            
+        self._last_gpu_flag = use_gpu
+        self.gpu_error_msg = ""
+        self.is_gpu_active = False
             
         try:
             # 1. Общая классификация через ONNX Runtime
@@ -89,7 +93,22 @@ class AiEngine:
             import onnxruntime as ort
             opts = ort.SessionOptions()
             opts.log_severity_level = 3
-            self.ort_session = ort.InferenceSession(self.mobilenet_path, sess_options=opts, providers=['CPUExecutionProvider'])
+            
+            providers = ['CPUExecutionProvider']
+            if use_gpu:
+                providers = ['CUDAExecutionProvider', 'DmlExecutionProvider'] + providers
+                
+            try:
+                self.ort_session = ort.InferenceSession(self.mobilenet_path, sess_options=opts, providers=providers)
+                active_providers = self.ort_session.get_providers()
+                if any(p in active_providers for p in ['CUDAExecutionProvider', 'DmlExecutionProvider']):
+                    self.is_gpu_active = True
+                elif use_gpu:
+                    self.gpu_error_msg = "Видеокарта не поддерживается текущей сборкой onnxruntime или отсутствуют драйверы (CUDA/DirectML)."
+            except Exception as e:
+                self.gpu_error_msg = f"Ошибка GPU: {str(e)}"
+                logging.warning(f"Ошибка при инициализации GPU для ORT: {e}, откат на CPU")
+                self.ort_session = ort.InferenceSession(self.mobilenet_path, sess_options=opts, providers=['CPUExecutionProvider'])
             
             # Функция-помощник для обхода бага OpenCV с кириллицей в путях на Windows
             def get_ascii_path(path_str):

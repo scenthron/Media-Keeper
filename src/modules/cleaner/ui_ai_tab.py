@@ -225,600 +225,8 @@ class RefImagesListWidget(QListWidget):
 # -----------------------------------------------------------------------------
 # Диалог настроек группы эталонов (вызывается при клике по шестеренке)
 # -----------------------------------------------------------------------------
-class EditAiGroupDialog(QDialog):
-    def __init__(self, group_name: str, classifier, parent=None):
-        super().__init__(parent)
-        self.group_name = group_name
-        self.classifier = classifier
-        self.is_ru = AppContext.is_ru()
-        self.has_changes = False
-        
-        self.setWindowTitle(f"Настройка эталона: {group_name}" if self.is_ru else f"Edit Reference: {group_name}")
-        self.setFixedSize(500, 520)
-        self.setStyleSheet("background-color: #202020; color: white;")
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 15, 15, 15)
-        layout.setSpacing(12)
-        
-        # 1. Изменение имени
-        layout.addWidget(QLabel("Имя группы:" if self.is_ru else "Group Name:"))
-        self.txt_name = QLineEdit(group_name)
-        self.txt_name.setMinimumHeight(32)
-        self.txt_name.setStyleSheet("""
-            QLineEdit {
-                background-color: #2b2b2b; 
-                border: 1px solid #444; 
-                padding: 4px 8px; 
-                border-radius: 4px; 
-                color: white;
-                font-size: 13px;
-            }
-            QLineEdit:focus {
-                border: 1px solid #3b82f6;
-            }
-        """)
-        layout.addWidget(self.txt_name)
-        
-        # 2. Тип анализа
-        layout.addWidget(QLabel("Тип анализа:" if self.is_ru else "Analysis Type:"))
-        
-        settings = load_ai_settings()
-        group_info = settings.get("groups", {}).get(group_name, {})
-        is_face_type = group_info.get("type") == "face"
-        
-        self.btn_group = QButtonGroup(self)
-        self.rad_general = QRadioButton(" Общее сходство" if self.is_ru else " General Similarity")
-        self.rad_face = QRadioButton(" Поиск лиц" if self.is_ru else " Face Search")
-        
-        rad_style = """
-            QRadioButton {
-                background-color: #3b3b3b;
-                color: #e0e0e0;
-                border-radius: 14px;
-                padding: 7px 12px;
-                margin: 2px 0px;
-                font-weight: bold;
-                font-size: 13px;
-                border: 1px solid #555;
-            }
-            QRadioButton:hover {
-                background-color: #4a4a4a;
-                border: 1px solid #666;
-            }
-            QRadioButton::indicator {
-                width: 0px;
-                height: 0px;
-            }
-            QRadioButton:checked {
-                background-color: #3b82f6;
-                color: white;
-                border: 1px solid #2563eb;
-            }
-        """
-        self.rad_general.setStyleSheet(rad_style)
-        self.rad_face.setStyleSheet(rad_style)
-        self.rad_general.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.rad_face.setCursor(Qt.CursorShape.PointingHandCursor)
-        
-        self.btn_group.addButton(self.rad_general, 0)
-        self.btn_group.addButton(self.rad_face, 1)
-        
-        if is_face_type:
-            self.rad_face.setChecked(True)
-        else:
-            self.rad_general.setChecked(True)
-            
-        self.rad_face.toggled.connect(lambda: self.reload_thumbnails())
-            
-        type_layout = QHBoxLayout()
-        type_layout.addWidget(self.rad_general)
-        type_layout.addWidget(self.rad_face)
-        type_layout.addStretch()
-        layout.addLayout(type_layout)
-        
-        # 3. Перетаскивание картинок-примеров
-        lbl_drop = QLabel("Перетащите файлы картинок (.png, .jpg) прямо в поле ниже:" if self.is_ru else "Drag and drop image files (.png, .jpg) directly to the area below:")
-        lbl_drop.setStyleSheet("color: #aaa; font-size: 11px; font-style: italic;")
-        layout.addWidget(lbl_drop)
-        
-        self.list_ref_images = RefImagesListWidget(self)
-        self.list_ref_images.files_dropped.connect(self.add_dropped_files)
-        
-        # Подключаем всплывающее превью
-        self.hover_tooltip = ImageHoverToolTip(self)
-        self.list_ref_images.item_hovered.connect(self.hover_tooltip.show_image)
-        self.list_ref_images.hover_left.connect(self.hover_tooltip.hide)
-        self.list_ref_images.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.list_ref_images.customContextMenuRequested.connect(self._on_ref_context_menu)
-        
-        layout.addWidget(self.list_ref_images, 1)
-        
-        # Кнопки под списком
-        btn_list_layout = QHBoxLayout()
-        self.btn_add_file = QPushButton("Добавить файл" if self.is_ru else "Add File")
-        self.btn_add_file.setStyleSheet("background-color: #444; border: 1px solid #555; padding: 6px 12px; border-radius: 4px;")
-        self.btn_add_file.clicked.connect(self.choose_files)
-        
-        self.btn_del_file = QPushButton("Удалить выбранные" if self.is_ru else "Delete Selected")
-        self.btn_del_file.setStyleSheet("background-color: #ef4444; border: none; padding: 6px 12px; border-radius: 4px;")
-        self.btn_del_file.clicked.connect(self.delete_selected_files)
-        
-        self.btn_train = QPushButton("Обучить" if self.is_ru else "Train")
-        self.btn_train.setStyleSheet("background-color: #16a34a; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;")
-        self.btn_train.clicked.connect(self.train_group_ui)
-        
-        btn_list_layout.addWidget(self.btn_add_file)
-        btn_list_layout.addWidget(self.btn_del_file)
-        btn_list_layout.addWidget(self.btn_train)
-        btn_list_layout.addStretch()
-        layout.addLayout(btn_list_layout)
-        
-        # Кнопки сохранения
-        buttons_layout = QHBoxLayout()
-        
-        self.btn_delete_group = QPushButton("Удалить эталон" if self.is_ru else "Delete Reference")
-        self.btn_delete_group.setStyleSheet("""
-            QPushButton {
-                background-color: #ef4444; 
-                border: none; 
-                padding: 6px 16px; 
-                border-radius: 4px; 
-                font-weight: bold;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #dc2626;
-            }
-        """)
-        self.btn_delete_group.clicked.connect(self.delete_group_ui)
-        buttons_layout.addWidget(self.btn_delete_group)
-        
-        buttons_layout.addStretch()
-        
-        self.btn_cancel = QPushButton("Отмена" if self.is_ru else "Cancel")
-        self.btn_cancel.setStyleSheet("background-color: #333; border: 1px solid #555; padding: 6px 16px; border-radius: 4px;")
-        self.btn_cancel.clicked.connect(self.reject)
-        
-        self.btn_save = QPushButton("Сохранить" if self.is_ru else "Save")
-        self.btn_save.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold;")
-        self.btn_save.clicked.connect(self.save_settings)
-        
-        buttons_layout.addWidget(self.btn_cancel)
-        buttons_layout.addWidget(self.btn_save)
-        layout.addLayout(buttons_layout)
-        
-        self.reload_thumbnails()
+from .ui_ai_group_dialog import AiGroupSettingsDialog
 
-    def _on_ref_context_menu(self, pos):
-        item = self.list_ref_images.itemAt(pos)
-        if not item: return
-        
-        from PyQt6.QtWidgets import QMenu
-        from PyQt6.QtGui import QAction, QDesktopServices
-        from PyQt6.QtCore import QUrl
-        
-        menu = QMenu(self)
-        
-        act_open = QAction("Открыть в проводнике" if self.is_ru else "Open in Explorer", self)
-        fp = item.data(Qt.ItemDataRole.UserRole)
-        act_open.triggered.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(fp))))
-        menu.addAction(act_open)
-        
-        menu.addSeparator()
-        
-        act_del = QAction("Удалить из группы" if self.is_ru else "Remove from Group", self)
-        act_del.triggered.connect(self.delete_selected_files)
-        menu.addAction(act_del)
-        
-        menu.exec(self.list_ref_images.mapToGlobal(pos))
-
-    def reload_thumbnails(self):
-        self.list_ref_images.clear()
-        group_dir = os.path.join(get_ai_assets_dir(), self.group_name)
-        if not os.path.exists(group_dir):
-            return
-            
-        is_face_mode = self.rad_face.isChecked()
-            
-        valid_exts = {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}
-        try:
-            files = [
-                f for f in os.listdir(group_dir)
-                if os.path.isfile(os.path.join(group_dir, f)) and os.path.splitext(f)[1].lower() in valid_exts
-            ]
-            for f in files:
-                fp = os.path.join(group_dir, f)
-                item = QListWidgetItem()
-                item.setIcon(QIcon(fp))
-                item.setData(Qt.ItemDataRole.UserRole, fp)
-                
-                if is_face_mode:
-                    item.setData(Qt.ItemDataRole.UserRole + 1, True)
-                    try:
-                        stat = os.stat(fp)
-                        faces = self.classifier.cache.get_file_faces(fp, stat.st_mtime, stat.st_size)
-                        if faces is None:
-                            item.setData(Qt.ItemDataRole.UserRole + 2, None)
-                            item.setToolTip(f"{f} (Ожидает расчета)" if self.is_ru else f"{f} (Pending)")
-                        else:
-                            item.setData(Qt.ItemDataRole.UserRole + 2, bool(faces))
-                            if not faces:
-                                item.setToolTip(f"{f} (Лицо не найдено)" if self.is_ru else f"{f} (Face not found)")
-                            else:
-                                item.setToolTip(f)
-                    except Exception:
-                        item.setData(Qt.ItemDataRole.UserRole + 2, False)
-                        item.setToolTip(f"{f} (Ошибка чтения)" if self.is_ru else f"{f} (Read Error)")
-                else:
-                    item.setData(Qt.ItemDataRole.UserRole + 1, False)
-                    item.setToolTip(f)
-                    
-                self.list_ref_images.addItem(item)
-        except Exception as e:
-            logging.error(f"Ошибка загрузки миниатюр эталона: {e}")
-
-    def delete_specific_file(self, fp):
-        if fp and os.path.exists(fp):
-            try:
-                os.remove(fp)
-            except Exception as e:
-                logging.error(f"Не удалось удалить файл примера {fp}: {e}")
-        self.reload_thumbnails()
-        self.has_changes = True
-
-    def delete_selected_files(self):
-        items = self.list_ref_images.selectedItems()
-        if not items:
-            return
-            
-        for item in items:
-            fp = item.data(Qt.ItemDataRole.UserRole)
-            if fp and os.path.exists(fp):
-                try:
-                    os.remove(fp)
-                except Exception as e:
-                    logging.error(f"Не удалось удалить файл примера {fp}: {e}")
-                    
-        self.reload_thumbnails()
-        self.has_changes = True
-
-    def add_dropped_files(self, paths: list):
-        group_dir = os.path.join(get_ai_assets_dir(), self.group_name)
-        os.makedirs(group_dir, exist_ok=True)
-        
-        for fp in paths:
-            dest = os.path.join(group_dir, os.path.basename(fp))
-            try:
-                shutil.copy2(fp, dest)
-            except Exception as e:
-                logging.error(f"Ошибка копирования эталона {fp}: {e}")
-                
-        self.reload_thumbnails()
-        self.has_changes = True
-
-    def choose_files(self):
-        files, _ = QFileDialog.getOpenFileNames(
-            self, 
-            "Выберите картинки-эталоны" if self.is_ru else "Select Reference Images",
-            "", 
-            "Images (*.png *.jpg *.jpeg *.bmp *.webp)"
-        )
-        if files:
-            self.add_dropped_files(files)
-
-    def delete_selected_files(self):
-        selected = self.list_ref_images.selectedItems()
-        if not selected:
-            return
-            
-        for item in selected:
-            fp = item.data(Qt.ItemDataRole.UserRole)
-            if fp and os.path.exists(fp):
-                try:
-                    os.remove(fp)
-                except Exception as e:
-                    logging.error(f"Не удалось удалить файл примера {fp}: {e}")
-                    
-        self.reload_thumbnails()
-        self.has_changes = True
-
-    def train_group_ui(self):
-        main_tab = self.parent()
-        if main_tab and hasattr(main_tab, 'check_and_download_models_ui'):
-            if not main_tab.check_and_download_models_ui():
-                return
-                
-        status, count = self.classifier.get_group_status(self.group_name)
-        if count == 0:
-            QMessageBox.warning(self, "Внимание" if self.is_ru else "Warning", 
-                                "Добавьте картинки-примеры перед расчетом!" if self.is_ru else "Add reference images first!")
-            return
-            
-        self.btn_train.setEnabled(False)
-        self.btn_train.setText("Расчет..." if self.is_ru else "Processing...")
-        
-        def on_prog(curr, tot):
-            self.btn_train.setText(f"Расчет ({curr}/{tot})..." if self.is_ru else f"Proc ({curr}/{tot})...")
-            from PyQt6.QtWidgets import QApplication
-            QApplication.processEvents()
-            
-        success = self.classifier.train_group(self.group_name, progress_callback=on_prog, force_recalculate=True)
-        
-        self.btn_train.setEnabled(True)
-        self.btn_train.setText("Обучить" if self.is_ru else "Train")
-        
-        if success:
-            QMessageBox.information(self, "Успех" if self.is_ru else "Success", 
-                                    "Обучение эталона завершено!" if self.is_ru else "Reference training completed!")
-            self.reload_thumbnails()
-            
-            main_tab = self.parent()
-            if main_tab and hasattr(main_tab, 'update_cache_info_ai'):
-                main_tab.update_cache_info_ai()
-
-    def save_settings(self):
-        new_name = self.txt_name.text().strip()
-        new_name = "".join(c for c in new_name if c.isalnum() or c in " _-").strip()
-        if not new_name:
-            QMessageBox.warning(self, "Ошибка" if self.is_ru else "Error", 
-                                "Некорректное имя группы!" if self.is_ru else "Invalid group name!")
-            return
-            
-        settings = load_ai_settings()
-        groups = settings.get("groups", {})
-        
-        if new_name != self.group_name:
-            if new_name in groups:
-                QMessageBox.warning(self, "Ошибка" if self.is_ru else "Error", 
-                                    "Группа с таким именем уже существует!" if self.is_ru else "Group already exists!")
-                return
-                
-            old_dir = os.path.join(get_ai_assets_dir(), self.group_name)
-            new_dir = os.path.join(get_ai_assets_dir(), new_name)
-            if os.path.exists(old_dir):
-                try:
-                    os.rename(old_dir, new_dir)
-                except Exception as e:
-                    logging.error(f"Ошибка переименования папки эталона: {e}")
-                    QMessageBox.critical(self, "Ошибка" if self.is_ru else "Error", 
-                                         "Не удалось переименовать каталог эталона!" if self.is_ru else "Failed to rename reference directory!")
-                    return
-            
-            info = groups.pop(self.group_name)
-            groups[new_name] = info
-            self.group_name = new_name
-            self.has_changes = True
-            
-        selected_type = "face" if self.rad_face.isChecked() else "general"
-        if groups[self.group_name].get("type") != selected_type:
-            groups[self.group_name]["type"] = selected_type
-            self.has_changes = True
-            
-        if self.has_changes:
-            save_ai_settings(settings)
-            
-        self.accept()
-
-    def delete_group_ui(self):
-        reply = QMessageBox.question(
-            self,
-            "Удалить группу эталонов" if self.is_ru else "Delete Reference Group",
-            f"Вы уверены, что хотите полностью удалить группу эталонов '{self.group_name}'?\nЭто приведет к безвозвратному удалению всех файлов-примеров и настроек этой группы."
-            if self.is_ru else
-            f"Are you sure you want to delete the reference group '{self.group_name}'?\nAll reference image files and configurations for this group will be permanently deleted.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-        if reply == QMessageBox.StandardButton.Yes:
-            # 1. Удаляем физическую папку со всеми файлами
-            group_dir = os.path.join(get_ai_assets_dir(), self.group_name)
-            if os.path.exists(group_dir):
-                try:
-                    shutil.rmtree(group_dir)
-                except Exception as e:
-                    logging.error(f"Не удалось удалить директорию эталона {group_dir}: {e}")
-            
-            # 2. Удаляем из ai_settings.json
-            settings = load_ai_settings()
-            if "groups" in settings and self.group_name in settings["groups"]:
-                del settings["groups"][self.group_name]
-                save_ai_settings(settings)
-                
-            # 3. Очищаем эмбеддинги группы из памяти классификатора
-            if self.group_name in self.classifier.face_reference_descriptors:
-                del self.classifier.face_reference_descriptors[self.group_name]
-            if self.group_name in self.classifier.general_embeddings:
-                del self.classifier.general_embeddings[self.group_name]
-            if self.group_name in self.classifier.general_centroids:
-                del self.classifier.general_centroids[self.group_name]
-            
-            self.has_changes = True
-            self.accept()
-
-
-# -----------------------------------------------------------------------------
-# Диалог создания нового эталона
-# -----------------------------------------------------------------------------
-class CreateAiGroupDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        is_ru = AppContext.is_ru()
-        self.setWindowTitle("Создать группу эталонов" if is_ru else "Create Reference Group")
-        self.setFixedSize(500, 480)
-        self.setStyleSheet("background-color: #2b2b2b; color: white;")
-        
-        self.pending_files = []
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 15, 15, 15)
-        layout.setSpacing(10)
-        
-        layout.addWidget(QLabel("Имя группы:" if is_ru else "Group Name:"))
-        self.txt_name = QLineEdit()
-        self.txt_name.setMinimumHeight(32)
-        self.txt_name.setStyleSheet("""
-            QLineEdit {
-                background-color: #333; 
-                border: 1px solid #555; 
-                padding: 4px 8px; 
-                border-radius: 4px; 
-                color: white;
-                font-size: 13px;
-            }
-        """)
-        self.txt_name.textChanged.connect(self._on_name_changed)
-        layout.addWidget(self.txt_name)
-        
-        layout.addWidget(QLabel("Тип анализа:" if is_ru else "Analysis Type:"))
-        
-        self.btn_group = QButtonGroup(self)
-        self.rad_general = QRadioButton(" Общее сходство" if is_ru else " General Similarity")
-        self.rad_general.setChecked(True)
-        self.rad_face = QRadioButton(" Поиск лиц" if is_ru else " Face Search")
-        
-        rad_style = """
-            QRadioButton {
-                background-color: #3b3b3b;
-                color: #e0e0e0;
-                border-radius: 14px;
-                padding: 7px 12px;
-                margin: 4px 0px;
-                font-weight: bold;
-                font-size: 13px;
-                border: 1px solid #555;
-            }
-            QRadioButton:hover {
-                background-color: #4a4a4a;
-                border: 1px solid #666;
-            }
-            QRadioButton::indicator {
-                width: 0px;
-                height: 0px;
-            }
-            QRadioButton:checked {
-                background-color: #3b82f6;
-                color: white;
-                border: 1px solid #2563eb;
-            }
-        """
-        self.rad_general.setStyleSheet(rad_style)
-        self.rad_face.setStyleSheet(rad_style)
-        self.rad_general.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.rad_face.setCursor(Qt.CursorShape.PointingHandCursor)
-        
-        self.btn_group.addButton(self.rad_general, 0)
-        self.btn_group.addButton(self.rad_face, 1)
-        
-        type_layout = QHBoxLayout()
-        type_layout.addWidget(self.rad_general)
-        type_layout.addWidget(self.rad_face)
-        type_layout.addStretch()
-        layout.addLayout(type_layout)
-        
-        lbl_drop = QLabel("Перетащите файлы картинок (.png, .jpg) прямо в поле ниже:" if is_ru else "Drag and drop image files (.png, .jpg) directly to the area below:")
-        lbl_drop.setStyleSheet("color: #aaa; font-size: 11px; font-style: italic;")
-        layout.addWidget(lbl_drop)
-        
-        self.list_ref_images = RefImagesListWidget(self)
-        self.list_ref_images.files_dropped.connect(self.add_dropped_files)
-        
-        self.hover_tooltip = ImageHoverToolTip(self)
-        self.list_ref_images.item_hovered.connect(self.hover_tooltip.show_image)
-        self.list_ref_images.hover_left.connect(self.hover_tooltip.hide)
-        
-        layout.addWidget(self.list_ref_images, 1)
-        
-        btn_list_layout = QHBoxLayout()
-        self.btn_add_file = QPushButton("Добавить файл" if is_ru else "Add File")
-        self.btn_add_file.setStyleSheet("background-color: #444; border: 1px solid #555; padding: 6px 12px; border-radius: 4px;")
-        self.btn_add_file.clicked.connect(self.browse_files)
-        
-        self.btn_del_file = QPushButton("Удалить выбранные" if is_ru else "Delete Selected")
-        self.btn_del_file.setStyleSheet("background-color: #ef4444; border: none; padding: 6px 12px; border-radius: 4px;")
-        self.btn_del_file.clicked.connect(self.delete_selected_files)
-        
-        self.btn_train = QPushButton("Создать и Обучить" if is_ru else "Create and Train")
-        self.btn_train.setStyleSheet("background-color: #16a34a; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;")
-        self.btn_train.clicked.connect(self.accept)
-        
-        btn_list_layout.addWidget(self.btn_add_file)
-        btn_list_layout.addWidget(self.btn_del_file)
-        btn_list_layout.addWidget(self.btn_train)
-        btn_list_layout.addStretch()
-        layout.addLayout(btn_list_layout)
-        
-        layout.addStretch()
-        
-        buttons_layout = QHBoxLayout()
-        buttons_layout.addStretch()
-        
-        self.btn_cancel = QPushButton("Отмена" if is_ru else "Cancel")
-        self.btn_cancel.setStyleSheet("background-color: #444; border: none; padding: 6px 12px; border-radius: 4px;")
-        self.btn_cancel.clicked.connect(self.reject)
-        
-        self.btn_ok = QPushButton("Создать" if is_ru else "Create")
-        self.btn_ok.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;")
-        self.btn_ok.clicked.connect(self.accept)
-        
-        buttons_layout.addWidget(self.btn_cancel)
-        buttons_layout.addWidget(self.btn_ok)
-        layout.addLayout(buttons_layout)
-        
-        self._on_name_changed(self.txt_name.text())
-
-    def _on_name_changed(self, text):
-        is_valid = bool(text.strip())
-        self.btn_ok.setEnabled(is_valid)
-        self.btn_train.setEnabled(is_valid)
-        
-        disabled_style_ok = "background-color: #222; color: #555; border: 1px solid #333; padding: 6px 12px; border-radius: 4px; font-weight: bold;"
-        active_style_ok = "background-color: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;"
-        
-        disabled_style_train = "background-color: #222; color: #555; border: 1px solid #333; padding: 6px 12px; border-radius: 4px; font-weight: bold;"
-        active_style_train = "background-color: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;"
-        
-        self.btn_ok.setStyleSheet(active_style_ok if is_valid else disabled_style_ok)
-        self.btn_train.setStyleSheet(active_style_train if is_valid else disabled_style_train)
-
-    def delete_selected_files(self):
-        selected_items = self.list_ref_images.selectedItems()
-        if not selected_items:
-            return
-            
-        for item in selected_items:
-            path = item.data(Qt.ItemDataRole.UserRole)
-            if path in self.pending_files:
-                self.pending_files.remove(path)
-            row = self.list_ref_images.row(item)
-            self.list_ref_images.takeItem(row)
-
-    def browse_files(self):
-        from PyQt6.QtWidgets import QFileDialog
-        is_ru = AppContext.is_ru()
-        files, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Выберите картинки-эталоны" if is_ru else "Select Reference Images",
-            "",
-            "Images (*.png *.jpg *.jpeg *.bmp *.webp)"
-        )
-        if files:
-            self.add_dropped_files(files)
-
-    def add_dropped_files(self, file_paths):
-        for path in file_paths:
-            if path not in self.pending_files:
-                self.pending_files.append(path)
-                item = QListWidgetItem()
-                item.setIcon(QIcon(path))
-                item.setData(Qt.ItemDataRole.UserRole, path)
-                item.setToolTip(os.path.basename(path))
-                self.list_ref_images.addItem(item)
-
-
-# -----------------------------------------------------------------------------
-# Горизонтальный чип (плашка) эталона в верхней панели настроек
-# -----------------------------------------------------------------------------
 class AiGroupChipWidget(QFrame):
     state_changed = pyqtSignal(str, bool)
     settings_clicked = pyqtSignal(str)
@@ -1382,6 +790,18 @@ class AiClassificationTab(QWidget):
         self.combo_match_mode.currentIndexChanged.connect(self.on_match_mode_changed)
         params_sub_layout.addWidget(self.combo_match_mode)
         
+        self.chk_auto_cluster = QCheckBox("Умная авто-кластеризация" if AppContext.is_ru() else "Smart Auto-Clustering")
+        self.chk_auto_cluster.setStyleSheet("color: white; font-size: 11px; margin-top: 5px;")
+        self.chk_auto_cluster.setToolTip("Искать лица без эталонов и группировать их автоматически." if AppContext.is_ru() else "Group faces automatically without references.")
+        self.chk_auto_cluster.stateChanged.connect(self.on_auto_cluster_changed)
+        params_sub_layout.addWidget(self.chk_auto_cluster)
+        
+        self.chk_use_gpu = QCheckBox("Аппаратное ускорение (GPU)" if AppContext.is_ru() else "Hardware Acceleration (GPU)")
+        self.chk_use_gpu.setStyleSheet("color: white; font-size: 11px;")
+        self.chk_use_gpu.setToolTip("Использовать CUDA/DirectML для ускорения ИИ (если доступно)." if AppContext.is_ru() else "Use CUDA/DirectML to accelerate AI (if available).")
+        self.chk_use_gpu.setChecked(True)
+        params_sub_layout.addWidget(self.chk_use_gpu)
+        
         # Moved cache layout to the top of the block
         
         # Инициализируем размер кэша
@@ -1501,7 +921,48 @@ class AiClassificationTab(QWidget):
         self.tree_results.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree_results.customContextMenuRequested.connect(self.show_results_context_menu)
         
-        self.right_splitter.addWidget(self.tree_results)
+        tree_container = QWidget()
+        tree_layout = QVBoxLayout(tree_container)
+        tree_layout.setContentsMargins(0, 0, 0, 0)
+        tree_layout.setSpacing(4)
+        
+        post_filter_layout = QHBoxLayout()
+        self.lbl_post_filter = QLabel("Быстрый фильтр:" if AppContext.is_ru() else "Quick Filter:")
+        self.lbl_post_filter.setStyleSheet("color: #ccc; font-size: 11px; font-weight: bold;")
+        self.slider_post_filter = QSlider(Qt.Orientation.Horizontal)
+        self.slider_post_filter.setRange(0, 10000)
+        self.slider_post_filter.setValue(0)
+        self.slider_post_filter.setStyleSheet("""
+            QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
+            QSlider::handle:horizontal { background: #10b981; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
+        """)
+        self.spin_post_filter = QDoubleSpinBox()
+        self.spin_post_filter.setRange(0.0, 100.0)
+        self.spin_post_filter.setDecimals(2)
+        self.spin_post_filter.setSingleStep(0.01)
+        self.spin_post_filter.setSuffix("%")
+        self.spin_post_filter.setFixedWidth(80)
+        self.spin_post_filter.setStyleSheet("""
+            QDoubleSpinBox { background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; color: white; font-size: 11px; }
+            QDoubleSpinBox:hover { border-color: #555; }
+        """)
+        
+        self.slider_post_filter.valueChanged.connect(lambda v: self.spin_post_filter.setValue(v / 100.0))
+        self.spin_post_filter.valueChanged.connect(lambda v: self.slider_post_filter.setValue(int(v * 100)))
+        self.spin_post_filter.valueChanged.connect(self.on_post_filter_changed)
+        
+        post_filter_layout.addWidget(self.lbl_post_filter)
+        post_filter_layout.addWidget(self.slider_post_filter)
+        post_filter_layout.addWidget(self.spin_post_filter)
+        
+        self.post_filter_widget = QWidget()
+        self.post_filter_widget.setLayout(post_filter_layout)
+        self.post_filter_widget.hide() # Hidden until scan is done
+        
+        tree_layout.addWidget(self.post_filter_widget)
+        tree_layout.addWidget(self.tree_results)
+        
+        self.right_splitter.addWidget(tree_container)
         
         from .ui_preview import CleanerPreviewWidget
         self.preview_widget = CleanerPreviewWidget()
@@ -1513,8 +974,8 @@ class AiClassificationTab(QWidget):
         
         self.main_splitter.addWidget(self.bottom_container)
         
-        # Начальные размеры вертикального сплиттера: ~165px под настройки, остальное под таблицу
-        self.main_splitter.setSizes([165, 440])
+        # Начальные размеры вертикального сплиттера: ~220px под настройки, остальное под таблицу
+        self.main_splitter.setSizes([220, 400])
         
         content_layout.addWidget(self.main_splitter, 1)
         self.main_layout.addWidget(self.main_content_widget, 1)
@@ -1605,12 +1066,12 @@ class AiClassificationTab(QWidget):
         self.update_scan_button_state()
 
     def open_edit_group_dialog(self, group_name: str):
-        dlg = EditAiGroupDialog(group_name, self.classifier, self)
+        dlg = AiGroupSettingsDialog(self.classifier, group_name, self)
         if dlg.exec():
             self.reload_groups()
 
     def create_group(self):
-        dlg = CreateAiGroupDialog(self)
+        dlg = AiGroupSettingsDialog(self.classifier, None, self)
         if dlg.exec():
             name = dlg.txt_name.text().strip()
             if not name:
@@ -1649,6 +1110,66 @@ class AiClassificationTab(QWidget):
 
     def on_threshold_changed(self, value):
         pass
+
+    def on_auto_cluster_changed(self, state):
+        is_cluster = (state == Qt.CheckState.Checked.value)
+        # Disable reference groups tree if clustering is enabled
+        self.tree_groups.setEnabled(not is_cluster)
+        if is_cluster:
+            self.tree_groups.setStyleSheet("QTreeWidget { background-color: #1e1e1e; color: #555; }")
+        else:
+            self.tree_groups.setStyleSheet("""
+            QTreeWidget { background-color: #2b2b2b; color: white; border: none; font-size: 11px; }
+            QTreeWidget::item { padding: 4px; border-bottom: 1px solid #333; }
+            QTreeWidget::item:hover { background-color: #3b3b3b; }
+            QTreeWidget::item:selected { background-color: #3b82f6; color: white; }
+            """)
+
+    def on_post_filter_changed(self, value):
+        root = self.tree_results.invisibleRootItem()
+        self.tree_results.blockSignals(True)
+        try:
+            for i in range(root.childCount()):
+                group_item = root.child(i)
+                group_visible_children = 0
+                
+                if getattr(self, "is_cluster_results", False):
+                    target_size = int(value)
+                    actual_size = group_item.childCount()
+                    if actual_size < target_size:
+                        group_item.setHidden(True)
+                        for j in range(actual_size):
+                            child = group_item.child(j)
+                            if child.checkState(0) == Qt.CheckState.Checked:
+                                child.setCheckState(0, Qt.CheckState.Unchecked)
+                        if group_item.checkState(0) == Qt.CheckState.Checked:
+                            group_item.setCheckState(0, Qt.CheckState.Unchecked)
+                    else:
+                        group_item.setHidden(False)
+                else:
+                    target_similarity = float(value)
+                    for j in range(group_item.childCount()):
+                        child = group_item.child(j)
+                        data = child.data(0, Qt.ItemDataRole.UserRole)
+                        if data:
+                            sim = data.get("confidence", 0.0) * 100.0
+                            if sim < target_similarity:
+                                child.setHidden(True)
+                                if child.checkState(0) == Qt.CheckState.Checked:
+                                    child.setCheckState(0, Qt.CheckState.Unchecked)
+                            else:
+                                child.setHidden(False)
+                                group_visible_children += 1
+                    
+                    if group_visible_children == 0:
+                        group_item.setHidden(True)
+                        if group_item.checkState(0) == Qt.CheckState.Checked:
+                            group_item.setCheckState(0, Qt.CheckState.Unchecked)
+                    else:
+                        group_item.setHidden(False)
+        finally:
+            self.tree_results.blockSignals(False)
+        self.update_cleaner_action_bar_info()
 
     def on_match_mode_changed(self, index):
         mode = self.combo_match_mode.itemData(index)
@@ -1752,36 +1273,38 @@ class AiClassificationTab(QWidget):
         for widget in self.chips_map.values():
             widget.set_error_highlight(False)
             
-        settings = load_ai_settings()
-        enabled_groups = [name for name, info in settings.get("groups", {}).items() if info.get("enabled", True)]
-        
-        if not enabled_groups:
-            QMessageBox.warning(self, "Ошибка" if AppContext.is_ru() else "Error", 
-                                "Выберите хотя бы одну группу эталонов для поиска!" if AppContext.is_ru() else "Select at least one reference group to search!")
-            return
+        is_cluster = self.chk_auto_cluster.isChecked()
+        if not is_cluster:
+            settings = load_ai_settings()
+            enabled_groups = [name for name, info in settings.get("groups", {}).items() if info.get("enabled", True)]
             
-        for name in enabled_groups:
-            status, count = self.classifier.get_group_status(name)
-            if status == "gray":
-                if name in self.chips_map:
-                    self.chips_map[name].set_error_highlight(True)
-                QMessageBox.critical(
-                    self, 
-                    "Ошибка" if AppContext.is_ru() else "Error", 
-                    f"Группа '{name}' включена в поиск, но не содержит картинок-примеров! Загрузите картинки или выключите группу." if AppContext.is_ru()
-                    else f"Group '{name}' is enabled but contains no reference images! Load images or disable the group."
-                )
+            if not enabled_groups:
+                QMessageBox.warning(self, "Ошибка" if AppContext.is_ru() else "Error", 
+                                    "Выберите хотя бы одну группу эталонов для поиска!" if AppContext.is_ru() else "Select at least one reference group to search!")
                 return
                 
-        needs_training = []
-        for name in enabled_groups:
-            status, count = self.classifier.get_group_status(name)
-            if status == "orange":
-                needs_training.append(name)
-                
-        if needs_training:
-            if not self.check_and_download_models_ui():
-                return
+            for name in enabled_groups:
+                status, count = self.classifier.get_group_status(name)
+                if status == "gray":
+                    if name in self.chips_map:
+                        self.chips_map[name].set_error_highlight(True)
+                    QMessageBox.critical(
+                        self, 
+                        "Ошибка" if AppContext.is_ru() else "Error", 
+                        f"Группа '{name}' включена в поиск, но не содержит картинок-примеров! Загрузите картинки или выключите группу." if AppContext.is_ru()
+                        else f"Group '{name}' is enabled but contains no reference images! Load images or disable the group."
+                    )
+                    return
+                    
+            needs_training = []
+            for name in enabled_groups:
+                status, count = self.classifier.get_group_status(name)
+                if status == "orange":
+                    needs_training.append(name)
+                    
+            if needs_training:
+                if not self.check_and_download_models_ui():
+                    return
                 
             dlg = QDialog(self)
             dlg.setWindowTitle("Автоматическое обучение ИИ" if AppContext.is_ru() else "AI Auto-training")
@@ -1828,7 +1351,15 @@ class AiClassificationTab(QWidget):
         
         match_mode = self.combo_match_mode.currentData() or "centroid"
         use_cache = self.chk_use_cache.isChecked()
-        self.active_worker = AiScanWorker(folders, self.classifier, threshold=threshold, filter_config=filter_cfg, match_mode=match_mode, use_cache=use_cache)
+        use_gpu = self.chk_use_gpu.isChecked()
+        is_cluster = self.chk_auto_cluster.isChecked()
+        
+        self.active_worker = AiScanWorker(
+            folders, self.classifier, 
+            threshold=threshold, filter_config=filter_cfg, 
+            match_mode=match_mode, use_cache=use_cache,
+            use_gpu=use_gpu, is_cluster=is_cluster
+        )
         self.active_worker.progress.connect(self.on_scan_progress)
         self.active_worker.finished.connect(self.on_scan_finished)
         self.active_worker.start()
@@ -1870,18 +1401,25 @@ class AiClassificationTab(QWidget):
     def populate_results(self, results):
         self.tree_results.clear()
         if not results:
+            self.post_filter_widget.hide()
             return
             
         from utils_common import format_size
+        
+        self.is_cluster_results = self.chk_auto_cluster.isChecked()
+        
+        unique_sizes = set()
         
         for group_name, files in results.items():
             if not files:
                 continue
                 
             group_size = sum(f["size"] for f in files)
+            num_files = len(files)
+            unique_sizes.add(num_files)
             
             group_item = QTreeWidgetItem(self.tree_results)
-            group_item.setText(0, f"Группа: {group_name} ({len(files)} файлов)" if AppContext.is_ru() else f"Group: {group_name} ({len(files)} files)")
+            group_item.setText(0, f"Группа: {group_name} ({num_files} файлов)" if AppContext.is_ru() else f"Group: {group_name} ({num_files} files)")
             group_item.setText(2, format_size(group_size))
             group_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": True, "name": group_name})
             
@@ -1897,9 +1435,37 @@ class AiClassificationTab(QWidget):
                 file_item.setText(1, f"{f['confidence']:.1f}%")
                 file_item.setText(2, format_size(f["size"]))
                 file_item.setText(3, f["path"])
-                file_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": False, "path": f["path"], "size": f["size"]})
+                file_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": False, "path": f["path"], "size": f["size"], "confidence": f.get("confidence", 0.0) / 100.0})
                 
             group_item.setExpanded(True)
+            
+        self.spin_post_filter.blockSignals(True)
+        self.slider_post_filter.blockSignals(True)
+        if self.is_cluster_results:
+            sizes = sorted(list(unique_sizes))
+            min_size = min(sizes) if sizes else 1
+            max_size = max(sizes) if sizes else 100
+            self.spin_post_filter.setSuffix(" ф." if AppContext.is_ru() else " f.")
+            self.spin_post_filter.setDecimals(0)
+            self.spin_post_filter.setSingleStep(1.0)
+            self.spin_post_filter.setRange(float(min_size), float(max_size))
+            self.slider_post_filter.setRange(int(min_size * 100), int(max_size * 100))
+            self.spin_post_filter.setValue(float(max(2, min_size))) # Default to 2
+        else:
+            self.spin_post_filter.setSuffix("%")
+            self.spin_post_filter.setDecimals(2)
+            self.spin_post_filter.setSingleStep(0.01)
+            scan_threshold = self.spin_threshold.value()
+            self.spin_post_filter.setRange(scan_threshold, 100.0)
+            self.slider_post_filter.setRange(int(scan_threshold * 100), 10000)
+            self.spin_post_filter.setValue(scan_threshold)
+            
+        self.spin_post_filter.blockSignals(False)
+        self.slider_post_filter.blockSignals(False)
+        
+        self.post_filter_widget.show()
+        if self.is_cluster_results:
+            self.on_post_filter_changed(self.spin_post_filter.value())
 
     def on_tree_selection_changed(self):
         selected_items = self.tree_results.selectedItems()
@@ -1924,28 +1490,75 @@ class AiClassificationTab(QWidget):
             
         self.tree_results.blockSignals(True)
         try:
+            target_paths = []
+            target_state = item.checkState(0)
+            
             if data.get("is_group", False):
-                state = item.checkState(0)
                 for i in range(item.childCount()):
-                    item.child(i).setCheckState(0, state)
+                    child = item.child(i)
+                    if not child.isHidden():
+                        child.setCheckState(0, target_state)
+                        child_data = child.data(0, Qt.ItemDataRole.UserRole)
+                        if child_data:
+                            target_paths.append(child_data.get("path"))
             else:
+                target_paths.append(data.get("path"))
                 parent = item.parent()
                 if parent:
                     all_checked = True
                     any_checked = False
+                    visible_count = 0
                     for i in range(parent.childCount()):
+                        if parent.child(i).isHidden(): continue
+                        visible_count += 1
                         c_state = parent.child(i).checkState(0)
                         if c_state == Qt.CheckState.Checked:
                             any_checked = True
                         else:
                             all_checked = False
                             
-                    if all_checked:
-                        parent.setCheckState(0, Qt.CheckState.Checked)
-                    elif any_checked:
-                        parent.setCheckState(0, Qt.CheckState.PartiallyChecked)
-                    else:
-                        parent.setCheckState(0, Qt.CheckState.Unchecked)
+                    if visible_count > 0:
+                        if all_checked:
+                            parent.setCheckState(0, Qt.CheckState.Checked)
+                        elif any_checked:
+                            parent.setCheckState(0, Qt.CheckState.PartiallyChecked)
+                        else:
+                            parent.setCheckState(0, Qt.CheckState.Unchecked)
+                            
+            if getattr(self, "is_cluster_results", False) and target_paths:
+                root = self.tree_results.invisibleRootItem()
+                target_paths_set = set(target_paths)
+                for i in range(root.childCount()):
+                    g_item = root.child(i)
+                    needs_parent_update = False
+                    for j in range(g_item.childCount()):
+                        c_item = g_item.child(j)
+                        if c_item.isHidden() or c_item == item:
+                            continue
+                        c_data = c_item.data(0, Qt.ItemDataRole.UserRole)
+                        if c_data and c_data.get("path") in target_paths_set:
+                            c_item.setCheckState(0, target_state)
+                            needs_parent_update = True
+                            
+                    if needs_parent_update:
+                        all_checked = True
+                        any_checked = False
+                        visible_count = 0
+                        for k in range(g_item.childCount()):
+                            if g_item.child(k).isHidden(): continue
+                            visible_count += 1
+                            cs = g_item.child(k).checkState(0)
+                            if cs == Qt.CheckState.Checked:
+                                any_checked = True
+                            else:
+                                all_checked = False
+                        if visible_count > 0:
+                            if all_checked:
+                                g_item.setCheckState(0, Qt.CheckState.Checked)
+                            elif any_checked:
+                                g_item.setCheckState(0, Qt.CheckState.PartiallyChecked)
+                            else:
+                                g_item.setCheckState(0, Qt.CheckState.Unchecked)
         finally:
             self.tree_results.blockSignals(False)
             

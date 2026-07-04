@@ -135,19 +135,49 @@ class AiClassifier:
                 size = stat.st_size
                 
                 if is_face_type:
-                    # Для лиц
                     faces = self.cache.get_file_faces(fp, mtime, size) if not force_recalculate else None
                     if faces is None:
                         faces = self.ai.detect_and_extract_faces(fp)
                         self.cache.save_file_faces(fp, mtime, size, faces)
                 else:
-                    # Для общих
                     emb = self.cache.get_image_embedding(fp, mtime, size) if not force_recalculate else None
                     if emb is None:
                         emb = self.ai.extract_image_embedding(fp)
                         self.cache.save_image_embedding(fp, mtime, size, emb)
             except Exception as e:
                 logging.error(f"Ошибка обучения на файле {fp}: {e}")
+                
+            if progress_callback:
+                progress_callback(idx + 1, total * 2) # we just estimate progress
+                
+        # Also process negatives
+        neg_dir = os.path.join(group_dir, "negative")
+        if os.path.exists(neg_dir):
+            neg_files = [
+                os.path.join(neg_dir, f) for f in os.listdir(neg_dir)
+                if os.path.isfile(os.path.join(neg_dir, f)) and os.path.splitext(f)[1].lower() in valid_exts
+            ]
+            for idx, fp in enumerate(neg_files):
+                try:
+                    stat = os.stat(fp)
+                    mtime = stat.st_mtime
+                    size = stat.st_size
+                    
+                    if is_face_type:
+                        faces = self.cache.get_file_faces(fp, mtime, size) if not force_recalculate else None
+                        if faces is None:
+                            faces = self.ai.detect_and_extract_faces(fp)
+                            self.cache.save_file_faces(fp, mtime, size, faces)
+                    else:
+                        emb = self.cache.get_image_embedding(fp, mtime, size) if not force_recalculate else None
+                        if emb is None:
+                            emb = self.ai.extract_image_embedding(fp)
+                            self.cache.save_image_embedding(fp, mtime, size, emb)
+                except Exception as e:
+                    logging.error(f"Ошибка обучения на негативном файле {fp}: {e}")
+                    
+                if progress_callback:
+                    progress_callback(total + idx + 1, total + len(neg_files))
                 
             if progress_callback:
                 progress_callback(idx + 1, total)
@@ -188,43 +218,87 @@ class AiClassifier:
             if not files:
                 continue
                 
+            neg_dir = os.path.join(group_dir, "negative")
+            neg_files = []
+            if os.path.exists(neg_dir):
+                neg_files = [
+                    os.path.join(neg_dir, f) for f in os.listdir(neg_dir)
+                    if os.path.isfile(os.path.join(neg_dir, f)) and os.path.splitext(f)[1].lower() in valid_exts
+                ]
+                
             if is_face:
                 descriptors = []
+                neg_descriptors = []
+                
                 for fp in files:
                     try:
                         stat = os.stat(fp)
                         faces = self.cache.get_file_faces(fp, stat.st_mtime, stat.st_size)
-                        if faces is None:
-                            faces = self.ai.detect_and_extract_faces(fp)
-                            if faces:
-                                self.cache.save_file_faces(fp, stat.st_mtime, stat.st_size, faces)
                         if faces:
                             for face in faces:
                                 descriptors.append(face["descriptor"])
-                    except Exception:
+                    except:
                         pass
+                        
+                for fp in neg_files:
+                    try:
+                        stat = os.stat(fp)
+                        faces = self.cache.get_file_faces(fp, stat.st_mtime, stat.st_size)
+                        if faces:
+                            for face in faces:
+                                neg_descriptors.append(face["descriptor"])
+                    except:
+                        pass
+                        
                 if descriptors:
+                    # if we have negatives, we subtract the negative centroid from each descriptor
+                    if neg_descriptors:
+                        neg_centroid = np.mean(neg_descriptors, axis=0)
+                        norm_neg = np.linalg.norm(neg_centroid)
+                        if norm_neg > 0:
+                            neg_centroid /= norm_neg
+                            
+                        # adjust positive descriptors
+                        adjusted_descriptors = []
+                        for desc in descriptors:
+                            adj = desc - 0.5 * neg_centroid
+                            norm = np.linalg.norm(adj)
+                            if norm > 0:
+                                adj /= norm
+                            adjusted_descriptors.append(adj)
+                        descriptors = adjusted_descriptors
+                        
                     self.face_reference_descriptors[group_name] = descriptors
             else:
                 embeddings = []
+                neg_embeddings = []
+                
                 for fp in files:
                     try:
                         stat = os.stat(fp)
                         emb = self.cache.get_image_embedding(fp, stat.st_mtime, stat.st_size)
-                        if emb is None:
-                            emb = self.ai.extract_image_embedding(fp)
-                            if emb is not None:
-                                self.cache.save_image_embedding(fp, stat.st_mtime, stat.st_size, emb)
                         if emb is not None:
                             embeddings.append(emb)
-                    except Exception:
+                    except:
                         pass
+                        
+                for fp in neg_files:
+                    try:
+                        stat = os.stat(fp)
+                        emb = self.cache.get_image_embedding(fp, stat.st_mtime, stat.st_size)
+                        if emb is not None:
+                            neg_embeddings.append(emb)
+                    except:
+                        pass
+                        
                 if embeddings:
                     self.general_embeddings[group_name] = embeddings
-                    
-                    # Считаем средний центроид
                     mean_emb = np.mean(embeddings, axis=0)
-                    # Нормализуем центроид
+                    
+                    if neg_embeddings:
+                        neg_centroid = np.mean(neg_embeddings, axis=0)
+                        mean_emb = mean_emb - 0.5 * neg_centroid
+                        
                     norm = np.linalg.norm(mean_emb)
                     if norm > 0:
                         mean_emb /= norm

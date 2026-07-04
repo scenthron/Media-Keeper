@@ -813,7 +813,7 @@ class AiScanWorker(QThread):
     # finished: { group_name: [ { 'path': ..., 'size': ..., 'confidence': ..., 'type': ... }, ... ] }
     finished = pyqtSignal(dict)
     
-    def __init__(self, folders, classifier, threshold=75.0, filter_config=None, match_mode="centroid", use_cache=True):
+    def __init__(self, folders, classifier, threshold=75.0, filter_config=None, match_mode="centroid", use_cache=True, use_gpu=True, is_cluster=False):
         super().__init__()
         self.folders = folders
         self.classifier = classifier
@@ -821,6 +821,8 @@ class AiScanWorker(QThread):
         self.filter_config = filter_config
         self.match_mode = match_mode
         self.use_cache = use_cache
+        self.use_gpu = use_gpu
+        self.is_cluster = is_cluster
         self.is_running = True
 
     def stop(self):
@@ -848,12 +850,12 @@ class AiScanWorker(QThread):
 
     def run(self):
         logging.info("AiScanWorker запущен")
-        # 1. Загружаем активные эталоны
-        if not self.classifier.load_active_references():
-            logging.warning("Нет активных эталонов для ИИ-поиска")
-            self.finished.emit({})
-            return
-            
+        if not getattr(self, "is_cluster", False):
+            if not self.classifier.load_active_references():
+                logging.warning("Нет активных эталонов для ИИ-поиска")
+                self.finished.emit({})
+                return
+                
         # 2. Сканируем файлы
         valid_files = []
         scanned_files = 0
@@ -899,9 +901,11 @@ class AiScanWorker(QThread):
         self.progress.emit(STAGE_ANALYSIS, 0.0, f"ИИ Анализ: {total_files} файлов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
         
         # Убедимся, что сессии ONNX инициализированы
-        if not self.classifier.ai.initialize_sessions():
+        if not self.classifier.ai.initialize_sessions(use_gpu=getattr(self, "use_gpu", True)):
             self.finished.emit({})
             return
+            
+        cluster_data = []
             
         for fp in valid_files:
             if not self.is_running: break
@@ -911,21 +915,56 @@ class AiScanWorker(QThread):
                 mtime = stat.st_mtime
                 size = stat.st_size
                 
-                # Запускаем ИИ сопоставление
-                best_group, confidence, details = self.classifier.match_image(fp, mtime, size, match_mode=self.match_mode, threshold=self.threshold, use_cache=self.use_cache)
-                
-                if best_group and confidence >= self.threshold:
-                    if best_group not in results:
-                        results[best_group] = []
-                        groups_found += 1
-                        
-                    results[best_group].append({
-                        "path": fp,
-                        "size": size,
-                        "confidence": confidence,
-                        "type": details.get("type", "general")
-                    })
-                    wasted_bytes += size
+                if getattr(self, "is_cluster", False):
+                    faces = None
+                    if self.use_cache:
+                        faces = self.classifier.cache.get_file_faces(fp, mtime, size)
+                    if faces is None:
+                        faces = self.classifier.ai.detect_and_extract_faces(fp)
+                        if self.use_cache and faces is not None:
+                            self.classifier.cache.save_file_faces(fp, mtime, size, faces)
+                            
+                    if faces:
+                        import numpy as np
+                        for face in faces:
+                            emb = face["descriptor"]
+                            matched = False
+                            for cluster in cluster_data:
+                                sim = float(np.dot(emb, cluster["centroid"]))
+                                if sim >= (self.threshold / 100.0):
+                                    if not any(m["path"] == fp for m in cluster["members"]):
+                                        cluster["members"].append({"path": fp, "size": size, "confidence": sim * 100.0, "type": "face"})
+                                    
+                                    new_centroid = np.mean([c["emb"] for c in cluster["raw_embs"]] + [emb], axis=0)
+                                    norm = np.linalg.norm(new_centroid)
+                                    if norm > 0:
+                                        new_centroid /= norm
+                                    cluster["centroid"] = new_centroid
+                                    cluster["raw_embs"].append({"emb": emb})
+                                    matched = True
+                                    break
+                            if not matched:
+                                cluster_data.append({
+                                    "centroid": emb,
+                                    "raw_embs": [{"emb": emb}],
+                                    "members": [{"path": fp, "size": size, "confidence": 100.0, "type": "face"}]
+                                })
+                else:
+                    # Запускаем ИИ сопоставление
+                    best_group, confidence, details = self.classifier.match_image(fp, mtime, size, match_mode=self.match_mode, threshold=self.threshold, use_cache=self.use_cache)
+                    
+                    if best_group and confidence >= self.threshold:
+                        if best_group not in results:
+                            results[best_group] = []
+                            groups_found += 1
+                            
+                        results[best_group].append({
+                            "path": fp,
+                            "size": size,
+                            "confidence": confidence,
+                            "type": details.get("type", "general")
+                        })
+                        wasted_bytes += size
                     
             except Exception as e:
                 logging.error(f"Ошибка ИИ-анализа файла {fp}: {e}")
@@ -936,6 +975,16 @@ class AiScanWorker(QThread):
             
             if processed_files % 5 == 0 or processed_files == total_files:
                 self.progress.emit(STAGE_ANALYSIS, percent, f"[{processed_files} / {total_files}]", scanned_files, groups_found, wasted_bytes, scanned_bytes, 0, 0)
+
+        if getattr(self, "is_cluster", False):
+            # Sort clusters by size
+            cluster_data.sort(key=lambda c: len(c["members"]), reverse=True)
+            for i, cluster in enumerate(cluster_data):
+                if len(cluster["members"]) >= 1:
+                    group_name = f"Лицо {i+1}" if AppContext.is_ru() else f"Face {i+1}"
+                    results[group_name] = cluster["members"]
+                    groups_found += 1
+                    wasted_bytes += sum(m["size"] for m in cluster["members"])
 
         # Сортируем результаты в каждой группе по убыванию процентов
         for g in results:

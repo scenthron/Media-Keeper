@@ -194,6 +194,10 @@ class AiClassifier:
                     try:
                         stat = os.stat(fp)
                         faces = self.cache.get_file_faces(fp, stat.st_mtime, stat.st_size)
+                        if faces is None:
+                            faces = self.ai.detect_and_extract_faces(fp)
+                            if faces:
+                                self.cache.save_file_faces(fp, stat.st_mtime, stat.st_size, faces)
                         if faces:
                             for face in faces:
                                 descriptors.append(face["descriptor"])
@@ -207,6 +211,10 @@ class AiClassifier:
                     try:
                         stat = os.stat(fp)
                         emb = self.cache.get_image_embedding(fp, stat.st_mtime, stat.st_size)
+                        if emb is None:
+                            emb = self.ai.extract_image_embedding(fp)
+                            if emb is not None:
+                                self.cache.save_image_embedding(fp, stat.st_mtime, stat.st_size, emb)
                         if emb is not None:
                             embeddings.append(emb)
                     except Exception:

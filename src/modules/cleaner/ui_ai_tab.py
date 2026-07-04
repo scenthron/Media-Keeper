@@ -51,6 +51,56 @@ class ImageHoverToolTip(QLabel):
             self.hide()
 
 
+from PyQt6.QtWidgets import QStyledItemDelegate
+from PyQt6.QtGui import QPainter, QColor, QPen
+
+class RefImageDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.hovered_index = None
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        
+        is_face_mode = index.data(Qt.ItemDataRole.UserRole + 1)
+        face_found = index.data(Qt.ItemDataRole.UserRole + 2)
+        
+        rect = option.rect
+        
+        if is_face_mode:
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            ind_rect = rect.adjusted(4, 4, -rect.width() + 20, -rect.height() + 20)
+            if face_found:
+                painter.setBrush(QColor("#22c55e"))
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.drawEllipse(ind_rect)
+                painter.setPen(QPen(Qt.GlobalColor.white, 2))
+                painter.drawLine(ind_rect.left() + 4, ind_rect.top() + 8, ind_rect.left() + 6, ind_rect.top() + 11)
+                painter.drawLine(ind_rect.left() + 6, ind_rect.top() + 11, ind_rect.left() + 12, ind_rect.top() + 5)
+            else:
+                painter.setBrush(QColor("#ef4444"))
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.drawEllipse(ind_rect)
+                painter.setPen(QPen(Qt.GlobalColor.white, 2))
+                painter.drawLine(ind_rect.left() + 5, ind_rect.top() + 5, ind_rect.right() - 5, ind_rect.bottom() - 5)
+                painter.drawLine(ind_rect.right() - 5, ind_rect.top() + 5, ind_rect.left() + 5, ind_rect.bottom() - 5)
+            painter.restore()
+            
+        if self.hovered_index is not None and index == self.hovered_index:
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            cross_rect = rect.adjusted(rect.width() - 20, 4, -4, -rect.height() + 20)
+            painter.setBrush(QColor(239, 68, 68, 220))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(cross_rect, 4, 4)
+            painter.setPen(QPen(Qt.GlobalColor.white, 2))
+            painter.drawLine(cross_rect.left() + 4, cross_rect.top() + 4, cross_rect.right() - 4, cross_rect.bottom() - 4)
+            painter.drawLine(cross_rect.right() - 4, cross_rect.top() + 4, cross_rect.left() + 4, cross_rect.bottom() - 4)
+            painter.restore()
+
+
+
 # -----------------------------------------------------------------------------
 # Кастомный список для картинок-примеров с поддержкой Drag & Drop и Hover-превью
 # -----------------------------------------------------------------------------
@@ -62,6 +112,7 @@ class RefImagesListWidget(QListWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptDrops(True)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setViewMode(QListWidget.ViewMode.IconMode)
         self.setIconSize(QSize(76, 76))
         self.setResizeMode(QListWidget.ResizeMode.Adjust)
@@ -88,6 +139,9 @@ class RefImagesListWidget(QListWidget):
             }
         """)
         
+        self.delegate = RefImageDelegate(self)
+        self.setItemDelegate(self.delegate)
+        
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
@@ -111,6 +165,17 @@ class RefImagesListWidget(QListWidget):
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
         item = self.itemAt(event.pos())
+        index = self.indexAt(event.pos())
+        
+        if index.isValid():
+            if self.delegate.hovered_index != index:
+                self.delegate.hovered_index = index
+                self.viewport().update()
+        else:
+            if self.delegate.hovered_index is not None:
+                self.delegate.hovered_index = None
+                self.viewport().update()
+
         if item:
             path = item.data(Qt.ItemDataRole.UserRole)
             if path:
@@ -121,7 +186,34 @@ class RefImagesListWidget(QListWidget):
 
     def leaveEvent(self, event):
         super().leaveEvent(event)
+        if self.delegate.hovered_index is not None:
+            self.delegate.hovered_index = None
+            self.viewport().update()
         self.hover_left.emit()
+
+    def mousePressEvent(self, event):
+        item = self.itemAt(event.pos())
+        if item:
+            rect = self.visualItemRect(item)
+            cross_rect = rect.adjusted(rect.width() - 20, 4, -4, -rect.height() + 20)
+            if cross_rect.contains(event.pos()):
+                path = item.data(Qt.ItemDataRole.UserRole)
+                parent_dlg = self.parent()
+                while parent_dlg and not hasattr(parent_dlg, 'delete_specific_file'):
+                    parent_dlg = parent_dlg.parent()
+                if parent_dlg and hasattr(parent_dlg, 'delete_specific_file'):
+                    parent_dlg.delete_specific_file(path)
+                return
+        super().mousePressEvent(event)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Delete:
+            parent_dlg = self.parent()
+            while parent_dlg and not hasattr(parent_dlg, 'delete_selected_files'):
+                parent_dlg = parent_dlg.parent()
+            if parent_dlg and hasattr(parent_dlg, 'delete_selected_files'):
+                parent_dlg.delete_selected_files()
+        super().keyPressEvent(event)
 
 
 # -----------------------------------------------------------------------------
@@ -263,6 +355,10 @@ class EditAiGroupDialog(QDialog):
         if not os.path.exists(group_dir):
             return
             
+        settings = load_ai_settings()
+        group_info = settings.get("groups", {}).get(self.group_name, {})
+        is_face_mode = group_info.get("type") == "face"
+            
         valid_exts = {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}
         try:
             files = [
@@ -274,10 +370,52 @@ class EditAiGroupDialog(QDialog):
                 item = QListWidgetItem()
                 item.setIcon(QIcon(fp))
                 item.setData(Qt.ItemDataRole.UserRole, fp)
-                item.setToolTip(f)
+                
+                if is_face_mode:
+                    item.setData(Qt.ItemDataRole.UserRole + 1, True)
+                    try:
+                        stat = os.stat(fp)
+                        faces = self.classifier.cache.get_file_faces(fp, stat.st_mtime, stat.st_size)
+                        item.setData(Qt.ItemDataRole.UserRole + 2, bool(faces))
+                        if not faces:
+                            item.setToolTip(f"{f} (Лицо не найдено)" if self.is_ru else f"{f} (Face not found)")
+                        else:
+                            item.setToolTip(f)
+                    except Exception:
+                        item.setData(Qt.ItemDataRole.UserRole + 2, False)
+                        item.setToolTip(f"{f} (Лицо не найдено)" if self.is_ru else f"{f} (Face not found)")
+                else:
+                    item.setData(Qt.ItemDataRole.UserRole + 1, False)
+                    item.setToolTip(f)
+                    
                 self.list_ref_images.addItem(item)
         except Exception as e:
             logging.error(f"Ошибка загрузки миниатюр эталона: {e}")
+
+    def delete_specific_file(self, fp):
+        if fp and os.path.exists(fp):
+            try:
+                os.remove(fp)
+            except Exception as e:
+                logging.error(f"Не удалось удалить файл примера {fp}: {e}")
+        self.reload_thumbnails()
+        self.has_changes = True
+
+    def delete_selected_files(self):
+        items = self.list_ref_images.selectedItems()
+        if not items:
+            return
+            
+        for item in items:
+            fp = item.data(Qt.ItemDataRole.UserRole)
+            if fp and os.path.exists(fp):
+                try:
+                    os.remove(fp)
+                except Exception as e:
+                    logging.error(f"Не удалось удалить файл примера {fp}: {e}")
+                    
+        self.reload_thumbnails()
+        self.has_changes = True
 
     def add_dropped_files(self, paths: list):
         group_dir = os.path.join(get_ai_assets_dir(), self.group_name)
@@ -951,85 +1089,60 @@ class AiClassificationTab(QWidget):
         self.combo_match_mode.currentIndexChanged.connect(self.on_match_mode_changed)
         params_sub_layout.addWidget(self.combo_match_mode)
         
-        # Галочка "Использовать кэш" (включена по умолчанию)
+        # Панель размера и очистки кэша
+        cache_layout = QHBoxLayout()
+        cache_layout.setContentsMargins(0, 0, 0, 0)
+        
         self.chk_use_cache = QCheckBox("Использовать кэш" if AppContext.is_ru() else "Use Cache")
         self.chk_use_cache.setChecked(True)
         self.chk_use_cache.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_use_cache.setStyleSheet("""
-            QCheckBox {
-                color: #ccc;
-                font-weight: bold;
-                font-size: 11px;
-                background-color: transparent;
-                border: none;
-                spacing: 6px;
-                margin-top: 4px;
-            }
-            QCheckBox::indicator {
-                width: 14px;
-                height: 14px;
-                border: 1px solid #666;
-                background-color: #222;
-                border-radius: 3px;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #3b82f6;
-                border-color: #3b82f6;
-            }
+            QCheckBox { color: white; font-weight: bold; font-size: 13px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
         """)
-        params_sub_layout.addWidget(self.chk_use_cache)
+        cache_layout.addWidget(self.chk_use_cache)
+        cache_layout.addStretch()
         
-        # Панель размера и очистки кэша
-        cache_layout = QHBoxLayout()
-        cache_layout.setSpacing(6)
-        
-        self.lbl_cache_info_ai = QLabel("Кэш ИИ: 0 B" if AppContext.is_ru() else "AI Cache: 0 B")
-        self.lbl_cache_info_ai.setStyleSheet("color: #aaa; font-size: 11px; background: transparent; border: none;")
+        self.lbl_cache_info_ai = QLabel("0 B")
+        self.lbl_cache_info_ai.setStyleSheet("color: #888; font-size: 12px; margin-right: 5px;")
         cache_layout.addWidget(self.lbl_cache_info_ai)
         
-        self.btn_clear_cache_ai = QPushButton("🧹")
-        self.btn_clear_cache_ai.setFixedSize(20, 20)
-        self.btn_clear_cache_ai.setCursor(Qt.CursorShape.PointingHandCursor)
+        from .ui_panels import load_svg_icon
+        self.btn_clear_cache_ai = QPushButton("")
+        icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
+        self.btn_clear_cache_ai.setIcon(load_svg_icon(os.path.join(icons_dir, "trash-color.svg"), QSize(16, 16)))
+        self.btn_clear_cache_ai.setIconSize(QSize(16, 16))
         self.btn_clear_cache_ai.setToolTip("Очистить кэш ИИ" if AppContext.is_ru() else "Clear AI Cache")
+        self.btn_clear_cache_ai.setFixedSize(32, 32)
+        self.btn_clear_cache_ai.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_clear_cache_ai.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                color: #ef4444;
-                font-size: 12px;
+            QPushButton { 
+                background-color: transparent; 
+                border: 1px solid #555; 
+                border-radius: 16px; 
+                padding: 0px;
             }
-            QPushButton:hover {
-                color: #f87171;
+            QPushButton:hover { 
+                background-color: #444; 
+                border-color: #ef4444; 
             }
         """)
         self.btn_clear_cache_ai.clicked.connect(self.clear_ai_cache_ui)
         cache_layout.addWidget(self.btn_clear_cache_ai)
-        cache_layout.addStretch()
         
         params_sub_layout.addLayout(cache_layout)
         
         # Инициализируем размер кэша
         QTimer.singleShot(100, self.update_cache_info_ai)
         
-        self.btn_start_scan = QPushButton("Начать ИИ Поиск" if AppContext.is_ru() else "Start AI Search")
+        self.btn_start_scan = QPushButton(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
+        self.btn_start_scan.setFixedHeight(36)
         self.btn_start_scan.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_start_scan.setStyleSheet("""
-            QPushButton {
-                background-color: #3b82f6; 
-                color: white; 
-                border: none; 
-                padding: 6px; 
-                border-radius: 4px; 
-                font-weight: bold; 
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #2563eb;
-            }
-            QPushButton:disabled {
-                background-color: #222;
-                color: #555;
-            }
+            QPushButton { background-color: #15803d; color: white; font-weight: 900; font-size: 14px; border: 1px solid #16a34a; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
+            QPushButton:hover { background-color: #16a34a; }
+            QPushButton:disabled { background-color: #222; color: #555; font-weight: 900; font-size: 14px; border: 1px solid #333; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
         """)
         self.btn_start_scan.clicked.connect(self.toggle_scan)
         params_sub_layout.addWidget(self.btn_start_scan)
@@ -1282,12 +1395,12 @@ class AiClassificationTab(QWidget):
             if os.path.exists(db_path):
                 size = os.path.getsize(db_path)
                 from utils_common import format_size
-                self.lbl_cache_info_ai.setText(f"Кэш ИИ: {format_size(size)}" if AppContext.is_ru() else f"AI Cache: {format_size(size)}")
+                self.lbl_cache_info_ai.setText(f"{format_size(size)}")
             else:
-                self.lbl_cache_info_ai.setText("Кэш ИИ: 0 B" if AppContext.is_ru() else "AI Cache: 0 B")
+                self.lbl_cache_info_ai.setText("0 B")
         except Exception as e:
             logging.error(f"Ошибка получения размера ИИ-кэша: {e}")
-            self.lbl_cache_info_ai.setText("Кэш ИИ: 0 B" if AppContext.is_ru() else "AI Cache: 0 B")
+            self.lbl_cache_info_ai.setText("0 B")
 
     def clear_ai_cache_ui(self):
         is_ru = AppContext.is_ru()
@@ -1315,7 +1428,33 @@ class AiClassificationTab(QWidget):
         return False
 
     def update_folders_label(self, folders: list):
-        pass
+        # 1. Очищаем старые виджеты из макета
+        while self.folder_list_layout_ai.count():
+            item = self.folder_list_layout_ai.takeAt(0)
+            if item and item.widget():
+                item.widget().deleteLater()
+                
+        # 2. Добавляем папки заново
+        from .ui_widgets import SourceListItem
+        
+        for idx, path in enumerate(folders):
+            color = "#3b82f6"
+            is_system = False
+            if path in self.cleaner.source_folders:
+                color = self.cleaner.source_folders[path].get('color', color)
+                is_system = self.cleaner.source_folders[path].get('is_system', False)
+                
+            # Проверяем наличие ИИ-кэша для папки
+            is_cached = self.cache.has_cached_files_for_folder(path)
+            
+            item_widget = SourceListItem(path, color, is_cached=is_cached)
+            if is_system:
+                item_widget.set_system_error_state()
+                
+            item_widget.removed.connect(self.cleaner.remove_folder)
+            item_widget.context_menu_requested.connect(self.cleaner.show_source_menu)
+            
+            self.folder_list_layout_ai.addWidget(item_widget)
 
     def toggle_scan(self):
         if self.active_worker and self.active_worker.isRunning():
@@ -1390,8 +1529,11 @@ class AiClassificationTab(QWidget):
             self.reload_groups()
             
         self.scan_started.emit()
-        self.btn_start_scan.setText("Остановить" if AppContext.is_ru() else "Stop")
-        self.btn_start_scan.setStyleSheet("background-color: #ef4444; color: white; border: none; padding: 6px; border-radius: 4px; font-weight: bold;")
+        self.btn_start_scan.setText(" Остановить" if AppContext.is_ru() else " Stop")
+        self.btn_start_scan.setStyleSheet("""
+            QPushButton { background-color: #991b1b; color: white; font-weight: 900; font-size: 14px; border: 1px solid #7f1d1d; border-radius: 6px; font-family: 'Segoe UI'; padding: 4px; }
+            QPushButton:hover { background-color: #b91c1c; }
+        """)
         self.progress_bar.setValue(0)
         self.progress_bar.show()
         self.tree_results.clear()
@@ -1424,20 +1566,11 @@ class AiClassificationTab(QWidget):
 
     def on_scan_finished(self, results):
         self.progress_bar.hide()
-        self.btn_start_scan.setText("Начать ИИ Поиск" if AppContext.is_ru() else "Start AI Search")
+        self.btn_start_scan.setText(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
         self.btn_start_scan.setStyleSheet("""
-            QPushButton {
-                background-color: #3b82f6; 
-                color: white; 
-                border: none; 
-                padding: 6px; 
-                border-radius: 4px; 
-                font-weight: bold; 
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #2563eb;
-            }
+            QPushButton { background-color: #15803d; color: white; font-weight: 900; font-size: 14px; border: 1px solid #16a34a; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
+            QPushButton:hover { background-color: #16a34a; }
+            QPushButton:disabled { background-color: #222; color: #555; font-weight: 900; font-size: 14px; border: 1px solid #333; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
         """)
         
         self.active_worker = None

@@ -656,6 +656,38 @@ class AiClassificationTab(QWidget):
         self.action_bar.combo_autoselect.hide()
         self.action_bar.btn_select_all.hide()
         self.action_bar.btn_deselect.hide()
+        post_filter_layout = QHBoxLayout()
+        self.lbl_post_filter = QLabel("Быстрый фильтр:" if AppContext.is_ru() else "Quick Filter:")
+        self.lbl_post_filter.setStyleSheet("color: #ccc; font-size: 11px; font-weight: bold;")
+        self.slider_post_filter = QSlider(Qt.Orientation.Horizontal)
+        self.slider_post_filter.setRange(0, 10000)
+        self.slider_post_filter.setValue(0)
+        self.slider_post_filter.setStyleSheet("""
+            QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
+            QSlider::handle:horizontal { background: #10b981; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
+        """)
+        self.spin_post_filter = QDoubleSpinBox()
+        self.spin_post_filter.setRange(0.0, 100.0)
+        self.spin_post_filter.setDecimals(2)
+        self.spin_post_filter.setSingleStep(0.01)
+        self.spin_post_filter.setSuffix("%")
+        self.spin_post_filter.setFixedWidth(80)
+        self.spin_post_filter.setStyleSheet("""
+            QDoubleSpinBox { background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; color: white; font-size: 11px; }
+            QDoubleSpinBox:hover { border-color: #555; }
+        """)
+        
+        self.slider_post_filter.valueChanged.connect(self._on_slider_moved)
+        self.spin_post_filter.valueChanged.connect(self._on_spin_changed)
+        self.spin_post_filter.valueChanged.connect(self.on_post_filter_changed)
+        
+        post_filter_layout.addWidget(self.lbl_post_filter)
+        post_filter_layout.addWidget(self.slider_post_filter)
+        post_filter_layout.addWidget(self.spin_post_filter)
+        
+        self.post_filter_widget = QWidget()
+        self.post_filter_widget.setLayout(post_filter_layout)
+        self.post_filter_widget.hide() # Hidden until scan is done
         self.action_bar.layout().insertWidget(0, self.post_filter_widget)
         
         # Динамически добавляем лейбл выделения в CleanerActionBar для вкладки ИИ
@@ -737,38 +769,6 @@ class AiClassificationTab(QWidget):
         tree_layout.setContentsMargins(0, 0, 0, 0)
         tree_layout.setSpacing(4)
         
-        post_filter_layout = QHBoxLayout()
-        self.lbl_post_filter = QLabel("Быстрый фильтр:" if AppContext.is_ru() else "Quick Filter:")
-        self.lbl_post_filter.setStyleSheet("color: #ccc; font-size: 11px; font-weight: bold;")
-        self.slider_post_filter = QSlider(Qt.Orientation.Horizontal)
-        self.slider_post_filter.setRange(0, 10000)
-        self.slider_post_filter.setValue(0)
-        self.slider_post_filter.setStyleSheet("""
-            QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
-            QSlider::handle:horizontal { background: #10b981; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
-        """)
-        self.spin_post_filter = QDoubleSpinBox()
-        self.spin_post_filter.setRange(0.0, 100.0)
-        self.spin_post_filter.setDecimals(2)
-        self.spin_post_filter.setSingleStep(0.01)
-        self.spin_post_filter.setSuffix("%")
-        self.spin_post_filter.setFixedWidth(80)
-        self.spin_post_filter.setStyleSheet("""
-            QDoubleSpinBox { background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; color: white; font-size: 11px; }
-            QDoubleSpinBox:hover { border-color: #555; }
-        """)
-        
-        self.slider_post_filter.valueChanged.connect(self._on_slider_moved)
-        self.spin_post_filter.valueChanged.connect(self._on_spin_changed)
-        self.spin_post_filter.valueChanged.connect(self.on_post_filter_changed)
-        
-        post_filter_layout.addWidget(self.lbl_post_filter)
-        post_filter_layout.addWidget(self.slider_post_filter)
-        post_filter_layout.addWidget(self.spin_post_filter)
-        
-        self.post_filter_widget = QWidget()
-        self.post_filter_widget.setLayout(post_filter_layout)
-        self.post_filter_widget.hide() # Hidden until scan is done
         
         tree_layout.addWidget(self.tree_results)
         

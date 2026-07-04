@@ -393,6 +393,8 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         if index == 2:
             self.btn_toggle_settings.hide()
             self.page_ai.update_folders_label(self.get_active_source_folders())
+            if hasattr(self.page_ai, 'check_models_status'):
+                self.page_ai.check_models_status()
         else:
             self.btn_toggle_settings.show()
             self.update_toggle_settings_button()

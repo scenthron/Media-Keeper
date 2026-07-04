@@ -277,7 +277,6 @@ class EditAiGroupDialog(QDialog):
         self.btn_del_file.setStyleSheet("background-color: #ef4444; border: none; padding: 6px 12px; border-radius: 4px;")
         self.btn_del_file.clicked.connect(self.delete_selected_files)
         
-        # НОВАЯ КНОПКА: Обучить эталон!
         self.btn_train = QPushButton("Обучить" if self.is_ru else "Train")
         self.btn_train.setStyleSheet("background-color: #16a34a; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;")
         self.btn_train.clicked.connect(self.train_group_ui)
@@ -307,7 +306,6 @@ class EditAiGroupDialog(QDialog):
         self.reload_thumbnails()
 
     def reload_thumbnails(self):
-        """Загружает миниатюры картинок эталона."""
         self.list_ref_images.clear()
         group_dir = os.path.join(get_ai_assets_dir(), self.group_name)
         if not os.path.exists(group_dir):
@@ -370,8 +368,6 @@ class EditAiGroupDialog(QDialog):
         self.has_changes = True
 
     def train_group_ui(self):
-        """Локальное обучение прямо из окна настроек эталона."""
-        # Перед расчетом проверяем модели
         main_tab = self.parent()
         if main_tab and hasattr(main_tab, 'check_and_download_models_ui'):
             if not main_tab.check_and_download_models_ui():
@@ -391,7 +387,6 @@ class EditAiGroupDialog(QDialog):
             from PyQt6.QtWidgets import QApplication
             QApplication.processEvents()
             
-        # Запускаем расчет
         success = self.classifier.train_group(self.group_name, progress_callback=on_prog)
         
         self.btn_train.setEnabled(True)
@@ -446,6 +441,95 @@ class EditAiGroupDialog(QDialog):
 
 
 # -----------------------------------------------------------------------------
+# Диалог создания нового эталона
+# -----------------------------------------------------------------------------
+class CreateAiGroupDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        is_ru = AppContext.is_ru()
+        self.setWindowTitle("Создать группу эталонов" if is_ru else "Create Reference Group")
+        self.setFixedSize(350, 210)
+        self.setStyleSheet("background-color: #2b2b2b; color: white;")
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(10)
+        
+        layout.addWidget(QLabel("Имя группы:" if is_ru else "Group Name:"))
+        self.txt_name = QLineEdit()
+        self.txt_name.setMinimumHeight(32)
+        self.txt_name.setStyleSheet("""
+            QLineEdit {
+                background-color: #333; 
+                border: 1px solid #555; 
+                padding: 4px 8px; 
+                border-radius: 4px; 
+                color: white;
+                font-size: 13px;
+            }
+        """)
+        layout.addWidget(self.txt_name)
+        
+        layout.addWidget(QLabel("Тип анализа:" if is_ru else "Analysis Type:"))
+        
+        self.btn_group = QButtonGroup(self)
+        self.rad_general = QRadioButton("Общее сходство изображений" if is_ru else "General Image Similarity")
+        self.rad_general.setChecked(True)
+        self.rad_face = QRadioButton("Поиск конкретных лиц людей" if is_ru else "Face Recognition (People)")
+        
+        self.btn_group.addButton(self.rad_general, 0)
+        self.btn_group.addButton(self.rad_face, 1)
+        
+        layout.addWidget(self.rad_general)
+        layout.addWidget(self.rad_face)
+        
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addStretch()
+        
+        self.btn_cancel = QPushButton("Отмена" if is_ru else "Cancel")
+        self.btn_cancel.setStyleSheet("background-color: #444; border: none; padding: 6px 12px; border-radius: 4px;")
+        self.btn_cancel.clicked.connect(self.reject)
+        
+        self.btn_ok = QPushButton("Создать" if is_ru else "Create")
+        self.btn_ok.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;")
+        self.btn_ok.clicked.connect(self.accept)
+        
+        buttons_layout.addWidget(self.btn_cancel)
+        buttons_layout.addWidget(self.btn_ok)
+        layout.addLayout(buttons_layout)
+
+
+# -----------------------------------------------------------------------------
+# Чекбокс с кастомным дизайном
+# -----------------------------------------------------------------------------
+class QCheckBoxCustom(QPushButton):
+    toggled = pyqtSignal(bool)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCheckable(True)
+        self.setFixedSize(16, 16)
+        self.clicked.connect(self._on_clicked)
+        self.update_style()
+        
+    def _on_clicked(self):
+        self.toggled.emit(self.isChecked())
+        self.update_style()
+        
+    def setChecked(self, checked):
+        super().setChecked(checked)
+        self.update_style()
+        
+    def update_style(self):
+        if self.isChecked():
+            self.setStyleSheet("background-color: #3b82f6; border: 1px solid #2563eb; border-radius: 3px; color: white; font-size: 10px; font-weight: bold;")
+            self.setText("✓")
+        else:
+            self.setStyleSheet("background-color: #333; border: 1px solid #555; border-radius: 3px;")
+            self.setText("")
+
+
+# -----------------------------------------------------------------------------
 # Горизонтальный чип (плашка) эталона в верхней панели настроек
 # -----------------------------------------------------------------------------
 class AiGroupChipWidget(QFrame):
@@ -470,31 +554,26 @@ class AiGroupChipWidget(QFrame):
         layout.setContentsMargins(6, 0, 6, 0)
         layout.setSpacing(6)
         
-        # 1. Чекбокс активности
         self.chk = QCheckBoxCustom()
         self.chk.setChecked(is_enabled)
         self.chk.toggled.connect(lambda checked: self.state_changed.emit(self.group_name, checked))
         layout.addWidget(self.chk)
         
-        # 2. Иконка типа
         self.lbl_icon = QLabel()
         self.lbl_icon.setFixedSize(14, 14)
         self.lbl_icon.setText("👤" if is_face else "🖼️")
         self.lbl_icon.setStyleSheet("border: none; background: transparent;")
         layout.addWidget(self.lbl_icon)
         
-        # 3. Название + счетчик
         self.lbl_name = QLabel(f"{name} [{count}]")
         self.lbl_name.setStyleSheet("font-weight: bold; color: #eee; font-size: 12px; border: none; background: transparent;")
         layout.addWidget(self.lbl_name)
         
-        # 4. Круглый статус-индикатор
         self.status_dot = QLabel()
         self.status_dot.setFixedSize(8, 8)
         self.update_status_dot(status_color)
         layout.addWidget(self.status_dot)
         
-        # 5. Шестеренка настроек ⚙️
         self.btn_gear = QPushButton("⚙️")
         self.btn_gear.setFixedSize(18, 18)
         self.btn_gear.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -526,7 +605,6 @@ class AiGroupChipWidget(QFrame):
         """)
 
     def set_error_highlight(self, enabled: bool):
-        """Подсвечивает рамку плашки красным цветом при ошибке."""
         if enabled:
             self.setStyleSheet("""
                 QFrame {
@@ -546,7 +624,7 @@ class AiGroupChipWidget(QFrame):
 
 
 # -----------------------------------------------------------------------------
-# Основная вкладка ИИ-классификации с новым дизайном (по аналогии с Cleaner)
+# Основная вкладка ИИ-классификации с новым дизайном и экраном-заглушкой загрузки
 # -----------------------------------------------------------------------------
 class AiClassificationTab(QWidget):
     scan_started = pyqtSignal()
@@ -563,19 +641,106 @@ class AiClassificationTab(QWidget):
         self.classifier = AiClassifier(self.cache, self.ai)
         
         self.active_worker = None
-        self.chips_map = {} # Название -> виджет плашки
+        self.chips_map = {}
         
         self._init_ui()
         self.reload_groups()
+        self.check_models_status()
 
     def _init_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
+        # Вся вкладка использует один главный вертикальный лейаут
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
         
         # =====================================================================
-        # ВЕРХНЯЯ ЧАСТЬ: Настройки (фиксированная высота 155px для стабильности верстки)
+        # ЭКРАН-ЗАГЛУШКА ДЛЯ СКАЧИВАНИЯ МОДЕЛЕЙ (ПО УМОЛЧАНИЮ СКРЫТ)
         # =====================================================================
+        self.download_placeholder = QFrame()
+        self.download_placeholder.setStyleSheet("QFrame { background-color: #1e1e1e; border: none; }")
+        
+        ph_layout = QVBoxLayout(self.download_placeholder)
+        ph_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ph_layout.setSpacing(15)
+        
+        lbl_brain = QLabel("🧠")
+        lbl_brain.setStyleSheet("font-size: 48px; background: transparent; border: none;")
+        lbl_brain.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ph_layout.addWidget(lbl_brain)
+        
+        lbl_title = QLabel("Требуется инициализация ИИ-моделей" if AppContext.is_ru() else "AI Models Initialization Required")
+        lbl_title.setStyleSheet("font-weight: bold; color: white; font-size: 16px; background: transparent; border: none;")
+        lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ph_layout.addWidget(lbl_title)
+        
+        lbl_desc = QLabel(
+            "Для работы локального классификатора и поиска по лицам необходимо загрузить модели нейросети (~57 МБ).\n"
+            "Загрузка выполняется один раз, после чего ИИ работает полностью автономно без подключения к интернету."
+            if AppContext.is_ru() else
+            "To use local AI classification and face recognition, neural network models (~57 MB) need to be downloaded.\n"
+            "This download is done once, and then the AI runs completely offline."
+        )
+        lbl_desc.setWordWrap(True)
+        lbl_desc.setStyleSheet("color: #aaa; font-size: 12px; background: transparent; border: none; line-height: 1.4;")
+        lbl_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ph_layout.addWidget(lbl_desc)
+        
+        self.btn_download_models = QPushButton("Загрузить модели ИИ" if AppContext.is_ru() else "Download AI Models")
+        self.btn_download_models.setFixedSize(200, 36)
+        self.btn_download_models.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_download_models.setStyleSheet("""
+            QPushButton {
+                background-color: #3b82f6; 
+                color: white; 
+                border: none; 
+                border-radius: 4px; 
+                font-weight: bold; 
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #2563eb;
+            }
+            QPushButton:disabled {
+                background-color: #333;
+                color: #666;
+            }
+        """)
+        self.btn_download_models.clicked.connect(self.start_placeholder_download)
+        ph_layout.addWidget(self.btn_download_models)
+        
+        self.placeholder_progress = QProgressBar()
+        self.placeholder_progress.setFixedSize(300, 16)
+        self.placeholder_progress.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #444;
+                border-radius: 4px;
+                background-color: #111;
+                text-align: center;
+                color: white;
+                font-size: 10px;
+            }
+            QProgressBar::chunk {
+                background-color: #3b82f6;
+            }
+        """)
+        self.placeholder_progress.hide()
+        ph_layout.addWidget(self.placeholder_progress)
+        
+        self.placeholder_status = QLabel("")
+        self.placeholder_status.setStyleSheet("color: #ef4444; font-size: 11px; background: transparent; border: none;")
+        self.placeholder_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ph_layout.addWidget(self.placeholder_status)
+        
+        self.main_layout.addWidget(self.download_placeholder)
+        
+        # =====================================================================
+        # ГЛАВНЫЙ КОНТЕНТ ВКЛАДКИ (ПО УМОЛЧАНИЮ ОТОБРАЖАЕТСЯ)
+        # =====================================================================
+        self.main_content_widget = QWidget()
+        content_layout = QVBoxLayout(self.main_content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+        
         self.top_settings = QFrame()
         self.top_settings.setFixedHeight(155)
         self.top_settings.setStyleSheet("background-color: #1e1e1e; border-bottom: 1px solid #2d2d2d;")
@@ -583,9 +748,7 @@ class AiClassificationTab(QWidget):
         top_layout.setContentsMargins(15, 6, 15, 6)
         top_layout.setSpacing(12)
         
-        # ---------------------------------------------------------------------
-        # КОЛОНКА 1: Группы эталонов (высота 100px)
-        # ---------------------------------------------------------------------
+        # КОЛОНКА 1: Группы эталонов
         col_ref = QVBoxLayout()
         col_ref.setContentsMargins(0, 0, 0, 0)
         col_ref.setSpacing(4)
@@ -632,9 +795,7 @@ class AiClassificationTab(QWidget):
         col_ref.addWidget(scroll_ref)
         top_layout.addLayout(col_ref, 1)
         
-        # ---------------------------------------------------------------------
-        # КОЛОНКА 2: Каталоги для поиска (DropZone + ScrollArea в одном QScrollArea)
-        # ---------------------------------------------------------------------
+        # КОЛОНКА 2: Каталоги для поиска
         col_dirs = QVBoxLayout()
         col_dirs.setContentsMargins(0, 0, 0, 0)
         col_dirs.setSpacing(4)
@@ -664,7 +825,6 @@ class AiClassificationTab(QWidget):
         dirs_header.addStretch()
         col_dirs.addLayout(dirs_header)
         
-        # Единый scroll area для отображения папок и компактной дроп-зоны
         scroll_dirs = QScrollArea()
         scroll_dirs.setWidgetResizable(True)
         scroll_dirs.setFixedHeight(105)
@@ -678,14 +838,12 @@ class AiClassificationTab(QWidget):
         dirs_container_layout.setSpacing(4)
         dirs_container_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
-        # Лейаут для чипов добавленных папок
         self.folder_list_layout_ai = QVBoxLayout()
         self.folder_list_layout_ai.setContentsMargins(0, 0, 0, 0)
         self.folder_list_layout_ai.setSpacing(4)
         self.folder_list_layout_ai.setAlignment(Qt.AlignmentFlag.AlignTop)
         dirs_container_layout.addLayout(self.folder_list_layout_ai)
         
-        # Компактная DropZone
         self.drop_zone_ai = CompactFolderDropZone()
         self.drop_zone_ai.clicked.connect(self.cleaner.add_folder)
         self.drop_zone_ai.folder_dropped.connect(self.cleaner.add_folder_path)
@@ -696,9 +854,7 @@ class AiClassificationTab(QWidget):
         
         top_layout.addLayout(col_dirs, 1)
         
-        # ---------------------------------------------------------------------
         # КОЛОНКА 3: Параметры поиска
-        # ---------------------------------------------------------------------
         col_params = QVBoxLayout()
         col_params.setContentsMargins(0, 0, 0, 0)
         col_params.setSpacing(4)
@@ -714,7 +870,6 @@ class AiClassificationTab(QWidget):
         params_sub_layout.setContentsMargins(8, 8, 8, 8)
         params_sub_layout.setSpacing(8)
         
-        # Ползунок схожести
         self.lbl_threshold = QLabel("Схожесть: 75%" if AppContext.is_ru() else "Similarity: 75%")
         self.lbl_threshold.setStyleSheet("color: #ccc; font-weight: bold; font-size: 11px; border: none; background: transparent;")
         params_sub_layout.addWidget(self.lbl_threshold)
@@ -729,7 +884,6 @@ class AiClassificationTab(QWidget):
         self.slider_threshold.valueChanged.connect(self.on_threshold_changed)
         params_sub_layout.addWidget(self.slider_threshold)
         
-        # Кнопка пуска
         self.btn_start_scan = QPushButton("Начать ИИ Поиск" if AppContext.is_ru() else "Start AI Search")
         self.btn_start_scan.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_start_scan.setStyleSheet("""
@@ -756,9 +910,8 @@ class AiClassificationTab(QWidget):
         col_params.addWidget(params_container)
         top_layout.addLayout(col_params, 1)
         
-        main_layout.addWidget(self.top_settings)
+        content_layout.addWidget(self.top_settings)
         
-        # Прогресс-бар сканирования
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedHeight(18)
         self.progress_bar.setStyleSheet("""
@@ -766,16 +919,12 @@ class AiClassificationTab(QWidget):
             QProgressBar::chunk { background-color: #3b82f6; }
         """)
         self.progress_bar.hide()
-        main_layout.addWidget(self.progress_bar)
+        content_layout.addWidget(self.progress_bar)
         
-        # Статистика найденного
         self.lbl_stats = QLabel("")
         self.lbl_stats.setStyleSheet("color: #4ade80; font-weight: bold; font-size: 12px; border: none; padding: 4px 15px; background-color: #1e1e1e;")
-        main_layout.addWidget(self.lbl_stats)
+        content_layout.addWidget(self.lbl_stats)
         
-        # =====================================================================
-        # СРЕДНЯЯ ЧАСТЬ: Панель действий CleanerActionBar
-        # =====================================================================
         from .ui_panels import CleanerActionBar
         self.action_bar = CleanerActionBar()
         self.action_bar.is_similar_mode = False
@@ -789,16 +938,12 @@ class AiClassificationTab(QWidget):
         self.action_bar.browse_clicked.connect(self.cleaner.browse_dest)
         self.action_bar.drop_zone.path_changed.connect(self.cleaner.validate_move_state)
         
-        main_layout.addWidget(self.action_bar)
+        content_layout.addWidget(self.action_bar)
         
-        # =====================================================================
-        # НИЖНЯЯ ЧАСТЬ: Результаты (Сплиттер)
-        # =====================================================================
         self.right_splitter = QSplitter(Qt.Orientation.Horizontal)
         self.right_splitter.setHandleWidth(2)
         self.right_splitter.setStyleSheet("QSplitter::handle { background-color: #2d2d2d; }")
         
-        # Таблица результатов
         self.tree_results = QTreeWidget()
         self.tree_results.setColumnCount(4)
         self.tree_results.setHeaderLabels([
@@ -819,14 +964,65 @@ class AiClassificationTab(QWidget):
         self.tree_results.itemChanged.connect(self.on_tree_item_changed)
         self.right_splitter.addWidget(self.tree_results)
         
-        # Встроенный превью-виджет
         from .ui_preview import CleanerPreviewWidget
         self.preview_widget = CleanerPreviewWidget()
         self.preview_widget.show_empty("Выберите файл для предпросмотра" if AppContext.is_ru() else "Select a file to preview")
         self.right_splitter.addWidget(self.preview_widget)
         
         self.right_splitter.setSizes([650, 350])
-        main_layout.addWidget(self.right_splitter, 1)
+        content_layout.addWidget(self.right_splitter, 1)
+        
+        self.main_layout.addWidget(self.main_content_widget)
+
+    def check_models_status(self):
+        """Проверяет наличие моделей и переключает экраны."""
+        if self.ai.are_models_present():
+            if not self.ai._is_initialized:
+                self.ai.initialize_sessions()
+            self.download_placeholder.hide()
+            self.main_content_widget.show()
+        else:
+            self.download_placeholder.show()
+            self.main_content_widget.hide()
+
+    def start_placeholder_download(self):
+        """Загрузка моделей с заглушки."""
+        self.btn_download_models.setEnabled(False)
+        self.placeholder_progress.show()
+        self.placeholder_progress.setValue(0)
+        self.placeholder_status.setStyleSheet("color: #93c5fd;")
+        self.placeholder_status.setText("Подключение..." if AppContext.is_ru() else "Connecting...")
+        
+        is_ru = AppContext.is_ru()
+        
+        def on_progress(filename, downloaded, total_size):
+            if total_size > 0:
+                pct = int((downloaded / total_size) * 100.0)
+                self.placeholder_progress.setValue(pct)
+                self.placeholder_status.setText(f"Загрузка {filename}: {downloaded // 1024} KB / {total_size // 1024} KB")
+            else:
+                self.placeholder_status.setText(f"Загрузка {filename}: {downloaded // 1024} KB")
+            from PyQt6.QtWidgets import QApplication
+            QApplication.processEvents()
+            
+        success = self.ai.download_models(progress_callback=on_progress)
+        
+        if success:
+            self.placeholder_status.setStyleSheet("color: #4ade80;")
+            self.placeholder_status.setText("Инициализация..." if is_ru else "Initializing...")
+            
+            if self.ai.initialize_sessions():
+                self.placeholder_status.setText("Успешно!" if is_ru else "Success!")
+                self.download_placeholder.hide()
+                self.main_content_widget.show()
+            else:
+                self.btn_download_models.setEnabled(True)
+                self.placeholder_status.setStyleSheet("color: #ef4444;")
+                self.placeholder_status.setText("Ошибка инициализации!" if is_ru else "Initialization failed!")
+        else:
+            self.btn_download_models.setEnabled(True)
+            self.placeholder_status.setStyleSheet("color: #ef4444;")
+            self.placeholder_status.setText("Ошибка при скачивании моделей!" if is_ru else "Failed to download models!")
 
     def reload_groups(self):
         """Перезагружает список эталонов на панели настроек."""
@@ -856,7 +1052,6 @@ class AiClassificationTab(QWidget):
             settings["groups"][group_name]["enabled"] = is_enabled
             save_ai_settings(settings)
             
-        # Убираем красную подсветку ошибки при изменении состояния
         if group_name in self.chips_map:
             self.chips_map[group_name].set_error_highlight(False)
 
@@ -905,49 +1100,9 @@ class AiClassificationTab(QWidget):
         if self.ai.are_models_present():
             return True
             
-        is_ru = AppContext.is_ru()
-        reply = QMessageBox.question(
-            self,
-            "Инициализация ИИ" if is_ru else "AI Initialization",
-            "Для работы ИИ-классификатора необходимо загрузить модели нейросети (~22 МБ). Скачать их сейчас?" if is_ru else "AI classification requires downloading neural network models (~22 MB). Download now?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            return False
-            
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Загрузка моделей ИИ" if is_ru else "Downloading AI Models")
-        dlg.setFixedSize(320, 100)
-        dlg_layout = QVBoxLayout(dlg)
-        
-        lbl = QLabel("Загрузка..." if is_ru else "Downloading...")
-        bar = QProgressBar()
-        bar.setRange(0, 100)
-        
-        dlg_layout.addWidget(lbl)
-        dlg_layout.addWidget(bar)
-        
-        dlg.show()
-        
-        def on_progress(filename, downloaded, total_size):
-            if total_size > 0:
-                pct = int((downloaded / total_size) * 100.0)
-                bar.setValue(pct)
-                lbl.setText(f"Загрузка {filename}: {downloaded // 1024} KB / {total_size // 1024} KB")
-            else:
-                lbl.setText(f"Загрузка {filename}: {downloaded // 1024} KB")
-            from PyQt6.QtWidgets import QApplication
-            QApplication.processEvents()
-            
-        success = self.ai.download_models(progress_callback=on_progress)
-        dlg.close()
-        
-        if success:
-            return True
-        else:
-            QMessageBox.critical(self, "Ошибка" if is_ru else "Error", 
-                                 "Не удалось загрузить модели нейросетей!" if is_ru else "Failed to download neural network models!")
-            return False
+        # Если почему-то перешли сюда без заглушки
+        self.check_models_status()
+        return False
 
     def update_folders_label(self, folders: list):
         pass
@@ -961,11 +1116,9 @@ class AiClassificationTab(QWidget):
         if not folders:
             return
             
-        # Сбрасываем старую подсветку ошибок
         for widget in self.chips_map.values():
             widget.set_error_highlight(False)
             
-        # ПРОВЕРКА И АВТОМАТИЧЕСКОЕ ОБУЧЕНИЕ ЭТАЛОНОВ ПЕРЕД СКАНИРОВАНИЕМ
         settings = load_ai_settings()
         enabled_groups = [name for name, info in settings.get("groups", {}).items() if info.get("enabled", True)]
         
@@ -974,11 +1127,9 @@ class AiClassificationTab(QWidget):
                                 "Выберите хотя бы одну группу эталонов для поиска!" if AppContext.is_ru() else "Select at least one reference group to search!")
             return
             
-        # 1. Проверяем пустые группы эталонов (gray)
         for name in enabled_groups:
             status, count = self.classifier.get_group_status(name)
             if status == "gray":
-                # Подсвечиваем чип группы красным
                 if name in self.chips_map:
                     self.chips_map[name].set_error_highlight(True)
                 QMessageBox.critical(
@@ -989,7 +1140,6 @@ class AiClassificationTab(QWidget):
                 )
                 return
                 
-        # 2. Автоматически обучаем неочищенные группы (orange)
         needs_training = []
         for name in enabled_groups:
             status, count = self.classifier.get_group_status(name)
@@ -1001,7 +1151,6 @@ class AiClassificationTab(QWidget):
             if not self.check_and_download_models_ui():
                 return
                 
-            # Показываем оверлей/диалог автообучения
             dlg = QDialog(self)
             dlg.setWindowTitle("Автоматическое обучение ИИ" if AppContext.is_ru() else "AI Auto-training")
             dlg.setFixedSize(300, 100)
@@ -1020,7 +1169,6 @@ class AiClassificationTab(QWidget):
                 from PyQt6.QtWidgets import QApplication
                 QApplication.processEvents()
                 
-                # Обучаем группу
                 success = self.classifier.train_group(name)
                 if not success:
                     dlg.close()
@@ -1030,9 +1178,8 @@ class AiClassificationTab(QWidget):
                 bar.setValue(idx + 1)
                 
             dlg.close()
-            self.reload_groups() # Перерисовываем статусы на зеленые
+            self.reload_groups()
             
-        # Начинаем сканирование
         self.scan_started.emit()
         self.btn_start_scan.setText("Остановить" if AppContext.is_ru() else "Stop")
         self.btn_start_scan.setStyleSheet("background-color: #ef4444; color: white; border: none; padding: 6px; border-radius: 4px; font-weight: bold;")
@@ -1232,33 +1379,3 @@ class AiClassificationTab(QWidget):
                 
         self.preview_widget.show_empty("Выберите файл для предпросмотра" if AppContext.is_ru() else "Select a file to preview")
         self.update_cleaner_action_bar_info()
-
-
-# -----------------------------------------------------------------------------
-# Кнопка чекбокса, использующаяся в чипах эталонов
-# -----------------------------------------------------------------------------
-class QCheckBoxCustom(QPushButton):
-    toggled = pyqtSignal(bool)
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setCheckable(True)
-        self.setFixedSize(16, 16)
-        self.clicked.connect(self._on_clicked)
-        self.update_style()
-        
-    def _on_clicked(self):
-        self.toggled.emit(self.isChecked())
-        self.update_style()
-        
-    def setChecked(self, checked):
-        super().setChecked(checked)
-        self.update_style()
-        
-    def update_style(self):
-        if self.isChecked():
-            self.setStyleSheet("background-color: #3b82f6; border: 1px solid #2563eb; border-radius: 3px; color: white; font-size: 10px; font-weight: bold;")
-            self.setText("✓")
-        else:
-            self.setStyleSheet("background-color: #333; border: 1px solid #555; border-radius: 3px;")
-            self.setText("")

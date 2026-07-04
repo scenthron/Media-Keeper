@@ -23,7 +23,7 @@ class SessionMoveWorker(QThread):
     file_progress = pyqtSignal(int, int)
     finished = pyqtSignal(list, int, set)
 
-    def __init__(self, items, dest_root, rename_idx, preserve_struct):
+    def __init__(self, items, dest_root, rename_idx, preserve_struct, explicit_mapping=False):
         super().__init__()
         self.items = items
         self.dest_root = dest_root
@@ -33,6 +33,7 @@ class SessionMoveWorker(QThread):
         # 2: Random Hex (Name -> Name_a1b2)
         self.rename_idx = rename_idx 
         self.preserve_struct = preserve_struct
+        self.explicit_mapping = explicit_mapping
         self.stop_event = threading.Event()
 
     def stop(self):
@@ -63,50 +64,62 @@ class SessionMoveWorker(QThread):
                 filename = os.path.basename(src_path)
                 name_base, name_ext = os.path.splitext(filename)
                 
-                # 1. Calculate Target Directory
-                if self.preserve_struct:
-                    # Recreate structure: Dest / DriveLetter / OriginalPath...
-                    drive, tail = os.path.splitdrive(src_path)
-                    
-                    # Strip long path prefix from drive to avoid os.path.join breaking
-                    if drive.startswith('\\\\?\\'):
-                        drive = drive[4:]
-                        
-                    drive_clean = drive.replace(':', '')
-                    rel_path = os.path.dirname(tail)
-                    if rel_path.startswith(os.sep): rel_path = rel_path[1:]
-                    
-                    target_dir = os.path.join(long_dest_root, drive_clean, rel_path)
+                if self.explicit_mapping and 'dst' in entry:
+                    target_path = ensure_long_path(entry['dst'])
+                    target_dir = os.path.dirname(target_path)
+                    os.makedirs(target_dir, exist_ok=True)
                 else:
-                    target_dir = long_dest_root
-                
-                os.makedirs(target_dir, exist_ok=True)
-                
-                # 2. Apply Renaming Strategy (Base Name Calculation)
-                candidate_name = filename
-                
-                if self.rename_idx == 1: # Mark Duple
-                    candidate_name = f"{name_base}_duple{name_ext}"
-                elif self.rename_idx == 2: # Random Hex
-                    suffix = secrets.token_hex(3)
-                    candidate_name = f"{name_base}_{suffix}{name_ext}"
-                # else (idx 0): Standard, keep original name initially
-                
-                # 3. Handle Collisions (Smart Increment)
-                # If file exists, we append (1), (2), etc. 
-                # This applies to ALL strategies to guarantee uniqueness.
-                
-                target_path = os.path.join(target_dir, candidate_name)
-                
-                if os.path.exists(target_path):
-                    counter = 1
-                    base_for_increment = os.path.splitext(candidate_name)[0]
+                    # 1. Calculate Target Directory
+                    if self.preserve_struct:
+                        # Recreate structure: Dest / DriveLetter / OriginalPath...
+                        drive, tail = os.path.splitdrive(src_path)
+                        
+                        # Strip long path prefix from drive to avoid os.path.join breaking
+                        if drive.startswith('\\\\?\\'):
+                            drive = drive[4:]
+                            
+                        drive_clean = drive.replace(':', '')
+                        rel_path = os.path.dirname(tail)
+                        if rel_path.startswith(os.sep): rel_path = rel_path[1:]
+                        
+                        target_dir = os.path.join(long_dest_root, drive_clean, rel_path)
+                    else:
+                        target_dir = long_dest_root
                     
-                    while os.path.exists(target_path):
-                        if self.stop_event.is_set(): break
-                        new_name = f"{base_for_increment} ({counter}){name_ext}"
-                        target_path = os.path.join(target_dir, new_name)
-                        counter += 1
+                    os.makedirs(target_dir, exist_ok=True)
+                    
+                    # 2. Apply Renaming Strategy (Base Name Calculation)
+                    candidate_name = filename
+                    
+                    if self.rename_idx == 1: # Mark Duple
+                        candidate_name = f"{name_base}_duple{name_ext}"
+                    elif self.rename_idx == 2: # Random Hex
+                        suffix = secrets.token_hex(3)
+                        candidate_name = f"{name_base}_{suffix}{name_ext}"
+                    # else (idx 0): Standard, keep original name initially
+                    
+                    # 3. Handle Collisions (Smart Increment)
+                    # If file exists, we append (1), (2), etc. 
+                    # This applies to ALL strategies to guarantee uniqueness.
+                    
+                    target_path = os.path.join(target_dir, candidate_name)
+                    
+                    if os.path.exists(target_path) and target_path != src_path:
+                        counter = 1
+                        cand_base, cand_ext = os.path.splitext(candidate_name)
+                        while True:
+                            new_cand = f"{cand_base} ({counter}){cand_ext}"
+                            new_path = os.path.join(target_dir, new_cand)
+                            if not os.path.exists(new_path):
+                                target_path = new_path
+                                break
+                            counter += 1
+                
+                # Prevent moving file into itself
+                if src_path == target_path:
+                    moved_paths.append(entry['src'])
+                    self.progress_total.emit(idx + 1, total)
+                    continue
                 
                 # 4. Execute Move
                 def progress_cb(moved, total_sz):

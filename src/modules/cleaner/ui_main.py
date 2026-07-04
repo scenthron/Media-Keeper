@@ -483,6 +483,10 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         if is_similar and hasattr(action_bar, 'chk_preserve'):
             action_bar.chk_preserve.setChecked(False)
             
+        if is_similar:
+            action_bar.chk_preserve.hide()
+            action_bar.combo_collision.hide()
+            
         results_layout.addWidget(action_bar)
         
         res_splitter = QSplitter(Qt.Orientation.Horizontal)

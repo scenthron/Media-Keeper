@@ -1020,14 +1020,15 @@ class AiScanWorker(QThread):
                 from .logic_ai_classifier import load_ai_settings
                 settings = load_ai_settings()
                 if settings.get("deep_merge_enabled", True):
-                    merge_threshold = settings.get("deep_merge_threshold", 75.0) / 100.0
+                    merge_threshold = settings.get("deep_merge_threshold", 75.0)
+                    dist_thresh = 1.5 * (merge_threshold / 100.0)
                     merged = True
                     while merged:
                         merged = False
                         for i in range(len(cluster_data)):
                             for j in range(i + 1, len(cluster_data)):
-                                sim = float(np.dot(cluster_data[i]["centroid"], cluster_data[j]["centroid"]))
-                                if sim >= merge_threshold:
+                                dist = float(np.linalg.norm(cluster_data[i]["centroid"] - cluster_data[j]["centroid"]))
+                                if dist <= dist_thresh:
                                     # Merge j into i
                                     cluster_data[i]["members"].extend([m for m in cluster_data[j]["members"] if m["path"] not in [om["path"] for om in cluster_data[i]["members"]]])
                                     cluster_data[i]["raw_embs"].extend(cluster_data[j]["raw_embs"])

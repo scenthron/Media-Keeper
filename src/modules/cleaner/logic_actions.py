@@ -7,7 +7,7 @@ from PyQt6.QtCore import QUrl, Qt, QModelIndex, QPoint, QCoreApplication
 
 from config import AppContext
 from .ui_widgets import SourceListItem, generate_vibrant_color
-from .ui_dialogs import CleanerResultDialog
+from .ui_dialogs import CleanerResultDialog, MovePreviewDialog
 from .workers_move import SessionMoveWorker, SessionDeleteWorker
 from ui_dialogs_generic import SmartNameDialog, FileDeletionConfirmDialog
 
@@ -378,11 +378,50 @@ class ActionMixin:
             return
 
         self.overlay.start_process(len(items_to_process))
+        
+        is_flat_move = False
+        if hasattr(self, 'current_tab') and self.current_tab in [1, 2]:
+            is_flat_move = True
+            
         rename_idx = self.action_bar.combo_collision.currentIndex()
-        preserve_struct = self.action_bar.chk_preserve.isChecked()
+        preserve_struct = self.action_bar.chk_preserve.isChecked() if not is_flat_move else False
+        
+        # If it's a flat move, we pre-calculate new names, handle collisions with auto-increment, and show preview
+        if is_flat_move:
+            mapping = []
+            used_dst_paths = set()
+            
+            for item in items_to_process:
+                src_path = item['src']
+                base_name = os.path.basename(src_path)
+                name, ext = os.path.splitext(base_name)
+                
+                # Auto-increment logic
+                counter = 1
+                new_path = os.path.join(dest_root, base_name).replace("\\", "/")
+                
+                while os.path.exists(new_path) or new_path in used_dst_paths:
+                    if src_path == new_path: 
+                        break # Moving to itself, skip
+                    new_path = os.path.join(dest_root, f"{name}_{counter}{ext}").replace("\\", "/")
+                    counter += 1
+                
+                used_dst_paths.add(new_path)
+                item['dst'] = new_path
+                mapping.append({"src": src_path, "dst": new_path})
+                
+            dlg = MovePreviewDialog(mapping, self)
+            if dlg.exec() != QDialog.DialogCode.Accepted:
+                self.overlay.stop_process()
+                self.preview_widget.show_empty(AppContext.tr("cln_preview_title"))
+                return
+            
+            # Use explicit dst mapping in the worker
+            self.mover = SessionMoveWorker(items_to_process, dest_root, rename_idx, False, explicit_mapping=True)
+        else:
+            self.mover = SessionMoveWorker(items_to_process, dest_root, rename_idx, preserve_struct)
+            
         self.move_timer.start()
-
-        self.mover = SessionMoveWorker(items_to_process, dest_root, rename_idx, preserve_struct)
         self.mover.progress_total.connect(self.overlay.update_total)
         self.mover.file_started.connect(self.overlay.start_file)
         self.mover.file_progress.connect(self.overlay.update_file_progress)

@@ -20,7 +20,7 @@ def load_ai_settings() -> dict:
     default_settings = {
         "groups": {},
         "face_det_threshold": 65.0,
-        "face_match_threshold": 75.0,
+        "face_match_threshold": 1.128,
         "deep_merge_enabled": True
     }
     if os.path.exists(settings_path):
@@ -28,6 +28,11 @@ def load_ai_settings() -> dict:
             with open(settings_path, 'r', encoding='utf-8') as f:
                 loaded = json.load(f)
                 default_settings.update(loaded)
+                
+                # Migration for old percentage value
+                if default_settings["face_match_threshold"] > 2.0:
+                    default_settings["face_match_threshold"] = 1.128
+                
                 return default_settings
         except Exception as e:
             logging.error(f"Ошибка чтения ai_settings.json: {e}")
@@ -335,18 +340,23 @@ class AiClassifier:
                 best_face_group = None
                 best_face_score = 0.0
                 
+                settings = load_ai_settings()
+                match_thresh = settings.get("face_match_threshold", 1.128)
+                
                 for face in faces:
                     desc = face["descriptor"]
                     for group_name, ref_descs in self.face_reference_descriptors.items():
                         for ref_desc in ref_descs:
                             dist = np.linalg.norm(desc - ref_desc)
-                            # SFace L2 norm threshold for verification is ~1.128
-                            # We map dist=1.128 to a score of 75.0 (since user UI defaults to 75% for 'same').
-                            # dist=0 -> score=100.0. dist=2.0 -> score=0.0
-                            if dist <= 1.128:
-                                score = 100.0 - (dist / 1.128) * 25.0
+                            # Map actual threshold to 75.0 score internally so the rest of the app 
+                            # (which expects scores > user spin_threshold) keeps working.
+                            if dist <= match_thresh:
+                                score = 100.0 - (dist / match_thresh) * 25.0
                             else:
-                                score = 75.0 - ((dist - 1.128) / (2.0 - 1.128)) * 75.0
+                                if match_thresh >= 2.0:
+                                    score = 0.0
+                                else:
+                                    score = 75.0 - ((dist - match_thresh) / (2.0 - match_thresh)) * 75.0
                             score = max(0.0, min(100.0, score))
                             
                             if score > best_face_score:

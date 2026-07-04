@@ -68,25 +68,29 @@ class AiAdvancedSettingsDialog(QDialog):
         layout.addWidget(self.slider_det)
         
         # SFace
-        l_match = QLabel("Строгость совпадения лиц (SFace):")
+        l_match = QLabel("Строгость совпадения лиц (SFace L2-norm):")
         self.slider_match = QSlider(Qt.Orientation.Horizontal)
-        self.slider_match.setRange(0, 100)
-        self.slider_match.setValue(int(self.settings.get("face_match_threshold", 75.0)))
+        self.slider_match.setRange(500, 1500)
+        
+        current_sface = self.settings.get("face_match_threshold", 1.128)
+        if current_sface > 2.0: current_sface = 1.128
+        
+        self.slider_match.setValue(int(current_sface * 1000))
         self.slider_match.setStyleSheet("""
             QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
             QSlider::handle:horizontal { background: #10b981; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
         """)
         
         self.spin_match = CleanSpinBox()
-        self.spin_match.setRange(0.0, 1.0)
-        self.spin_match.setDecimals(2)
+        self.spin_match.setRange(0.50, 1.50)
+        self.spin_match.setDecimals(3)
         self.spin_match.setSingleStep(0.01)
-        self.spin_match.setValue(float(self.settings.get("face_match_threshold", 75.0)) / 100.0)
+        self.spin_match.setValue(current_sface)
         self.spin_match.setFixedWidth(65)
         self.spin_match.setStyleSheet("border: none; background: transparent; color: #f0f0f0; font-weight: bold; font-size: 12px; padding: 0 4px;")
         
-        self.slider_match.valueChanged.connect(lambda v: self.spin_match.setValue(v / 100.0))
-        self.spin_match.valueChanged.connect(lambda v: self.slider_match.setValue(int(v * 100.0)))
+        self.slider_match.valueChanged.connect(lambda v: self.spin_match.setValue(v / 1000.0))
+        self.spin_match.valueChanged.connect(lambda v: self.slider_match.setValue(int(v * 1000.0)))
         
         h2 = QHBoxLayout()
         h2.addWidget(l_match)
@@ -114,16 +118,27 @@ class AiAdvancedSettingsDialog(QDialog):
         layout.addStretch()
         
         btn_box = QHBoxLayout()
+        btn_default = QPushButton("По умолчанию")
+        btn_default.setStyleSheet("background-color: #444; color: white; padding: 6px 15px; border-radius: 4px; font-weight: bold;")
+        btn_default.clicked.connect(self.reset_to_defaults)
+        
         btn_save = QPushButton("Сохранить")
         btn_save.setStyleSheet("background-color: #3b82f6; color: white; padding: 6px 20px; border-radius: 4px; font-weight: bold;")
         btn_save.clicked.connect(self.save_and_close)
+        
+        btn_box.addWidget(btn_default)
         btn_box.addStretch()
         btn_box.addWidget(btn_save)
         layout.addLayout(btn_box)
         
+    def reset_to_defaults(self):
+        self.slider_det.setValue(65)
+        self.slider_match.setValue(1128)
+        self.chk_merge.setChecked(True)
+        
     def save_and_close(self):
         self.settings["face_det_threshold"] = float(self.slider_det.value())
-        self.settings["face_match_threshold"] = float(self.slider_match.value())
+        self.settings["face_match_threshold"] = float(self.slider_match.value()) / 1000.0
         self.settings["deep_merge_enabled"] = self.chk_merge.isChecked()
         save_ai_settings(self.settings)
         self.accept()

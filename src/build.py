@@ -79,6 +79,9 @@ def build():
         "PyQt6.QtMultimediaWidgets",
         "PyQt6.sip",
         "PIL",
+        "numpy",
+        "cv2",
+        "onnxruntime",
         "modules.cleaner.vhash",
         "modules.cleaner.ahash_audio"
     ]
@@ -86,7 +89,7 @@ def build():
         pyinstaller_cmd.extend(["--hidden-import", imp])
 
     # Исключаем тяжелые библиотеки для уменьшения размера EXE
-    excludes = ["tkinter", "matplotlib", "numpy", "scipy"]
+    excludes = ["tkinter", "matplotlib", "scipy"]
     for exc in excludes:
         pyinstaller_cmd.extend(["--exclude-module", exc])
 

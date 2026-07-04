@@ -15,15 +15,23 @@ def get_ai_assets_dir() -> str:
     return path
 
 def load_ai_settings() -> dict:
-    """Загружает метаданные групп эталонов."""
+    """Загружает метаданные групп эталонов и настройки ИИ."""
     settings_path = os.path.join(get_ai_assets_dir(), SETTINGS_FILE)
+    default_settings = {
+        "groups": {},
+        "face_det_threshold": 65.0,
+        "face_match_threshold": 75.0,
+        "deep_merge_enabled": True
+    }
     if os.path.exists(settings_path):
         try:
             with open(settings_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                loaded = json.load(f)
+                default_settings.update(loaded)
+                return default_settings
         except Exception as e:
             logging.error(f"Ошибка чтения ai_settings.json: {e}")
-    return {"groups": {}}
+    return default_settings
 
 def save_ai_settings(settings: dict):
     """Сохраняет метаданные групп эталонов."""

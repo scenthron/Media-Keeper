@@ -685,6 +685,16 @@ class RefImagesListWidget(QListWidget):
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
+        
+        if event.buttons() & Qt.MouseButton.LeftButton:
+            self.hover_timer.stop()
+            self._pending_hover_path = None
+            if hasattr(self, "_is_tooltip_visible") and self._is_tooltip_visible:
+                if hasattr(self.parent(), "hover_tooltip") and self.parent().hover_tooltip.isVisible():
+                    self.parent().hover_tooltip.hide()
+                self._is_tooltip_visible = False
+            return
+
         item = self.itemAt(event.pos())
         index = self.indexAt(event.pos())
         

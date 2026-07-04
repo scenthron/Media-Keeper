@@ -130,7 +130,16 @@ class AiEngine:
             sface_safe = get_ascii_path(self.sface_path)
             
             # 2. Детектор лиц YuNet (OpenCV)
-            self.face_detector = cv2.FaceDetectorYN.create(yunet_safe, "", (320, 320), score_threshold=0.65)
+            try:
+                import json
+                from logic_paths import get_app_data_dir
+                settings_path = os.path.join(get_app_data_dir(), "Ai_assets", "ai_settings.json")
+                with open(settings_path, 'r', encoding='utf-8') as f:
+                    det_threshold = json.load(f).get("face_det_threshold", 65.0) / 100.0
+            except Exception:
+                det_threshold = 0.65
+                
+            self.face_detector = cv2.FaceDetectorYN.create(yunet_safe, "", (320, 320), score_threshold=det_threshold)
             
             # 3. Распознаватель лиц SFace (OpenCV)
             self.face_recognizer = cv2.FaceRecognizerSF.create(sface_safe, "")

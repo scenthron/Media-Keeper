@@ -26,6 +26,152 @@ from .ui_widgets import ImageHoverToolTip, RefImagesListWidget
 # -----------------------------------------------------------------------------
 from .ui_ai_group_dialog import AiGroupSettingsDialog
 
+class CustomSpinBoxWidget(QWidget):
+    valueChanged = pyqtSignal(float)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(26)
+        self.setFixedWidth(84)
+        self.setStyleSheet("QWidget { background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px; }")
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        
+        from PyQt6.QtWidgets import QDoubleSpinBox
+        self.spin = QDoubleSpinBox()
+        self.spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.spin.setStyleSheet("QDoubleSpinBox { border: none; background: transparent; color: white; font-size: 11px; padding-left: 2px; }")
+        self.spin.valueChanged.connect(self.valueChanged)
+        layout.addWidget(self.spin)
+        
+        arrows_w = QWidget()
+        arrows_w.setFixedWidth(20)
+        arrows_w.setFixedHeight(24)
+        al = QVBoxLayout(arrows_w)
+        al.setContentsMargins(0, 0, 0, 0)
+        al.setSpacing(0)
+        
+        self.btn_up = QPushButton()
+        self.btn_up.setFixedHeight(12)
+        from PyQt6.QtSvg import QSvgRenderer
+        def get_svg_icon(base64_str):
+            pixmap = QPixmap(QSize(16, 16))
+            pixmap.fill(Qt.GlobalColor.transparent)
+            renderer = QSvgRenderer(base64_str)
+            painter = QPainter(pixmap)
+            renderer.render(painter)
+            painter.end()
+            return QIcon(pixmap)
+            
+        UP_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtMTggMTUtNi02LTYgNiIvPjwvc3ZnPg=='
+        DOWN_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtNiA5bDYgNiA2LTYiLz48L3N2Zz4='
+        
+        self.btn_up.setIcon(get_svg_icon(UP_BASE64))
+        self.btn_up.setIconSize(QSize(8, 8))
+        self.btn_up.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_up.setAutoRepeat(True)
+        self.btn_up.setStyleSheet("QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-left: 1px solid #444; border-bottom: 1px solid #444; border-top-right-radius: 4px; } QPushButton:hover { background: rgba(255, 255, 255, 0.1); }")
+        
+        self.btn_down = QPushButton()
+        self.btn_down.setFixedHeight(12)
+        self.btn_down.setIcon(get_svg_icon(DOWN_BASE64))
+        self.btn_down.setIconSize(QSize(8, 8))
+        self.btn_down.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_down.setAutoRepeat(True)
+        self.btn_down.setStyleSheet("QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-left: 1px solid #444; border-bottom-right-radius: 4px; } QPushButton:hover { background: rgba(255, 255, 255, 0.1); }")
+        
+        self.btn_up.clicked.connect(self.spin.stepUp)
+        self.btn_down.clicked.connect(self.spin.stepDown)
+        
+        al.addWidget(self.btn_up)
+        al.addWidget(self.btn_down)
+        layout.addWidget(arrows_w)
+        
+    def setRange(self, min_val, max_val):
+        self.spin.setRange(min_val, max_val)
+    def setDecimals(self, dec):
+        self.spin.setDecimals(dec)
+    def setSingleStep(self, step):
+        self.spin.setSingleStep(step)
+    def setSuffix(self, suff):
+        self.spin.setSuffix(suff)
+    def setValue(self, val):
+        self.spin.setValue(val)
+    def value(self):
+        return self.spin.value()
+    def blockSignals(self, b):
+        self.spin.blockSignals(b)
+        
+class AiAdvancedSettingsDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Настройки ИИ" if AppContext.is_ru() else "AI Settings")
+        self.setFixedSize(400, 320)
+        self.setStyleSheet("QDialog { background-color: #1e1e1e; } QLabel { color: #ccc; }")
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        
+        self.settings = load_ai_settings()
+        
+        # Юнет
+        l_det = QLabel("Порог детектора лиц (YuNet):")
+        self.slider_det = QSlider(Qt.Orientation.Horizontal)
+        self.slider_det.setRange(0, 100)
+        self.slider_det.setValue(int(self.settings.get("face_det_threshold", 65.0)))
+        self.val_det = QLabel(f'{self.slider_det.value()}%')
+        self.slider_det.valueChanged.connect(lambda v: self.val_det.setText(f'{v}%'))
+        
+        h1 = QHBoxLayout()
+        h1.addWidget(l_det)
+        h1.addStretch()
+        h1.addWidget(self.val_det)
+        layout.addLayout(h1)
+        layout.addWidget(self.slider_det)
+        
+        # SFace
+        l_match = QLabel("Строгость совпадения лиц (SFace):")
+        self.slider_match = QSlider(Qt.Orientation.Horizontal)
+        self.slider_match.setRange(0, 100)
+        self.slider_match.setValue(int(self.settings.get("face_match_threshold", 75.0)))
+        self.val_match = QLabel(f'{self.slider_match.value()}%')
+        self.slider_match.valueChanged.connect(lambda v: self.val_match.setText(f'{v}%'))
+        
+        h2 = QHBoxLayout()
+        h2.addWidget(l_match)
+        h2.addStretch()
+        h2.addWidget(self.val_match)
+        layout.addLayout(h2)
+        layout.addWidget(self.slider_match)
+        
+        # Deep Merge
+        self.chk_merge = QCheckBox("Глубокое объединение групп (Deep Merge)")
+        self.chk_merge.setStyleSheet("color: white; font-weight: bold;")
+        self.chk_merge.setChecked(self.settings.get("deep_merge_enabled", True))
+        
+        lbl_desc = QLabel("Если включено, ИИ сделает второй проход и объединит группы одного\nчеловека, снятые с разных ракурсов.")
+        lbl_desc.setStyleSheet("color: #888; font-size: 11px;")
+        
+        layout.addWidget(self.chk_merge)
+        layout.addWidget(lbl_desc)
+        
+        layout.addStretch()
+        
+        btn_box = QHBoxLayout()
+        btn_save = QPushButton("Сохранить")
+        btn_save.setStyleSheet("background-color: #3b82f6; color: white; padding: 6px 20px; border-radius: 4px; font-weight: bold;")
+        btn_save.clicked.connect(self.save_and_close)
+        btn_box.addStretch()
+        btn_box.addWidget(btn_save)
+        layout.addLayout(btn_box)
+        
+    def save_and_close(self):
+        self.settings["face_det_threshold"] = float(self.slider_det.value())
+        self.settings["face_match_threshold"] = float(self.slider_match.value())
+        self.settings["deep_merge_enabled"] = self.chk_merge.isChecked()
+        save_ai_settings(self.settings)
+        self.accept()
+
+
 class AiGroupChipWidget(QFrame):
     state_changed = pyqtSignal(str, bool)
     settings_clicked = pyqtSignal(str)
@@ -279,6 +425,13 @@ class AiClassificationTab(QWidget):
         ref_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI';")
         ref_header.addWidget(ref_title)
         
+        self.btn_ai_settings = QPushButton("⚙")
+        self.btn_ai_settings.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_ai_settings.setStyleSheet("QPushButton { background-color: transparent; border: none; color: #888; font-size: 16px; margin-top: -2px; } QPushButton:hover { color: #fff; }")
+        self.btn_ai_settings.setToolTip("Настройки ИИ" if AppContext.is_ru() else "AI Settings")
+        self.btn_ai_settings.clicked.connect(self.open_ai_settings)
+        ref_header.addWidget(self.btn_ai_settings)
+        
         self.btn_create_ref = QPushButton("[+] Создать" if AppContext.is_ru() else "[+] Create")
         self.btn_create_ref.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_create_ref.setStyleSheet("""
@@ -499,25 +652,12 @@ class AiClassificationTab(QWidget):
             QSlider::handle:horizontal { background: #3b82f6; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
         """)
         
-        from PyQt6.QtWidgets import QDoubleSpinBox
-        self.spin_threshold = QDoubleSpinBox()
+        self.spin_threshold = CustomSpinBoxWidget()
         self.spin_threshold.setRange(0.0, 100.0)
         self.spin_threshold.setDecimals(2)
         self.spin_threshold.setSingleStep(0.01)
         self.spin_threshold.setValue(75.0)
         self.spin_threshold.setSuffix("%")
-        self.spin_threshold.setFixedWidth(80)
-        self.spin_threshold.setStyleSheet("""
-            QDoubleSpinBox {
-                background-color: #2b2b2b;
-                border: 1px solid #444;
-                border-radius: 4px;
-                padding: 2px 4px;
-                color: white;
-                font-size: 11px;
-            }
-            QDoubleSpinBox:hover { border-color: #555; }
-        """)
         
         self.slider_threshold.valueChanged.connect(lambda v: self.spin_threshold.setValue(v / 100.0))
         self.spin_threshold.valueChanged.connect(lambda v: self.slider_threshold.setValue(int(v * 100)))
@@ -590,16 +730,27 @@ class AiClassificationTab(QWidget):
         self.combo_match_mode.currentIndexChanged.connect(self.on_match_mode_changed)
         params_sub_layout.addWidget(self.combo_match_mode)
         
-        self.chk_auto_cluster = QCheckBox("Умный поиск похожих людей" if AppContext.is_ru() else "Smart People Search")
+        self.chk_auto_cluster = QCheckBox("Умный авто-поиск" if AppContext.is_ru() else "Smart Auto-Search")
         self.chk_auto_cluster.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_auto_cluster.setStyleSheet("""
             QCheckBox { color: white; font-weight: bold; font-size: 13px; margin-top: 2px; }
             QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; margin-top: 2px; }
             QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
         """)
-        self.chk_auto_cluster.setToolTip("Искать лица без эталонов и группировать их автоматически." if AppContext.is_ru() else "Group faces automatically without references.")
+        self.chk_auto_cluster.setToolTip("Искать похожие объекты без эталонов и группировать их автоматически." if AppContext.is_ru() else "Group objects automatically without references.")
         self.chk_auto_cluster.stateChanged.connect(self.on_auto_cluster_changed)
-        params_sub_layout.addWidget(self.chk_auto_cluster)
+        
+        self.combo_auto_type = QComboBox()
+        self.combo_auto_type.addItem("По людям" if AppContext.is_ru() else "By People", "face")
+        self.combo_auto_type.addItem("По изображениям" if AppContext.is_ru() else "By Images", "general")
+        self.combo_auto_type.setStyleSheet("QComboBox { background-color: #2b2b2b; color: white; border: 1px solid #444; border-radius: 4px; padding: 2px 5px; font-size: 11px; height: 22px; }")
+        self.combo_auto_type.setFixedWidth(130)
+        
+        auto_h = QHBoxLayout()
+        auto_h.addWidget(self.chk_auto_cluster)
+        auto_h.addStretch()
+        auto_h.addWidget(self.combo_auto_type)
+        params_sub_layout.addLayout(auto_h)
         
         self.chk_use_gpu = QCheckBox("Аппаратное ускорение (GPU)" if AppContext.is_ru() else "Hardware Acceleration (GPU)")
         self.chk_use_gpu.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -668,36 +819,11 @@ class AiClassificationTab(QWidget):
             QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
             QSlider::handle:horizontal { background: #10b981; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
         """)
-        self.spin_post_filter = QDoubleSpinBox()
+        self.spin_post_filter = CustomSpinBoxWidget()
         self.spin_post_filter.setRange(0.0, 100.0)
         self.spin_post_filter.setDecimals(2)
         self.spin_post_filter.setSingleStep(0.01)
         self.spin_post_filter.setSuffix("%")
-        self.spin_post_filter.setFixedWidth(80)
-        UP_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtMTggMTUtNi02LTYgNiIvPjwvc3ZnPg=='
-        DOWN_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtNiA5bDYgNiA2LTYiLz48L3N2Zz4='
-        up_img = f"data:image/svg+xml;base64,{UP_BASE64.decode()}"
-        down_img = f"data:image/svg+xml;base64,{DOWN_BASE64.decode()}"
-        
-        self.spin_post_filter.setStyleSheet(f"""
-            QDoubleSpinBox {{ background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; color: white; font-size: 11px; }}
-            QDoubleSpinBox:hover {{ border-color: #555; }}
-            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
-                width: 16px;
-                background: rgba(0, 0, 0, 0.2);
-                border-left: 1px solid #444;
-            }}
-            QDoubleSpinBox::up-button {{
-                border-top-right-radius: 3px;
-                border-bottom: 1px solid #444;
-                image: url({up_img});
-            }}
-            QDoubleSpinBox::down-button {{
-                border-bottom-right-radius: 3px;
-                image: url({down_img});
-            }}
-            QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {{ background: rgba(255, 255, 255, 0.1); }}
-        """)
         
         self.slider_post_filter.valueChanged.connect(self._on_slider_moved)
         self.spin_post_filter.valueChanged.connect(self._on_spin_changed)
@@ -901,6 +1027,10 @@ class AiClassificationTab(QWidget):
         dlg = AiGroupSettingsDialog(self.classifier, group_name, self)
         if dlg.exec():
             self.reload_groups()
+
+    def open_ai_settings(self):
+        dlg = AiAdvancedSettingsDialog(self)
+        dlg.exec()
 
     def create_group(self):
         dlg = AiGroupSettingsDialog(self.classifier, None, self)

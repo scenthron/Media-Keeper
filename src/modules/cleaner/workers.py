@@ -814,7 +814,7 @@ class AiScanWorker(QThread):
     # finished: { group_name: [ { 'path': ..., 'size': ..., 'confidence': ..., 'type': ... }, ... ] }
     finished = pyqtSignal(dict)
     
-    def __init__(self, folders, classifier, threshold=75.0, filter_config=None, match_mode="centroid", use_cache=True, use_gpu=True, is_cluster=False):
+    def __init__(self, folders, classifier, threshold=75.0, filter_config=None, match_mode="centroid", use_cache=True, use_gpu=True, is_cluster=False, cluster_type="face"):
         super().__init__()
         self.folders = folders
         self.classifier = classifier
@@ -824,6 +824,7 @@ class AiScanWorker(QThread):
         self.use_cache = use_cache
         self.use_gpu = use_gpu
         self.is_cluster = is_cluster
+        self.cluster_type = cluster_type
         self.is_running = True
 
     def stop(self):
@@ -917,24 +918,58 @@ class AiScanWorker(QThread):
                 size = stat.st_size
                 
                 if getattr(self, "is_cluster", False):
-                    faces = None
-                    if self.use_cache:
-                        faces = self.classifier.cache.get_file_faces(fp, mtime, size)
-                    if faces is None:
-                        faces = self.classifier.ai.detect_and_extract_faces(fp)
-                        if self.use_cache and faces is not None:
-                            self.classifier.cache.save_file_faces(fp, mtime, size, faces)
-                            
-                    if faces:
-                        import numpy as np
-                        for face in faces:
-                            emb = face["descriptor"]
+                    import numpy as np
+                    
+                    if getattr(self, "cluster_type", "face") == "face":
+                        faces = None
+                        if self.use_cache:
+                            faces = self.classifier.cache.get_file_faces(fp, mtime, size)
+                        if faces is None:
+                            faces = self.classifier.ai.detect_and_extract_faces(fp)
+                            if self.use_cache and faces is not None:
+                                self.classifier.cache.save_file_faces(fp, mtime, size, faces)
+                                
+                        if faces:
+                            for face in faces:
+                                emb = face["descriptor"]
+                                matched = False
+                                for cluster in cluster_data:
+                                    sim = float(np.dot(emb, cluster["centroid"]))
+                                    if sim >= (self.threshold / 100.0):
+                                        if not any(m["path"] == fp for m in cluster["members"]):
+                                            cluster["members"].append({"path": fp, "size": size, "confidence": sim * 100.0, "type": "face"})
+                                        
+                                        new_centroid = np.mean([c["emb"] for c in cluster["raw_embs"]] + [emb], axis=0)
+                                        norm = np.linalg.norm(new_centroid)
+                                        if norm > 0:
+                                            new_centroid /= norm
+                                        cluster["centroid"] = new_centroid
+                                        cluster["raw_embs"].append({"emb": emb})
+                                        matched = True
+                                        break
+                                if not matched:
+                                    cluster_data.append({
+                                        "centroid": emb,
+                                        "raw_embs": [{"emb": emb}],
+                                        "members": [{"path": fp, "size": size, "confidence": 100.0, "type": "face"}]
+                                    })
+                    else:
+                        # General clustering
+                        emb = None
+                        if self.use_cache:
+                            emb = self.classifier.cache.get_file_general_embedding(fp, mtime, size)
+                        if emb is None:
+                            emb = self.classifier.ai.get_general_embedding(fp)
+                            if self.use_cache and emb is not None:
+                                self.classifier.cache.save_file_general_embedding(fp, mtime, size, emb)
+                                
+                        if emb is not None:
                             matched = False
                             for cluster in cluster_data:
                                 sim = float(np.dot(emb, cluster["centroid"]))
                                 if sim >= (self.threshold / 100.0):
                                     if not any(m["path"] == fp for m in cluster["members"]):
-                                        cluster["members"].append({"path": fp, "size": size, "confidence": sim * 100.0, "type": "face"})
+                                        cluster["members"].append({"path": fp, "size": size, "confidence": sim * 100.0, "type": "general"})
                                     
                                     new_centroid = np.mean([c["emb"] for c in cluster["raw_embs"]] + [emb], axis=0)
                                     norm = np.linalg.norm(new_centroid)
@@ -978,11 +1013,46 @@ class AiScanWorker(QThread):
                 self.progress.emit(STAGE_ANALYSIS, percent, f"[{processed_files} / {total_files}]", scanned_files, groups_found, wasted_bytes, scanned_bytes, 0, 0)
 
         if getattr(self, "is_cluster", False):
+            import numpy as np
+            
+            # Deep merge algorithm (if enabled for face clusters)
+            if getattr(self, "cluster_type", "face") == "face":
+                from .logic_ai_classifier import load_ai_settings
+                settings = load_ai_settings()
+                if settings.get("deep_merge_enabled", True):
+                    merge_threshold = self.threshold / 100.0
+                    merged = True
+                    while merged:
+                        merged = False
+                        for i in range(len(cluster_data)):
+                            for j in range(i + 1, len(cluster_data)):
+                                sim = float(np.dot(cluster_data[i]["centroid"], cluster_data[j]["centroid"]))
+                                if sim >= merge_threshold:
+                                    # Merge j into i
+                                    cluster_data[i]["members"].extend([m for m in cluster_data[j]["members"] if m["path"] not in [om["path"] for om in cluster_data[i]["members"]]])
+                                    cluster_data[i]["raw_embs"].extend(cluster_data[j]["raw_embs"])
+                                    
+                                    new_centroid = np.mean([c["emb"] for c in cluster_data[i]["raw_embs"]], axis=0)
+                                    norm = np.linalg.norm(new_centroid)
+                                    if norm > 0:
+                                        new_centroid /= norm
+                                    cluster_data[i]["centroid"] = new_centroid
+                                    
+                                    del cluster_data[j]
+                                    merged = True
+                                    break
+                            if merged:
+                                break
+
             # Sort clusters by size
             cluster_data.sort(key=lambda c: len(c["members"]), reverse=True)
+            prefix = "Лицо" if getattr(self, "cluster_type", "face") == "face" else "Изображение"
+            if not AppContext.is_ru():
+                prefix = "Face" if getattr(self, "cluster_type", "face") == "face" else "Image"
+                
             for i, cluster in enumerate(cluster_data):
                 if len(cluster["members"]) >= 1:
-                    group_name = f"Лицо {i+1}" if AppContext.is_ru() else f"Face {i+1}"
+                    group_name = f"{prefix} {i+1}"
                     results[group_name] = cluster["members"]
                     groups_found += 1
                     wasted_bytes += sum(m["size"] for m in cluster["members"])

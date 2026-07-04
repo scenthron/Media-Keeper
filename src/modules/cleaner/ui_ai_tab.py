@@ -1551,7 +1551,7 @@ class AiClassificationTab(QWidget):
     def update_scan_button_state(self):
         folders = self.cleaner.get_active_source_folders() if hasattr(self, 'cleaner') else []
         has_folders = len(folders) > 0
-        has_enabled_groups = any(widget.switch.isChecked() for widget in self.chips_map.values())
+        has_enabled_groups = any(widget.chk.isChecked() for widget in self.chips_map.values())
         self.btn_start_scan.setEnabled(has_folders and has_enabled_groups)
 
     def toggle_scan(self):

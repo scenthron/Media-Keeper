@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
-from utils_common import AppContext
+from config import AppContext
 from .logic_ai_classifier import get_ai_assets_dir, load_ai_settings, save_ai_settings
 from .ui_widgets import RefImagesListWidget
 import cv2

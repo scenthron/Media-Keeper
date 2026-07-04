@@ -517,3 +517,209 @@ class ModeBadgeButton(QPushButton):
             self.setStyleSheet("QPushButton { background-color: transparent; color: #3b82f6; border: 1px solid #3b82f6; border-radius: 4px; padding: 0 10px; font-weight: bold; font-size: 12px; } QPushButton:hover { background-color: rgba(59, 130, 246, 0.1); }")
         elif self._mode == 'active':
             self.setStyleSheet("QPushButton { background-color: #15803d; color: white; border: 1px solid #16a34a; border-radius: 4px; padding: 0 10px; font-weight: bold; font-size: 12px; }")
+
+
+from PyQt6.QtWidgets import QListWidget, QAbstractItemView, QStyledItemDelegate
+
+# -----------------------------------------------------------------------------
+# Всплывающее окно быстрого просмотра картинок при наведении мыши (в 2.5 раза больше)
+# -----------------------------------------------------------------------------
+class ImageHoverToolTip(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent, Qt.WindowType.ToolTip | Qt.WindowType.FramelessWindowHint)
+        self.setStyleSheet("background-color: #2b2b2b; border: 2px solid #3b82f6; padding: 2px; border-radius: 6px;")
+        self.setScaledContents(True)
+        self.setFixedSize(650, 650) # В 2.5 раза больше (было 260x260)
+        self.hide()
+        
+    def show_image(self, path: str, pos: QPoint):
+        if not path or not os.path.exists(path):
+            self.hide()
+            return
+            
+        try:
+            pixmap = QPixmap(path)
+            if not pixmap.isNull():
+                # Масштабируем до 640x640 с сохранением пропорций
+                scaled = pixmap.scaled(640, 640, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                self.setPixmap(scaled)
+                self.setFixedSize(scaled.width() + 10, scaled.height() + 10)
+                
+                # Смещаем правее и ниже курсора
+                self.move(pos.x() + 15, pos.y() + 15)
+                self.show()
+            else:
+                self.hide()
+        except Exception:
+            self.hide()
+
+
+from PyQt6.QtWidgets import QStyledItemDelegate
+from PyQt6.QtGui import QPainter, QColor, QPen
+
+class RefImageDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.hovered_index = None
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        
+        is_face_mode = index.data(Qt.ItemDataRole.UserRole + 1)
+        face_found = index.data(Qt.ItemDataRole.UserRole + 2)
+        
+        rect = option.rect
+        
+        if is_face_mode:
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            ind_rect = rect.adjusted(4, 4, -rect.width() + 24, -rect.height() + 24)
+            painter.setPen(Qt.PenStyle.NoPen)
+            if face_found is True:
+                painter.setBrush(QColor("#22c55e"))
+                painter.drawEllipse(ind_rect)
+                painter.setPen(QPen(Qt.GlobalColor.white, 2))
+                painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
+                # Смещаем текст чуть вверх для визуального центрирования
+                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "🙂")
+            elif face_found is False:
+                painter.setBrush(QColor("#ef4444"))
+                painter.drawEllipse(ind_rect)
+                painter.setPen(QPen(Qt.GlobalColor.white, 2))
+                painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
+                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "🙁")
+            else:
+                painter.setBrush(QColor("#6b7280"))
+                painter.drawEllipse(ind_rect)
+                painter.setPen(QPen(Qt.GlobalColor.white, 2))
+                painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
+                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "❓")
+            painter.restore()
+            
+        if self.hovered_index is not None and index == self.hovered_index:
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            cross_rect = rect.adjusted(rect.width() - 20, 4, -4, -rect.height() + 20)
+            painter.setBrush(QColor(239, 68, 68, 220))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(cross_rect, 4, 4)
+            painter.setPen(QPen(Qt.GlobalColor.white, 2))
+            painter.drawLine(cross_rect.left() + 4, cross_rect.top() + 4, cross_rect.right() - 4, cross_rect.bottom() - 4)
+            painter.drawLine(cross_rect.right() - 4, cross_rect.top() + 4, cross_rect.left() + 4, cross_rect.bottom() - 4)
+            painter.restore()
+
+
+
+# -----------------------------------------------------------------------------
+# Кастомный список для картинок-примеров с поддержкой Drag & Drop и Hover-превью
+# -----------------------------------------------------------------------------
+class RefImagesListWidget(QListWidget):
+    files_dropped = pyqtSignal(list)
+    item_hovered = pyqtSignal(str, QPoint)
+    hover_left = pyqtSignal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.setViewMode(QListWidget.ViewMode.IconMode)
+        self.setIconSize(QSize(76, 76))
+        self.setResizeMode(QListWidget.ResizeMode.Adjust)
+        self.setGridSize(QSize(86, 86))
+        self.setMouseTracking(True)
+        self.setStyleSheet("""
+            QListWidget {
+                background-color: #151515;
+                border: 1px solid #444;
+                border-radius: 6px;
+                outline: none;
+            }
+            QListWidget::item {
+                border: 1px solid transparent;
+                border-radius: 4px;
+            }
+            QListWidget::item:hover {
+                background-color: #2a2a2a;
+                border: 1px solid #555;
+            }
+            QListWidget::item:selected {
+                background-color: #3b82f6;
+                border: 1px solid #2563eb;
+            }
+        """)
+        
+        self.delegate = RefImageDelegate(self)
+        self.setItemDelegate(self.delegate)
+        
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+            
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+            
+    def dropEvent(self, event):
+        files = []
+        for url in event.mimeData().urls():
+            fp = url.toLocalFile()
+            if os.path.isfile(fp):
+                ext = os.path.splitext(fp)[1].lower()
+                if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}:
+                    files.append(fp)
+        if files:
+            self.files_dropped.emit(files)
+            event.acceptProposedAction()
+
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        item = self.itemAt(event.pos())
+        index = self.indexAt(event.pos())
+        
+        if index.isValid():
+            if self.delegate.hovered_index != index:
+                self.delegate.hovered_index = index
+                self.viewport().update()
+        else:
+            if self.delegate.hovered_index is not None:
+                self.delegate.hovered_index = None
+                self.viewport().update()
+
+        if item:
+            path = item.data(Qt.ItemDataRole.UserRole)
+            if path:
+                glob_pos = self.mapToGlobal(event.pos())
+                self.item_hovered.emit(path, glob_pos)
+        else:
+            self.hover_left.emit()
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        if self.delegate.hovered_index is not None:
+            self.delegate.hovered_index = None
+            self.viewport().update()
+        self.hover_left.emit()
+
+    def mousePressEvent(self, event):
+        item = self.itemAt(event.pos())
+        if item:
+            rect = self.visualItemRect(item)
+            cross_rect = rect.adjusted(rect.width() - 20, 4, -4, -rect.height() + 20)
+            if cross_rect.contains(event.pos()):
+                path = item.data(Qt.ItemDataRole.UserRole)
+                parent_dlg = self.parent()
+                while parent_dlg and not hasattr(parent_dlg, 'delete_specific_file'):
+                    parent_dlg = parent_dlg.parent()
+                if parent_dlg and hasattr(parent_dlg, 'delete_specific_file'):
+                    parent_dlg.delete_specific_file(path)
+                return
+        super().mousePressEvent(event)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Delete:
+            parent_dlg = self.parent()
+            while parent_dlg and not hasattr(parent_dlg, 'delete_selected_files'):
+                parent_dlg = parent_dlg.parent()
+            if parent_dlg and hasattr(parent_dlg, 'delete_selected_files'):
+                parent_dlg.delete_selected_files()
+        super().keyPressEvent(event)

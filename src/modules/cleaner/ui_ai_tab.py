@@ -54,6 +54,8 @@ class AiAdvancedSettingsDialog(QDialog):
         self.spin_det.setDecimals(2)
         self.spin_det.setSingleStep(0.01)
         self.spin_det.setValue(float(self.settings.get("face_det_threshold", 65.0)) / 100.0)
+        self.spin_det.setFixedWidth(65)
+        self.spin_det.setStyleSheet("border: none; background: transparent; color: #f0f0f0; font-weight: bold; font-size: 12px; padding: 0 4px;")
         
         self.slider_det.valueChanged.connect(lambda v: self.spin_det.setValue(v / 100.0))
         self.spin_det.valueChanged.connect(lambda v: self.slider_det.setValue(int(v * 100.0)))
@@ -80,6 +82,8 @@ class AiAdvancedSettingsDialog(QDialog):
         self.spin_match.setDecimals(2)
         self.spin_match.setSingleStep(0.01)
         self.spin_match.setValue(float(self.settings.get("face_match_threshold", 75.0)) / 100.0)
+        self.spin_match.setFixedWidth(65)
+        self.spin_match.setStyleSheet("border: none; background: transparent; color: #f0f0f0; font-weight: bold; font-size: 12px; padding: 0 4px;")
         
         self.slider_match.valueChanged.connect(lambda v: self.spin_match.setValue(v / 100.0))
         self.spin_match.valueChanged.connect(lambda v: self.slider_match.setValue(int(v * 100.0)))
@@ -615,6 +619,8 @@ class AiClassificationTab(QWidget):
         self.spin_threshold.setSingleStep(0.01)
         self.spin_threshold.setValue(75.0)
         self.spin_threshold.setSuffix("%")
+        self.spin_threshold.setFixedWidth(65)
+        self.spin_threshold.setStyleSheet("border: none; background: transparent; color: #f0f0f0; font-weight: bold; font-size: 12px; padding: 0 4px;")
         
         self.slider_threshold.valueChanged.connect(lambda v: self.spin_threshold.setValue(v / 100.0))
         self.spin_threshold.valueChanged.connect(lambda v: self.slider_threshold.setValue(int(v * 100)))
@@ -781,6 +787,8 @@ class AiClassificationTab(QWidget):
         self.spin_post_filter.setDecimals(2)
         self.spin_post_filter.setSingleStep(0.01)
         self.spin_post_filter.setSuffix("%")
+        self.spin_post_filter.setFixedWidth(65)
+        self.spin_post_filter.setStyleSheet("border: none; background: transparent; color: #f0f0f0; font-weight: bold; font-size: 12px; padding: 0 4px;")
         
         self.slider_post_filter.valueChanged.connect(self._on_slider_moved)
         self.spin_post_filter.valueChanged.connect(self._on_spin_changed)

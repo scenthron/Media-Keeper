@@ -71,20 +71,27 @@ class RefImageDelegate(QStyledItemDelegate):
             painter.save()
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
             ind_rect = rect.adjusted(4, 4, -rect.width() + 24, -rect.height() + 24)
-            if face_found:
+            if face_found is True:
                 painter.setBrush(QColor("#22c55e"))
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawEllipse(ind_rect)
                 painter.setPen(QPen(Qt.GlobalColor.white, 2))
                 painter.drawLine(ind_rect.left() + 4, ind_rect.top() + 8, ind_rect.left() + 6, ind_rect.top() + 11)
                 painter.drawLine(ind_rect.left() + 6, ind_rect.top() + 11, ind_rect.left() + 12, ind_rect.top() + 5)
-            else:
+            elif face_found is False:
                 painter.setBrush(QColor("#ef4444"))
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawEllipse(ind_rect)
                 painter.setPen(QPen(Qt.GlobalColor.white, 2))
                 painter.drawLine(ind_rect.left() + 5, ind_rect.top() + 5, ind_rect.right() - 5, ind_rect.bottom() - 5)
                 painter.drawLine(ind_rect.right() - 5, ind_rect.top() + 5, ind_rect.left() + 5, ind_rect.bottom() - 5)
+            else:
+                painter.setBrush(QColor("#6b7280"))
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.drawEllipse(ind_rect)
+                painter.setPen(QPen(Qt.GlobalColor.white, 2))
+                painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+                painter.drawText(ind_rect, Qt.AlignmentFlag.AlignCenter, "?")
             painter.restore()
             
         if self.hovered_index is not None and index == self.hovered_index:
@@ -376,14 +383,18 @@ class EditAiGroupDialog(QDialog):
                     try:
                         stat = os.stat(fp)
                         faces = self.classifier.cache.get_file_faces(fp, stat.st_mtime, stat.st_size)
-                        item.setData(Qt.ItemDataRole.UserRole + 2, bool(faces))
-                        if not faces:
-                            item.setToolTip(f"{f} (Лицо не найдено)" if self.is_ru else f"{f} (Face not found)")
+                        if faces is None:
+                            item.setData(Qt.ItemDataRole.UserRole + 2, None)
+                            item.setToolTip(f"{f} (Ожидает расчета)" if self.is_ru else f"{f} (Pending)")
                         else:
-                            item.setToolTip(f)
+                            item.setData(Qt.ItemDataRole.UserRole + 2, bool(faces))
+                            if not faces:
+                                item.setToolTip(f"{f} (Лицо не найдено)" if self.is_ru else f"{f} (Face not found)")
+                            else:
+                                item.setToolTip(f)
                     except Exception:
                         item.setData(Qt.ItemDataRole.UserRole + 2, False)
-                        item.setToolTip(f"{f} (Лицо не найдено)" if self.is_ru else f"{f} (Face not found)")
+                        item.setToolTip(f"{f} (Ошибка чтения)" if self.is_ru else f"{f} (Read Error)")
                 else:
                     item.setData(Qt.ItemDataRole.UserRole + 1, False)
                     item.setToolTip(f)
@@ -485,6 +496,11 @@ class EditAiGroupDialog(QDialog):
         if success:
             QMessageBox.information(self, "Успех" if self.is_ru else "Success", 
                                     "Обучение эталона завершено!" if self.is_ru else "Reference training completed!")
+            self.reload_thumbnails()
+            
+            main_tab = self.parent()
+            if main_tab and hasattr(main_tab, 'update_cache_info_ai'):
+                main_tab.update_cache_info_ai()
 
     def save_settings(self):
         new_name = self.txt_name.text().strip()

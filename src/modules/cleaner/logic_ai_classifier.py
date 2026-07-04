@@ -258,12 +258,14 @@ class AiClassifier:
                     for group_name, ref_descs in self.face_reference_descriptors.items():
                         for ref_desc in ref_descs:
                             dist = np.linalg.norm(desc - ref_desc)
-                            # Калибровка схожести лиц: порог верификации dist=0.6 соответствует 75% схожести
-                            if dist <= 0.6:
-                                score = 100.0 - (dist / 0.6) * 25.0
+                            # SFace L2 norm threshold for verification is ~1.128
+                            # We map dist=1.128 to a score of 75.0 (since user UI defaults to 75% for 'same').
+                            # dist=0 -> score=100.0. dist=2.0 -> score=0.0
+                            if dist <= 1.128:
+                                score = 100.0 - (dist / 1.128) * 25.0
                             else:
-                                score = 75.0 - ((dist - 0.6) / 0.6) * 75.0
-                            score = max(0.0, score)
+                                score = 75.0 - ((dist - 1.128) / (2.0 - 1.128)) * 75.0
+                            score = max(0.0, min(100.0, score))
                             
                             if score > best_face_score:
                                 best_face_score = score

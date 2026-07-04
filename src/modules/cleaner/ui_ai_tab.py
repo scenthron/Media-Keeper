@@ -70,7 +70,7 @@ class RefImageDelegate(QStyledItemDelegate):
         if is_face_mode:
             painter.save()
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-            ind_rect = rect.adjusted(4, 4, -rect.width() + 20, -rect.height() + 20)
+            ind_rect = rect.adjusted(4, 4, -rect.width() + 24, -rect.height() + 24)
             if face_found:
                 painter.setBrush(QColor("#22c55e"))
                 painter.setPen(Qt.PenStyle.NoPen)
@@ -273,6 +273,8 @@ class EditAiGroupDialog(QDialog):
         else:
             self.rad_general.setChecked(True)
             
+        self.rad_face.toggled.connect(lambda: self.reload_thumbnails())
+            
         type_layout = QHBoxLayout()
         type_layout.addWidget(self.rad_general)
         type_layout.addWidget(self.rad_face)
@@ -355,9 +357,7 @@ class EditAiGroupDialog(QDialog):
         if not os.path.exists(group_dir):
             return
             
-        settings = load_ai_settings()
-        group_info = settings.get("groups", {}).get(self.group_name, {})
-        is_face_mode = group_info.get("type") == "face"
+        is_face_mode = self.rad_face.isChecked()
             
         valid_exts = {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}
         try:

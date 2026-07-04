@@ -34,15 +34,15 @@ class SourceListItem(QWidget):
     removed = pyqtSignal(str)
     context_menu_requested = pyqtSignal(QPoint, str)
     
-    def __init__(self, path, color, is_cached=False, is_protected=False):
-        super().__init__()
+    def __init__(self, path: str, color: str, is_error: bool = False, is_system_error: bool = False, is_protected: bool = False, is_reference: bool = False, is_cached: bool = False, is_face_cached: bool = False, parent=None):
+        super().__init__(parent)
         self.path = path
         self.setFixedHeight(42) 
         self.is_cached = is_cached
         self.is_protected = is_protected
-        self.is_reference = False
-        self.is_error = False
-        self.is_system_error = False
+        self.is_reference = is_reference
+        self.is_error = is_error
+        self.is_system_error = is_system_error
         self.color = color
         
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -85,6 +85,14 @@ class SourceListItem(QWidget):
         self.lbl_cache.setStyleSheet("border: none; background: transparent;")
         self.lbl_cache.setVisible(is_cached)
         self.layout.addWidget(self.lbl_cache)
+        
+        self.lbl_face_cache = QLabel("👤")
+        self.lbl_face_cache.setFixedSize(16, 16)
+        self.lbl_face_cache.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_face_cache.setStyleSheet("border: none; background: transparent; font-size: 14px;")
+        self.lbl_face_cache.setToolTip(AppContext.tr("cln_tip_cached_face") if hasattr(AppContext, 'tr') else "Face cache exists")
+        self.lbl_face_cache.setVisible(is_face_cached)
+        self.layout.addWidget(self.lbl_face_cache)
         
         btn_del = QPushButton("×")
         btn_del.setFixedSize(24, 24)

@@ -42,11 +42,12 @@ class ActionMixin:
         
         idx = len(self.source_folders)
         color = generate_vibrant_color(idx)
-        is_cached = self.db_helper.check_path_scanned(path)
-        
-        self.source_folders[path] = {'color': color, 'protected': False, 'is_system': is_system, 'reference': False}
-        
-        item_widget = SourceListItem(path, color, is_cached=is_cached)
+        if hasattr(self, 'cache'):
+            is_cached, is_face_cached = self.cache.has_cached_files_for_folder(path)
+        else:
+            is_cached, is_face_cached = False, False
+            
+        item_widget = SourceListItem(path, color, is_cached=is_cached, is_face_cached=is_face_cached)
         if is_system:
             item_widget.set_system_error_state()
             

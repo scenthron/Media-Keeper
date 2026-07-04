@@ -174,6 +174,26 @@ class AiCacheManager:
         except Exception as e:
             logging.error(f"Ошибка сохранения лиц в кэш для {filepath}: {e}")
 
+    def has_cached_files_for_folder(self, folder_path: str) -> tuple[bool, bool]:
+        """Проверяет наличие кэшированных файлов для заданной папки. Возвращает (has_general, has_faces)."""
+        has_general = False
+        has_faces = False
+        try:
+            prefix = os.path.normpath(folder_path) + os.sep
+            with self._conn() as conn:
+                cursor = conn.cursor()
+                # Проверяем наличие записей в image_embeddings
+                cursor.execute("SELECT 1 FROM image_embeddings WHERE filepath LIKE ? LIMIT 1", (prefix + "%",))
+                if cursor.fetchone():
+                    has_general = True
+                # Проверяем наличие записей в face_embeddings
+                cursor.execute("SELECT 1 FROM face_embeddings WHERE filepath LIKE ? LIMIT 1", (prefix + "%",))
+                if cursor.fetchone():
+                    has_faces = True
+        except Exception as e:
+            logging.error(f"Ошибка проверки ИИ-кэша для папки {folder_path}: {e}")
+        return has_general, has_faces
+
     def clear_cache(self):
         """Полностью очищает кэш."""
         try:

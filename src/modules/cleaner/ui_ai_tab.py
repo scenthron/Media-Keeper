@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QScrollArea, QSizePolicy, QComboBox, QCheckBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent
-from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor
+from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor, QFont, QPainter, QPen
 
 from config import AppContext, APP_DESIGN
 from ui_widgets_base import DropZoneWidget
@@ -71,27 +71,26 @@ class RefImageDelegate(QStyledItemDelegate):
             painter.save()
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
             ind_rect = rect.adjusted(4, 4, -rect.width() + 24, -rect.height() + 24)
+            painter.setPen(Qt.PenStyle.NoPen)
             if face_found is True:
                 painter.setBrush(QColor("#22c55e"))
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.drawEllipse(ind_rect)
-                painter.setPen(QPen(Qt.GlobalColor.white, 2))
-                painter.drawLine(ind_rect.left() + 4, ind_rect.top() + 8, ind_rect.left() + 6, ind_rect.top() + 11)
-                painter.drawLine(ind_rect.left() + 6, ind_rect.top() + 11, ind_rect.left() + 12, ind_rect.top() + 5)
-            elif face_found is False:
-                painter.setBrush(QColor("#ef4444"))
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.drawEllipse(ind_rect)
-                painter.setPen(QPen(Qt.GlobalColor.white, 2))
-                painter.drawLine(ind_rect.left() + 5, ind_rect.top() + 5, ind_rect.right() - 5, ind_rect.bottom() - 5)
-                painter.drawLine(ind_rect.right() - 5, ind_rect.top() + 5, ind_rect.left() + 5, ind_rect.bottom() - 5)
-            else:
-                painter.setBrush(QColor("#6b7280"))
-                painter.setPen(Qt.PenStyle.NoPen)
                 painter.drawEllipse(ind_rect)
                 painter.setPen(QPen(Qt.GlobalColor.white, 2))
                 painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
-                painter.drawText(ind_rect, Qt.AlignmentFlag.AlignCenter, "?")
+                # Смещаем текст чуть вверх для визуального центрирования
+                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, ":)")
+            elif face_found is False:
+                painter.setBrush(QColor("#ef4444"))
+                painter.drawEllipse(ind_rect)
+                painter.setPen(QPen(Qt.GlobalColor.white, 2))
+                painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, ":(")
+            else:
+                painter.setBrush(QColor("#6b7280"))
+                painter.drawEllipse(ind_rect)
+                painter.setPen(QPen(Qt.GlobalColor.white, 2))
+                painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "?")
             painter.restore()
             
         if self.hovered_index is not None and index == self.hovered_index:
@@ -590,7 +589,7 @@ class CreateAiGroupDialog(QDialog):
         super().__init__(parent)
         is_ru = AppContext.is_ru()
         self.setWindowTitle("Создать группу эталонов" if is_ru else "Create Reference Group")
-        self.setFixedSize(350, 210)
+        self.setFixedSize(360, 240)
         self.setStyleSheet("background-color: #2b2b2b; color: white;")
         
         layout = QVBoxLayout(self)
@@ -615,9 +614,36 @@ class CreateAiGroupDialog(QDialog):
         layout.addWidget(QLabel("Тип анализа:" if is_ru else "Analysis Type:"))
         
         self.btn_group = QButtonGroup(self)
-        self.rad_general = QRadioButton("Общее сходство изображений" if is_ru else "General Image Similarity")
+        self.rad_general = QRadioButton(" Общее сходство изображений" if is_ru else " General Image Similarity")
         self.rad_general.setChecked(True)
-        self.rad_face = QRadioButton("Поиск конкретных лиц людей" if is_ru else "Face Recognition (People)")
+        self.rad_face = QRadioButton(" Поиск конкретных лиц людей" if is_ru else " Face Recognition (People)")
+        
+        rad_style = """
+            QRadioButton {
+                background-color: #333;
+                color: #ccc;
+                border-radius: 15px;
+                padding: 8px 12px;
+                margin: 4px 0px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QRadioButton:hover {
+                background-color: #444;
+            }
+            QRadioButton::indicator {
+                width: 0px;
+                height: 0px;
+            }
+            QRadioButton:checked {
+                background-color: #3b82f6;
+                color: white;
+            }
+        """
+        self.rad_general.setStyleSheet(rad_style)
+        self.rad_face.setStyleSheet(rad_style)
+        self.rad_general.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.rad_face.setCursor(Qt.CursorShape.PointingHandCursor)
         
         self.btn_group.addButton(self.rad_general, 0)
         self.btn_group.addButton(self.rad_face, 1)
@@ -1022,7 +1048,7 @@ class AiClassificationTab(QWidget):
         col_params.addLayout(params_header)
         
         params_container = QFrame()
-        params_container.setStyleSheet("QFrame { background-color: #111; border: 1px solid #333; border-radius: 4px; }")
+        params_container.setStyleSheet("QFrame { background-color: #1a1a1a; border: 1px solid #333; border-radius: 6px; }")
         params_sub_layout = QVBoxLayout(params_container)
         params_sub_layout.setContentsMargins(8, 8, 8, 8)
         params_sub_layout.setSpacing(8)
@@ -1071,12 +1097,7 @@ class AiClassificationTab(QWidget):
         
         params_sub_layout.addLayout(cache_layout)
         
-        # Разделитель
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("background-color: #333; margin: 2px 0px;")
-        params_sub_layout.addWidget(sep)
-        
+        # (Разделитель удален по просьбе пользователя)
         self.lbl_threshold = QLabel("Схожесть: 75%" if AppContext.is_ru() else "Similarity: 75%")
         self.lbl_threshold.setStyleSheet("color: #ccc; font-weight: bold; font-size: 11px; border: none; background: transparent;")
         params_sub_layout.addWidget(self.lbl_threshold)
@@ -1161,7 +1182,7 @@ class AiClassificationTab(QWidget):
         QTimer.singleShot(100, self.update_cache_info_ai)
         
         self.btn_start_scan = QPushButton(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
-        self.btn_start_scan.setFixedHeight(36)
+        self.btn_start_scan.setFixedHeight(40)
         self.btn_start_scan.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_start_scan.setStyleSheet("""
             QPushButton { background-color: #15803d; color: white; font-weight: 900; font-size: 14px; border: 1px solid #16a34a; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
@@ -1247,6 +1268,7 @@ class AiClassificationTab(QWidget):
             }
             QTreeWidget::item:selected {
                 background-color: #2b2b2b;
+                color: white;
             }
             QTreeWidget::indicator {
                 width: 14px;
@@ -1349,7 +1371,10 @@ class AiClassificationTab(QWidget):
         settings = load_ai_settings()
         groups = settings.get("groups", {})
         
-        for name, info in groups.items():
+        # Сортируем: включенные сверху, затем по алфавиту
+        sorted_groups = sorted(groups.items(), key=lambda item: (not item[1].get("enabled", True), item[0].lower()))
+        
+        for name, info in sorted_groups:
             status, count = self.classifier.get_group_status(name)
             is_face = info.get("type") == "face"
             is_enabled = info.get("enabled", True)
@@ -1469,9 +1494,9 @@ class AiClassificationTab(QWidget):
                 is_system = self.cleaner.source_folders[path].get('is_system', False)
                 
             # Проверяем наличие ИИ-кэша для папки
-            is_cached = self.cache.has_cached_files_for_folder(path)
+            is_cached, is_face_cached = self.cache.has_cached_files_for_folder(path)
             
-            item_widget = SourceListItem(path, color, is_cached=is_cached)
+            item_widget = SourceListItem(path, color, is_cached=is_cached, is_face_cached=is_face_cached)
             if is_system:
                 item_widget.set_system_error_state()
                 

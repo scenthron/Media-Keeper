@@ -581,7 +581,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
             QListView { background-color: #222222; border: none; color: #ccc; font-size: 13px; }
             QListView::item { border: none; padding: 0px; margin: 0px; }
             QListView::item:hover { background-color: #262626; }
-            QListView::item:selected { background-color: #333; }
+            QListView::item:selected { background-color: #333; color: white; }
         """)
         tree.setSelectionMode(tree.SelectionMode.SingleSelection)
         tree.clicked.connect(self.on_item_clicked)

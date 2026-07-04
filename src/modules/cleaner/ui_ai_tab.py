@@ -1295,7 +1295,7 @@ class AiClassificationTab(QWidget):
         self.spin_threshold = QDoubleSpinBox()
         self.spin_threshold.setRange(0.0, 100.0)
         self.spin_threshold.setDecimals(2)
-        self.spin_threshold.setSingleStep(1.0)
+        self.spin_threshold.setSingleStep(0.01)
         self.spin_threshold.setValue(75.0)
         self.spin_threshold.setSuffix("%")
         self.spin_threshold.setFixedWidth(80)
@@ -2026,12 +2026,15 @@ class AiClassificationTab(QWidget):
             
             act_select = QAction("Выделить все файлы в этой группе" if AppContext.is_ru() else "Select all files in this group", self)
             act_deselect = QAction("Снять выделение со всех файлов в группе" if AppContext.is_ru() else "Deselect all files in this group", self)
+            act_invert = QAction("Инвертировать выделение" if AppContext.is_ru() else "Invert Selection", self)
             
             act_select.triggered.connect(lambda: self.set_group_selection_state(item, Qt.CheckState.Checked))
             act_deselect.triggered.connect(lambda: self.set_group_selection_state(item, Qt.CheckState.Unchecked))
+            act_invert.triggered.connect(lambda: self.invert_group_selection(item))
             
             menu.addAction(act_select)
             menu.addAction(act_deselect)
+            menu.addAction(act_invert)
             menu.exec(self.tree_results.mapToGlobal(pos))
         elif data and not data.get("is_group", False):
             menu = QMenu(self)
@@ -2047,6 +2050,11 @@ class AiClassificationTab(QWidget):
             act_reveal.triggered.connect(lambda: reveal_in_explorer(path))
             menu.addAction(act_reveal)
             
+            menu.addSeparator()
+            act_invert = QAction("Инвертировать выделение в группе" if AppContext.is_ru() else "Invert Selection in group", self)
+            act_invert.triggered.connect(lambda: self.invert_group_selection(item.parent()))
+            menu.addAction(act_invert)
+            
             menu.exec(self.tree_results.mapToGlobal(pos))
 
     def set_group_selection_state(self, group_item, state):
@@ -2055,6 +2063,28 @@ class AiClassificationTab(QWidget):
             group_item.setCheckState(0, state)
             for i in range(group_item.childCount()):
                 group_item.child(i).setCheckState(0, state)
+        finally:
+            self.tree_results.blockSignals(False)
+        self.update_cleaner_action_bar_info()
+
+    def invert_group_selection(self, group_item):
+        if not group_item: return
+        self.tree_results.blockSignals(True)
+        try:
+            checked_count = 0
+            for i in range(group_item.childCount()):
+                child = group_item.child(i)
+                new_state = Qt.CheckState.Checked if child.checkState(0) == Qt.CheckState.Unchecked else Qt.CheckState.Unchecked
+                child.setCheckState(0, new_state)
+                if new_state == Qt.CheckState.Checked:
+                    checked_count += 1
+            
+            if checked_count == 0:
+                group_item.setCheckState(0, Qt.CheckState.Unchecked)
+            elif checked_count == group_item.childCount():
+                group_item.setCheckState(0, Qt.CheckState.Checked)
+            else:
+                group_item.setCheckState(0, Qt.CheckState.PartiallyChecked)
         finally:
             self.tree_results.blockSignals(False)
         self.update_cleaner_action_bar_info()

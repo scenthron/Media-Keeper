@@ -82,6 +82,28 @@ class AiEngine:
         if not self.are_models_present():
             logging.error("Невозможно инициализировать ИИ: отсутствуют файлы моделей.")
             return False
+            
+        try:
+            # 1. Общая классификация через ONNX Runtime
+            # Отключаем лишнее логирование ORT
+            import onnxruntime as ort
+            opts = ort.SessionOptions()
+            opts.log_severity_level = 3
+            self.ort_session = ort.InferenceSession(self.mobilenet_path, sess_options=opts, providers=['CPUExecutionProvider'])
+            
+            # 2. Детектор лиц YuNet (OpenCV)
+            # Устанавливаем оптимальный порог 0.3, чтобы находить лица, но без лишнего мусора
+            self.face_detector = cv2.FaceDetectorYN.create(self.yunet_path, "", (320, 320), score_threshold=0.3)
+            
+            # 3. Распознаватель лиц SFace (OpenCV)
+            self.face_recognizer = cv2.FaceRecognizerSF.create(self.sface_path, "")
+            
+            self._is_initialized = True
+            logging.info("ИИ-модели успешно инициализированы.")
+            return True
+        except Exception as e:
+            logging.error(f"Ошибка инициализации ИИ-сессий: {e}", exc_info=True)
+            return False
 
     def extract_image_embedding(self, image_path: str) -> np.ndarray:
         """

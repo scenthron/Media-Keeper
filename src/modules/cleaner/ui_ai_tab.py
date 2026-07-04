@@ -1011,6 +1011,56 @@ class AiClassificationTab(QWidget):
         params_sub_layout.setContentsMargins(8, 8, 8, 8)
         params_sub_layout.setSpacing(8)
         
+        # Панель размера и очистки кэша
+        cache_layout = QHBoxLayout()
+        cache_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.chk_use_cache = QCheckBox("Использовать кэш" if AppContext.is_ru() else "Use Cache")
+        self.chk_use_cache.setChecked(True)
+        self.chk_use_cache.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_use_cache.setStyleSheet("""
+            QCheckBox { color: white; font-weight: bold; font-size: 13px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        """)
+        cache_layout.addWidget(self.chk_use_cache)
+        cache_layout.addStretch()
+        
+        self.lbl_cache_info_ai = QLabel("0 B")
+        self.lbl_cache_info_ai.setStyleSheet("color: #888; font-size: 12px; margin-right: 5px;")
+        cache_layout.addWidget(self.lbl_cache_info_ai)
+        
+        from .ui_panels import load_svg_icon
+        self.btn_clear_cache_ai = QPushButton("")
+        icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
+        self.btn_clear_cache_ai.setIcon(load_svg_icon(os.path.join(icons_dir, "trash-color.svg"), QSize(16, 16)))
+        self.btn_clear_cache_ai.setIconSize(QSize(16, 16))
+        self.btn_clear_cache_ai.setToolTip("Очистить кэш ИИ" if AppContext.is_ru() else "Clear AI Cache")
+        self.btn_clear_cache_ai.setFixedSize(32, 32)
+        self.btn_clear_cache_ai.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear_cache_ai.setStyleSheet("""
+            QPushButton { 
+                background-color: transparent; 
+                border: 1px solid #555; 
+                border-radius: 16px; 
+                padding: 0px;
+            }
+            QPushButton:hover { 
+                background-color: #444; 
+                border-color: #ef4444; 
+            }
+        """)
+        self.btn_clear_cache_ai.clicked.connect(self.clear_ai_cache_ui)
+        cache_layout.addWidget(self.btn_clear_cache_ai)
+        
+        params_sub_layout.addLayout(cache_layout)
+        
+        # Разделитель
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setStyleSheet("background-color: #333; margin: 2px 0px;")
+        params_sub_layout.addWidget(sep)
+        
         self.lbl_threshold = QLabel("Схожесть: 75%" if AppContext.is_ru() else "Similarity: 75%")
         self.lbl_threshold.setStyleSheet("color: #ccc; font-weight: bold; font-size: 11px; border: none; background: transparent;")
         params_sub_layout.addWidget(self.lbl_threshold)
@@ -1089,49 +1139,7 @@ class AiClassificationTab(QWidget):
         self.combo_match_mode.currentIndexChanged.connect(self.on_match_mode_changed)
         params_sub_layout.addWidget(self.combo_match_mode)
         
-        # Панель размера и очистки кэша
-        cache_layout = QHBoxLayout()
-        cache_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.chk_use_cache = QCheckBox("Использовать кэш" if AppContext.is_ru() else "Use Cache")
-        self.chk_use_cache.setChecked(True)
-        self.chk_use_cache.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.chk_use_cache.setStyleSheet("""
-            QCheckBox { color: white; font-weight: bold; font-size: 13px; }
-            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
-            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
-        """)
-        cache_layout.addWidget(self.chk_use_cache)
-        cache_layout.addStretch()
-        
-        self.lbl_cache_info_ai = QLabel("0 B")
-        self.lbl_cache_info_ai.setStyleSheet("color: #888; font-size: 12px; margin-right: 5px;")
-        cache_layout.addWidget(self.lbl_cache_info_ai)
-        
-        from .ui_panels import load_svg_icon
-        self.btn_clear_cache_ai = QPushButton("")
-        icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
-        self.btn_clear_cache_ai.setIcon(load_svg_icon(os.path.join(icons_dir, "trash-color.svg"), QSize(16, 16)))
-        self.btn_clear_cache_ai.setIconSize(QSize(16, 16))
-        self.btn_clear_cache_ai.setToolTip("Очистить кэш ИИ" if AppContext.is_ru() else "Clear AI Cache")
-        self.btn_clear_cache_ai.setFixedSize(32, 32)
-        self.btn_clear_cache_ai.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_clear_cache_ai.setStyleSheet("""
-            QPushButton { 
-                background-color: transparent; 
-                border: 1px solid #555; 
-                border-radius: 16px; 
-                padding: 0px;
-            }
-            QPushButton:hover { 
-                background-color: #444; 
-                border-color: #ef4444; 
-            }
-        """)
-        self.btn_clear_cache_ai.clicked.connect(self.clear_ai_cache_ui)
-        cache_layout.addWidget(self.btn_clear_cache_ai)
-        
-        params_sub_layout.addLayout(cache_layout)
+        # Moved cache layout to the top of the block
         
         # Инициализируем размер кэша
         QTimer.singleShot(100, self.update_cache_info_ai)

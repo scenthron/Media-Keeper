@@ -919,6 +919,9 @@ class AiScanWorker(QThread):
                 
                 if getattr(self, "is_cluster", False):
                     import numpy as np
+                    from .logic_ai_classifier import load_ai_settings
+                    ai_settings = load_ai_settings()
+                    match_thresh = ai_settings.get("face_match_threshold", 1.128)
                     
                     if getattr(self, "cluster_type", "face") == "face":
                         faces = None
@@ -934,10 +937,19 @@ class AiScanWorker(QThread):
                                 emb = face["descriptor"]
                                 matched = False
                                 for cluster in cluster_data:
-                                    sim = float(np.dot(emb, cluster["centroid"]))
-                                    if sim >= (self.threshold / 100.0):
+                                    dist = float(np.linalg.norm(emb - cluster["centroid"]))
+                                    if dist <= match_thresh:
+                                        score = 100.0 - (dist / match_thresh) * 25.0
+                                    else:
+                                        if match_thresh >= 2.0:
+                                            score = 0.0
+                                        else:
+                                            score = 75.0 - ((dist - match_thresh) / (2.0 - match_thresh)) * 75.0
+                                    score = max(0.0, min(100.0, score))
+                                    
+                                    if score >= self.threshold:
                                         if not any(m["path"] == fp for m in cluster["members"]):
-                                            cluster["members"].append({"path": fp, "size": size, "confidence": sim * 100.0, "type": "face"})
+                                            cluster["members"].append({"path": fp, "size": size, "confidence": score, "type": "face"})
                                         
                                         new_centroid = np.mean([c["emb"] for c in cluster["raw_embs"]] + [emb], axis=0)
                                         norm = np.linalg.norm(new_centroid)

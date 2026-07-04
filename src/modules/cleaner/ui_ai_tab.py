@@ -41,8 +41,14 @@ class AiAdvancedSettingsDialog(QDialog):
         
         # Юнет
         l_det = QLabel("Порог детектора лиц (YuNet):")
+        tooltip_det = ("Определяет, насколько 'похожим на лицо' должен быть объект, чтобы нейросеть его захватила.\n"
+                       "Меньшие значения (0.50): Находит даже размытые/мелкие лица в толпе, но может принять за лицо случайные предметы.\n"
+                       "Высокие значения (0.80+): Захватывает только очень четкие, крупные лица анфас.\n"
+                       "Изменение этой настройки автоматически очистит кэш лиц для пересканирования.")
+        l_det.setToolTip(tooltip_det)
         self.slider_det = QSlider(Qt.Orientation.Horizontal)
         self.slider_det.setRange(0, 100)
+        self.slider_det.setToolTip(tooltip_det)
         self.slider_det.setValue(int(self.settings.get("face_det_threshold", 65.0)))
         self.slider_det.setStyleSheet("""
             QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
@@ -69,8 +75,15 @@ class AiAdvancedSettingsDialog(QDialog):
         
         # SFace
         l_match = QLabel("Строгость совпадения лиц (SFace L2-norm):")
+        tooltip_match = ("Математическое расстояние между лицами для признания их одним человеком.\n"
+                         "Меньшие значения (например, 0.7 - 0.9): Очень строгий поиск, почти идентичные фото.\n"
+                         "Значение по умолчанию (1.128): Оптимальный порог SFace для разных ракурсов и освещения.\n"
+                         "Высокие значения (1.3+): Объединяет в одну группу даже отдаленно похожих людей.\n"
+                         "Изменение не требует пересканирования (кэш не сбрасывается).")
+        l_match.setToolTip(tooltip_match)
         self.slider_match = QSlider(Qt.Orientation.Horizontal)
         self.slider_match.setRange(500, 1500)
+        self.slider_match.setToolTip(tooltip_match)
         
         current_sface = self.settings.get("face_match_threshold", 1.128)
         if current_sface > 2.0: current_sface = 1.128
@@ -830,6 +843,8 @@ class AiClassificationTab(QWidget):
         self.action_bar.combo_autoselect.hide()
         self.action_bar.btn_select_all.hide()
         self.action_bar.btn_deselect.hide()
+        self.action_bar.chk_preserve.hide()
+        self.action_bar.combo_collision.hide()
         post_filter_layout = QHBoxLayout()
         self.lbl_post_filter = QLabel("Быстрый фильтр:" if AppContext.is_ru() else "Quick Filter:")
         self.lbl_post_filter.setStyleSheet("color: #ccc; font-size: 11px; font-weight: bold;")

@@ -1509,7 +1509,8 @@ class AiClassificationTab(QWidget):
             self.reload_groups()
 
     def set_scan_enabled(self, enabled: bool):
-        self.btn_start_scan.setEnabled(enabled)
+        self._is_ok = enabled
+        self.update_scan_button_state()
 
     def check_and_download_models_ui(self) -> bool:
         if self.ai.are_models_present():
@@ -1552,7 +1553,11 @@ class AiClassificationTab(QWidget):
         folders = self.cleaner.get_active_source_folders() if hasattr(self, 'cleaner') else []
         has_folders = len(folders) > 0
         has_enabled_groups = any(widget.chk.isChecked() for widget in self.chips_map.values())
-        self.btn_start_scan.setEnabled(has_folders and has_enabled_groups)
+        
+        # _is_ok default to True because logic_actions will pass False if there is a nested/system error
+        is_ok = getattr(self, '_is_ok', True) 
+        
+        self.btn_start_scan.setEnabled(has_folders and has_enabled_groups and is_ok)
 
     def toggle_scan(self):
         if self.active_worker and self.active_worker.isRunning():

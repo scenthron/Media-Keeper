@@ -303,8 +303,7 @@ class AiGroupSettingsDialog(QDialog):
                     item.setToolTip(f)
                     self.list_neg.addItem(item)
                     
-    def _on_item_hover(self, item, global_pos):
-        path = item.data(Qt.ItemDataRole.UserRole)
+    def _on_item_hover(self, path, global_pos):
         if not path or not os.path.exists(path):
             return
             
@@ -334,14 +333,14 @@ class AiGroupSettingsDialog(QDialog):
                     if pixmap.width() > 300 or pixmap.height() > 300:
                         pixmap = pixmap.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                         
-                    self.hover_tooltip.lbl_image.setPixmap(pixmap)
+                    self.hover_tooltip.setPixmap(pixmap)
                     self.hover_tooltip.move(global_pos)
                     self.hover_tooltip.show()
                     return
             except Exception as e:
                 logging.error(f"Error drawing bbox: {e}")
                 
-        self.hover_tooltip.show_image(item, global_pos)
+        self.hover_tooltip.show_image(path, global_pos)
 
     def save_settings(self):
         new_name = self.txt_name.text().strip()

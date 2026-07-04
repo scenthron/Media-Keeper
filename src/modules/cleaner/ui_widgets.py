@@ -651,6 +651,17 @@ class RefImagesListWidget(QListWidget):
         self.delegate = RefImageDelegate(self)
         self.setItemDelegate(self.delegate)
         
+        self.hover_timer = QTimer(self)
+        self.hover_timer.setSingleShot(True)
+        self.hover_timer.setInterval(500)
+        self.hover_timer.timeout.connect(self._emit_hover)
+        self._pending_hover_path = None
+        self._pending_hover_pos = None
+
+    def _emit_hover(self):
+        if self._pending_hover_path:
+            self.item_hovered.emit(self._pending_hover_path, self._pending_hover_pos)
+            
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
@@ -689,8 +700,16 @@ class RefImagesListWidget(QListWidget):
             path = item.data(Qt.ItemDataRole.UserRole)
             if path:
                 glob_pos = self.mapToGlobal(event.pos())
-                self.item_hovered.emit(path, glob_pos)
+                if path != self._pending_hover_path:
+                    self._pending_hover_path = path
+                    self._pending_hover_pos = glob_pos
+                    self.hover_timer.start()
+                else:
+                    # Update position in case it changed slightly, but don't restart timer
+                    self._pending_hover_pos = glob_pos
         else:
+            self._pending_hover_path = None
+            self.hover_timer.stop()
             self.hover_left.emit()
 
     def leaveEvent(self, event):
@@ -698,6 +717,9 @@ class RefImagesListWidget(QListWidget):
         if self.delegate.hovered_index is not None:
             self.delegate.hovered_index = None
             self.viewport().update()
+        self.hover_timer.stop()
+        self._pending_hover_path = None
+        self.hover_left.emit()
         self.hover_left.emit()
 
     def mousePressEvent(self, event):

@@ -667,6 +667,7 @@ class CreateAiGroupDialog(QDialog):
                 font-size: 13px;
             }
         """)
+        self.txt_name.textChanged.connect(self._on_name_changed)
         layout.addWidget(self.txt_name)
         
         layout.addWidget(QLabel("Тип анализа:" if is_ru else "Analysis Type:"))
@@ -732,7 +733,18 @@ class CreateAiGroupDialog(QDialog):
         self.btn_add_file = QPushButton("Добавить файл" if is_ru else "Add File")
         self.btn_add_file.setStyleSheet("background-color: #444; border: 1px solid #555; padding: 6px 12px; border-radius: 4px;")
         self.btn_add_file.clicked.connect(self.browse_files)
+        
+        self.btn_del_file = QPushButton("Удалить выбранные" if is_ru else "Delete Selected")
+        self.btn_del_file.setStyleSheet("background-color: #ef4444; border: none; padding: 6px 12px; border-radius: 4px;")
+        self.btn_del_file.clicked.connect(self.delete_selected_files)
+        
+        self.btn_train = QPushButton("Создать и Обучить" if is_ru else "Create and Train")
+        self.btn_train.setStyleSheet("background-color: #16a34a; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;")
+        self.btn_train.clicked.connect(self.accept)
+        
         btn_list_layout.addWidget(self.btn_add_file)
+        btn_list_layout.addWidget(self.btn_del_file)
+        btn_list_layout.addWidget(self.btn_train)
         btn_list_layout.addStretch()
         layout.addLayout(btn_list_layout)
         
@@ -752,6 +764,34 @@ class CreateAiGroupDialog(QDialog):
         buttons_layout.addWidget(self.btn_cancel)
         buttons_layout.addWidget(self.btn_ok)
         layout.addLayout(buttons_layout)
+        
+        self._on_name_changed(self.txt_name.text())
+
+    def _on_name_changed(self, text):
+        is_valid = bool(text.strip())
+        self.btn_ok.setEnabled(is_valid)
+        self.btn_train.setEnabled(is_valid)
+        
+        disabled_style_ok = "background-color: #222; color: #555; border: 1px solid #333; padding: 6px 12px; border-radius: 4px; font-weight: bold;"
+        active_style_ok = "background-color: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;"
+        
+        disabled_style_train = "background-color: #222; color: #555; border: 1px solid #333; padding: 6px 12px; border-radius: 4px; font-weight: bold;"
+        active_style_train = "background-color: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold;"
+        
+        self.btn_ok.setStyleSheet(active_style_ok if is_valid else disabled_style_ok)
+        self.btn_train.setStyleSheet(active_style_train if is_valid else disabled_style_train)
+
+    def delete_selected_files(self):
+        selected_items = self.list_ref_images.selectedItems()
+        if not selected_items:
+            return
+            
+        for item in selected_items:
+            path = item.data(Qt.ItemDataRole.UserRole)
+            if path in self.pending_files:
+                self.pending_files.remove(path)
+            row = self.list_ref_images.row(item)
+            self.list_ref_images.takeItem(row)
 
     def browse_files(self):
         from PyQt6.QtWidgets import QFileDialog
@@ -769,8 +809,10 @@ class CreateAiGroupDialog(QDialog):
         for path in file_paths:
             if path not in self.pending_files:
                 self.pending_files.append(path)
-                item = QListWidgetItem(os.path.basename(path))
+                item = QListWidgetItem()
+                item.setIcon(QIcon(path))
                 item.setData(Qt.ItemDataRole.UserRole, path)
+                item.setToolTip(os.path.basename(path))
                 self.list_ref_images.addItem(item)
 
 

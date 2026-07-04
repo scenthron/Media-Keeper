@@ -91,12 +91,28 @@ class AiEngine:
             opts.log_severity_level = 3
             self.ort_session = ort.InferenceSession(self.mobilenet_path, sess_options=opts, providers=['CPUExecutionProvider'])
             
+            # Функция-помощник для обхода бага OpenCV с кириллицей в путях на Windows
+            def get_ascii_path(path_str):
+                import sys
+                if sys.platform == 'win32':
+                    try:
+                        import ctypes
+                        buffer_size = 256
+                        buffer = ctypes.create_unicode_buffer(buffer_size)
+                        if ctypes.windll.kernel32.GetShortPathNameW(path_str, buffer, buffer_size):
+                            return buffer.value
+                    except Exception:
+                        pass
+                return path_str
+
+            yunet_safe = get_ascii_path(self.yunet_path)
+            sface_safe = get_ascii_path(self.sface_path)
+            
             # 2. Детектор лиц YuNet (OpenCV)
-            # Устанавливаем оптимальный порог 0.3, чтобы находить лица, но без лишнего мусора
-            self.face_detector = cv2.FaceDetectorYN.create(self.yunet_path, "", (320, 320), score_threshold=0.3)
+            self.face_detector = cv2.FaceDetectorYN.create(yunet_safe, "", (320, 320), score_threshold=0.3)
             
             # 3. Распознаватель лиц SFace (OpenCV)
-            self.face_recognizer = cv2.FaceRecognizerSF.create(self.sface_path, "")
+            self.face_recognizer = cv2.FaceRecognizerSF.create(sface_safe, "")
             
             self._is_initialized = True
             logging.info("ИИ-модели успешно инициализированы.")

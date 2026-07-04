@@ -778,7 +778,7 @@ class AiClassificationTab(QWidget):
         params_header.addWidget(params_title)
         
         self.lbl_info_icon = QLabel("ℹ️")
-        self.lbl_info_icon.setCursor(Qt.CursorShape.HelpCursor)
+        self.lbl_info_icon.setCursor(Qt.CursorShape.WhatsThisCursor)
         self.lbl_info_icon.setStyleSheet("color: #3b82f6; font-size: 12px; margin-left: 4px; background: transparent; border: none;")
         
         info_text = (

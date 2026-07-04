@@ -78,19 +78,19 @@ class RefImageDelegate(QStyledItemDelegate):
                 painter.setPen(QPen(Qt.GlobalColor.white, 2))
                 painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
                 # Смещаем текст чуть вверх для визуального центрирования
-                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, ":)")
+                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "🙂")
             elif face_found is False:
                 painter.setBrush(QColor("#ef4444"))
                 painter.drawEllipse(ind_rect)
                 painter.setPen(QPen(Qt.GlobalColor.white, 2))
                 painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
-                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, ":(")
+                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "🙁")
             else:
                 painter.setBrush(QColor("#6b7280"))
                 painter.drawEllipse(ind_rect)
                 painter.setPen(QPen(Qt.GlobalColor.white, 2))
                 painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
-                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "?")
+                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "❓")
             painter.restore()
             
         if self.hovered_index is not None and index == self.hovered_index:
@@ -268,8 +268,8 @@ class EditAiGroupDialog(QDialog):
         is_face_type = group_info.get("type") == "face"
         
         self.btn_group = QButtonGroup(self)
-        self.rad_general = QRadioButton(" Общее сходство изображений" if self.is_ru else " General Image Similarity")
-        self.rad_face = QRadioButton(" Поиск конкретных лиц людей" if self.is_ru else " Face Recognition (People)")
+        self.rad_general = QRadioButton(" Общее сходство" if self.is_ru else " General Similarity")
+        self.rad_face = QRadioButton(" Поиск лиц" if self.is_ru else " Face Search")
         
         rad_style = """
             QRadioButton {
@@ -329,6 +329,8 @@ class EditAiGroupDialog(QDialog):
         self.hover_tooltip = ImageHoverToolTip(self)
         self.list_ref_images.item_hovered.connect(self.hover_tooltip.show_image)
         self.list_ref_images.hover_left.connect(self.hover_tooltip.hide)
+        self.list_ref_images.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.list_ref_images.customContextMenuRequested.connect(self._on_ref_context_menu)
         
         layout.addWidget(self.list_ref_images, 1)
         
@@ -387,6 +389,29 @@ class EditAiGroupDialog(QDialog):
         layout.addLayout(buttons_layout)
         
         self.reload_thumbnails()
+
+    def _on_ref_context_menu(self, pos):
+        item = self.list_ref_images.itemAt(pos)
+        if not item: return
+        
+        from PyQt6.QtWidgets import QMenu
+        from PyQt6.QtGui import QAction, QDesktopServices
+        from PyQt6.QtCore import QUrl
+        
+        menu = QMenu(self)
+        
+        act_open = QAction("Открыть в проводнике" if self.is_ru else "Open in Explorer", self)
+        fp = item.data(Qt.ItemDataRole.UserRole)
+        act_open.triggered.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(fp))))
+        menu.addAction(act_open)
+        
+        menu.addSeparator()
+        
+        act_del = QAction("Удалить из группы" if self.is_ru else "Remove from Group", self)
+        act_del.triggered.connect(self.delete_selected_files)
+        menu.addAction(act_del)
+        
+        menu.exec(self.list_ref_images.mapToGlobal(pos))
 
     def reload_thumbnails(self):
         self.list_ref_images.clear()
@@ -645,9 +670,9 @@ class CreateAiGroupDialog(QDialog):
         layout.addWidget(QLabel("Тип анализа:" if is_ru else "Analysis Type:"))
         
         self.btn_group = QButtonGroup(self)
-        self.rad_general = QRadioButton(" Общее сходство изображений" if is_ru else " General Image Similarity")
+        self.rad_general = QRadioButton(" Общее сходство" if is_ru else " General Similarity")
         self.rad_general.setChecked(True)
-        self.rad_face = QRadioButton(" Поиск конкретных лиц людей" if is_ru else " Face Recognition (People)")
+        self.rad_face = QRadioButton(" Поиск лиц" if is_ru else " Face Search")
         
         rad_style = """
             QRadioButton {
@@ -943,7 +968,7 @@ class AiClassificationTab(QWidget):
         # Верхняя панель настроек (со свободным изменением высоты от 130 до 280)
         self.top_settings = QFrame()
         self.top_settings.setMinimumHeight(130)
-        self.top_settings.setMaximumHeight(280)
+        self.top_settings.setMaximumHeight(300)
         self.top_settings.setStyleSheet("background-color: #1e1e1e; border-bottom: 1px solid #2d2d2d;")
         top_layout = QHBoxLayout(self.top_settings)
         top_layout.setContentsMargins(15, 6, 15, 6)

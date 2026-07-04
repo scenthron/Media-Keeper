@@ -44,8 +44,8 @@ class ActionMixin:
         color = generate_vibrant_color(idx)
         self.source_folders[path] = {'protected': False, 'color': color, 'is_system': is_system}
         
-        if hasattr(self, 'cache'):
-            is_cached, is_face_cached = self.cache.has_cached_files_for_folder(path)
+        if getattr(self, 'current_tab', 0) == 2 and hasattr(self, 'page_ai'):
+            is_cached, is_face_cached = self.page_ai.classifier.cache.has_cached_files_for_folder(path)
         else:
             is_cached, is_face_cached = False, False
             

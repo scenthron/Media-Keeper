@@ -674,9 +674,29 @@ class AiClassificationTab(QWidget):
         self.spin_post_filter.setSingleStep(0.01)
         self.spin_post_filter.setSuffix("%")
         self.spin_post_filter.setFixedWidth(80)
-        self.spin_post_filter.setStyleSheet("""
-            QDoubleSpinBox { background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; color: white; font-size: 11px; }
-            QDoubleSpinBox:hover { border-color: #555; }
+        UP_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtMTggMTUtNi02LTYgNiIvPjwvc3ZnPg=='
+        DOWN_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtNiA5bDYgNiA2LTYiLz48L3N2Zz4='
+        up_img = f"data:image/svg+xml;base64,{UP_BASE64.decode()}"
+        down_img = f"data:image/svg+xml;base64,{DOWN_BASE64.decode()}"
+        
+        self.spin_post_filter.setStyleSheet(f"""
+            QDoubleSpinBox {{ background-color: #2b2b2b; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; color: white; font-size: 11px; }}
+            QDoubleSpinBox:hover {{ border-color: #555; }}
+            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
+                width: 16px;
+                background: rgba(0, 0, 0, 0.2);
+                border-left: 1px solid #444;
+            }}
+            QDoubleSpinBox::up-button {{
+                border-top-right-radius: 3px;
+                border-bottom: 1px solid #444;
+                image: url({up_img});
+            }}
+            QDoubleSpinBox::down-button {{
+                border-bottom-right-radius: 3px;
+                image: url({down_img});
+            }}
+            QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {{ background: rgba(255, 255, 255, 0.1); }}
         """)
         
         self.slider_post_filter.valueChanged.connect(self._on_slider_moved)

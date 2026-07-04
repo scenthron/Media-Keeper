@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QTreeWidget, QTreeWidgetItem, QSizePolicy, QMenu, QDoubleSpinBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QThread, QUrl, QFileSystemWatcher, QTimer, QSize
-from PyQt6.QtGui import QColor, QFontMetrics, QDesktopServices, QAction, QValidator, QIcon, QPixmap, QPainter
+from PyQt6.QtGui import QColor, QFontMetrics, QDesktopServices, QAction, QValidator, QIcon, QPixmap, QPainter, QFont
 from config import AppContext
 from utils_common import get_folder_icon, format_size
 from ui_widgets_base import ElidedLabel

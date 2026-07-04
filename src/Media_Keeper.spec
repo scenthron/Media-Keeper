@@ -6,11 +6,11 @@ a = Analysis(
     pathex=['.'],
     binaries=[('bin\\fpcalc.exe', 'bin')],
     datas=[('icons', 'icons'), ('launcher', 'launcher'), ('languages', 'languages')],
-    hiddenimports=['PyQt6.QtSvg', 'PyQt6.QtSvgWidgets', 'PyQt6.QtMultimedia', 'PyQt6.QtMultimediaWidgets', 'PyQt6.sip', 'PIL', 'modules.cleaner.vhash', 'modules.cleaner.ahash_audio'],
+    hiddenimports=['PyQt6.QtSvg', 'PyQt6.QtSvgWidgets', 'PyQt6.QtMultimedia', 'PyQt6.QtMultimediaWidgets', 'PyQt6.sip', 'PIL', 'numpy', 'cv2', 'onnxruntime', 'modules.cleaner.vhash', 'modules.cleaner.ahash_audio'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['tkinter', 'matplotlib', 'numpy', 'scipy'],
+    excludes=['tkinter', 'matplotlib', 'scipy'],
     noarchive=False,
     optimize=0,
 )

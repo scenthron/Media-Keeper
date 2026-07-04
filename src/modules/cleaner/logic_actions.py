@@ -16,6 +16,11 @@ class ActionMixin:
         path = QFileDialog.getExistingDirectory(self, AppContext.tr("dlg_select_folder"), "")
         if path:
             self.add_folder_path(path)
+            
+    def add_folder_paths(self, paths: list[str]) -> None:
+        for p in paths:
+            if os.path.isdir(p):
+                self.add_folder_path(p)
 
     def add_folder_path(self, path: str) -> None:
         path = os.path.normpath(path)

@@ -458,6 +458,8 @@ class AiClassificationTab(QWidget):
         self.drop_zone_ai = DropZoneWidget()
         self.drop_zone_ai.clicked.connect(self.cleaner.add_folder)
         self.drop_zone_ai.folder_dropped.connect(self.cleaner.add_folder_path)
+        if hasattr(self.drop_zone_ai, 'files_dropped') and hasattr(self.cleaner, 'add_folder_paths'):
+            self.drop_zone_ai.files_dropped.connect(self.cleaner.add_folder_paths)
         self.drop_zone_ai.clear_default_requested.connect(self.cleaner.clear_folders)
         self.drop_zone_ai.btn_clear.show()
         self.drop_zone_ai.setStyleSheet(self.drop_zone_ai.styleSheet() + "margin: 0px; padding: 2px;")
@@ -1039,6 +1041,8 @@ class AiClassificationTab(QWidget):
         else:
             self.scroll_ref.setStyleSheet("QScrollArea { border: 1px solid #333; background-color: #111; border-radius: 4px; }")
             self.ref_container.setStyleSheet("background-color: #111;")
+        
+        self.update_scan_button_state()
 
     def _on_slider_moved(self, value):
         if getattr(self, "is_cluster_results", False) and hasattr(self, "cluster_unique_sizes"):
@@ -1185,11 +1189,12 @@ class AiClassificationTab(QWidget):
         folders = self.cleaner.get_active_source_folders() if hasattr(self, 'cleaner') else []
         has_folders = len(folders) > 0
         has_enabled_groups = any(widget.chk.isChecked() for widget in self.chips_map.values())
+        is_cluster = self.chk_auto_cluster.isChecked()
         
         # _is_ok default to True because logic_actions will pass False if there is a nested/system error
         is_ok = getattr(self, '_is_ok', True) 
         
-        can_run = has_folders and has_enabled_groups and is_ok
+        can_run = has_folders and (has_enabled_groups or is_cluster) and is_ok
         self.btn_start_scan.setEnabled(can_run)
         
         base_text = " Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search"

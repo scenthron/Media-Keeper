@@ -76,20 +76,20 @@ class RefImageDelegate(QStyledItemDelegate):
                 painter.setBrush(QColor("#22c55e"))
                 painter.drawEllipse(ind_rect)
                 painter.setPen(QPen(Qt.GlobalColor.white, 2))
-                painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+                painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
                 # Смещаем текст чуть вверх для визуального центрирования
                 painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "🙂")
             elif face_found is False:
                 painter.setBrush(QColor("#ef4444"))
                 painter.drawEllipse(ind_rect)
                 painter.setPen(QPen(Qt.GlobalColor.white, 2))
-                painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+                painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
                 painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "🙁")
             else:
                 painter.setBrush(QColor("#6b7280"))
                 painter.drawEllipse(ind_rect)
                 painter.setPen(QPen(Qt.GlobalColor.white, 2))
-                painter.setFont(QFont("Arial", 8, QFont.Weight.Bold))
+                painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
                 painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "❓")
             painter.restore()
             
@@ -1373,8 +1373,8 @@ class AiClassificationTab(QWidget):
         
         self.main_splitter.addWidget(self.bottom_container)
         
-        # Начальные размеры вертикального сплиттера: 155px под настройки, остальное под таблицу
-        self.main_splitter.setSizes([155, 450])
+        # Начальные размеры вертикального сплиттера: ~165px под настройки, остальное под таблицу
+        self.main_splitter.setSizes([165, 440])
         
         content_layout.addWidget(self.main_splitter, 1)
         self.main_layout.addWidget(self.main_content_widget, 1)
@@ -1713,6 +1713,8 @@ class AiClassificationTab(QWidget):
         self.active_worker = None
         self.scan_finished.emit()
         self.update_cache_info_ai()
+        if hasattr(self, 'cleaner'):
+            self.update_folders_label(self.cleaner.get_active_source_folders())
         
         self.populate_results(results)
 
@@ -1881,6 +1883,21 @@ class AiClassificationTab(QWidget):
             
             menu.addAction(act_select)
             menu.addAction(act_deselect)
+            menu.exec(self.tree_results.mapToGlobal(pos))
+        elif data and not data.get("is_group", False):
+            menu = QMenu(self)
+            menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; } QMenu::separator { height: 1px; background: #666; margin: 4px 8px; }")
+            path = data.get("path")
+            
+            act_open = QAction("Открыть файл" if AppContext.is_ru() else "Open File", self)
+            act_open.triggered.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(path)))
+            menu.addAction(act_open)
+            
+            act_reveal = QAction("Показать в папке" if AppContext.is_ru() else "Show in folder", self)
+            from utils_common import reveal_in_explorer
+            act_reveal.triggered.connect(lambda: reveal_in_explorer(path))
+            menu.addAction(act_reveal)
+            
             menu.exec(self.tree_results.mapToGlobal(pos))
 
     def set_group_selection_state(self, group_item, state):

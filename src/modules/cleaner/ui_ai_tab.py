@@ -268,8 +268,38 @@ class EditAiGroupDialog(QDialog):
         is_face_type = group_info.get("type") == "face"
         
         self.btn_group = QButtonGroup(self)
-        self.rad_general = QRadioButton("Общее сходство изображений" if self.is_ru else "General Image Similarity")
-        self.rad_face = QRadioButton("Поиск конкретных лиц людей" if self.is_ru else "Face Recognition (People)")
+        self.rad_general = QRadioButton(" Общее сходство изображений" if self.is_ru else " General Image Similarity")
+        self.rad_face = QRadioButton(" Поиск конкретных лиц людей" if self.is_ru else " Face Recognition (People)")
+        
+        rad_style = """
+            QRadioButton {
+                background-color: #3b3b3b;
+                color: #e0e0e0;
+                border-radius: 14px;
+                padding: 7px 12px;
+                margin: 2px 0px;
+                font-weight: bold;
+                font-size: 13px;
+                border: 1px solid #555;
+            }
+            QRadioButton:hover {
+                background-color: #4a4a4a;
+                border: 1px solid #666;
+            }
+            QRadioButton::indicator {
+                width: 0px;
+                height: 0px;
+            }
+            QRadioButton:checked {
+                background-color: #3b82f6;
+                color: white;
+                border: 1px solid #2563eb;
+            }
+        """
+        self.rad_general.setStyleSheet(rad_style)
+        self.rad_face.setStyleSheet(rad_style)
+        self.rad_general.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.rad_face.setCursor(Qt.CursorShape.PointingHandCursor)
         
         self.btn_group.addButton(self.rad_general, 0)
         self.btn_group.addButton(self.rad_face, 1)
@@ -284,6 +314,7 @@ class EditAiGroupDialog(QDialog):
         type_layout = QHBoxLayout()
         type_layout.addWidget(self.rad_general)
         type_layout.addWidget(self.rad_face)
+        type_layout.addStretch()
         layout.addLayout(type_layout)
         
         # 3. Перетаскивание картинок-примеров
@@ -620,16 +651,18 @@ class CreateAiGroupDialog(QDialog):
         
         rad_style = """
             QRadioButton {
-                background-color: #333;
-                color: #ccc;
-                border-radius: 15px;
-                padding: 8px 12px;
+                background-color: #3b3b3b;
+                color: #e0e0e0;
+                border-radius: 14px;
+                padding: 7px 12px;
                 margin: 4px 0px;
                 font-weight: bold;
                 font-size: 13px;
+                border: 1px solid #555;
             }
             QRadioButton:hover {
-                background-color: #444;
+                background-color: #4a4a4a;
+                border: 1px solid #666;
             }
             QRadioButton::indicator {
                 width: 0px;
@@ -638,6 +671,7 @@ class CreateAiGroupDialog(QDialog):
             QRadioButton:checked {
                 background-color: #3b82f6;
                 color: white;
+                border: 1px solid #2563eb;
             }
         """
         self.rad_general.setStyleSheet(rad_style)
@@ -1013,7 +1047,10 @@ class AiClassificationTab(QWidget):
         
         self.lbl_info_icon = QLabel("ℹ️")
         self.lbl_info_icon.setCursor(Qt.CursorShape.WhatsThisCursor)
-        self.lbl_info_icon.setStyleSheet("color: #3b82f6; font-size: 12px; margin-left: 4px; background: transparent; border: none;")
+        self.lbl_info_icon.setStyleSheet("""
+            QLabel { color: #3b82f6; font-size: 12px; margin-left: 4px; background: transparent; border: none; }
+            QToolTip { color: white; background-color: #2b2b2b; border: 1px solid #555; font-size: 12px; padding: 4px; border-radius: 4px; }
+        """)
         
         info_text = (
             "🧠 КАК РАБОТАЕТ ИИ-ПОИСК:\n\n"
@@ -1384,6 +1421,8 @@ class AiClassificationTab(QWidget):
             widget.settings_clicked.connect(self.open_edit_group_dialog)
             self.group_list_layout_ai.addWidget(widget)
             self.chips_map[name] = widget
+            
+        self.update_scan_button_state()
 
     def on_group_state_changed(self, group_name: str, is_enabled: bool):
         settings = load_ai_settings()
@@ -1393,6 +1432,8 @@ class AiClassificationTab(QWidget):
             
         if group_name in self.chips_map:
             self.chips_map[group_name].set_error_highlight(False)
+            
+        self.update_scan_button_state()
 
     def open_edit_group_dialog(self, group_name: str):
         dlg = EditAiGroupDialog(group_name, self.classifier, self)
@@ -1504,6 +1545,14 @@ class AiClassificationTab(QWidget):
             item_widget.context_menu_requested.connect(self.cleaner.show_source_menu)
             
             self.folder_list_layout_ai.addWidget(item_widget)
+            
+        self.update_scan_button_state()
+
+    def update_scan_button_state(self):
+        folders = self.cleaner.get_active_source_folders() if hasattr(self, 'cleaner') else []
+        has_folders = len(folders) > 0
+        has_enabled_groups = any(widget.switch.isChecked() for widget in self.chips_map.values())
+        self.btn_start_scan.setEnabled(has_folders and has_enabled_groups)
 
     def toggle_scan(self):
         if self.active_worker and self.active_worker.isRunning():

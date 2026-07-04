@@ -1278,19 +1278,45 @@ class AiClassificationTab(QWidget):
         params_sub_layout.addLayout(cache_layout)
         
         # (Разделитель удален по просьбе пользователя)
-        self.lbl_threshold = QLabel("Схожесть: 75%" if AppContext.is_ru() else "Similarity: 75%")
+        self.lbl_threshold = QLabel("Схожесть:" if AppContext.is_ru() else "Similarity:")
         self.lbl_threshold.setStyleSheet("color: #ccc; font-weight: bold; font-size: 11px; border: none; background: transparent;")
         params_sub_layout.addWidget(self.lbl_threshold)
         
+        slider_layout = QHBoxLayout()
         self.slider_threshold = QSlider(Qt.Orientation.Horizontal)
-        self.slider_threshold.setRange(50, 100)
-        self.slider_threshold.setValue(75)
+        self.slider_threshold.setRange(0, 10000)
+        self.slider_threshold.setValue(7500)
         self.slider_threshold.setStyleSheet("""
             QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
             QSlider::handle:horizontal { background: #3b82f6; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
         """)
-        self.slider_threshold.valueChanged.connect(self.on_threshold_changed)
-        params_sub_layout.addWidget(self.slider_threshold)
+        
+        from PyQt6.QtWidgets import QDoubleSpinBox
+        self.spin_threshold = QDoubleSpinBox()
+        self.spin_threshold.setRange(0.0, 100.0)
+        self.spin_threshold.setDecimals(2)
+        self.spin_threshold.setSingleStep(1.0)
+        self.spin_threshold.setValue(75.0)
+        self.spin_threshold.setSuffix("%")
+        self.spin_threshold.setFixedWidth(80)
+        self.spin_threshold.setStyleSheet("""
+            QDoubleSpinBox {
+                background-color: #2b2b2b;
+                border: 1px solid #444;
+                border-radius: 4px;
+                padding: 2px 4px;
+                color: white;
+                font-size: 11px;
+            }
+            QDoubleSpinBox:hover { border-color: #555; }
+        """)
+        
+        self.slider_threshold.valueChanged.connect(lambda v: self.spin_threshold.setValue(v / 100.0))
+        self.spin_threshold.valueChanged.connect(lambda v: self.slider_threshold.setValue(int(v * 100)))
+        
+        slider_layout.addWidget(self.slider_threshold)
+        slider_layout.addWidget(self.spin_threshold)
+        params_sub_layout.addLayout(slider_layout)
         
         # Выбор режима сопоставления
         self.lbl_match_mode = QLabel("Режим сопоставления:" if AppContext.is_ru() else "Matching Mode:")
@@ -1622,7 +1648,7 @@ class AiClassificationTab(QWidget):
             self.reload_groups()
 
     def on_threshold_changed(self, value):
-        self.lbl_threshold.setText(f"Схожесть: {value}%" if AppContext.is_ru() else f"Similarity: {value}%")
+        pass
 
     def on_match_mode_changed(self, index):
         mode = self.combo_match_mode.itemData(index)
@@ -1798,7 +1824,7 @@ class AiClassificationTab(QWidget):
         self.lbl_stats.setText("")
         
         filter_cfg = self.ai_filter_config
-        threshold = float(self.slider_threshold.value())
+        threshold = float(self.spin_threshold.value())
         
         match_mode = self.combo_match_mode.currentData() or "centroid"
         use_cache = self.chk_use_cache.isChecked()
@@ -1814,7 +1840,7 @@ class AiClassificationTab(QWidget):
         else:
             self.progress_bar.setMaximum(100)
             self.progress_bar.setValue(int(percent))
-            self.progress_bar.setFormat(f"Анализ: {int(percent)}% - {text}")
+            self.progress_bar.setFormat(f"{text} ({int(percent)}%)")
             
         from utils_common import format_size
         self.lbl_stats.setText(

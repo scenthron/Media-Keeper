@@ -935,7 +935,7 @@ class AiScanWorker(QThread):
             percent = (processed_files / total_files) * 100.0
             
             if processed_files % 5 == 0 or processed_files == total_files:
-                self.progress.emit(STAGE_ANALYSIS, percent, os.path.basename(fp), scanned_files, groups_found, wasted_bytes, scanned_bytes, 0, 0)
+                self.progress.emit(STAGE_ANALYSIS, percent, f"[{processed_files} / {total_files}]", scanned_files, groups_found, wasted_bytes, scanned_bytes, 0, 0)
 
         # Сортируем результаты в каждой группе по убыванию процентов
         for g in results:

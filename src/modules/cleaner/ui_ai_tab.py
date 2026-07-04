@@ -645,8 +645,10 @@ class CreateAiGroupDialog(QDialog):
         super().__init__(parent)
         is_ru = AppContext.is_ru()
         self.setWindowTitle("Создать группу эталонов" if is_ru else "Create Reference Group")
-        self.setFixedSize(480, 220)
+        self.setFixedSize(500, 480)
         self.setStyleSheet("background-color: #2b2b2b; color: white;")
+        
+        self.pending_files = []
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 15, 15, 15)
@@ -712,6 +714,28 @@ class CreateAiGroupDialog(QDialog):
         type_layout.addWidget(self.rad_face)
         type_layout.addStretch()
         layout.addLayout(type_layout)
+        
+        lbl_drop = QLabel("Перетащите файлы картинок (.png, .jpg) прямо в поле ниже:" if is_ru else "Drag and drop image files (.png, .jpg) directly to the area below:")
+        lbl_drop.setStyleSheet("color: #aaa; font-size: 11px; font-style: italic;")
+        layout.addWidget(lbl_drop)
+        
+        self.list_ref_images = RefImagesListWidget(self)
+        self.list_ref_images.files_dropped.connect(self.add_dropped_files)
+        
+        self.hover_tooltip = ImageHoverToolTip(self)
+        self.list_ref_images.item_hovered.connect(self.hover_tooltip.show_image)
+        self.list_ref_images.hover_left.connect(self.hover_tooltip.hide)
+        
+        layout.addWidget(self.list_ref_images, 1)
+        
+        btn_list_layout = QHBoxLayout()
+        self.btn_add_file = QPushButton("Добавить файл" if is_ru else "Add File")
+        self.btn_add_file.setStyleSheet("background-color: #444; border: 1px solid #555; padding: 6px 12px; border-radius: 4px;")
+        self.btn_add_file.clicked.connect(self.browse_files)
+        btn_list_layout.addWidget(self.btn_add_file)
+        btn_list_layout.addStretch()
+        layout.addLayout(btn_list_layout)
+        
         layout.addStretch()
         
         buttons_layout = QHBoxLayout()
@@ -728,6 +752,26 @@ class CreateAiGroupDialog(QDialog):
         buttons_layout.addWidget(self.btn_cancel)
         buttons_layout.addWidget(self.btn_ok)
         layout.addLayout(buttons_layout)
+
+    def browse_files(self):
+        from PyQt6.QtWidgets import QFileDialog
+        is_ru = AppContext.is_ru()
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Выберите картинки-эталоны" if is_ru else "Select Reference Images",
+            "",
+            "Images (*.png *.jpg *.jpeg *.bmp *.webp)"
+        )
+        if files:
+            self.add_dropped_files(files)
+
+    def add_dropped_files(self, file_paths):
+        for path in file_paths:
+            if path not in self.pending_files:
+                self.pending_files.append(path)
+                item = QListWidgetItem(os.path.basename(path))
+                item.setData(Qt.ItemDataRole.UserRole, path)
+                self.list_ref_images.addItem(item)
 
 
 # -----------------------------------------------------------------------------
@@ -1518,6 +1562,14 @@ class AiClassificationTab(QWidget):
             
             group_dir = os.path.join(get_ai_assets_dir(), name)
             os.makedirs(group_dir, exist_ok=True)
+            
+            import shutil
+            for fp in dlg.pending_files:
+                if os.path.exists(fp):
+                    try:
+                        shutil.copy2(fp, group_dir)
+                    except Exception as e:
+                        logging.error(f"Failed to copy {fp} to {group_dir}: {e}")
             
             settings["groups"][name] = {
                 "type": group_type,

@@ -843,6 +843,7 @@ class AiClassificationTab(QWidget):
         
         self.active_worker = None
         self.chips_map = {}
+        self.ai_filter_config = None
         
         self._init_ui()
         self.reload_groups()
@@ -1059,6 +1060,32 @@ class AiClassificationTab(QWidget):
         self.drop_zone_ai.btn_clear.show()
         self.drop_zone_ai.setStyleSheet(self.drop_zone_ai.styleSheet() + "margin: 0px; padding: 2px;")
         dirs_container_layout.addWidget(self.drop_zone_ai)
+        
+        # Фильтр типов файлов (по аналогии с CleanerSettingsPanel)
+        filter_layout_ai = QHBoxLayout()
+        filter_layout_ai.setContentsMargins(0, 0, 0, 0)
+        filter_layout_ai.setSpacing(8)
+        
+        from .ui_panels import load_svg_icon
+        icons_dir_ai = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
+        
+        self.btn_filter_ai = QPushButton(AppContext.tr("cln_btn_scan_types") if AppContext.is_ru() else "Scan File Types")
+        self.btn_filter_ai.setIcon(load_svg_icon(os.path.join(icons_dir_ai, "loupe-color.svg"), QSize(16, 16)))
+        self.btn_filter_ai.setIconSize(QSize(16, 16))
+        self.btn_filter_ai.setFixedHeight(36)
+        self.btn_filter_ai.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_filter_ai.setStyleSheet("QPushButton { background-color: #444; color: #fff; border: 1px solid #666; padding: 0 10px; border-radius: 4px; font-weight: bold; } QPushButton:hover { background-color: #555; color: white; border-color: #888; }")
+        self.btn_filter_ai.clicked.connect(self.open_filter_dialog_ai)
+        
+        self.lbl_filter_status_ai = QLabel(AppContext.tr("cln_filter_all") if AppContext.is_ru() else "All images")
+        self.lbl_filter_status_ai.setStyleSheet("color: #aaa; font-size: 11px;")
+        self.lbl_filter_status_ai.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        
+        filter_layout_ai.addWidget(self.btn_filter_ai)
+        filter_layout_ai.addWidget(self.lbl_filter_status_ai)
+        filter_layout_ai.addStretch()
+        
+        dirs_container_layout.addLayout(filter_layout_ai)
         
         scroll_dirs.setWidget(self.sources_list_widget_ai)
         col_dirs.addWidget(scroll_dirs)
@@ -1676,7 +1703,7 @@ class AiClassificationTab(QWidget):
         self.tree_results.clear()
         self.lbl_stats.setText("")
         
-        filter_cfg = getattr(self.cleaner, 'filter_config', None)
+        filter_cfg = self.ai_filter_config
         threshold = float(self.slider_threshold.value())
         
         match_mode = self.combo_match_mode.currentData() or "centroid"
@@ -1914,6 +1941,43 @@ class AiClassificationTab(QWidget):
 # -----------------------------------------------------------------------------
 # Кнопка чекбокса, использующаяся в чипах эталонов
 # -----------------------------------------------------------------------------
+
+    def open_filter_dialog_ai(self):
+        self.btn_filter_ai.setEnabled(False)
+        self.btn_filter_ai.setText("Сканирование..." if AppContext.is_ru() else "Scanning...")
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(100, self._run_extension_scan_ai)
+
+    def _run_extension_scan_ai(self):
+        folders = list(self.cleaner.source_folders.keys())
+        if not folders:
+            self.btn_filter_ai.setEnabled(True)
+            self.btn_filter_ai.setText(AppContext.tr("cln_btn_scan_types") if AppContext.is_ru() else "Scan File Types")
+            return
+
+        from .workers import ExtensionScannerWorker
+        self.ext_scanner_ai = ExtensionScannerWorker(folders)
+        self.ext_scanner_ai.finished.connect(self._on_ext_scan_finished_ai)
+        self.ext_scanner_ai.start()
+
+    def _on_ext_scan_finished_ai(self, stats: dict):
+        self.btn_filter_ai.setEnabled(True)
+        self.btn_filter_ai.setText(AppContext.tr("cln_btn_scan_types") if AppContext.is_ru() else "Scan File Types")
+        
+        from .ui_dialogs import MatrixFilterDialog
+        dlg = MatrixFilterDialog(stats, self)
+        if dlg.exec():
+            res = dlg.get_result()
+            self.ai_filter_config = {'mode': res['mode'], 'exts': res['exts']}
+            
+            count = len(res['exts'])
+            if count == 0:
+                self.lbl_filter_status_ai.setText(AppContext.tr("cln_filter_all") if AppContext.is_ru() else "All images")
+            else:
+                key = "Вкл" if res['mode'] == 'include' else "Искл"
+                self.lbl_filter_status_ai.setText(f"Фильтр: {key} {count} типов" if AppContext.is_ru() else f"Filter: {key} {count} types")
+
+
 class QCheckBoxCustom(QPushButton):
     toggled = pyqtSignal(bool)
     

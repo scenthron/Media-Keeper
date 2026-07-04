@@ -329,7 +329,14 @@ class ActionMixin:
 
         items_to_process: list[dict[str, Any]] = []
 
-        if self.current_view_mode == 0:
+        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+            files = self.page_ai.get_selected_files_paths()
+            for idx, p in enumerate(files):
+                items_to_process.append({
+                    'src': p,
+                    'group_index': -1
+                })
+        elif self.current_view_mode == 0:
             # Get marked items directly from RAM (no DB query needed)
             if hasattr(self, 'in_memory_selection'):
                 raw_items = self.in_memory_selection.get_marked_items()
@@ -373,7 +380,9 @@ class ActionMixin:
 
         file_paths: list[str] = []
 
-        if self.current_view_mode == 0:
+        if hasattr(self, 'current_tab') and self.current_tab() == 2:
+            file_paths = self.page_ai.get_selected_files_paths()
+        elif self.current_view_mode == 0:
             if hasattr(self, 'in_memory_selection'):
                 raw_items = self.in_memory_selection.get_marked_items()
                 file_paths = [f['path'] for f in raw_items]
@@ -429,7 +438,9 @@ class ActionMixin:
         try:
             deleted_set = set(deleted_paths)
 
-            if self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
+            if hasattr(self, 'page_ai') and self.current_tab() == 2:
+                self.page_ai.remove_processed_files(deleted_paths)
+            elif self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
                 self.session_db.mark_files_deleted(deleted_paths)
                 moved_ids: set[int] = set()
                 for files in self.virtual_model._group_files_cache.values():
@@ -494,7 +505,9 @@ class ActionMixin:
         try:
             moved_set = set(moved)
 
-            if self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
+            if hasattr(self, 'page_ai') and self.current_tab() == 2:
+                self.page_ai.remove_processed_files(moved)
+            elif self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
                 self.session_db.mark_files_deleted(moved)
                 # Remove moved files from in-memory state
                 # Map paths to file_ids using group_files_cache

@@ -806,3 +806,139 @@ class SimilarScanWorker(QThread):
             self.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, found_matches_count, current_wasted_bytes, scanned_bytes, 0, 0)
             
         self.finished.emit({'groups': groups, 'zero_files': [], 'empty_folders': []})
+
+class AiScanWorker(QThread):
+    # Сигналы: stage, percent, status_text, scanned_files, groups_found, wasted_bytes, scanned_bytes, zero, empty
+    progress = pyqtSignal(int, float, str, int, int, int, int, int, int)
+    # finished: { group_name: [ { 'path': ..., 'size': ..., 'confidence': ..., 'type': ... }, ... ] }
+    finished = pyqtSignal(dict)
+    
+    def __init__(self, folders, classifier, threshold=75.0, filter_config=None):
+        super().__init__()
+        self.folders = folders
+        self.classifier = classifier
+        self.threshold = threshold
+        self.filter_config = filter_config
+        self.is_running = True
+
+    def stop(self):
+        self.is_running = False
+
+    def is_extension_allowed(self, filename):
+        ext = os.path.splitext(filename)[1].lower()
+        allowed_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.webp'}
+        if ext not in allowed_exts:
+            return False
+            
+        if not self.filter_config:
+            return True
+            
+        mode = self.filter_config['mode']
+        target_exts = self.filter_config['exts']
+        if not target_exts:
+            return (True if mode != 'include' else False)
+            
+        if mode == 'include':
+            return ext in target_exts
+        elif mode == 'exclude':
+            return ext not in target_exts
+        return True
+
+    def run(self):
+        logging.info("AiScanWorker запущен")
+        # 1. Загружаем активные эталоны
+        if not self.classifier.load_active_references():
+            logging.warning("Нет активных эталонов для ИИ-поиска")
+            self.finished.emit({})
+            return
+            
+        # 2. Сканируем файлы
+        valid_files = []
+        scanned_files = 0
+        scanned_bytes = 0
+        
+        self.progress.emit(STAGE_SCANNING, 0.0, "Поиск изображений...", 0, 0, 0, 0, 0, 0)
+        
+        for folder in self.folders:
+            if not self.is_running: break
+            norm_folder = os.path.normpath(folder)
+            if not os.path.exists(norm_folder): continue
+            
+            try:
+                for root, dirs, files_list in os.walk(norm_folder):
+                    if not self.is_running: break
+                    
+                    # Исключаем системную папку
+                    if '.mediakeeper' in dirs:
+                        dirs.remove('.mediakeeper')
+                        
+                    for f in files_list:
+                        if not self.is_running: break
+                        if self.is_extension_allowed(f):
+                            fp = os.path.join(root, f)
+                            valid_files.append(fp)
+                            
+                        scanned_files += 1
+                        if scanned_files % 100 == 0:
+                            self.progress.emit(STAGE_SCANNING, 0.0, f"Найдено: {len(valid_files)} изображений...", scanned_files, 0, 0, scanned_bytes, 0, 0)
+            except Exception as e:
+                logging.error(f"Ошибка при обходе папки {folder}: {e}")
+
+        total_files = len(valid_files)
+        if total_files == 0:
+            self.finished.emit({})
+            return
+            
+        results = {}
+        processed_files = 0
+        groups_found = 0
+        wasted_bytes = 0 # Суммарный размер найденных файлов
+        
+        self.progress.emit(STAGE_ANALYSIS, 0.0, f"ИИ Анализ: {total_files} файлов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
+        
+        # Убедимся, что сессии ONNX инициализированы
+        if not self.classifier.ai.initialize_sessions():
+            self.finished.emit({})
+            return
+            
+        for fp in valid_files:
+            if not self.is_running: break
+            
+            try:
+                stat = os.stat(fp)
+                mtime = stat.st_mtime
+                size = stat.st_size
+                
+                # Запускаем ИИ сопоставление
+                best_group, confidence, details = self.classifier.match_image(fp, mtime, size)
+                
+                if best_group and confidence >= self.threshold:
+                    if best_group not in results:
+                        results[best_group] = []
+                        groups_found += 1
+                        
+                    results[best_group].append({
+                        "path": fp,
+                        "size": size,
+                        "confidence": confidence,
+                        "type": details.get("type", "general")
+                    })
+                    wasted_bytes += size
+                    
+            except Exception as e:
+                logging.error(f"Ошибка ИИ-анализа файла {fp}: {e}")
+                
+            processed_files += 1
+            scanned_bytes += size
+            percent = (processed_files / total_files) * 100.0
+            
+            if processed_files % 5 == 0 or processed_files == total_files:
+                self.progress.emit(STAGE_ANALYSIS, percent, os.path.basename(fp), scanned_files, groups_found, wasted_bytes, scanned_bytes, 0, 0)
+
+        # Сортируем результаты в каждой группе по убыванию процентов
+        for g in results:
+            results[g].sort(key=lambda x: x["confidence"], reverse=True)
+            
+        if self.is_running:
+            self.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, groups_found, wasted_bytes, scanned_bytes, 0, 0)
+        self.finished.emit(results)

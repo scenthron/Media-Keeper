@@ -16,6 +16,7 @@ from utils_common import format_size
 from .ui_panels import CleanerSettingsPanel, CleanerActionBar, SimilarSettingsPanel
 from .ui_preview import CleanerPreviewWidget
 from .ui_widgets import SourceListItem, GroupHeaderWidget
+from .ui_ai_tab import AiClassificationTab
 from .ui_dialogs import CleanerOverlay
 from .db_cache import CleanerDB
 from .db_session import SessionDB
@@ -141,14 +142,21 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
     @property
     def source_folders(self) -> dict:
+        if self.current_tab == 2:
+            return self.source_folders_dupes
         return self.source_folders_similar if self.current_tab == 1 else self.source_folders_dupes
 
     @source_folders.setter
     def source_folders(self, val: dict) -> None:
-        if self.current_tab == 1:
+        if self.current_tab == 2:
+            self.source_folders_dupes = val
+        elif self.current_tab == 1:
             self.source_folders_similar = val
         else:
             self.source_folders_dupes = val
+
+    def get_active_source_folders(self) -> list[str]:
+        return list(self.source_folders.keys())
 
     @property
     def db_helper(self):
@@ -180,10 +188,14 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
     @property
     def action_bar(self):
+        if self.current_tab == 2:
+            return self.page_ai.action_bar
         return self.action_bar_similar if self.current_tab == 1 else self.action_bar_dupes
 
     @property
     def preview_widget(self):
+        if self.current_tab == 2:
+            return self.page_ai.preview_widget
         return self.preview_widget_similar if self.current_tab == 1 else self.preview_widget_dupes
 
     @property
@@ -299,6 +311,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.tab_bar = QTabBar()
         self.tab_bar.addTab("Поиск дубликатов" if is_ru else "Duplicates Search")
         self.tab_bar.addTab("Поиск похожих" if is_ru else "Similar Search")
+        self.tab_bar.addTab("ИИ Классификация" if is_ru else "AI Classification")
         self.tab_bar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.tab_bar.setCursor(Qt.CursorShape.PointingHandCursor)
         self.tab_bar.setStyleSheet("""
@@ -359,6 +372,10 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
          self.lbl_selection_info_similar) = self.create_page(is_similar=True)
         self.stacked_widget.addWidget(self.page_similar)
         
+        # Create AI Classifier Page
+        self.page_ai = AiClassificationTab(self)
+        self.stacked_widget.addWidget(self.page_ai)
+        
         self.main_layout.addWidget(self.stacked_widget, 1)
 
         self.overlay = CleanerOverlay(self)
@@ -372,13 +389,18 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
     def on_tab_changed(self, index: int) -> None:
         self.stacked_widget.setCurrentIndex(index)
-        self.update_toggle_settings_button()
-        self.update_cache_info()
-        self.on_safe_scan_toggled()
-        
-        # Обновляем доступность медиа-форматов при открытии вкладки похожих
-        if index == 1 and hasattr(self, 'settings_panel_similar'):
-            self.settings_panel_similar.update_media_types_availability()
+        if index == 2:
+            self.btn_toggle_settings.hide()
+            self.page_ai.update_folders_label(self.get_active_source_folders())
+        else:
+            self.btn_toggle_settings.show()
+            self.update_toggle_settings_button()
+            self.update_cache_info()
+            self.on_safe_scan_toggled()
+            
+            # Обновляем доступность медиа-форматов при открытии вкладки похожих
+            if index == 1 and hasattr(self, 'settings_panel_similar'):
+                self.settings_panel_similar.update_media_types_availability()
 
     def on_media_type_changed(self, index: int) -> None:
         self.filter_config = None

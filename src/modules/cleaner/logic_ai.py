@@ -91,8 +91,8 @@ class AiEngine:
             self.ort_session = ort.InferenceSession(self.mobilenet_path, sess_options=opts, providers=['CPUExecutionProvider'])
             
             # 2. Детектор лиц YuNet (OpenCV)
-            # Временно инициализируем с размером (320, 320), далее будем менять под картинку
-            self.face_detector = cv2.FaceDetectorYN.create(self.yunet_path, "", (320, 320))
+            # Устанавливаем минимальный порог 0.1, чтобы фильтровать вручную (гибкость)
+            self.face_detector = cv2.FaceDetectorYN.create(self.yunet_path, "", (320, 320), score_threshold=0.1)
             
             # 3. Распознаватель лиц SFace (OpenCV)
             self.face_recognizer = cv2.FaceRecognizerSF.create(self.sface_path, "")
@@ -199,12 +199,16 @@ class AiEngine:
                     w, h = width, height
                     
                 self.face_detector.setInputSize((w, h))
-                self.face_detector.setScoreThreshold(threshold)
+                # Убрали вызов setScoreThreshold, так как он может быть нестабилен в некоторых сборках OpenCV
                 
                 retval, faces = self.face_detector.detect(bgr_img)
                 
                 if retval and faces is not None and len(faces) > 0:
                     for face in faces:
+                        score = face[14]
+                        if score < threshold:
+                            continue
+                            
                         # Масштабируем bbox обратно к оригинальному размеру
                         bbox = [int(face[0]/scale), int(face[1]/scale), int(face[2]/scale), int(face[3]/scale)]
                         

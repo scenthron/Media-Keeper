@@ -130,9 +130,15 @@ class AiAdvancedSettingsDialog(QDialog):
         
         # Deep Merge Threshold
         l_merge_thresh = QLabel("Сила объединения (чем меньше, тем строже):")
+        tooltip_merge = ("Определяет, насколько похожими должны быть две группы лиц, чтобы слиться в одну.\n"
+                         "Меньшие значения (0 - 40): Очень строгое объединение, сливаются только явные дубли.\n"
+                         "Оптимально (75.0): Сливает людей, снятых под небольшими углами.\n"
+                         "Большие значения (90 - 100): Объединяет максимум фото, но высок риск захватить разных людей.")
+        l_merge_thresh.setToolTip(tooltip_merge)
         l_merge_thresh.setStyleSheet("color: #ccc; font-size: 11px;")
         
         self.slider_merge = QSlider(Qt.Orientation.Horizontal)
+        self.slider_merge.setToolTip(tooltip_merge)
         self.slider_merge.setRange(0, 100)
         self.slider_merge.setValue(int(self.settings.get("deep_merge_threshold", 75.0)))
         self.slider_merge.setStyleSheet("""
@@ -672,11 +678,17 @@ class AiClassificationTab(QWidget):
         
         # (Разделитель удален по просьбе пользователя)
         self.lbl_threshold = QLabel("Схожесть:" if AppContext.is_ru() else "Similarity:")
+        tooltip_thresh = ("Базовый порог первичной группировки (до объединения).\n"
+                          "Меньшие значения (50-60%): Образуются широкие группы с множеством потенциально похожих фото.\n"
+                          "Оптимально (75-80%): Хороший баланс для старта.\n"
+                          "Большие значения (90%+): В группу попадают только почти идентичные фото.")
+        self.lbl_threshold.setToolTip(tooltip_thresh)
         self.lbl_threshold.setStyleSheet("color: #ccc; font-weight: bold; font-size: 11px; border: none; background: transparent;")
         params_sub_layout.addWidget(self.lbl_threshold)
         
         slider_layout = QHBoxLayout()
         self.slider_threshold = QSlider(Qt.Orientation.Horizontal)
+        self.slider_threshold.setToolTip(tooltip_thresh)
         self.slider_threshold.setRange(0, 10000)
         self.slider_threshold.setValue(7500)
         self.slider_threshold.setStyleSheet("""
@@ -847,8 +859,13 @@ class AiClassificationTab(QWidget):
         self.action_bar.combo_collision.hide()
         post_filter_layout = QHBoxLayout()
         self.lbl_post_filter = QLabel("Быстрый фильтр:" if AppContext.is_ru() else "Quick Filter:")
+        tooltip_post = ("Скрывает из таблицы файлы, чья схожесть с лидером группы ниже выбранного процента.\n"
+                        "Это НЕ удаляет файлы из списка результатов навсегда, а лишь временно скрывает их,\n"
+                        "помогая сфокусироваться только на самых похожих фото.")
+        self.lbl_post_filter.setToolTip(tooltip_post)
         self.lbl_post_filter.setStyleSheet("color: #ccc; font-size: 11px; font-weight: bold;")
         self.slider_post_filter = QSlider(Qt.Orientation.Horizontal)
+        self.slider_post_filter.setToolTip(tooltip_post)
         self.slider_post_filter.setRange(0, 10000)
         self.slider_post_filter.setValue(0)
         self.slider_post_filter.setStyleSheet("""

@@ -658,7 +658,7 @@ class AiClassificationTab(QWidget):
         # =====================================================================
         # ГЛАВНЫЙ КОНТЕНТ ВКЛАДКИ (НАСТРОЙКИ СВЕРХУ, ТАБЛИЦА СНИЗУ В SPLITTER)
         # =====================================================================
-        self.main_content_widget = QWidget()
+        self.main_content_widget = QWidget(self)
         content_layout = QVBoxLayout(self.main_content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
@@ -966,7 +966,7 @@ class AiClassificationTab(QWidget):
         self.main_splitter.setSizes([155, 450])
         
         content_layout.addWidget(self.main_splitter, 1)
-        content_layout.addWidget(self.main_content_widget)
+        self.main_layout.addWidget(self.main_content_widget, 1)
 
     def check_models_status(self):
         if self.ai.are_models_present():

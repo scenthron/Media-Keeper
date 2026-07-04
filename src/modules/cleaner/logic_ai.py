@@ -130,7 +130,7 @@ class AiEngine:
             sface_safe = get_ascii_path(self.sface_path)
             
             # 2. Детектор лиц YuNet (OpenCV)
-            self.face_detector = cv2.FaceDetectorYN.create(yunet_safe, "", (320, 320), score_threshold=0.3)
+            self.face_detector = cv2.FaceDetectorYN.create(yunet_safe, "", (320, 320), score_threshold=0.65)
             
             # 3. Распознаватель лиц SFace (OpenCV)
             self.face_recognizer = cv2.FaceRecognizerSF.create(sface_safe, "")

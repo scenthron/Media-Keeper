@@ -461,9 +461,10 @@ class AiClassificationTab(QWidget):
         self.main_splitter.setStyleSheet("QSplitter::handle { background-color: #2d2d2d; }")
         
         # Верхняя панель настроек (со свободным изменением высоты от 130 до 280)
+        # Верхняя панель настроек (со свободным изменением высоты от 220 до 600)
         self.top_settings = QFrame()
-        self.top_settings.setMinimumHeight(130)
-        self.top_settings.setMaximumHeight(300)
+        self.top_settings.setMinimumHeight(220)
+        self.top_settings.setMaximumHeight(600)
         self.top_settings.setStyleSheet("background-color: #1e1e1e; border-bottom: 1px solid #2d2d2d;")
         top_layout = QHBoxLayout(self.top_settings)
         top_layout.setContentsMargins(15, 6, 15, 6)
@@ -947,8 +948,8 @@ class AiClassificationTab(QWidget):
             QDoubleSpinBox:hover { border-color: #555; }
         """)
         
-        self.slider_post_filter.valueChanged.connect(lambda v: self.spin_post_filter.setValue(v / 100.0))
-        self.spin_post_filter.valueChanged.connect(lambda v: self.slider_post_filter.setValue(int(v * 100)))
+        self.slider_post_filter.valueChanged.connect(self._on_slider_moved)
+        self.spin_post_filter.valueChanged.connect(self._on_spin_changed)
         self.spin_post_filter.valueChanged.connect(self.on_post_filter_changed)
         
         post_filter_layout.addWidget(self.lbl_post_filter)
@@ -1124,6 +1125,25 @@ class AiClassificationTab(QWidget):
             QTreeWidget::item:hover { background-color: #3b3b3b; }
             QTreeWidget::item:selected { background-color: #3b82f6; color: white; }
             """)
+
+    def _on_slider_moved(self, value):
+        if getattr(self, "is_cluster_results", False) and hasattr(self, "cluster_unique_sizes"):
+            if 0 <= value < len(self.cluster_unique_sizes):
+                self.spin_post_filter.setValue(float(self.cluster_unique_sizes[value]))
+        else:
+            self.spin_post_filter.setValue(value / 100.0)
+
+    def _on_spin_changed(self, value):
+        self.slider_post_filter.blockSignals(True)
+        if getattr(self, "is_cluster_results", False) and hasattr(self, "cluster_unique_sizes"):
+            try:
+                closest_idx = min(range(len(self.cluster_unique_sizes)), key=lambda i: abs(self.cluster_unique_sizes[i] - value))
+                self.slider_post_filter.setValue(closest_idx)
+            except ValueError:
+                pass
+        else:
+            self.slider_post_filter.setValue(int(value * 100))
+        self.slider_post_filter.blockSignals(False)
 
     def on_post_filter_changed(self, value):
         root = self.tree_results.invisibleRootItem()
@@ -1443,14 +1463,21 @@ class AiClassificationTab(QWidget):
         self.slider_post_filter.blockSignals(True)
         if self.is_cluster_results:
             sizes = sorted(list(unique_sizes))
+            self.cluster_unique_sizes = sizes
             min_size = min(sizes) if sizes else 1
             max_size = max(sizes) if sizes else 100
             self.spin_post_filter.setSuffix(" ф." if AppContext.is_ru() else " f.")
             self.spin_post_filter.setDecimals(0)
             self.spin_post_filter.setSingleStep(1.0)
             self.spin_post_filter.setRange(float(min_size), float(max_size))
-            self.slider_post_filter.setRange(int(min_size * 100), int(max_size * 100))
-            self.spin_post_filter.setValue(float(max(2, min_size))) # Default to 2
+            self.slider_post_filter.setRange(0, len(sizes) - 1 if sizes else 0)
+            default_val = float(max(2, min_size))
+            self.spin_post_filter.setValue(default_val)
+            try:
+                idx = min(range(len(sizes)), key=lambda i: abs(sizes[i] - default_val))
+                self.slider_post_filter.setValue(idx)
+            except ValueError:
+                pass
         else:
             self.spin_post_filter.setSuffix("%")
             self.spin_post_filter.setDecimals(2)
@@ -1584,9 +1611,14 @@ class AiClassificationTab(QWidget):
             state = Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
             for i in range(root.childCount()):
                 group_item = root.child(i)
+                if checked and group_item.isHidden():
+                    continue
                 group_item.setCheckState(0, state)
                 for j in range(group_item.childCount()):
-                    group_item.child(j).setCheckState(0, state)
+                    child = group_item.child(j)
+                    if checked and child.isHidden():
+                        continue
+                    child.setCheckState(0, state)
         finally:
             self.tree_results.blockSignals(False)
         self.update_cleaner_action_bar_info()

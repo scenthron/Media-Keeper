@@ -101,7 +101,7 @@ class AiClassifier:
         status = "green" if all_cached else "orange"
         return status, file_count
 
-    def train_group(self, group_name: str, progress_callback=None) -> bool:
+    def train_group(self, group_name: str, progress_callback=None, force_recalculate=False) -> bool:
         """
         Рассчитывает эмбеддинги/лица для всех файлов в группе и сохраняет в SQLite.
         progress_callback: функция (current, total)
@@ -136,13 +136,13 @@ class AiClassifier:
                 
                 if is_face_type:
                     # Для лиц
-                    faces = self.cache.get_file_faces(fp, mtime, size)
+                    faces = self.cache.get_file_faces(fp, mtime, size) if not force_recalculate else None
                     if faces is None:
                         faces = self.ai.detect_and_extract_faces(fp)
                         self.cache.save_file_faces(fp, mtime, size, faces)
                 else:
                     # Для общих
-                    emb = self.cache.get_image_embedding(fp, mtime, size)
+                    emb = self.cache.get_image_embedding(fp, mtime, size) if not force_recalculate else None
                     if emb is None:
                         emb = self.ai.extract_image_embedding(fp)
                         self.cache.save_image_embedding(fp, mtime, size, emb)

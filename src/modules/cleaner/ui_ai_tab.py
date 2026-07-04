@@ -518,7 +518,7 @@ class EditAiGroupDialog(QDialog):
             from PyQt6.QtWidgets import QApplication
             QApplication.processEvents()
             
-        success = self.classifier.train_group(self.group_name, progress_callback=on_prog)
+        success = self.classifier.train_group(self.group_name, progress_callback=on_prog, force_recalculate=True)
         
         self.btn_train.setEnabled(True)
         self.btn_train.setText("Обучить" if self.is_ru else "Train")
@@ -1561,7 +1561,12 @@ class AiClassificationTab(QWidget):
         # _is_ok default to True because logic_actions will pass False if there is a nested/system error
         is_ok = getattr(self, '_is_ok', True) 
         
-        self.btn_start_scan.setEnabled(has_folders and has_enabled_groups and is_ok)
+        can_run = has_folders and has_enabled_groups and is_ok
+        self.btn_start_scan.setEnabled(can_run)
+        
+        base_text = " Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search"
+        dbg_text = f" (F:{int(has_folders)} G:{int(has_enabled_groups)} O:{int(is_ok)})"
+        self.btn_start_scan.setText(base_text + dbg_text)
 
     def toggle_scan(self):
         if self.active_worker and self.active_worker.isRunning():

@@ -1737,6 +1737,8 @@ class AiClassificationTab(QWidget):
             QPushButton:disabled { background-color: #222; color: #555; font-weight: 900; font-size: 14px; border: 1px solid #333; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
         """)
         
+        if self.active_worker:
+            self.active_worker.deleteLater()
         self.active_worker = None
         self.scan_finished.emit()
         self.update_cache_info_ai()

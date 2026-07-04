@@ -620,7 +620,7 @@ class CreateAiGroupDialog(QDialog):
         super().__init__(parent)
         is_ru = AppContext.is_ru()
         self.setWindowTitle("Создать группу эталонов" if is_ru else "Create Reference Group")
-        self.setFixedSize(360, 240)
+        self.setFixedSize(480, 220)
         self.setStyleSheet("background-color: #2b2b2b; color: white;")
         
         layout = QVBoxLayout(self)
@@ -682,8 +682,12 @@ class CreateAiGroupDialog(QDialog):
         self.btn_group.addButton(self.rad_general, 0)
         self.btn_group.addButton(self.rad_face, 1)
         
-        layout.addWidget(self.rad_general)
-        layout.addWidget(self.rad_face)
+        type_layout = QHBoxLayout()
+        type_layout.addWidget(self.rad_general)
+        type_layout.addWidget(self.rad_face)
+        type_layout.addStretch()
+        layout.addLayout(type_layout)
+        layout.addStretch()
         
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()

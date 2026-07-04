@@ -660,8 +660,10 @@ class AiClassificationTab(QWidget):
         self.download_placeholder.setStyleSheet("QFrame { background-color: #1e1e1e; border: none; }")
         
         ph_layout = QVBoxLayout(self.download_placeholder)
-        ph_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        ph_layout.setSpacing(15)
+        ph_layout.setContentsMargins(40, 40, 40, 40)
+        ph_layout.setSpacing(18)
+        
+        ph_layout.addStretch(1)
         
         lbl_brain = QLabel("🧠")
         lbl_brain.setStyleSheet("font-size: 48px; background: transparent; border: none;")
@@ -681,9 +683,15 @@ class AiClassificationTab(QWidget):
             "This download is done once, and then the AI runs completely offline."
         )
         lbl_desc.setWordWrap(True)
-        lbl_desc.setStyleSheet("color: #aaa; font-size: 12px; background: transparent; border: none; line-height: 1.4;")
+        lbl_desc.setFixedWidth(400)
+        lbl_desc.setStyleSheet("color: #aaa; font-size: 12px; background: transparent; border: none; line-height: 1.5;")
         lbl_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        ph_layout.addWidget(lbl_desc)
+        
+        desc_layout = QHBoxLayout()
+        desc_layout.addStretch(1)
+        desc_layout.addWidget(lbl_desc)
+        desc_layout.addStretch(1)
+        ph_layout.addLayout(desc_layout)
         
         self.btn_download_models = QPushButton("Загрузить модели ИИ" if AppContext.is_ru() else "Download AI Models")
         self.btn_download_models.setFixedSize(200, 36)
@@ -706,7 +714,12 @@ class AiClassificationTab(QWidget):
             }
         """)
         self.btn_download_models.clicked.connect(self.start_placeholder_download)
-        ph_layout.addWidget(self.btn_download_models)
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch(1)
+        btn_layout.addWidget(self.btn_download_models)
+        btn_layout.addStretch(1)
+        ph_layout.addLayout(btn_layout)
         
         self.placeholder_progress = QProgressBar()
         self.placeholder_progress.setFixedSize(300, 16)
@@ -724,12 +737,19 @@ class AiClassificationTab(QWidget):
             }
         """)
         self.placeholder_progress.hide()
-        ph_layout.addWidget(self.placeholder_progress)
+        
+        progress_layout = QHBoxLayout()
+        progress_layout.addStretch(1)
+        progress_layout.addWidget(self.placeholder_progress)
+        progress_layout.addStretch(1)
+        ph_layout.addLayout(progress_layout)
         
         self.placeholder_status = QLabel("")
         self.placeholder_status.setStyleSheet("color: #ef4444; font-size: 11px; background: transparent; border: none;")
         self.placeholder_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ph_layout.addWidget(self.placeholder_status)
+        
+        ph_layout.addStretch(1)
         
         self.main_layout.addWidget(self.download_placeholder)
         

@@ -271,6 +271,9 @@ class SafeFormatter(logging.Formatter):
         return anon_message
 
     def format(self, record):
+        if not getattr(sys, 'frozen', False):
+            return super().format(record)
+            
         orig_msg = record.msg
         orig_args = record.args
         
@@ -295,10 +298,14 @@ class SafeFormatter(logging.Formatter):
         return result
 
     def formatException(self, ei):
+        if not getattr(sys, 'frozen', False):
+            return super().formatException(ei)
         orig_exception_text = super().formatException(ei)
         return self.anonymize_string(orig_exception_text)
 
     def formatStack(self, stack_info):
+        if not getattr(sys, 'frozen', False):
+            return super().formatStack(stack_info)
         orig_stack_text = super().formatStack(stack_info)
         return self.anonymize_string(orig_stack_text)
 

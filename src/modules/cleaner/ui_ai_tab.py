@@ -12,20 +12,21 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor
 
 from config import AppContext, APP_DESIGN
+from ui_widgets_base import DropZoneWidget
 from .logic_ai import AiEngine
 from .logic_ai_cache import AiCacheManager
 from .logic_ai_classifier import AiClassifier, load_ai_settings, save_ai_settings, get_ai_assets_dir
 from .workers import AiScanWorker, STAGE_SCANNING, STAGE_ANALYSIS
 
 # -----------------------------------------------------------------------------
-# Всплывающее окно быстрого просмотра картинок при наведении мыши
+# Всплывающее окно быстрого просмотра картинок при наведении мыши (в 2.5 раза больше)
 # -----------------------------------------------------------------------------
 class ImageHoverToolTip(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent, Qt.WindowType.ToolTip | Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet("background-color: #2b2b2b; border: 2px solid #3b82f6; padding: 2px; border-radius: 6px;")
         self.setScaledContents(True)
-        self.setFixedSize(260, 260)
+        self.setFixedSize(650, 650) # В 2.5 раза больше (было 260x260)
         self.hide()
         
     def show_image(self, path: str, pos: QPoint):
@@ -36,85 +37,18 @@ class ImageHoverToolTip(QLabel):
         try:
             pixmap = QPixmap(path)
             if not pixmap.isNull():
-                scaled = pixmap.scaled(250, 250, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                # Масштабируем до 640x640 с сохранением пропорций
+                scaled = pixmap.scaled(640, 640, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                 self.setPixmap(scaled)
-                self.setFixedSize(scaled.width() + 8, scaled.height() + 8)
+                self.setFixedSize(scaled.width() + 10, scaled.height() + 10)
+                
+                # Смещаем правее и ниже курсора
                 self.move(pos.x() + 15, pos.y() + 15)
                 self.show()
             else:
                 self.hide()
         except Exception:
             self.hide()
-
-
-# -----------------------------------------------------------------------------
-# Компактная область перетаскивания папок (DropZone)
-# -----------------------------------------------------------------------------
-class CompactFolderDropZone(QFrame):
-    folder_dropped = pyqtSignal(str)
-    clicked = pyqtSignal()
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAcceptDrops(True)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setStyleSheet("""
-            QFrame {
-                background-color: rgba(255, 255, 255, 0.02);
-                border: 1px dashed #555;
-                border-radius: 4px;
-            }
-            QFrame:hover {
-                background-color: rgba(255, 255, 255, 0.05);
-                border-color: #3b82f6;
-            }
-        """)
-        self.setFixedHeight(30)
-        
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(5, 0, 5, 0)
-        
-        self.lbl = QLabel("Перетащите папки сюда или кликните" if AppContext.is_ru() else "Drag folders here or click")
-        self.lbl.setStyleSheet("color: #777; font-size: 11px; border: none; background: transparent;")
-        self.lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.lbl)
-        
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit()
-            
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-            self.setStyleSheet("""
-                QFrame {
-                    background-color: rgba(59, 130, 246, 0.1);
-                    border: 1px dashed #3b82f6;
-                    border-radius: 4px;
-                }
-            """)
-            
-    def dragLeaveEvent(self, event):
-        self.setStyleSheet("""
-            QFrame {
-                background-color: rgba(255, 255, 255, 0.02);
-                border: 1px dashed #555;
-                border-radius: 4px;
-            }
-            QFrame:hover {
-                background-color: rgba(255, 255, 255, 0.05);
-                border-color: #3b82f6;
-            }
-        """)
-        
-    def dropEvent(self, event):
-        self.dragLeaveEvent(None)
-        if event.mimeData().hasUrls():
-            for url in event.mimeData().urls():
-                fp = url.toLocalFile()
-                if os.path.isdir(fp):
-                    self.folder_dropped.emit(fp)
-            event.acceptProposedAction()
 
 
 # -----------------------------------------------------------------------------
@@ -500,36 +434,6 @@ class CreateAiGroupDialog(QDialog):
 
 
 # -----------------------------------------------------------------------------
-# Чекбокс с кастомным дизайном
-# -----------------------------------------------------------------------------
-class QCheckBoxCustom(QPushButton):
-    toggled = pyqtSignal(bool)
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setCheckable(True)
-        self.setFixedSize(16, 16)
-        self.clicked.connect(self._on_clicked)
-        self.update_style()
-        
-    def _on_clicked(self):
-        self.toggled.emit(self.isChecked())
-        self.update_style()
-        
-    def setChecked(self, checked):
-        super().setChecked(checked)
-        self.update_style()
-        
-    def update_style(self):
-        if self.isChecked():
-            self.setStyleSheet("background-color: #3b82f6; border: 1px solid #2563eb; border-radius: 3px; color: white; font-size: 10px; font-weight: bold;")
-            self.setText("✓")
-        else:
-            self.setStyleSheet("background-color: #333; border: 1px solid #555; border-radius: 3px;")
-            self.setText("")
-
-
-# -----------------------------------------------------------------------------
 # Горизонтальный чип (плашка) эталона в верхней панели настроек
 # -----------------------------------------------------------------------------
 class AiGroupChipWidget(QFrame):
@@ -624,7 +528,7 @@ class AiGroupChipWidget(QFrame):
 
 
 # -----------------------------------------------------------------------------
-# Основная вкладка ИИ-классификации с новым дизайном и экраном-заглушкой загрузки
+# Основная вкладка ИИ-классификации
 # -----------------------------------------------------------------------------
 class AiClassificationTab(QWidget):
     scan_started = pyqtSignal()
@@ -648,7 +552,6 @@ class AiClassificationTab(QWidget):
         self.check_models_status()
 
     def _init_ui(self):
-        # Вся вкладка использует один главный вертикальный лейаут
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
@@ -750,19 +653,25 @@ class AiClassificationTab(QWidget):
         ph_layout.addWidget(self.placeholder_status)
         
         ph_layout.addStretch(1)
-        
         self.main_layout.addWidget(self.download_placeholder)
         
         # =====================================================================
-        # ГЛАВНЫЙ КОНТЕНТ ВКЛАДКИ (ПО УМОЛЧАНИЮ ОТОБРАЖАЕТСЯ)
+        # ГЛАВНЫЙ КОНТЕНТ ВКЛАДКИ (НАСТРОЙКИ СВЕРХУ, ТАБЛИЦА СНИЗУ В SPLITTER)
         # =====================================================================
         self.main_content_widget = QWidget()
         content_layout = QVBoxLayout(self.main_content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
         
+        # Создаем вертикальный сплиттер, чтобы область настроек можно было расширять/сжимать
+        self.main_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.main_splitter.setHandleWidth(2)
+        self.main_splitter.setStyleSheet("QSplitter::handle { background-color: #2d2d2d; }")
+        
+        # Верхняя панель настроек (со свободным изменением высоты от 130 до 280)
         self.top_settings = QFrame()
-        self.top_settings.setFixedHeight(155)
+        self.top_settings.setMinimumHeight(130)
+        self.top_settings.setMaximumHeight(280)
         self.top_settings.setStyleSheet("background-color: #1e1e1e; border-bottom: 1px solid #2d2d2d;")
         top_layout = QHBoxLayout(self.top_settings)
         top_layout.setContentsMargins(15, 6, 15, 6)
@@ -801,7 +710,6 @@ class AiClassificationTab(QWidget):
         
         scroll_ref = QScrollArea()
         scroll_ref.setWidgetResizable(True)
-        scroll_ref.setFixedHeight(105)
         scroll_ref.setStyleSheet("QScrollArea { border: 1px solid #333; background-color: #111; border-radius: 4px; }")
         
         self.ref_container = QWidget()
@@ -815,7 +723,7 @@ class AiClassificationTab(QWidget):
         col_ref.addWidget(scroll_ref)
         top_layout.addLayout(col_ref, 1)
         
-        # КОЛОНКА 2: Каталоги для поиска
+        # КОЛОНКА 2: Каталоги для поиска (ДРОП-ЗОНА НА ВСЮ ШИРИНУ В СТИЛЕ CLEANER)
         col_dirs = QVBoxLayout()
         col_dirs.setContentsMargins(0, 0, 0, 0)
         col_dirs.setSpacing(4)
@@ -824,34 +732,16 @@ class AiClassificationTab(QWidget):
         dirs_title = QLabel("Каталоги для поиска" if AppContext.is_ru() else "Folders to Search")
         dirs_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI';")
         dirs_header.addWidget(dirs_title)
-        
-        self.btn_add_dir = QPushButton("Добавить" if AppContext.is_ru() else "Add")
-        self.btn_add_dir.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_add_dir.setStyleSheet("""
-            QPushButton { background-color: #444; color: #eee; border: 1px solid #555; padding: 2px 8px; border-radius: 3px; font-size: 11px; }
-            QPushButton:hover { background-color: #555; }
-        """)
-        self.btn_add_dir.clicked.connect(self.cleaner.add_folder)
-        dirs_header.addWidget(self.btn_add_dir)
-        
-        self.btn_clear_dirs = QPushButton("Очистить" if AppContext.is_ru() else "Clear")
-        self.btn_clear_dirs.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_clear_dirs.setStyleSheet("""
-            QPushButton { background-color: #444; color: #eee; border: 1px solid #555; padding: 2px 8px; border-radius: 3px; font-size: 11px; }
-            QPushButton:hover { background-color: #ef4444; border-color: #ef4444; }
-        """)
-        self.btn_clear_dirs.clicked.connect(self.cleaner.clear_folders)
-        dirs_header.addWidget(self.btn_clear_dirs)
         dirs_header.addStretch()
         col_dirs.addLayout(dirs_header)
         
+        # Scroll area для тождественного отображения каталогов Cleaner
         scroll_dirs = QScrollArea()
         scroll_dirs.setWidgetResizable(True)
-        scroll_dirs.setFixedHeight(105)
         scroll_dirs.setStyleSheet("QScrollArea { border: 1px solid #333; background-color: #111; border-radius: 4px; }")
         
         self.sources_list_widget_ai = QWidget()
-        self.sources_list_widget_ai.setStyleSheet("background-color: #111;")
+        self.sources_list_widget_ai.setStyleSheet("background-color: #111111;")
         
         dirs_container_layout = QVBoxLayout(self.sources_list_widget_ai)
         dirs_container_layout.setContentsMargins(5, 5, 5, 5)
@@ -864,27 +754,66 @@ class AiClassificationTab(QWidget):
         self.folder_list_layout_ai.setAlignment(Qt.AlignmentFlag.AlignTop)
         dirs_container_layout.addLayout(self.folder_list_layout_ai)
         
-        self.drop_zone_ai = CompactFolderDropZone()
+        # ТОЖДЕСТВЕННЫЙ DROP ZONE WIDGET НА ВСЮ ОБЛАСТЬ
+        self.drop_zone_ai = DropZoneWidget()
         self.drop_zone_ai.clicked.connect(self.cleaner.add_folder)
         self.drop_zone_ai.folder_dropped.connect(self.cleaner.add_folder_path)
+        self.drop_zone_ai.clear_default_requested.connect(self.cleaner.clear_folders)
+        self.drop_zone_ai.btn_clear.show()
+        self.drop_zone_ai.setStyleSheet(self.drop_zone_ai.styleSheet() + "margin: 0px; padding: 2px;")
         dirs_container_layout.addWidget(self.drop_zone_ai)
         
         scroll_dirs.setWidget(self.sources_list_widget_ai)
         col_dirs.addWidget(scroll_dirs)
-        
         top_layout.addLayout(col_dirs, 1)
         
-        # КОЛОНКА 3: Параметры поиска
+        # КОЛОНКА 3: Параметры поиска (С КНОПКОЙ-ИНФОРМАЦИЕЙ ℹ️)
         col_params = QVBoxLayout()
         col_params.setContentsMargins(0, 0, 0, 0)
         col_params.setSpacing(4)
         
+        params_header = QHBoxLayout()
         params_title = QLabel("Параметры ИИ поиска" if AppContext.is_ru() else "AI Search Parameters")
         params_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI';")
-        col_params.addWidget(params_title)
+        params_header.addWidget(params_title)
+        
+        self.lbl_info_icon = QLabel("ℹ️")
+        self.lbl_info_icon.setCursor(Qt.CursorShape.HelpCursor)
+        self.lbl_info_icon.setStyleSheet("color: #3b82f6; font-size: 12px; margin-left: 4px; background: transparent; border: none;")
+        
+        info_text = (
+            "🧠 КАК РАБОТАЕТ ИИ-ПОИСК:\n\n"
+            "1. Типы анализа:\n"
+            "   • Общее сходство: ИИ сравнивает цветовую гамму, композицию и объекты.\n"
+            "   • Поиск лиц: ИИ находит на фото человеческие лица и сравнивает их черты.\n\n"
+            "2. Сколько картинок-примеров добавлять:\n"
+            "   • Для лиц: достаточно 1-3 четких фото лица под разными углами.\n"
+            "   • Для общего поиска: достаточно 2-5 характерных скриншотов/картинок.\n\n"
+            "3. Порог схожести (Confidence):\n"
+            "   • 85% - 100%: Строгий поиск (тот же человек, почти идентичные скриншоты).\n"
+            "   • 70% - 85%: Умеренное сходство (тот же человек в другой одежде, похожие сцены).\n"
+            "   • 50% - 70%: Широкий поиск (похожие по цветам и структуре изображения).\n\n"
+            "💡 Совет: Для лучшего результата используйте четкие примеры и отключайте ненужные группы эталонов."
+            if AppContext.is_ru() else
+            "🧠 HOW AI SEARCH WORKS:\n\n"
+            "1. Analysis Types:\n"
+            "   • General Similarity: Compares colors, composition, and objects.\n"
+            "   • Face Recognition: Detects human faces and matches facial features.\n\n"
+            "2. Number of Reference Images:\n"
+            "   • For Faces: 1-3 clear photos from different angles are enough.\n"
+            "   • For General: 2-5 typical screenshots or images.\n\n"
+            "3. Similarity Threshold (Confidence):\n"
+            "   • 85% - 100%: Strict match (same person, nearly identical screenshots).\n"
+            "   • 70% - 85%: Medium match (same person in other clothes, similar scenes).\n"
+            "   • 50% - 70%: Broad match (similar colors and structure).\n\n"
+            "💡 Tip: Disable unused reference groups to speed up scanning."
+        )
+        self.lbl_info_icon.setToolTip(info_text)
+        params_header.addWidget(self.lbl_info_icon)
+        params_header.addStretch()
+        col_params.addLayout(params_header)
         
         params_container = QFrame()
-        params_container.setFixedHeight(105)
         params_container.setStyleSheet("QFrame { background-color: #111; border: 1px solid #333; border-radius: 4px; }")
         params_sub_layout = QVBoxLayout(params_container)
         params_sub_layout.setContentsMargins(8, 8, 8, 8)
@@ -930,7 +859,13 @@ class AiClassificationTab(QWidget):
         col_params.addWidget(params_container)
         top_layout.addLayout(col_params, 1)
         
-        content_layout.addWidget(self.top_settings)
+        self.main_splitter.addWidget(self.top_settings)
+        
+        # Нижняя часть (таблица, превью, воркеры и кнопки действий)
+        self.bottom_container = QWidget()
+        bot_layout = QVBoxLayout(self.bottom_container)
+        bot_layout.setContentsMargins(0, 0, 0, 0)
+        bot_layout.setSpacing(0)
         
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedHeight(18)
@@ -939,11 +874,11 @@ class AiClassificationTab(QWidget):
             QProgressBar::chunk { background-color: #3b82f6; }
         """)
         self.progress_bar.hide()
-        content_layout.addWidget(self.progress_bar)
+        bot_layout.addWidget(self.progress_bar)
         
         self.lbl_stats = QLabel("")
         self.lbl_stats.setStyleSheet("color: #4ade80; font-weight: bold; font-size: 12px; border: none; padding: 4px 15px; background-color: #1e1e1e;")
-        content_layout.addWidget(self.lbl_stats)
+        bot_layout.addWidget(self.lbl_stats)
         
         from .ui_panels import CleanerActionBar
         self.action_bar = CleanerActionBar()
@@ -957,8 +892,7 @@ class AiClassificationTab(QWidget):
         self.action_bar.delete_clicked.connect(self.cleaner.delete_selected)
         self.action_bar.browse_clicked.connect(self.cleaner.browse_dest)
         self.action_bar.drop_zone.path_changed.connect(self.cleaner.validate_move_state)
-        
-        content_layout.addWidget(self.action_bar)
+        bot_layout.addWidget(self.action_bar)
         
         self.right_splitter = QSplitter(Qt.Orientation.Horizontal)
         self.right_splitter.setHandleWidth(2)
@@ -975,13 +909,47 @@ class AiClassificationTab(QWidget):
         self.tree_results.setColumnWidth(0, 240)
         self.tree_results.setColumnWidth(1, 100)
         self.tree_results.setColumnWidth(2, 90)
+        
+        # ЗАМЕТНЫЕ ЧЕКБОКСЫ QTreeWidget (дизайн тождественный)
         self.tree_results.setStyleSheet("""
-            QTreeWidget { background-color: #1a1a1a; border: none; outline: none; color: #eee; }
-            QTreeWidget::item { padding: 6px; border-bottom: 1px solid #222; }
-            QTreeWidget::item:selected { background-color: #2b2b2b; }
+            QTreeWidget {
+                background-color: #1a1a1a;
+                border: none;
+                outline: none;
+                color: #eee;
+            }
+            QTreeWidget::item {
+                padding: 6px;
+                border-bottom: 1px solid #222;
+            }
+            QTreeWidget::item:selected {
+                background-color: #2b2b2b;
+            }
+            QTreeWidget::indicator {
+                width: 14px;
+                height: 14px;
+                border: 1px solid #666;
+                border-radius: 3px;
+                background-color: #2b2b2b;
+            }
+            QTreeWidget::indicator:hover {
+                border-color: #3b82f6;
+            }
+            QTreeWidget::indicator:checked {
+                background-color: #3b82f6;
+                border: 1px solid #2563eb;
+            }
+            QTreeWidget::indicator:unchecked {
+                background-color: #2b2b2b;
+            }
         """)
         self.tree_results.itemSelectionChanged.connect(self.on_tree_selection_changed)
         self.tree_results.itemChanged.connect(self.on_tree_item_changed)
+        
+        # Поддержка контекстного меню по заголовку группы
+        self.tree_results.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.tree_results.customContextMenuRequested.connect(self.show_results_context_menu)
+        
         self.right_splitter.addWidget(self.tree_results)
         
         from .ui_preview import CleanerPreviewWidget
@@ -990,12 +958,17 @@ class AiClassificationTab(QWidget):
         self.right_splitter.addWidget(self.preview_widget)
         
         self.right_splitter.setSizes([650, 350])
-        content_layout.addWidget(self.right_splitter, 1)
+        bot_layout.addWidget(self.right_splitter, 1)
         
-        self.main_layout.addWidget(self.main_content_widget)
+        self.main_splitter.addWidget(self.bottom_container)
+        
+        # Начальные размеры вертикального сплиттера: 155px под настройки, остальное под таблицу
+        self.main_splitter.setSizes([155, 450])
+        
+        content_layout.addWidget(self.main_splitter, 1)
+        content_layout.addWidget(self.main_content_widget)
 
     def check_models_status(self):
-        """Проверяет наличие моделей и переключает экраны."""
         if self.ai.are_models_present():
             if not self.ai._is_initialized:
                 self.ai.initialize_sessions()
@@ -1006,7 +979,6 @@ class AiClassificationTab(QWidget):
             self.main_content_widget.hide()
 
     def start_placeholder_download(self):
-        """Загрузка моделей с заглушки."""
         self.btn_download_models.setEnabled(False)
         self.placeholder_progress.show()
         self.placeholder_progress.setValue(0)
@@ -1045,7 +1017,6 @@ class AiClassificationTab(QWidget):
             self.placeholder_status.setText("Ошибка при скачивании моделей!" if is_ru else "Failed to download models!")
 
     def reload_groups(self):
-        """Перезагружает список эталонов на панели настроек."""
         self.chips_map.clear()
         while self.group_list_layout_ai.count():
             item = self.group_list_layout_ai.takeAt(0)
@@ -1119,8 +1090,6 @@ class AiClassificationTab(QWidget):
     def check_and_download_models_ui(self) -> bool:
         if self.ai.are_models_present():
             return True
-            
-        # Если почему-то перешли сюда без заглушки
         self.check_models_status()
         return False
 
@@ -1167,7 +1136,6 @@ class AiClassificationTab(QWidget):
                 needs_training.append(name)
                 
         if needs_training:
-            # Сначала проверяем/скачиваем модели нейросети
             if not self.check_and_download_models_ui():
                 return
                 
@@ -1399,3 +1367,64 @@ class AiClassificationTab(QWidget):
                 
         self.preview_widget.show_empty("Выберите файл для предпросмотра" if AppContext.is_ru() else "Select a file to preview")
         self.update_cleaner_action_bar_info()
+
+    def show_results_context_menu(self, pos: QPoint):
+        """Контекстное меню по заголовку группы результатов."""
+        item = self.tree_results.itemAt(pos)
+        if not item:
+            return
+            
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if data and data.get("is_group", False):
+            menu = QMenu(self)
+            menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; }")
+            
+            act_select = QAction("Выделить все файлы в этой группе" if AppContext.is_ru() else "Select all files in this group", self)
+            act_deselect = QAction("Снять выделение со всех файлов в группе" if AppContext.is_ru() else "Deselect all files in this group", self)
+            
+            act_select.triggered.connect(lambda: self.set_group_selection_state(item, Qt.CheckState.Checked))
+            act_deselect.triggered.connect(lambda: self.set_group_selection_state(item, Qt.CheckState.Unchecked))
+            
+            menu.addAction(act_select)
+            menu.addAction(act_deselect)
+            menu.exec(self.tree_results.mapToGlobal(pos))
+
+    def set_group_selection_state(self, group_item, state):
+        self.tree_results.blockSignals(True)
+        try:
+            group_item.setCheckState(0, state)
+            for i in range(group_item.childCount()):
+                group_item.child(i).setCheckState(0, state)
+        finally:
+            self.tree_results.blockSignals(False)
+        self.update_cleaner_action_bar_info()
+
+
+# -----------------------------------------------------------------------------
+# Кнопка чекбокса, использующаяся в чипах эталонов
+# -----------------------------------------------------------------------------
+class QCheckBoxCustom(QPushButton):
+    toggled = pyqtSignal(bool)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCheckable(True)
+        self.setFixedSize(16, 16)
+        self.clicked.connect(self._on_clicked)
+        self.update_style()
+        
+    def _on_clicked(self):
+        self.toggled.emit(self.isChecked())
+        self.update_style()
+        
+    def setChecked(self, checked):
+        super().setChecked(checked)
+        self.update_style()
+        
+    def update_style(self):
+        if self.isChecked():
+            self.setStyleSheet("background-color: #3b82f6; border: 1px solid #2563eb; border-radius: 3px; color: white; font-size: 10px; font-weight: bold;")
+            self.setText("✓")
+        else:
+            self.setStyleSheet("background-color: #333; border: 1px solid #555; border-radius: 3px;")
+            self.setText("")

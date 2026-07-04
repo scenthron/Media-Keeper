@@ -1618,8 +1618,7 @@ class AiClassificationTab(QWidget):
         self.btn_start_scan.setEnabled(can_run)
         
         base_text = " Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search"
-        dbg_text = f" (F:{int(has_folders)} G:{int(has_enabled_groups)} O:{int(is_ok)})"
-        self.btn_start_scan.setText(base_text + dbg_text)
+        self.btn_start_scan.setText(base_text)
 
     def toggle_scan(self):
         if self.active_worker and self.active_worker.isRunning():

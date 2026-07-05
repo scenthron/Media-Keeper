@@ -659,7 +659,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                 del current_widgets[key]
 
         # 4. Инкрементально вставляем и синхронизируем
-        self.categories_layout.setUpdatesEnabled(False)
+        self.cats_container.setUpdatesEnabled(False)
         try:
             for idx, (name, path, item_type) in enumerate(target_items):
                 key = path if item_type != "drop_zone" else "__drop_zone__"
@@ -691,7 +691,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                         layout.insertWidget(idx, drop_zone)
 
         finally:
-            self.categories_layout.setUpdatesEnabled(True)
+            self.cats_container.setUpdatesEnabled(True)
 
         t5 = time.perf_counter()
         logging.info(f"[PROFILER] UI widgets inserted/updated in {t5 - t4:.4f}s. Total reload_categories_ui time: {t5 - t3:.4f}s")

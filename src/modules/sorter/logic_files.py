@@ -329,15 +329,15 @@ class FileOpsMixin:
         if current_depth >= max_depth or len(result_list) >= max_paths:
             return
         try:
-            for item in os.listdir(root):
-                if len(result_list) >= max_paths:
-                    break
-                if item == ".mediakeeper":
-                    continue
-                p = os.path.join(root, item)
-                if os.path.isdir(p):
-                    result_list.append(p)
-                    self._collect_watch_dirs(p, current_depth + 1, max_depth, result_list, max_paths)
+            with os.scandir(root) as it:
+                for entry in it:
+                    if len(result_list) >= max_paths:
+                        break
+                    if entry.name == ".mediakeeper":
+                        continue
+                    if entry.is_dir():
+                        result_list.append(entry.path)
+                        self._collect_watch_dirs(entry.path, current_depth + 1, max_depth, result_list, max_paths)
         except:
             pass
 

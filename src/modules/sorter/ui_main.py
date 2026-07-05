@@ -594,8 +594,14 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                  target_items.append((name, path, "category"))
                  
              elif is_main_sort and not self.temp_roots:
-                 try: items = os.listdir(path)
-                 except: items = []
+                 try:
+                     items = []
+                     with os.scandir(path) as it:
+                         for entry in it:
+                             if entry.is_dir() and entry.name != ".mediakeeper":
+                                 items.append(entry.name)
+                 except:
+                     items = []
                  
                  key_path = os.path.normpath(path)
                  
@@ -610,8 +616,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
 
                  for cat_name in items:
                      cat_path = os.path.join(path, cat_name)
-                     if os.path.isdir(cat_path):
-                         target_items.append((cat_name, cat_path, "category"))
+                     target_items.append((cat_name, cat_path, "category"))
 
         target_items.append(("", self.SORT_DIR, "drop_zone"))
 

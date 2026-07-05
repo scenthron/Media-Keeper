@@ -476,8 +476,14 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
             return
 
         max_level = self.app.config.get("max_nesting", 10)
-        try: items = os.listdir(self.path)
-        except: items = []
+        try:
+            items = []
+            with os.scandir(self.path) as it:
+                for entry in it:
+                    if entry.is_dir() and entry.name != ".mediakeeper":
+                        items.append(entry.name)
+        except:
+            items = []
         
         key_path = os.path.normpath(self.path)
         
@@ -494,18 +500,14 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         folders_info = []
         for f in items:
             fp = os.path.join(self.path, f)
-            if os.path.isdir(fp) and f != ".mediakeeper":
-                has_sub = False
-                if self.level + 1 < max_level:
-                    try:
-                        sub = os.listdir(fp)
-                        has_sub = any(
-                            os.path.isdir(os.path.join(fp, i)) for i in sub
-                            if i != ".mediakeeper"
-                        )
-                    except:
-                        pass
-                folders_info.append((f, fp, has_sub))
+            has_sub = False
+            if self.level + 1 < max_level:
+                try:
+                    with os.scandir(fp) as it:
+                        has_sub = any(entry.is_dir() for entry in it if entry.name != ".mediakeeper")
+                except:
+                    pass
+            folders_info.append((f, fp, has_sub))
 
         # Находим текущие виджеты в контейнере
         layout = self.sections_container.layout

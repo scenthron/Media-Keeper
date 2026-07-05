@@ -21,8 +21,8 @@ class AiGroupSettingsDialog(QDialog):
         self.is_ru = AppContext.is_ru()
         self.has_changes = False
         
-        self.pending_positive = []
-        self.pending_negative = []
+        self.pending_pos = []
+        self.pending_neg = []
         
         title = f"Настройка эталона: {group_name}" if self.group_name else "Создание группы эталонов"
         if not self.is_ru:
@@ -177,8 +177,9 @@ class AiGroupSettingsDialog(QDialog):
         t_layout = QVBoxLayout(tab)
         t_layout.setContentsMargins(10, 10, 10, 10)
         
-        lbl_drop = QLabel("Перетащите файлы картинок (.png, .jpg) прямо в поле ниже:" if self.is_ru else "Drag and drop image files (.png, .jpg) directly to the area below:")
-        lbl_drop.setStyleSheet("color: #aaa; font-size: 11px; font-style: italic;")
+        lbl_drop = QLabel("⬇ Перетащите картинки (.png, .jpg) прямо в поле ниже ⬇" if self.is_ru else "⬇ Drag and drop image files (.png, .jpg) directly below ⬇")
+        lbl_drop.setStyleSheet("color: #3b82f6; font-size: 12px; font-weight: bold; margin-bottom: 2px;")
+        lbl_drop.setAlignment(Qt.AlignmentFlag.AlignCenter)
         t_layout.addWidget(lbl_drop)
         
         list_widget = RefImagesListWidget(self)
@@ -237,9 +238,6 @@ class AiGroupSettingsDialog(QDialog):
         target_list = self.pending_pos if is_positive else self.pending_neg
         target_widget = self.list_pos if is_positive else self.list_neg
         
-        if not hasattr(self, "pending_pos"):
-            self.pending_pos = []
-            self.pending_neg = []
             
         for path in file_paths:
             if path not in target_list:

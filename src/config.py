@@ -16,7 +16,7 @@ APP_DESIGN = {
     "text_color": "#ffffff",           
     "font_size_main": 14,
     "font_size_header": 16,
-    "btn_delete_bg": "#ef4444",        
+    "btn_delete_bg": "#b91c1c",        
     "btn_undo_bg": "#eab308",          
     "btn_nav_bg": "#444444",           
     "btn_create_bg": "#3b82f6",

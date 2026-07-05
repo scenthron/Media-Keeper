@@ -11,6 +11,8 @@ class ConfigManager:
         "path_todel": "",
         "max_nesting": 10,
         "scan_subfolders": False, 
+        "max_nesting": 5,
+        "scan_subfolders": True, 
         "filter_mode": "include",
         "filter_extensions": "", 
         "affix_mode": "prefix",
@@ -21,7 +23,7 @@ class ConfigManager:
         "hover_delay": 0.4,
         "session_loop": False,
         "session_all_videos_active": False,
-        "collapse_groups": True
+        "auto_collapse_groups": True
     }
     
     @staticmethod
@@ -53,8 +55,8 @@ class ConfigManager:
                                 try: 
                                     config[k] = int(v)
                                 except ValueError: 
-                                    config[k] = 10
-                                    logging.warning(f"Некорректное значение для '{k}' в settings.ini: '{v}'. Используется значение по умолчанию 10.")
+                                    config[k] = 5
+                                    logging.warning(f"Некорректное значение для '{k}' в settings.ini: '{v}'. Используется значение по умолчанию 5.")
                             elif k == "hover_delay":
                                 try:
                                     config[k] = float(v)
@@ -65,10 +67,14 @@ class ConfigManager:
                                 config[k] = (v.lower() == "true")
                             elif k == "session_all_videos_active":
                                 config[k] = (v.lower() == "true")
-                            elif k == "collapse_groups":
+                            elif k == "auto_collapse_groups":
                                 config[k] = (v.lower() == "true")
                             else:
                                 config[k] = v
+                
+                # Если у пользователя старая версия конфига, применяем новую по умолчанию
+                if "auto_collapse_groups" not in cp.get("General", fallback={}):
+                    config["auto_collapse_groups"] = True
                 
                 # Загружаем другие секции (например, переопределения горячих клавиш)
                 for section in cp.sections():

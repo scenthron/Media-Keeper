@@ -30,7 +30,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         if hasattr(self.app, 'collapsed_states_cache') and self.path in self.app.collapsed_states_cache:
             self.is_collapsed = self.app.collapsed_states_cache[self.path]
         else:
-            self.is_collapsed = self.app.config.get("collapse_groups", False)
+            self.is_collapsed = self.app.config.get("auto_collapse_groups", True)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setAcceptDrops(True)
         self._drag_start_pos = None
@@ -542,37 +542,32 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
                 del current_widgets[path]
 
         # Инкрементально обновляем/добавляем
-        self.sections_container.setUpdatesEnabled(False)
-        try:
-            for idx, (name, fp, has_sub) in enumerate(folders_info):
-                if fp in current_widgets:
-                    widget = current_widgets[fp]
-                    is_currently_cat = isinstance(widget, CategoryWidget)
-                    if is_currently_cat != has_sub:
-                        # Пересоздаем, если тип изменился
-                        layout.removeWidget(widget)
-                        widget.deleteLater()
-                        if has_sub:
-                            widget = CategoryWidget(name, fp, self.app, self.level + 1, parent_cat=self)
-                        else:
-                            widget = LeafNodeWidget(name, fp, self.app, self, self.level + 1)
-                        layout.insertWidget(idx, widget)
-                    else:
-                        # Перемещаем на правильный индекс
-                        layout.removeWidget(widget)
-                        layout.insertWidget(idx, widget)
-                        if has_sub:
-                            widget.refresh_sections()
-                else:
-                    # Добавляем новый
+        for idx, (name, fp, has_sub) in enumerate(folders_info):
+            if fp in current_widgets:
+                widget = current_widgets[fp]
+                is_currently_cat = isinstance(widget, CategoryWidget)
+                if is_currently_cat != has_sub:
+                    # Пересоздаем, если тип изменился
+                    layout.removeWidget(widget)
+                    widget.deleteLater()
                     if has_sub:
                         widget = CategoryWidget(name, fp, self.app, self.level + 1, parent_cat=self)
                     else:
                         widget = LeafNodeWidget(name, fp, self.app, self, self.level + 1)
                     layout.insertWidget(idx, widget)
-
-        finally:
-            self.sections_container.setUpdatesEnabled(True)
+                else:
+                    # Перемещаем на правильный индекс
+                    layout.removeWidget(widget)
+                    layout.insertWidget(idx, widget)
+                    if has_sub:
+                        widget.refresh_sections()
+            else:
+                # Добавляем новый
+                if has_sub:
+                    widget = CategoryWidget(name, fp, self.app, self.level + 1, parent_cat=self)
+                else:
+                    widget = LeafNodeWidget(name, fp, self.app, self, self.level + 1)
+                layout.insertWidget(idx, widget)
 
         self.btn_collapse.setVisible(bool(folders_info))
         self._sections_loaded = True

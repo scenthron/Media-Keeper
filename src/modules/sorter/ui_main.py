@@ -659,39 +659,34 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                 del current_widgets[key]
 
         # 4. Инкрементально вставляем и синхронизируем
-        self.cats_container.setUpdatesEnabled(False)
-        try:
-            for idx, (name, path, item_type) in enumerate(target_items):
-                key = path if item_type != "drop_zone" else "__drop_zone__"
-                
-                if key in current_widgets:
-                    widget = current_widgets[key]
-                    layout.removeWidget(widget)
+        for idx, (name, path, item_type) in enumerate(target_items):
+            key = path if item_type != "drop_zone" else "__drop_zone__"
+            
+            if key in current_widgets:
+                widget = current_widgets[key]
+                layout.removeWidget(widget)
+                layout.insertWidget(idx, widget)
+                if item_type == "category" and isinstance(widget, CategoryWidget):
+                    widget.refresh_sections()
+            else:
+                if item_type == "category":
+                    widget = CategoryWidget(name, path, self, level=0)
+                    if path not in getattr(self, 'collapsed_states_cache', {}) and self.temp_roots:
+                        if not widget.is_collapsed:
+                            widget.toggle_collapse()
                     layout.insertWidget(idx, widget)
-                    if item_type == "category" and isinstance(widget, CategoryWidget):
-                        widget.refresh_sections()
                 else:
-                    if item_type == "category":
-                        widget = CategoryWidget(name, path, self, level=0)
-                        if path not in getattr(self, 'collapsed_states_cache', {}) and self.temp_roots:
-                            if not widget.is_collapsed:
-                                widget.toggle_collapse()
-                        layout.insertWidget(idx, widget)
+                    drop_zone = DropZoneWidget()
+                    drop_zone.set_folder_info(self.SORT_DIR)
+                    drop_zone.clicked.connect(self.browse_and_add_temp_root)
+                    drop_zone.clear_default_requested.connect(self.clear_default_sort)
+                    drop_zone.files_dropped.connect(self.on_drop_zone_files_dropped)
+                    
+                    if self.config.get("path_sort", ""):
+                        drop_zone.btn_clear.show()
                     else:
-                        drop_zone = DropZoneWidget()
-                        drop_zone.set_folder_info(self.SORT_DIR)
-                        drop_zone.clicked.connect(self.browse_and_add_temp_root)
-                        drop_zone.clear_default_requested.connect(self.clear_default_sort)
-                        drop_zone.files_dropped.connect(self.on_drop_zone_files_dropped)
-                        
-                        if self.config.get("path_sort", ""):
-                            drop_zone.btn_clear.show()
-                        else:
-                            drop_zone.btn_clear.hide()
-                        layout.insertWidget(idx, drop_zone)
-
-        finally:
-            self.cats_container.setUpdatesEnabled(True)
+                        drop_zone.btn_clear.hide()
+                    layout.insertWidget(idx, drop_zone)
 
         t5 = time.perf_counter()
         logging.info(f"[PROFILER] UI widgets inserted/updated in {t5 - t4:.4f}s. Total reload_categories_ui time: {t5 - t3:.4f}s")

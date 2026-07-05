@@ -312,7 +312,7 @@ class PathSettingsDialog(QDialog):
 
         # Чекбокс: Сворачивать группы
         self.chk_collapse_groups = QCheckBox("Сворачивать группы по умолчанию" if is_ru else "Collapse groups by default")
-        self.chk_collapse_groups.setChecked(self.config.get("collapse_groups", False))
+        self.chk_collapse_groups.setChecked(self.config.get("auto_collapse_groups", True))
         self.chk_collapse_groups.setStyleSheet("""
             QCheckBox { color: white; font-size: 13px; font-weight: bold; margin-top: 10px; }
             QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
@@ -587,5 +587,5 @@ class PathSettingsDialog(QDialog):
             "path_unsort": self.config.get("path_unsort", ""),
             "path_sort": self.e_sort.text(),
             "path_todel": self.e_todel.text(),
-            "collapse_groups": self.chk_collapse_groups.isChecked()
+            "auto_collapse_groups": self.chk_collapse_groups.isChecked()
         }

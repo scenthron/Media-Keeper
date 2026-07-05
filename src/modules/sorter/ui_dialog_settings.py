@@ -578,7 +578,7 @@ class PathSettingsDialog(QDialog):
 
     def get_new_config_data(self):
         return {
-            "max_nesting": self.config.get("max_nesting", 10),
+            "max_nesting_depth": self.config.get("max_nesting_depth", 5),
             "scan_subfolders": self.config.get("scan_subfolders", False),
             "filter_mode": self.config.get("filter_mode", "include"),
             "filter_extensions": self.config.get("filter_extensions", ""),

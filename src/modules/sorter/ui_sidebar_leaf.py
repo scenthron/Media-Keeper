@@ -94,7 +94,7 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
         self.btn_add.setIcon(AppContext.get_cached_icon("plus.svg"))
         self.btn_add.setIconSize(QSize(sz - 6, sz - 6))
         
-        max_nesting = self.app.config.get("max_nesting", 10)
+        max_nesting = self.app.config.get("max_nesting_depth", 5)
         if self.level >= max_nesting:
             self.btn_add.setEnabled(False)
             self.btn_add.setStyleSheet("QPushButton { background-color: #333; border: 1px solid #444; border-radius: 4px; padding: 0px; }")

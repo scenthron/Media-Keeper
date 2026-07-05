@@ -12,7 +12,7 @@
   - Папка должна стать LeafNodeWidget если у неё НЕТ подпапок.
   - QTimer.singleShot на родителе при отсутствии папок — запрещён (удалён),
     т.к. вызывался на уже удалённом через deleteLater объекте.
-  - max_nesting ограничивает ГЛУБИНУ СКАНИРОВАНИЯ, но не отображение узла как CategoryWidget.
+  - max_nesting_depth ограничивает ГЛУБИНУ СКАНИРОВАНИЯ, но не отображение узла как CategoryWidget.
 """
 
 import os
@@ -32,7 +32,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 MEDIAKEEPER_SKIP = ".mediakeeper"
 
 
-def classify_subfolders(parent_path: str, max_nesting: int, level: int) -> list[dict]:
+def classify_subfolders(parent_path: str, max_nesting_depth: int, level: int) -> list[dict]:
     """
     Возвращает список описаний дочерних папок — точно так же, как это делает
     refresh_sections() в CategoryWidget.
@@ -60,7 +60,7 @@ def classify_subfolders(parent_path: str, max_nesting: int, level: int) -> list[
         fp = os.path.join(parent_path, f)
         has_sub = False
 
-        if level + 1 < max_nesting:
+        if level + 1 < max_nesting_depth:
             try:
                 sub = os.listdir(fp)
                 has_sub = any(
@@ -128,7 +128,7 @@ class TestClassifySubfolders(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
         self.fs = FsBuilder(self.tmpdir)
-        self.MAX = 10  # max_nesting по умолчанию
+        self.MAX = 10  # max_nesting_depth по умолчанию
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir, ignore_errors=True)
@@ -239,27 +239,27 @@ class TestClassifySubfolders(unittest.TestCase):
 
     def test_deep_nesting_at_max_level(self):
         """
-        При достижении max_nesting сканирование подпапок не выполняется,
+        При достижении max_nesting_depth сканирование подпапок не выполняется,
         поэтому папка классифицируется как leaf, даже если у неё есть подпапки.
-        Это железное правило: max_nesting ограничивает СКАНИРОВАНИЕ, а не рендеринг.
+        Это железное правило: max_nesting_depth ограничивает СКАНИРОВАНИЕ, а не рендеринг.
         """
         root = self.fs.mkdir("root")
         self.fs.mkdir("root", "Deep", "SubDeep")  # Deep имеет подпапку SubDeep
 
-        # level=9, max_nesting=10: level+1=10 — не < max_nesting → has_sub не вычисляется → leaf
-        result = classify_subfolders(root, max_nesting=10, level=9)
+        # level=9, max_nesting_depth=10: level+1=10 — не < max_nesting_depth → has_sub не вычисляется → leaf
+        result = classify_subfolders(root, max_nesting_depth=10, level=9)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['name'], 'Deep')
         self.assertEqual(result[0]['type'], 'leaf',
-                         "При достижении max_nesting папка должна стать leaf")
+                         "При достижении max_nesting_depth папка должна стать leaf")
 
     def test_just_below_max_level(self):
-        """Уровень на 1 ниже max_nesting — сканирование разрешено, корректно возвращает category."""
+        """Уровень на 1 ниже max_nesting_depth — сканирование разрешено, корректно возвращает category."""
         root = self.fs.mkdir("root")
         self.fs.mkdir("root", "Deep", "SubDeep")  # Deep имеет подпапку
 
-        # level=8, max_nesting=10: level+1=9 < 10 → has_sub вычисляется → category
-        result = classify_subfolders(root, max_nesting=10, level=8)
+        # level=8, max_nesting_depth=10: level+1=9 < 10 → has_sub вычисляется → category
+        result = classify_subfolders(root, max_nesting_depth=10, level=8)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['name'], 'Deep')
         self.assertEqual(result[0]['type'], 'category')
@@ -477,7 +477,7 @@ class TestClassifyCount(unittest.TestCase):
             self.fs.mkdir("root", f"Folder_{i}")
         self.fs.mkdir("root", ".mediakeeper")  # не должна считаться
 
-        result = classify_subfolders(root, max_nesting=10, level=0)
+        result = classify_subfolders(root, max_nesting_depth=10, level=0)
         self.assertEqual(len(result), expected_count)
 
     def test_paths_are_absolute_and_correct(self):
@@ -486,7 +486,7 @@ class TestClassifyCount(unittest.TestCase):
         self.fs.mkdir("root", "Видео")
         self.fs.mkdir("root", "Аудио")
 
-        result = classify_subfolders(root, max_nesting=10, level=0)
+        result = classify_subfolders(root, max_nesting_depth=10, level=0)
         for r in result:
             self.assertTrue(os.path.exists(r['path']),
                             f"Путь {r['path']} не существует")

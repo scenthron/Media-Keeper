@@ -222,7 +222,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         """)
         for i in range(1, 11):
             self.combo_nesting.addItem(str(i), i)
-        current_level = self.config.get("max_nesting", 10)
+        current_level = self.config.get("max_nesting_depth", 5)
         self.combo_nesting.setCurrentIndex(current_level - 1)
         self.combo_nesting.setCurrentIndex(current_level - 1)
         self.combo_nesting.currentIndexChanged.connect(self.on_nesting_changed)
@@ -771,7 +771,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
     def on_nesting_changed(self, index):
         """Handle nesting level change from combobox."""
         level = index + 1  # Index 0 = level 1, etc.
-        self.config["max_nesting"] = level
+        self.config["max_nesting_depth"] = level
         ConfigManager.save(self.config)
         self.reload_categories_ui()
         self.setFocus()

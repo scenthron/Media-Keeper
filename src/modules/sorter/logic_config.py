@@ -9,9 +9,7 @@ class ConfigManager:
         "path_unsort": "", # Empty by default for safety
         "path_sort": "",
         "path_todel": "",
-        "max_nesting": 10,
-        "scan_subfolders": False, 
-        "max_nesting": 5,
+        "max_nesting_depth": 5,
         "scan_subfolders": True, 
         "filter_mode": "include",
         "filter_extensions": "", 
@@ -51,7 +49,7 @@ class ConfigManager:
                         if k in config:
                             if k == "scan_subfolders":
                                 config[k] = (v.lower() == "true")
-                            elif k == "max_nesting":
+                            elif k == "max_nesting_depth":
                                 try: 
                                     config[k] = int(v)
                                 except ValueError: 

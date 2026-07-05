@@ -137,7 +137,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         btn_add_sec.setFixedSize(sz, sz)
         btn_add_sec.setIcon(AppContext.get_cached_icon("plus.svg"))
         btn_add_sec.setIconSize(QSize(sz - 6, sz - 6))
-        max_nesting = self.app.config.get("max_nesting", 10)
+        max_nesting = self.app.config.get("max_nesting_depth", 5)
         if self.level >= max_nesting:
             btn_add_sec.setEnabled(False)
             btn_add_sec.setStyleSheet("QPushButton { background-color: rgba(0,0,0,0.3); border: 1px solid rgba(0,0,0,0.5); border-radius: 4px; padding: 0px; }")
@@ -491,7 +491,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
             self.btn_collapse.setVisible(False)
             return
 
-        max_level = self.app.config.get("max_nesting", 10)
+        max_level = self.app.config.get("max_nesting_depth", 5)
         try:
             items = []
             with os.scandir(self.path) as it:

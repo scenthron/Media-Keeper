@@ -15,7 +15,7 @@ class TestSettingsDialogs(unittest.TestCase):
     def test_path_settings_dialog_get_data(self):
         """Проверяет метод get_new_config_data в PathSettingsDialog."""
         test_config = {
-            "max_nesting": 5,
+            "max_nesting_depth": 5,
             "scan_subfolders": True,
             "filter_mode": "exclude",
             "filter_extensions": "mp3, wav",
@@ -31,7 +31,7 @@ class TestSettingsDialogs(unittest.TestCase):
         # Получаем данные
         data = dlg.get_new_config_data()
         
-        self.assertEqual(data["max_nesting"], 5)
+        self.assertEqual(data["max_nesting_depth"], 5)
         self.assertEqual(data["scan_subfolders"], True)
         self.assertEqual(data["filter_mode"], "exclude")
         self.assertEqual(data["filter_extensions"], "mp3, wav")

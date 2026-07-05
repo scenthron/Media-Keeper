@@ -566,8 +566,15 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
     def create_section(self):
         dlg = SmartNameDialog("dlg_new_sub_title", "dlg_enter_name", self.path, "", self)
         if dlg.exec() and dlg.final_name:
-            os.makedirs(os.path.join(self.path, dlg.final_name), exist_ok=True)
-            self.refresh_sections()
+            try:
+                target_path = os.path.join(self.path, dlg.final_name)
+                os.makedirs(target_path, exist_ok=True)
+                self.refresh_sections()
+            except Exception as e:
+                import logging
+                from PyQt6.QtWidgets import QMessageBox
+                logging.error(f"Ошибка при создании подкатегории '{dlg.final_name}': {e}", exc_info=True)
+                QMessageBox.critical(self, "Ошибка", f"Не удалось создать папку:\n{e}")
 
     def open_stats(self):
         dlg = FolderStatsDialog(self.path, self)

@@ -81,6 +81,7 @@ class FileOpsMixin:
             self.scan_thread.cancel()
             self._scan_was_cancelled = True
             self.scan_thread.wait()  # Гарантируем завершение потока до закрытия диалога
+            self.scan_thread.deleteLater()
             self.scan_thread = None
         self._safe_close_dialog('scan_dlg')
 
@@ -89,12 +90,16 @@ class FileOpsMixin:
             logging.info("Результаты сканирования проигнорированы, так как оно было отменено.")
             self._scan_was_cancelled = False
             self._safe_close_dialog('scan_dlg')
+            if hasattr(self, 'scan_thread') and self.scan_thread:
+                self.scan_thread.deleteLater()
             self.scan_thread = None
             return
 
         if hasattr(self, 'scan_thread') and self.scan_thread and getattr(self.scan_thread, '_is_cancelled', False):
             logging.info("Результаты сканирования проигнорированы, так как оно было отменено.")
             self._safe_close_dialog('scan_dlg')
+            if hasattr(self, 'scan_thread') and self.scan_thread:
+                self.scan_thread.deleteLater()
             self.scan_thread = None
             return
 
@@ -107,6 +112,8 @@ class FileOpsMixin:
         if not is_ui_dirty and current_set is not None and current_set == new_set:
             logging.debug("Scan finished: No changes in file list, skipping UI refresh. Checking missing thumbnails...")
             self._safe_close_dialog('scan_dlg')
+            if hasattr(self, 'scan_thread') and self.scan_thread:
+                self.scan_thread.deleteLater()
             self.scan_thread = None
             
             # Запускаем генерацию превью для файлов, у которых их нет в кэше
@@ -160,6 +167,8 @@ class FileOpsMixin:
             
         self.lbl_unsort_count.update_info()
         self.lbl_todel_count.update_info()
+        if hasattr(self, 'scan_thread') and self.scan_thread:
+            self.scan_thread.deleteLater()
         self.scan_thread = None
 
     def apply_local_filters_and_sorting(self, trigger_sync=True):

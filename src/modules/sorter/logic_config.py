@@ -71,7 +71,7 @@ class ConfigManager:
                                 config[k] = v
                 
                 # Если у пользователя старая версия конфига, применяем новую по умолчанию
-                if "auto_collapse_groups" not in cp.get("General", fallback={}):
+                if not cp.has_option("General", "auto_collapse_groups"):
                     config["auto_collapse_groups"] = True
                 
                 # Загружаем другие секции (например, переопределения горячих клавиш)

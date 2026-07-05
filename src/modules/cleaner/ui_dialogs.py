@@ -391,7 +391,7 @@ class MovePreviewDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
         
-        lbl_info = QLabel("Следующие файлы будут перемещены и переименованы при совпадении имен:" if AppContext.LANG == "RU" else "The following files will be moved (and renamed on conflict):")
+        lbl_info = QLabel("Следующие файлы имеют совпадение по имени в конечной папке и будут переименованы:" if AppContext.LANG == "RU" else "The following files have name conflicts and will be renamed automatically:")
         layout.addWidget(lbl_info)
         
         scroll = QScrollArea()

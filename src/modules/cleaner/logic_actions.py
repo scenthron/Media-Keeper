@@ -394,6 +394,7 @@ class ActionMixin:
         # If it's a flat move, we pre-calculate new names, handle collisions with auto-increment, and show preview
         if is_flat_move:
             mapping = []
+            conflicts = []
             used_dst_paths = set()
             
             for item in items_to_process:
@@ -414,12 +415,15 @@ class ActionMixin:
                 used_dst_paths.add(new_path)
                 item['dst'] = new_path
                 mapping.append({"src": src_path, "dst": new_path})
+                if counter > 1 and src_path != new_path:
+                    conflicts.append({"src": src_path, "dst": new_path})
                 
-            dlg = MovePreviewDialog(mapping, self)
-            if dlg.exec() != QDialog.DialogCode.Accepted:
-                self.overlay.stop_process()
-                self.preview_widget.show_empty(AppContext.tr("cln_preview_title"))
-                return
+            if conflicts:
+                dlg = MovePreviewDialog(conflicts, self)
+                if dlg.exec() != QDialog.DialogCode.Accepted:
+                    self.overlay.stop_process()
+                    self.preview_widget.show_empty(AppContext.tr("cln_preview_title"))
+                    return
             
             # Use explicit dst mapping in the worker
             self.mover = SessionMoveWorker(items_to_process, dest_root, rename_idx, False, explicit_mapping=True)

@@ -258,7 +258,7 @@ class UiSetupMixin:
         self.lbl_todel_count = FolderLabel("lbl_todel", get_trash_path)
         path_todel = get_trash_path()
         if path_todel:
-            self.lbl_todel_count.setStyleSheet("color: #ef4444; font-weight: bold;")
+            self.lbl_todel_count.setStyleSheet("color: #b91c1c; font-weight: bold;")
         else:
             self.lbl_todel_count.setStyleSheet("color: #aaa;")
         self.lbl_todel_count.clicked.connect(self.browse_for_trash_path)
@@ -473,7 +473,7 @@ class UiSetupMixin:
                 }
                 QPushButton:hover {
                     background-color: rgba(255, 255, 255, 0.1); 
-                    border-color: #ef4444;
+                    border-color: #b91c1c;
                 }
                 QPushButton:hover QLabel {
                     color: white;
@@ -506,7 +506,7 @@ class UiSetupMixin:
             # HTML-тултип с путем и горячей клавишей
             desc_part = AppContext.tr("tooltip_del_action").split(".")[0]
             key_line = f"<br><span style='color: #aaa;'>{desc_part}. ({del_key_display})</span>" if del_key_display else ""
-            tooltip_html = f"<span style='color: #ef4444; font-weight: bold;'>{path_todel}</span><br><span style='color: #888;'>{AppContext.tr('tip_drop_to_change')}</span>{key_line}"
+            tooltip_html = f"<span style='color: #b91c1c; font-weight: bold;'>{path_todel}</span><br><span style='color: #888;'>{AppContext.tr('tip_drop_to_change')}</span>{key_line}"
             self.btn_del.setToolTip(tooltip_html)
             
         # Настройка кнопки отмены
@@ -540,7 +540,7 @@ class UiSetupMixin:
         # Adjust trash label style based on trash path
         path_todel = getattr(self, 'session_trash_path', None) or self.config.get("path_todel", "")
         if path_todel:
-            self.lbl_todel_count.setStyleSheet("color: #ef4444; font-weight: bold;")
+            self.lbl_todel_count.setStyleSheet("color: #b91c1c; font-weight: bold;")
         else:
             # Reset any previous trash styling and apply neutral color
             self.lbl_todel_count.reset_style()
@@ -602,9 +602,11 @@ class UiSetupMixin:
 
         if not path_todel:
             self.btn_del.setToolTip(AppContext.tr("tooltip_trash_setup"))
+            self.lbl_todel_count.setStyleSheet("color: #aaa;")
         else:
-            tooltip_html = f"<span style='color: #ef4444; font-weight: bold;'>{path_todel}</span><br><span style='color: #888;'>{AppContext.tr('tip_drop_to_change')}</span>"
+            tooltip_html = f"<span style='color: #b91c1c; font-weight: bold;'>{path_todel}</span><br><span style='color: #888;'>{AppContext.tr('tip_drop_to_change')}</span>"
             self.btn_del.setToolTip(tooltip_html)
+            self.lbl_todel_count.setStyleSheet("color: #b91c1c; font-weight: bold;")
             
         self.update_button_hotkey_labels()
 

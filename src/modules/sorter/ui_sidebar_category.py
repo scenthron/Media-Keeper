@@ -365,7 +365,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         header_layout.setSpacing(15)
 
         icon_lbl = QLabel("🗑️")
-        icon_lbl.setStyleSheet("font-size: 42px; background: transparent; border: none; color: #ef4444;")
+        icon_lbl.setStyleSheet("font-size: 42px; background: transparent; border: none; color: #b91c1c;")
         icon_lbl.setAlignment(Qt.AlignmentFlag.AlignTop)
         
         text_layout = QVBoxLayout()
@@ -431,7 +431,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
                 background-color: #dc2626; color: white; font-weight: bold; 
                 padding: 8px 20px; border-radius: 4px; border: none; font-size: 13px;
             } 
-            QPushButton:hover { background-color: #ef4444; }
+            QPushButton:hover { background-color: #b91c1c; }
         """)
         b_del.clicked.connect(confirm_dlg.accept)
         
@@ -466,7 +466,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
     def update_style(self):
         bg = self.current_color
         if self.is_trash:
-            bg = "#ef4444" 
+            bg = "#b91c1c" 
         elif self.is_inbox:
             bg = "#3b82f6" 
         

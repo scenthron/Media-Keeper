@@ -56,7 +56,7 @@ class SidebarNodeMixin:
             target_btn.setStyleSheet("""
                 QPushButton { 
                     text-align: left; padding: 6px; 
-                    background-color: #ef4444; 
+                    background-color: #b91c1c; 
                     border: none; border-radius: 4px; 
                     color: white; 
                     border-top-right-radius: 0px; 
@@ -129,8 +129,8 @@ class SidebarNodeMixin:
              status_html = f"<div style='color: #3b82f6; font-weight: bold; font-size: 12px; margin-bottom: 2px;'>{AppContext.tr('lbl_unsort').upper()}</div>"
              action_prefix = AppContext.tr("tooltip_src_locked") 
         elif is_trash:
-             header_color = "#ef4444"
-             status_html = f"<div style='color: #ef4444; font-weight: bold; font-size: 12px; margin-bottom: 2px;'>{AppContext.tr('lbl_todel').upper()}</div>"
+             header_color = "#b91c1c"
+             status_html = f"<div style='color: #b91c1c; font-weight: bold; font-size: 12px; margin-bottom: 2px;'>{AppContext.tr('lbl_todel').upper()}</div>"
              action_prefix = AppContext.tr("tooltip_move_prefix") 
 
         hint_scroll = AppContext.tr("tooltip_scroll_explorer_hint")

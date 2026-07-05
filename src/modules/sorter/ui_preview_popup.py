@@ -359,11 +359,11 @@ class LargePreviewPopup(QDialog):
         
         self.top_overlay = QWidget(self)
         self.top_overlay.setStyleSheet("""
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(15, 15, 15, 0.85), stop:0.7 rgba(15, 15, 15, 0.4), stop:1 rgba(15, 15, 15, 0));
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(15, 15, 15, 0.42), stop:0.7 rgba(15, 15, 15, 0.20), stop:1 rgba(15, 15, 15, 0));
         """)
         self.top_overlay.installEventFilter(self)
         top_layout = QHBoxLayout(self.top_overlay)
-        top_layout.setContentsMargins(4, 4, 4, 0)
+        top_layout.setContentsMargins(4, 1, 4, 0)
         top_layout.setSpacing(10)
         
         self.btn_reset_view = QPushButton(self.top_overlay)
@@ -881,7 +881,7 @@ class LargePreviewPopup(QDialog):
                 if hasattr(self, 'title_opacity_effect') and self.title_opacity_effect:
                     self.title_opacity_effect.setOpacity(1.0)
                 self.top_overlay.setStyleSheet("""
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(15, 15, 15, 0.85), stop:0.7 rgba(15, 15, 15, 0.4), stop:1 rgba(15, 15, 15, 0));
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(15, 15, 15, 0.42), stop:0.7 rgba(15, 15, 15, 0.20), stop:1 rgba(15, 15, 15, 0));
                 """)
         
         is_viewer = False
@@ -1203,7 +1203,7 @@ class LargePreviewPopup(QDialog):
         w = self.width()
         h = self.height()
         if hasattr(self, 'top_overlay') and self.top_overlay:
-            self.top_overlay.setGeometry(2, 2, w - 4, 58)
+            self.top_overlay.setGeometry(2, 2, w - 4, 38)
             self.top_overlay.raise_()
         if hasattr(self, 'bottom_overlay') and self.bottom_overlay:
             self.bottom_overlay.setGeometry(6, h - 36, 100, 30)

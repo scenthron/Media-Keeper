@@ -243,6 +243,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         is_quick_target = hasattr(self.app, 'quick_target_path') and self.app.quick_target_path and os.path.normpath(self.app.quick_target_path) == os.path.normpath(self.path)
         star_prefix = "★ " if is_quick_target else ""
 
+        display_name = self.name.replace("📍", "").strip()
         new_text = star_prefix + icon_prefix + display_name
         if self.btn_name.text() != new_text:
             self.btn_name.setText(new_text)

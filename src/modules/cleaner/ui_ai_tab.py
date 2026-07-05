@@ -809,7 +809,8 @@ class AiClassificationTab(QWidget):
         self.chk_use_gpu.setChecked(True)
         params_sub_layout.addWidget(self.chk_use_gpu)
         
-        # Moved cache layout to the top of the block
+        # Пружинка для выравнивания настроек по верхнему краю и прижатия кнопки вниз
+        params_sub_layout.addStretch()
         
         # Инициализируем размер кэша
         QTimer.singleShot(100, self.update_cache_info_ai)

@@ -30,7 +30,10 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         if hasattr(self.app, 'collapsed_states_cache') and self.path in self.app.collapsed_states_cache:
             self.is_collapsed = self.app.collapsed_states_cache[self.path]
         else:
-            self.is_collapsed = self.app.config.get("auto_collapse_groups", True)
+            if self.level >= 2:
+                self.is_collapsed = True
+            else:
+                self.is_collapsed = self.app.config.get("auto_collapse_groups", True)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setAcceptDrops(True)
         self._drag_start_pos = None

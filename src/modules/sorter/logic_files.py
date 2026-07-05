@@ -325,17 +325,19 @@ class FileOpsMixin:
         self.btn_refresh.setText("")
         self.btn_refresh.setStyleSheet("QPushButton { background-color: #15803d; border-radius: 5px; padding: 0px; } QPushButton:hover { background-color: #166534; }")
 
-    def _collect_watch_dirs(self, root, current_depth, max_depth, result_list):
-        if current_depth >= max_depth:
+    def _collect_watch_dirs(self, root, current_depth, max_depth, result_list, max_paths=100):
+        if current_depth >= max_depth or len(result_list) >= max_paths:
             return
         try:
             for item in os.listdir(root):
+                if len(result_list) >= max_paths:
+                    break
                 if item == ".mediakeeper":
                     continue
                 p = os.path.join(root, item)
                 if os.path.isdir(p):
                     result_list.append(p)
-                    self._collect_watch_dirs(p, current_depth + 1, max_depth, result_list)
+                    self._collect_watch_dirs(p, current_depth + 1, max_depth, result_list, max_paths)
         except:
             pass
 
@@ -348,7 +350,8 @@ class FileOpsMixin:
         if self.UNSORT_DIR and os.path.exists(self.UNSORT_DIR): 
             paths_to_watch.append(self.UNSORT_DIR)
             
-        max_depth = self.config.get("category_max_depth", 3)
+        max_depth = min(self.config.get("category_max_depth", 3), 2)  # Cap depth to 2 to prevent deep freezes
+        max_total_paths = 150 # Max paths to watch to prevent addPaths freeze
         
         roots_to_check = []
         if self.SORT_DIR and os.path.exists(self.SORT_DIR):
@@ -360,13 +363,19 @@ class FileOpsMixin:
                     roots_to_check.append(t)
                 
         for r in roots_to_check:
-            paths_to_watch.append(r)
-            self._collect_watch_dirs(r, 0, max_depth, paths_to_watch)
+            if len(paths_to_watch) < max_total_paths:
+                paths_to_watch.append(r)
+                self._collect_watch_dirs(r, 0, max_depth, paths_to_watch, max_paths=max_total_paths)
 
-        paths_to_watch = list(set(paths_to_watch))
+        # Ensure we don't exceed the OS limit for QFileSystemWatcher
+        paths_to_watch = list(set(paths_to_watch))[:max_total_paths]
         
         if paths_to_watch:
-            self.fs_watcher.addPaths(paths_to_watch)
+            try:
+                self.fs_watcher.addPaths(paths_to_watch)
+            except Exception as e:
+                import logging
+                logging.error(f"Error adding paths to watcher: {e}")
 
     def on_fs_directory_changed(self, path):
         # Если мы сами инициировали действие, игнорируем событие

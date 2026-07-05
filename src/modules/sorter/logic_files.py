@@ -325,22 +325,46 @@ class FileOpsMixin:
         self.btn_refresh.setText("")
         self.btn_refresh.setStyleSheet("QPushButton { background-color: #15803d; border-radius: 5px; padding: 0px; } QPushButton:hover { background-color: #166534; }")
 
+    def _collect_watch_dirs(self, root, current_depth, max_depth, result_list):
+        if current_depth >= max_depth:
+            return
+        try:
+            for item in os.listdir(root):
+                if item == ".mediakeeper":
+                    continue
+                p = os.path.join(root, item)
+                if os.path.isdir(p):
+                    result_list.append(p)
+                    self._collect_watch_dirs(p, current_depth + 1, max_depth, result_list)
+        except:
+            pass
+
     def update_watcher_paths(self):
         if not self.fs_watcher: return
         existing = self.fs_watcher.directories()
         if existing: self.fs_watcher.removePaths(existing)
-        paths_to_watch = []
-        if self.UNSORT_DIR and os.path.exists(self.UNSORT_DIR): paths_to_watch.append(self.UNSORT_DIR)
         
+        paths_to_watch = []
+        if self.UNSORT_DIR and os.path.exists(self.UNSORT_DIR): 
+            paths_to_watch.append(self.UNSORT_DIR)
+            
+        max_depth = self.config.get("category_max_depth", 3)
+        
+        roots_to_check = []
         if self.SORT_DIR and os.path.exists(self.SORT_DIR):
-            paths_to_watch.append(self.SORT_DIR)
-            try:
-                for item in os.listdir(self.SORT_DIR):
-                    p = os.path.join(self.SORT_DIR, item)
-                    if os.path.isdir(p): paths_to_watch.append(p)
-            except Exception as e:
-                logging.error(f"Error watching subfolders: {e}")
+            roots_to_check.append(self.SORT_DIR)
+            
+        if hasattr(self, 'temp_roots'):
+            for t in self.temp_roots:
+                if os.path.exists(t):
+                    roots_to_check.append(t)
+                
+        for r in roots_to_check:
+            paths_to_watch.append(r)
+            self._collect_watch_dirs(r, 0, max_depth, paths_to_watch)
 
+        paths_to_watch = list(set(paths_to_watch))
+        
         if paths_to_watch:
             self.fs_watcher.addPaths(paths_to_watch)
 

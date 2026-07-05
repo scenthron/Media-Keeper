@@ -162,7 +162,9 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
         is_quick_target = hasattr(self.app, 'quick_target_path') and self.app.quick_target_path and os.path.normpath(self.app.quick_target_path) == os.path.normpath(self.path)
         star_prefix = "★ " if is_quick_target else ""
 
-        self.btn_action.setText(star_prefix + icon_prefix + self.name)
+        new_text = star_prefix + icon_prefix + self.name
+        if self.btn_action.text() != new_text:
+            self.btn_action.setText(new_text)
         
         # Highlight Logic for Last Move
         if self.check_if_last_target():
@@ -235,7 +237,9 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
 
     def update_count_visual(self):
         count, _ = DirCache.inst().get_data(self.path)
-        self.lbl_count.setText(f"({count})")
+        new_text = f"({count})"
+        if self.lbl_count.text() != new_text:
+            self.lbl_count.setText(new_text)
 
     def update_automation_status(self):
         cfg = AutomationConfig.load_config(self.path)

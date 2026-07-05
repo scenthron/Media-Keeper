@@ -243,13 +243,18 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         is_quick_target = hasattr(self.app, 'quick_target_path') and self.app.quick_target_path and os.path.normpath(self.app.quick_target_path) == os.path.normpath(self.path)
         star_prefix = "★ " if is_quick_target else ""
 
-        display_name = self.name.replace("📍", "").strip()
-        self.btn_name.setText(star_prefix + icon_prefix + display_name)
+        new_text = star_prefix + icon_prefix + display_name
+        if self.btn_name.text() != new_text:
+            self.btn_name.setText(new_text)
         
         if self.check_if_last_target():
-            self.lbl_count.setStyleSheet("color: #4ade80; font-size: 12px; margin-right: 5px; background: transparent; padding-right: 6px; font-weight: bold;")
+            new_count_style = "color: #4ade80; font-size: 12px; margin-right: 5px; background: transparent; padding-right: 6px; font-weight: bold;"
         else:
-            self.lbl_count.setStyleSheet("color: #ddd; font-size: 12px; margin-right: 5px; background: transparent; padding-right: 6px;")
+            new_count_style = "color: #ddd; font-size: 12px; margin-right: 5px; background: transparent; padding-right: 6px;"
+            
+        if getattr(self, '_applied_count_style', None) != new_count_style:
+            self.lbl_count.setStyleSheet(new_count_style)
+            self._applied_count_style = new_count_style
         
         self.apply_rich_tooltip(self.is_inbox, self.is_trash)
 
@@ -285,7 +290,9 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         if not os.path.exists(self.path): return
         # Non-blocking Cache call
         count, _ = DirCache.inst().get_data(self.path)
-        self.lbl_count.setText(f"({count})")
+        new_text = f"({count})"
+        if self.lbl_count.text() != new_text:
+            self.lbl_count.setText(new_text)
 
     def update_automation_status(self):
         cfg = AutomationConfig.load_config(self.path)
@@ -560,8 +567,9 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
                     layout.insertWidget(idx, widget)
                 else:
                     # Перемещаем на правильный индекс
-                    layout.removeWidget(widget)
-                    layout.insertWidget(idx, widget)
+                    if layout.indexOf(widget) != idx:
+                        layout.removeWidget(widget)
+                        layout.insertWidget(idx, widget)
                     if has_sub:
                         widget.refresh_sections()
             else:

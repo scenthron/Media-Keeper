@@ -81,16 +81,17 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
         
         self.btn_settings = QPushButton()
         self.btn_settings.setFixedSize(sz, sz)
-        self.btn_settings.setIcon(QIcon(os.path.join(icons_dir, "settings.svg")))
+        self.btn_settings.setIcon(AppContext.get_cached_icon("settings.svg"))
         self.btn_settings.setIconSize(QSize(sz - 6, sz - 6))
         self.btn_settings.clicked.connect(self.open_automation_settings)
         self.btn_settings.setToolTip(AppContext.tr("tooltip_folder_settings"))
         self.btn_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.update_automation_status()
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(0, self.update_automation_status)
 
         self.btn_add = QPushButton()
         self.btn_add.setFixedSize(sz, sz)
-        self.btn_add.setIcon(QIcon(os.path.join(icons_dir, "plus.svg")))
+        self.btn_add.setIcon(AppContext.get_cached_icon("plus.svg"))
         self.btn_add.setIconSize(QSize(sz - 6, sz - 6))
         
         max_nesting = self.app.config.get("max_nesting", 10)
@@ -109,7 +110,7 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
         layout.addWidget(self.btn_settings) 
         layout.addWidget(self.btn_add)
         
-        self.update_visual_state()
+        QTimer.singleShot(0, self.update_visual_state)
 
     def _on_cache_updated(self, updated_path):
         if os.path.normpath(self.path) == os.path.normpath(updated_path):

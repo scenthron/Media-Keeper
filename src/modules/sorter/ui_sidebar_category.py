@@ -116,7 +116,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         
         self.btn_color = QPushButton()
         self.btn_color.setFixedSize(sz, sz)
-        self.btn_color.setIcon(QIcon(os.path.join(icons_dir, "rotate_right.svg")))
+        self.btn_color.setIcon(AppContext.get_cached_icon("rotate_right.svg"))
         self.btn_color.setIconSize(QSize(sz - 6, sz - 6))
         self.btn_color.clicked.connect(self.randomize_color)
         self.btn_color.setStyleSheet(cat_btn_style + "padding: 0px;") 
@@ -125,16 +125,17 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
 
         self.btn_settings = QPushButton()
         self.btn_settings.setFixedSize(sz, sz)
-        self.btn_settings.setIcon(QIcon(os.path.join(icons_dir, "settings.svg")))
+        self.btn_settings.setIcon(AppContext.get_cached_icon("settings.svg"))
         self.btn_settings.setIconSize(QSize(sz - 6, sz - 6))
         self.btn_settings.clicked.connect(self.open_automation_settings)
         self.btn_settings.setToolTip(AppContext.tr("tooltip_folder_settings"))
         self.btn_settings.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.update_automation_status()
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(0, self.update_automation_status)
 
         btn_add_sec = QPushButton()
         btn_add_sec.setFixedSize(sz, sz)
-        btn_add_sec.setIcon(QIcon(os.path.join(icons_dir, "plus.svg")))
+        btn_add_sec.setIcon(AppContext.get_cached_icon("plus.svg"))
         btn_add_sec.setIconSize(QSize(sz - 6, sz - 6))
         max_nesting = self.app.config.get("max_nesting", 10)
         if self.level >= max_nesting:
@@ -162,9 +163,24 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         
         indent = 10 if self.level == 0 else 8
         self.sections_container.layout.setContentsMargins(indent, 2, 0, 0)
-        
-        self.refresh_sections()
+        self._sections_loaded = False
+        if not self.is_collapsed:
+            QTimer.singleShot(0, self.refresh_sections)
+        else:
+            self._check_has_children()
+            
         self.main_layout_v.addWidget(self.sections_container)
+
+    def _check_has_children(self):
+        has_child = False
+        try:
+            with os.scandir(self.path) as it:
+                for entry in it:
+                    if entry.is_dir() and entry.name != ".mediakeeper":
+                        has_child = True
+                        break
+        except: pass
+        self.btn_collapse.setVisible(has_child)
 
     def _on_cache_updated(self, updated_path):
         if os.path.normpath(self.path) == os.path.normpath(updated_path):
@@ -526,37 +542,46 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
                 del current_widgets[path]
 
         # Инкрементально обновляем/добавляем
-        for idx, (name, fp, has_sub) in enumerate(folders_info):
-            if fp in current_widgets:
-                widget = current_widgets[fp]
-                is_currently_cat = isinstance(widget, CategoryWidget)
-                if is_currently_cat != has_sub:
-                    # Пересоздаем, если тип изменился
-                    layout.removeWidget(widget)
-                    widget.deleteLater()
+        self.sections_container.setUpdatesEnabled(False)
+        try:
+            for idx, (name, fp, has_sub) in enumerate(folders_info):
+                if fp in current_widgets:
+                    widget = current_widgets[fp]
+                    is_currently_cat = isinstance(widget, CategoryWidget)
+                    if is_currently_cat != has_sub:
+                        # Пересоздаем, если тип изменился
+                        layout.removeWidget(widget)
+                        widget.deleteLater()
+                        if has_sub:
+                            widget = CategoryWidget(name, fp, self.app, self.level + 1, parent_cat=self)
+                        else:
+                            widget = LeafNodeWidget(name, fp, self.app, self, self.level + 1)
+                        layout.insertWidget(idx, widget)
+                    else:
+                        # Перемещаем на правильный индекс
+                        layout.removeWidget(widget)
+                        layout.insertWidget(idx, widget)
+                        if has_sub:
+                            widget.refresh_sections()
+                else:
+                    # Добавляем новый
                     if has_sub:
                         widget = CategoryWidget(name, fp, self.app, self.level + 1, parent_cat=self)
                     else:
                         widget = LeafNodeWidget(name, fp, self.app, self, self.level + 1)
                     layout.insertWidget(idx, widget)
-                else:
-                    # Перемещаем на правильный индекс
-                    layout.removeWidget(widget)
-                    layout.insertWidget(idx, widget)
-                    if has_sub:
-                        widget.refresh_sections()
-            else:
-                # Добавляем новый
-                if has_sub:
-                    widget = CategoryWidget(name, fp, self.app, self.level + 1, parent_cat=self)
-                else:
-                    widget = LeafNodeWidget(name, fp, self.app, self, self.level + 1)
-                layout.insertWidget(idx, widget)
+
+        finally:
+            self.sections_container.setUpdatesEnabled(True)
 
         self.btn_collapse.setVisible(bool(folders_info))
+        self._sections_loaded = True
 
     def toggle_collapse(self):
         self.is_collapsed = not self.is_collapsed
+        if not self.is_collapsed and not getattr(self, '_sections_loaded', False):
+            self.refresh_sections()
+            
         self.sections_container.setVisible(not self.is_collapsed)
         self.btn_collapse.setText("▶" if self.is_collapsed else "▼")
         
@@ -564,7 +589,6 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         if not hasattr(self.app, 'collapsed_states_cache'):
             self.app.collapsed_states_cache = {}
         self.app.collapsed_states_cache[self.path] = self.is_collapsed
-
     def create_section(self):
         dlg = SmartNameDialog("dlg_new_sub_title", "dlg_enter_name", self.path, "", self)
         if dlg.exec() and dlg.final_name:

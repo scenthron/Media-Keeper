@@ -76,6 +76,22 @@ class AppContext:
     session_loop = False
     session_all_videos_active = False
     
+    # Global Icon Cache to prevent thousands of disk reads and SVG parses
+    _icon_cache = {}
+
+    @staticmethod
+    def get_cached_icon(icon_name: str):
+        """Loads and caches QIcon from the icons directory."""
+        if icon_name in AppContext._icon_cache:
+            return AppContext._icon_cache[icon_name]
+            
+        from PyQt6.QtGui import QIcon
+        icons_dir = AppContext.find_resource_dir("icons")
+        icon_path = os.path.join(icons_dir, icon_name) if icons_dir else ""
+        icon = QIcon(icon_path) if os.path.exists(icon_path) else QIcon()
+        AppContext._icon_cache[icon_name] = icon
+        return icon
+    
     @staticmethod
     def is_ru():
         return AppContext.LANG == "RU"

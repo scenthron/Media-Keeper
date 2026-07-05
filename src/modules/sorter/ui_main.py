@@ -56,7 +56,14 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         
         self.session_counters = {} 
         
+        import time
+        import logging
+        t0 = time.perf_counter()
+        logging.info("[PROFILER] SorterModule.__init__ started")
+        
         self.update_paths_from_config()
+        t1 = time.perf_counter()
+        logging.info(f"[PROFILER] update_paths_from_config took {t1 - t0:.4f}s")
         
         self.files_queue = []
         self.current_index = 0
@@ -139,8 +146,14 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.video_controls.hide()
         self.left_layout.addWidget(self.video_controls)
         
+        t2 = time.perf_counter()
+        logging.info(f"[PROFILER] Viewer and video controls created in {t2 - t1:.4f}s")
+        
         self.bottom_controls_container = None 
         self.create_bottom_controls()
+        
+        t3 = time.perf_counter()
+        logging.info(f"[PROFILER] Bottom controls created in {t3 - t2:.4f}s")
         
         self.splitter.addWidget(left_column)
 
@@ -530,6 +543,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         return states
 
     def reload_categories_ui(self):
+        import time
+        import logging
+        t3 = time.perf_counter()
         # Очищаем кэш автоматизации перед перерисовкой дерева
         AutomationConfig.clear_cache()
         # Сохраняем состояние свернутости для всех уровней
@@ -620,6 +636,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
 
         target_items.append(("", self.SORT_DIR, "drop_zone"))
 
+        t4 = time.perf_counter()
+        logging.info(f"[PROFILER] target_items ({len(target_items)} items) assembled in {t4 - t3:.4f}s")
+
         # 2. Находим текущие виджеты в cats_container
         layout = self.cats_container.v_layout
         current_widgets = {}
@@ -640,34 +659,42 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                 del current_widgets[key]
 
         # 4. Инкрементально вставляем и синхронизируем
-        for idx, (name, path, item_type) in enumerate(target_items):
-            key = path if item_type != "drop_zone" else "__drop_zone__"
-            
-            if key in current_widgets:
-                widget = current_widgets[key]
-                layout.removeWidget(widget)
-                layout.insertWidget(idx, widget)
-                if item_type == "category" and isinstance(widget, CategoryWidget):
-                    widget.refresh_sections()
-            else:
-                if item_type == "category":
-                    widget = CategoryWidget(name, path, self, level=0)
-                    if path not in getattr(self, 'collapsed_states_cache', {}) and self.temp_roots:
-                        if not widget.is_collapsed:
-                            widget.toggle_collapse()
+        self.categories_layout.setUpdatesEnabled(False)
+        try:
+            for idx, (name, path, item_type) in enumerate(target_items):
+                key = path if item_type != "drop_zone" else "__drop_zone__"
+                
+                if key in current_widgets:
+                    widget = current_widgets[key]
+                    layout.removeWidget(widget)
                     layout.insertWidget(idx, widget)
+                    if item_type == "category" and isinstance(widget, CategoryWidget):
+                        widget.refresh_sections()
                 else:
-                    drop_zone = DropZoneWidget()
-                    drop_zone.set_folder_info(self.SORT_DIR)
-                    drop_zone.clicked.connect(self.browse_and_add_temp_root)
-                    drop_zone.clear_default_requested.connect(self.clear_default_sort)
-                    drop_zone.files_dropped.connect(self.on_drop_zone_files_dropped)
-                    
-                    if self.config.get("path_sort", ""):
-                        drop_zone.btn_clear.show()
+                    if item_type == "category":
+                        widget = CategoryWidget(name, path, self, level=0)
+                        if path not in getattr(self, 'collapsed_states_cache', {}) and self.temp_roots:
+                            if not widget.is_collapsed:
+                                widget.toggle_collapse()
+                        layout.insertWidget(idx, widget)
                     else:
-                        drop_zone.btn_clear.hide()
-                    layout.insertWidget(idx, drop_zone)
+                        drop_zone = DropZoneWidget()
+                        drop_zone.set_folder_info(self.SORT_DIR)
+                        drop_zone.clicked.connect(self.browse_and_add_temp_root)
+                        drop_zone.clear_default_requested.connect(self.clear_default_sort)
+                        drop_zone.files_dropped.connect(self.on_drop_zone_files_dropped)
+                        
+                        if self.config.get("path_sort", ""):
+                            drop_zone.btn_clear.show()
+                        else:
+                            drop_zone.btn_clear.hide()
+                        layout.insertWidget(idx, drop_zone)
+
+        finally:
+            self.categories_layout.setUpdatesEnabled(True)
+
+        t5 = time.perf_counter()
+        logging.info(f"[PROFILER] UI widgets inserted/updated in {t5 - t4:.4f}s. Total reload_categories_ui time: {t5 - t3:.4f}s")
 
 
 

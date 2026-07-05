@@ -18,13 +18,17 @@ def get_base_path():
 
     return base_path
 
+_RESOURCE_CACHE = {}
+
 def find_resource_dir(dir_name):
     """
     Tries to find a specific resource directory (e.g., 'languages') 
     checking multiple probable locations relative to base path.
     """
+    if dir_name in _RESOURCE_CACHE:
+        return _RESOURCE_CACHE[dir_name]
+        
     base = get_base_path()
-    # print(f"[DEBUG] Base path for resources: {base}")
     
     # Priority search paths
     candidates = [
@@ -40,9 +44,11 @@ def find_resource_dir(dir_name):
 
     for path in candidates:
         if os.path.exists(path) and os.path.isdir(path):
+            _RESOURCE_CACHE[dir_name] = path
             return path
     
     print(f"[ERROR] Resource directory '{dir_name}' NOT found. Checked: {candidates}")
+    _RESOURCE_CACHE[dir_name] = None
     return None
 
 def get_icons_dir():

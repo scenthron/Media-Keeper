@@ -21,7 +21,7 @@ class ConfigManager:
         "hover_delay": 0.4,
         "session_loop": False,
         "session_all_videos_active": False,
-        "collapse_groups": False
+        "collapse_groups": True
     }
     
     @staticmethod

@@ -256,7 +256,8 @@ class ActionMixin:
             self.update_ui_text()
 
     def browse_dest(self) -> None:
-        path = QFileDialog.getExistingDirectory(self, AppContext.tr("cln_ph_dest"), "")
+        start_dir = AppContext.get_sort_dir()
+        path = QFileDialog.getExistingDirectory(self, AppContext.tr("cln_ph_dest"), start_dir)
         if path:
             self.action_bar.drop_zone.set_path(path)
 
@@ -290,6 +291,8 @@ class ActionMixin:
         if not start:
             start = self.action_bar.drop_zone.get_path() if self.action_bar.drop_zone.get_path() else ""
         if not start:
+            start = AppContext.get_sort_dir()
+        if not start:
             start = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             
         d = QFileDialog.getExistingDirectory(self, title, start)
@@ -305,6 +308,8 @@ class ActionMixin:
         start = getattr(self, 'last_moved_dir', getattr(AppContext, 'last_moved_dir', ""))
         if not start:
             start = self.action_bar.drop_zone.get_path() if self.action_bar.drop_zone.get_path() else ""
+        if not start:
+            start = AppContext.get_sort_dir()
         if not start:
             start = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             

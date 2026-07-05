@@ -1520,7 +1520,8 @@ class AnalyzerWidget(QWidget):
         self.btn_move_files.setEnabled(has_selection and bool(dest_dir))
 
     def browse_dest_folder(self):
-        d = QFileDialog.getExistingDirectory(self, AppContext.tr("dlg_browse"))
+        start_dir = AppContext.get_sort_dir()
+        d = QFileDialog.getExistingDirectory(self, AppContext.tr("dlg_browse"), start_dir)
         if d: self.drop_zone.set_path(d)
 
     def handle_single_action(self, path, action):
@@ -1599,11 +1600,7 @@ class AnalyzerWidget(QWidget):
         if hasattr(self, 'last_move_to_dir') and self.last_move_to_dir and os.path.exists(self.last_move_to_dir):
             start = self.last_move_to_dir
         else:
-            shell = self.window()
-            if shell and hasattr(shell, "sorter_tab"):
-                sorter = shell.sorter_tab
-                if hasattr(sorter, "SORT_DIR") and sorter.SORT_DIR and os.path.exists(sorter.SORT_DIR):
-                    start = sorter.SORT_DIR
+            start = AppContext.get_sort_dir()
             
             if not start:
                 import sys
@@ -1792,11 +1789,7 @@ class AnalyzerWidget(QWidget):
         if hasattr(self, 'last_move_to_dir') and self.last_move_to_dir and os.path.exists(self.last_move_to_dir):
             start = self.last_move_to_dir
         else:
-            shell = self.window()
-            if shell and hasattr(shell, "sorter_tab"):
-                sorter = shell.sorter_tab
-                if hasattr(sorter, "SORT_DIR") and sorter.SORT_DIR and os.path.exists(sorter.SORT_DIR):
-                    start = sorter.SORT_DIR
+            start = AppContext.get_sort_dir()
             
             if not start:
                 import sys

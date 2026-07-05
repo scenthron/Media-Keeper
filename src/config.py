@@ -140,6 +140,14 @@ class AppContext:
         """Delegate to LanguageManager"""
         return LanguageManager.get_manual_section_md(sec)
 
+    @staticmethod
+    def get_sort_dir():
+        try:
+            from modules.sorter.logic_config import ConfigManager
+            return ConfigManager.load().get("path_sort", "")
+        except Exception:
+            return ""
+
 # Attempt initial load. 
 # Note: If logging isn't setup yet, errors here might be printed to stdout directly by manager.
 import configparser

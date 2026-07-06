@@ -70,7 +70,7 @@ class CleanerSettingsPanel(QWidget):
         src_header.addWidget(self.lbl_src)
         src_header.addStretch()
         
-        self.btn_create_dump = QPushButton(AppContext.tr("cln_create_dump", "+ Создать дамп"))
+        self.btn_create_dump = QPushButton(AppContext.tr("cln_create_dump") if AppContext.tr("cln_create_dump") != "cln_create_dump" else "+ Создать дамп")
         self.btn_create_dump.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_create_dump.setStyleSheet("""
             QPushButton {

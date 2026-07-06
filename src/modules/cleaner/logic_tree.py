@@ -146,6 +146,12 @@ class CleanerTreeMixin:
             act_reveal.setEnabled(False)
         menu.addAction(act_reveal)
         
+        if is_dump:
+            menu.addSeparator()
+            act_sel_dump = QAction("Выбрать все копии файлов из этого дампа", self)
+            act_sel_dump.triggered.connect(lambda: getattr(self, 'select_copies_from_dump', lambda p: None)(path))
+            menu.addAction(act_sel_dump)
+        
         if not is_empty_mode:
             act_rename = QAction(AppContext.tr("menu_rename"), self)
             act_rename.triggered.connect(lambda: self.rename_file_in_tree(index))

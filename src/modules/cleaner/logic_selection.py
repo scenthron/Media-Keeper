@@ -370,6 +370,36 @@ class CleanerSelectionMixin:
         if found_root:
             self._batch_select(lambda p: is_subpath(p, found_root))
 
+    def select_copies_from_dump(self, dump_path: str) -> None:
+        self.overlay.start_loading_mode(0)
+        self.overlay.lbl_title.setText("Выделение копий...")
+        QCoreApplication.processEvents()
+        QTimer.singleShot(20, lambda: self._select_copies_from_dump_impl(dump_path))
+
+    def _select_copies_from_dump_impl(self, dump_path: str) -> None:
+        self._load_cancelled = False
+        self.overlay.btn_stop.hide()
+        try:
+            if not hasattr(self, 'in_memory_selection'):
+                return
+            
+            target_group_ids = set()
+            for item in self.virtual_model._all_items:
+                if item['type'] == 'file' and item.get('path') == dump_path:
+                    target_group_ids.add(item['group_id'])
+                    
+            if not target_group_ids:
+                return
+                
+            for g_id in target_group_ids:
+                self.in_memory_selection.select_group_except_survivor(g_id)
+                
+            self.refresh_selection_from_memory()
+        except Exception as e:
+            logging.error(f"[Selection] _select_copies_from_dump_impl error: {e}\n{traceback.format_exc()}")
+        finally:
+            self.overlay.hide()
+
     def _batch_select(self, condition_func: Callable[[str], bool]) -> None:
         self.overlay.start_loading_mode(0)
         self.overlay.lbl_title.setText("Выделение файлов...")

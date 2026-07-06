@@ -180,10 +180,13 @@ class CleanerTreeMixin:
 
             if is_protected_file and not is_reference_file:
                 menu.addSeparator()
-                if is_dump:
-                    act_sel_dump = QAction("Выбрать все копии файлов из этого дампа", self)
-                    act_sel_dump.triggered.connect(lambda: getattr(self, 'select_copies_from_dump', lambda p: None)(path))
-                    menu.addAction(act_sel_dump)
+                
+                # Option to select duplicates of this specific source (dump or protected folder)
+                act_text = "Выбрать все копии файлов из этого дампа" if is_dump else "Выбрать дубликаты этого источника"
+                act_sel_source_dupes = QAction(act_text, self)
+                act_sel_source_dupes.triggered.connect(lambda: getattr(self, 'select_duplicates_of_source', lambda p: None)(path))
+                menu.addAction(act_sel_source_dupes)
+                
                 act_sel_prot_dupes = QAction(AppContext.tr("cln_ctx_select_protected_dupes"), self)
                 act_sel_prot_dupes.triggered.connect(lambda: self.select_smart('protected_dupes'))
                 menu.addAction(act_sel_prot_dupes)

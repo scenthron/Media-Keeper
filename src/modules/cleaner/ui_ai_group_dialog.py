@@ -41,6 +41,11 @@ class AiGroupSettingsDialog(QDialog):
                 self.temp_dir, pos_paths, neg_paths = extract_images_to_temp(self.dump_path)
                 self.pending_pos.extend(pos_paths)
                 self.pending_neg.extend(neg_paths)
+                
+                if not hasattr(self, "trained_status"):
+                    self.trained_status = {}
+                for p in pos_paths + neg_paths:
+                    self.trained_status[p] = True
             
         title = f"Настройка эталона: {group_name}" if self.group_name else "Создание группы эталонов"
         if not self.is_ru:
@@ -185,6 +190,23 @@ class AiGroupSettingsDialog(QDialog):
         self.reload_thumbnails()
         self._update_save_state()
 
+    
+    def _show_silent_msg(self, title, text):
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setText(text)
+        msg.setIcon(QMessageBox.Icon.NoIcon)
+        msg.exec()
+
+    def _show_silent_question(self, title, text):
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setText(text)
+        msg.setIcon(QMessageBox.Icon.NoIcon)
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg.setDefaultButton(QMessageBox.StandardButton.No)
+        return msg.exec()
+
     def open_dump_folder(self):
         if self.dump_path and os.path.exists(self.dump_path):
             from utils_common import reveal_in_explorer
@@ -275,14 +297,14 @@ class AiGroupSettingsDialog(QDialog):
 
     def extract_files_ui(self):
         if not self.dump_path or not os.path.exists(self.dump_path):
-            QMessageBox.warning(self, "Ошибка" if self.is_ru else "Error", "Нет сохраненного дампа для извлечения!" if self.is_ru else "No saved dump to extract!")
+            self._show_silent_msg("Ошибка" if self.is_ru else "Error", "Нет сохраненного дампа для извлечения!" if self.is_ru else "No saved dump to extract!")
             return
             
         dest_dir = QFileDialog.getExistingDirectory(self, "Выберите папку для сохранения картинок" if self.is_ru else "Select directory to save images")
         if dest_dir:
             try:
                 extract_images_to_dir(self.dump_path, dest_dir)
-                QMessageBox.information(self, "Успех" if self.is_ru else "Success", "Файлы успешно извлечены!" if self.is_ru else "Files extracted successfully!")
+                self._show_silent_msg("Успех" if self.is_ru else "Success", "Файлы успешно извлечены!" if self.is_ru else "Files extracted successfully!")
             except Exception as e:
                 QMessageBox.critical(self, "Ошибка" if self.is_ru else "Error", f"Ошибка извлечения: {e}")
 
@@ -336,7 +358,7 @@ class AiGroupSettingsDialog(QDialog):
         for item in selected_items:
             path = item.data(Qt.ItemDataRole.UserRole)
             if path == "HASH":
-                QMessageBox.warning(self, "Внимание", "Нельзя удалить хэш-данные. Если нужно, удалите весь эталон.")
+                self._show_silent_msg("Внимание", "Нельзя удалить хэш-данные. Если нужно, удалите весь эталон.")
                 continue
             if path in target_list:
                 target_list.remove(path)
@@ -464,8 +486,7 @@ class AiGroupSettingsDialog(QDialog):
         
         if self.group_name and new_name != self.group_name:
             if new_name in groups:
-                QMessageBox.warning(self, "Ошибка" if self.is_ru else "Error", 
-                                    "Эталон с таким именем уже добавлен!" if self.is_ru else "Group already exists!")
+                self._show_silent_msg("Ошибка" if self.is_ru else "Error", "Эталон с таким именем уже добавлен!" if self.is_ru else "Group already exists!")
                 return
                 
         if self.has_changes:
@@ -554,7 +575,7 @@ class AiGroupSettingsDialog(QDialog):
             self.trained_status[path] = success
                 
         if not pos_features and not is_hash_only:
-            QMessageBox.warning(self, "Ошибка", "Не найдено ни одного лица/вектора в эталонах!")
+            self._show_silent_msg("Ошибка", "Не найдено ни одного лица/вектора в эталонах!")
             self.btn_save.setText("Сохранить")
             return False
             
@@ -614,7 +635,7 @@ class AiGroupSettingsDialog(QDialog):
         self.reload_thumbnails()
         self.btn_train.setEnabled(True)
         self.btn_train.setText("Обучить" if self.is_ru else "Train")
-        QMessageBox.information(self, "Успех", "Обучение завершено успешно!" if self.is_ru else "Training completed successfully!")
+        self._show_silent_msg("Успех", "Обучение завершено успешно!" if self.is_ru else "Training completed successfully!")
         
     def save_hash_dump(self):
         default_name = self.group_name if self.group_name else "Новый_хэш_эталон"
@@ -653,7 +674,7 @@ class AiGroupSettingsDialog(QDialog):
                 try:
                     os.remove(self.dump_path)
                 except Exception as e:
-                    QMessageBox.warning(self, "Ошибка", f"Не удалось удалить файл: {e}")
+                    self._show_silent_msg("Ошибка", f"Не удалось удалить файл: {e}")
             self.accept()
 
     def closeEvent(self, event):

@@ -576,31 +576,29 @@ class RefImageDelegate(QStyledItemDelegate):
         
         rect = option.rect
         
-        if is_face_mode:
-            painter.save()
-            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-            ind_rect = rect.adjusted(4, 4, -rect.width() + 24, -rect.height() + 24)
-            painter.setPen(Qt.PenStyle.NoPen)
-            if face_found is True:
-                painter.setBrush(QColor("#22c55e"))
-                painter.drawEllipse(ind_rect)
-                painter.setPen(QPen(Qt.GlobalColor.white, 2))
-                painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
-                # Смещаем текст чуть вверх для визуального центрирования
-                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "🙂")
-            elif face_found is False:
-                painter.setBrush(QColor("#ef4444"))
-                painter.drawEllipse(ind_rect)
-                painter.setPen(QPen(Qt.GlobalColor.white, 2))
-                painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
-                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "🙁")
-            else:
-                painter.setBrush(QColor("#6b7280"))
-                painter.drawEllipse(ind_rect)
-                painter.setPen(QPen(Qt.GlobalColor.white, 2))
-                painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
-                painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "❓")
-            painter.restore()
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        ind_rect = rect.adjusted(4, 4, -rect.width() + 24, -rect.height() + 24)
+        painter.setPen(Qt.PenStyle.NoPen)
+        if face_found == True:
+            painter.setBrush(QColor("#22c55e"))
+            painter.drawEllipse(ind_rect)
+            painter.setPen(QPen(Qt.GlobalColor.white, 2))
+            painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
+            painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "🙂" if is_face_mode else "✓")
+        elif face_found == False:
+            painter.setBrush(QColor("#ef4444"))
+            painter.drawEllipse(ind_rect)
+            painter.setPen(QPen(Qt.GlobalColor.white, 2))
+            painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
+            painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "🙁" if is_face_mode else "✕")
+        else:
+            painter.setBrush(QColor("#6b7280"))
+            painter.drawEllipse(ind_rect)
+            painter.setPen(QPen(Qt.GlobalColor.white, 2))
+            painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
+            painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "⚪")
+        painter.restore()
             
         if self.hovered_index is not None and index == self.hovered_index:
             painter.save()

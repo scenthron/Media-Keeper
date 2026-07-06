@@ -2245,14 +2245,13 @@ class SorterPlaceholderWidget(QWidget):
         self.btn_browse.clicked.connect(self.browse_requested.emit)
         layout.addWidget(self.btn_browse, 0, Qt.AlignmentFlag.AlignCenter)
 
-    def set_message(self, message):
+    def set_message(self, message, show_button=True):
         self.lbl_message.setText(message)
         self.btn_browse.setText("Выбрать папку" if AppContext.LANG == "RU" else "Browse Folder")
-        # Скрываем кнопку "выбрать каталог", если папка с входящими уже выбрана и список файлов не пуст
-        if hasattr(self.parent(), "loading_files") and self.parent().loading_files:
-            self.btn_browse.hide()
-        else:
+        if show_button:
             self.btn_browse.show()
+        else:
+            self.btn_browse.hide()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -2776,7 +2775,12 @@ class SorterViewerArea(QWidget):
     def set_audio_mode(self, text): self.single_view.set_audio_mode(text)
     
     def show_empty_state(self, message):
-        self.empty_placeholder_widget.set_message(message)
+        main_app = self.get_main_app()
+        show_btn = True
+        if main_app and getattr(main_app, 'UNSORT_DIR', None) and getattr(main_app, 'files_queue', None):
+            show_btn = False
+            
+        self.empty_placeholder_widget.set_message(message, show_btn)
         self.stack.setCurrentIndex(3)
         
     def change_rotation(self, angle): self.single_view.change_rotation(angle)

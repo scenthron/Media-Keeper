@@ -45,7 +45,7 @@ class PlayerMixin:
         self.update_window_title()
 
         # Если активен режим плиток или списка, не инициализируем проигрывание
-        if hasattr(self, 'viewer') and self.viewer.stack.currentIndex() != 0:
+        if hasattr(self, 'viewer') and self.viewer.current_view_mode != 0:
             self.media_player.stop()
             self.media_player.setSource(QUrl())
             if hasattr(self, 'video_controls'):

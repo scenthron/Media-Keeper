@@ -184,7 +184,7 @@ class ActionMixin:
         if getattr(self, 'current_tab', 0) == 0:
             act_ref = QAction(AppContext.tr("cln_ctx_unset_reference") if is_ref else AppContext.tr("cln_ctx_set_reference"), self)
             act_ref.triggered.connect(lambda: self.toggle_source_reference(path))
-            act_ref.setEnabled(not (is_prot and not is_ref) and not is_system)
+            act_ref.setEnabled((not (is_prot and not is_ref) or path.lower().endswith('.mkdump')) and not is_system)
             
             if AppContext.LANG == "RU":
                 ref_tip = "<b>Поиск по эталону</b><br>Назначает папку образцовой (эталоном). Все её файлы защищаются от удаления, позволяя вам безопасно очищать дубликаты в других папках при помощи фильтров авто-выбора."

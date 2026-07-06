@@ -596,8 +596,7 @@ class RefImageDelegate(QStyledItemDelegate):
             painter.setBrush(QColor("#6b7280"))
             painter.drawEllipse(ind_rect)
             painter.setPen(QPen(Qt.GlobalColor.white, 2))
-            painter.setFont(QFont("Segoe UI Emoji", 9, QFont.Weight.Bold))
-            painter.drawText(ind_rect.adjusted(0, -1, 0, -1), Qt.AlignmentFlag.AlignCenter, "⚪")
+            # Just draw the grey circle with white border, don't draw the ⚪ emoji which has a white center inside.
         painter.restore()
             
         if self.hovered_index is not None and index == self.hovered_index:

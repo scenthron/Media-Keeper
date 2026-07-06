@@ -359,74 +359,18 @@ class AiGroupSettingsDialog(QDialog):
             
         def _create_item(path, list_widget):
             item = QListWidgetItem()
-            pixmap = QPixmap(path)
-            if not pixmap.isNull():
-                pixmap = pixmap.scaled(128, 128, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
-                painter = QPainter(pixmap)
-                
-                is_face = self.rad_face.isChecked()
-                
-                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-                if path in self.trained_status:
-                    status = self.trained_status[path]
-                    is_face = self.rad_face.isChecked()
-                    
-                    if is_face:
-                        if status:
-                            # Yellow smiley
-                            painter.setBrush(QColor(255, 204, 0))
-                            painter.setPen(Qt.GlobalColor.transparent)
-                            painter.drawEllipse(6, 6, 24, 24)
-                            painter.setBrush(QColor(0, 0, 0))
-                            painter.drawEllipse(12, 14, 4, 4)
-                            painter.drawEllipse(20, 14, 4, 4)
-                            pen = QPen(QColor(0, 0, 0), 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
-                            painter.setPen(pen)
-                            painter.setBrush(Qt.GlobalColor.transparent)
-                            painter.drawArc(12, 16, 12, 10, -180 * 16, 180 * 16)
-                        else:
-                            # Red Sad face
-                            painter.setBrush(QColor(239, 68, 68))
-                            painter.setPen(Qt.GlobalColor.transparent)
-                            painter.drawEllipse(6, 6, 24, 24)
-                            painter.setBrush(QColor(0, 0, 0))
-                            painter.drawEllipse(12, 14, 4, 4)
-                            painter.drawEllipse(20, 14, 4, 4)
-                            pen = QPen(QColor(0, 0, 0), 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
-                            painter.setPen(pen)
-                            painter.setBrush(Qt.GlobalColor.transparent)
-                            painter.drawArc(12, 22, 12, 10, 0 * 16, 180 * 16)
-                    else:
-                        if status:
-                            # Green checkmark
-                            painter.setBrush(QColor(34, 197, 94))
-                            painter.setPen(Qt.GlobalColor.transparent)
-                            painter.drawEllipse(6, 6, 24, 24)
-                            pen = QPen(QColor(255, 255, 255), 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
-                            painter.setPen(pen)
-                            painter.drawLine(12, 18, 16, 22)
-                            painter.drawLine(16, 22, 24, 12)
-                        else:
-                            # Red cross
-                            painter.setBrush(QColor(239, 68, 68))
-                            painter.setPen(Qt.GlobalColor.transparent)
-                            painter.drawEllipse(6, 6, 24, 24)
-                            pen = QPen(QColor(255, 255, 255), 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
-                            painter.setPen(pen)
-                            painter.drawLine(12, 12, 24, 24)
-                            painter.drawLine(24, 12, 12, 24)
-                else:
-                    # Solid grey circle (unprocessed)
-                    painter.setBrush(QColor(128, 128, 128))
-                    painter.setPen(Qt.GlobalColor.transparent)
-                    painter.drawEllipse(6, 6, 24, 24)
-                painter.end()
-                
-                item.setIcon(QIcon(pixmap))
-            else:
-                item.setIcon(QIcon(path))
-                
+            item.setIcon(QIcon(path))
+            
             item.setData(Qt.ItemDataRole.UserRole, path)
+            
+            is_face = self.rad_face.isChecked()
+            item.setData(Qt.ItemDataRole.UserRole + 1, is_face)
+            
+            if hasattr(self, "trained_status") and path in self.trained_status:
+                item.setData(Qt.ItemDataRole.UserRole + 2, self.trained_status[path])
+            else:
+                item.setData(Qt.ItemDataRole.UserRole + 2, None)
+                
             item.setToolTip(os.path.basename(path))
             list_widget.addItem(item)
 
@@ -646,6 +590,7 @@ class AiGroupSettingsDialog(QDialog):
         self.reload_thumbnails()
         self.btn_train.setEnabled(True)
         self.btn_train.setText("Обучить" if self.is_ru else "Train")
+        QMessageBox.information(self, "Успех", "Обучение завершено успешно!" if self.is_ru else "Training completed successfully!")
         
     def save_hash_dump(self):
         default_name = self.group_name if self.group_name else "Новый_хэш_эталон"

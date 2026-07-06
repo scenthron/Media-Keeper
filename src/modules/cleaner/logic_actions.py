@@ -55,7 +55,7 @@ class ActionMixin:
         else:
             is_cached, is_face_cached = False, False
             
-        item_widget = SourceListItem(path, color, is_cached=is_cached, is_face_cached=is_face_cached)
+        item_widget = SourceListItem(path, color, is_protected=is_dump, is_cached=is_cached, is_face_cached=is_face_cached)
         if is_system:
             item_widget.set_system_error_state()
             
@@ -232,7 +232,7 @@ class ActionMixin:
             if data.get('reference') and p != path:
                 prev_ref_path = p
                 data['reference'] = False
-                data['protected'] = False  # Эталон снят — убираем автоматически выставленную защиту
+                data['protected'] = p.lower().endswith('.mkdump')
                 for i in range(layout.count()):
                     w = layout.itemAt(i).widget()
                     if w and w.path == p:
@@ -246,7 +246,7 @@ class ActionMixin:
         if new_state:
             self.source_folders[path]['protected'] = True
         else:
-            self.source_folders[path]['protected'] = False
+            self.source_folders[path]['protected'] = path.lower().endswith('.mkdump')
 
         for i in range(layout.count()):
             w = layout.itemAt(i).widget()

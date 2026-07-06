@@ -130,7 +130,7 @@ class SourceListItem(QWidget):
         if reference:
             self.is_protected = True   # Эталон всегда защищён
         else:
-            self.is_protected = False  # Снятие эталона — убираем автоматическую защиту
+            self.is_protected = self.path.lower().endswith('.mkdump')
         self.update_style()
 
     def set_error_state(self, message):

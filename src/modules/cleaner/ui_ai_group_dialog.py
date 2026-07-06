@@ -92,6 +92,9 @@ class AiGroupSettingsDialog(QDialog):
         self.rad_general.setCursor(Qt.CursorShape.PointingHandCursor)
         self.rad_face.setCursor(Qt.CursorShape.PointingHandCursor)
         
+        self.rad_general.toggled.connect(self._on_type_changed)
+        self.rad_face.toggled.connect(self._on_type_changed)
+        
         self.btn_group.addButton(self.rad_general, 0)
         self.btn_group.addButton(self.rad_face, 1)
         
@@ -185,6 +188,11 @@ class AiGroupSettingsDialog(QDialog):
         if self.dump_path and os.path.exists(self.dump_path):
             from utils_common import reveal_in_explorer
             reveal_in_explorer(self.dump_path)
+
+    def _on_type_changed(self):
+        self.has_changes = True
+        self.btn_save.setEnabled(True)
+        self.btn_save.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold; color: white;")
 
     def _setup_tab(self, tab: QWidget, is_positive: bool):
         t_layout = QVBoxLayout(tab)

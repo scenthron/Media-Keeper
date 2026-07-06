@@ -612,14 +612,14 @@ class FileOpsMixin:
             return
 
         # Определяем список файлов для перемещения
-        if self.viewer.stack.currentIndex() == 0:
+        if self.viewer.current_view_mode == 0:
             selected_paths = [self.current_file_path] if self.current_file_path else []
         else:
             selected_paths = self.viewer.get_selected_files()
 
         # Если в режиме Grid/List выделенных файлов нет, но открыт быстрый просмотр, берем файл из быстрого просмотра
-        if not selected_paths and self.viewer.stack.currentIndex() in (1, 2):
-            active_view = self.viewer.grid_view if self.viewer.stack.currentIndex() == 1 else self.viewer.list_view
+        if not selected_paths and self.viewer.current_view_mode in (1, 2):
+            active_view = self.viewer.grid_view if self.viewer.current_view_mode == 1 else self.viewer.list_view
             if hasattr(active_view, 'large_preview_popup') and active_view.large_preview_popup:
                 popup = active_view.large_preview_popup
                 if hasattr(popup, 'filepath') and popup.filepath:

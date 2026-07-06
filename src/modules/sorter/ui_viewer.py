@@ -3193,7 +3193,7 @@ class SorterViewerArea(QWidget):
 
     def get_selected_files(self):
         """Returns list of absolute filepaths of selected items."""
-        curr_mode = self.stack.currentIndex()
+        curr_mode = self.current_view_mode
         selected_paths = []
         if curr_mode == 0:
             pass

@@ -437,9 +437,16 @@ class CleanerSettingsPanel(QWidget):
     def dropEvent(self, event):
         if event.mimeData().hasUrls():
             urls = event.mimeData().urls()
+            paths = []
             for url in urls:
                 path = url.toLocalFile()
-                if os.path.isdir(path): self.folder_dropped.emit(path)
+                if os.path.isdir(path) or path.lower().endswith('.mkdump'):
+                    paths.append(path)
+            
+            if len(paths) == 1:
+                self.folder_dropped.emit(paths[0])
+            elif len(paths) > 1:
+                self.files_dropped.emit(paths)
             event.acceptProposedAction()
         else: event.ignore()
     
@@ -1677,8 +1684,15 @@ class SimilarSettingsPanel(QWidget):
     def dropEvent(self, event):
         if event.mimeData().hasUrls():
             urls = event.mimeData().urls()
+            paths = []
             for url in urls:
                 path = url.toLocalFile()
-                if os.path.isdir(path): self.folder_dropped.emit(path)
+                if os.path.isdir(path) or path.lower().endswith('.mkdump'):
+                    paths.append(path)
+            
+            if len(paths) == 1:
+                self.folder_dropped.emit(paths[0])
+            elif len(paths) > 1:
+                self.files_dropped.emit(paths)
             event.acceptProposedAction()
         else: event.ignore()

@@ -63,7 +63,16 @@ class AiGroupSettingsDialog(QDialog):
         layout.addWidget(QLabel("Файл эталона:" if self.is_ru else "Reference File:"))
         
         path_layout = QHBoxLayout()
-        self.lbl_path = QLabel(self.dump_path if self.dump_path else ("Новый эталон (не сохранен)" if self.is_ru else "New Reference (Unsaved)"))
+        
+        def format_path(path):
+            if not path:
+                return "Новый эталон (не сохранен)" if self.is_ru else "New Reference (Unsaved)"
+            parts = path.replace("\\", "/").split("/")
+            if len(parts) > 3:
+                return f"{parts[0]}/.../{parts[-2]}/{parts[-1]}"
+            return path
+            
+        self.lbl_path = QLabel(format_path(self.dump_path))
         self.lbl_path.setStyleSheet("background-color: #2b2b2b; border: 1px solid #444; padding: 6px 8px; border-radius: 4px; color: #a3a3a3; font-size: 13px;")
         self.lbl_path.setMinimumHeight(32)
         path_layout.addWidget(self.lbl_path, 1)
@@ -435,11 +444,14 @@ class AiGroupSettingsDialog(QDialog):
             item.setToolTip(os.path.basename(path))
             list_widget.addItem(item)
 
+        from PyQt6.QtWidgets import QApplication
         for path in self.pending_pos:
             _create_item(path, self.list_pos)
+            QApplication.processEvents()
             
         for path in self.pending_neg:
             _create_item(path, self.list_neg)
+            QApplication.processEvents()
 
     def _on_item_hover(self, path, global_pos):
         if not path or path == "HASH" or not os.path.exists(path):
@@ -522,7 +534,12 @@ class AiGroupSettingsDialog(QDialog):
         save_ai_settings(settings)
         
         self.dump_path = target_path
-        self.lbl_path.setText(self.dump_path)
+        def format_path(path):
+            if not path: return ""
+            parts = path.replace("\\", "/").split("/")
+            if len(parts) > 3: return f"{parts[0]}/.../{parts[-2]}/{parts[-1]}"
+            return path
+        self.lbl_path.setText(format_path(self.dump_path))
         self.btn_open_folder.setEnabled(True)
         
         self.btn_save.setEnabled(True)
@@ -655,8 +672,9 @@ class AiGroupSettingsDialog(QDialog):
         
     def save_hash_dump(self):
         default_name = self.group_name if self.group_name else "Новый_хэш_эталон"
+        default_name = default_name.replace(".hash.mkaidump", "").replace(".mkaidump", "")
         from .logic_ai_classifier import get_ai_assets_dir
-        default_path = os.path.join(get_ai_assets_dir(), default_name)
+        default_path = os.path.join(get_ai_assets_dir(), default_name + ".hash.mkaidump")
         
         path, _ = QFileDialog.getSaveFileName(self, "Экспорт хэш-дампа", default_path, "Hash Dumps (*.hash.mkaidump)")
         if path:
@@ -673,12 +691,9 @@ class AiGroupSettingsDialog(QDialog):
             pass
 
     def delete_group_ui(self):
-        reply = QMessageBox.question(
-            self,
+        reply = self._show_silent_question(
             "Удалить эталон" if self.is_ru else "Delete Reference Group",
-            f"Вы действительно хотите физически удалить файл эталона '{self.group_name}' с диска?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
+            f"Вы действительно хотите физически удалить файл эталона '{self.group_name}' с диска?"
         )
         if reply == QMessageBox.StandardButton.Yes:
             settings = load_ai_settings()

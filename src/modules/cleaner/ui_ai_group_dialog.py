@@ -54,13 +54,25 @@ class AiGroupSettingsDialog(QDialog):
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(12)
         
-        # 1. Изменение имени
-        layout.addWidget(QLabel("Имя группы:" if self.is_ru else "Group Name:"))
-        self.txt_name = QLineEdit(self.group_name if self.group_name else "")
-        self.txt_name.setMinimumHeight(32)
-        self.txt_name.setStyleSheet("QLineEdit { background-color: #2b2b2b; border: 1px solid #444; padding: 4px 8px; border-radius: 4px; color: white; font-size: 13px; } QLineEdit:focus { border: 1px solid #3b82f6; }")
-        self.txt_name.textChanged.connect(self._on_name_changed)
-        layout.addWidget(self.txt_name)
+        # 1. Путь к эталону
+        layout.addWidget(QLabel("Файл эталона:" if self.is_ru else "Reference File:"))
+        
+        path_layout = QHBoxLayout()
+        self.lbl_path = QLabel(self.dump_path if self.dump_path else ("Новый эталон (не сохранен)" if self.is_ru else "New Reference (Unsaved)"))
+        self.lbl_path.setStyleSheet("background-color: #2b2b2b; border: 1px solid #444; padding: 6px 8px; border-radius: 4px; color: #a3a3a3; font-size: 13px;")
+        self.lbl_path.setMinimumHeight(32)
+        path_layout.addWidget(self.lbl_path, 1)
+        
+        self.btn_open_folder = QPushButton("📁")
+        self.btn_open_folder.setToolTip("Открыть директорию" if self.is_ru else "Open Directory")
+        self.btn_open_folder.setStyleSheet("background-color: #3b3b3b; border: 1px solid #444; border-radius: 4px; font-size: 16px;")
+        self.btn_open_folder.setFixedSize(32, 32)
+        self.btn_open_folder.clicked.connect(self.open_dump_folder)
+        if not self.dump_path or not os.path.exists(self.dump_path):
+            self.btn_open_folder.setEnabled(False)
+        path_layout.addWidget(self.btn_open_folder)
+        
+        layout.addLayout(path_layout)
         
         # 2. Тип анализа
         layout.addWidget(QLabel("Тип анализа:" if self.is_ru else "Analysis Type:"))
@@ -142,17 +154,20 @@ class AiGroupSettingsDialog(QDialog):
         self.btn_cancel.setStyleSheet("background-color: #333; border: 1px solid #555; padding: 6px 16px; border-radius: 4px;")
         self.btn_cancel.clicked.connect(self.reject)
         
-        self.btn_save_copy = QPushButton("Сохранить и копировать" if self.is_ru else "Save and Copy")
-        self.btn_save_copy.setStyleSheet("background-color: #0ea5e9; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold;")
-        self.btn_save_copy.setToolTip("Настройка будет сохранена в директорию программы" if self.is_ru else "Configuration will be saved to program directory")
-        self.btn_save_copy.clicked.connect(lambda: self.save_settings(copy_to_system=True))
+        self.btn_save_as = QPushButton("Сохранить как..." if self.is_ru else "Save As...")
+        self.btn_save_as.setStyleSheet("background-color: #0ea5e9; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold; color: white;")
+        self.btn_save_as.clicked.connect(lambda: self.save_settings(is_save_as=True))
         
         self.btn_save = QPushButton("Сохранить" if self.is_ru else "Save")
-        self.btn_save.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold;")
-        self.btn_save.clicked.connect(lambda: self.save_settings(copy_to_system=False))
+        if self.dump_path:
+            self.btn_save.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold; color: white;")
+        else:
+            self.btn_save.setEnabled(False)
+            self.btn_save.setStyleSheet("background-color: #222; color: #555; border: 1px solid #333; padding: 6px 16px; border-radius: 4px; font-weight: bold;")
+        self.btn_save.clicked.connect(lambda: self.save_settings(is_save_as=False))
         
         buttons_layout.addWidget(self.btn_cancel)
-        buttons_layout.addWidget(self.btn_save_copy)
+        buttons_layout.addWidget(self.btn_save_as)
         buttons_layout.addWidget(self.btn_save)
         layout.addLayout(buttons_layout)
         
@@ -165,7 +180,11 @@ class AiGroupSettingsDialog(QDialog):
         self.list_neg.hover_left.connect(self.hover_tooltip.hide)
         
         self.reload_thumbnails()
-        self._on_name_changed(self.txt_name.text())
+
+    def open_dump_folder(self):
+        if self.dump_path and os.path.exists(self.dump_path):
+            from utils_common import reveal_in_explorer
+            reveal_in_explorer(self.dump_path)
 
     def _setup_tab(self, tab: QWidget, is_positive: bool):
         t_layout = QVBoxLayout(tab)
@@ -220,229 +239,6 @@ class AiGroupSettingsDialog(QDialog):
                 QMessageBox.information(self, "Успех" if self.is_ru else "Success", "Файлы успешно извлечены!" if self.is_ru else "Files extracted successfully!")
             except Exception as e:
                 QMessageBox.critical(self, "Ошибка" if self.is_ru else "Error", f"Ошибка извлечения: {e}")
-
-    def _on_name_changed(self, text):
-        is_valid = bool(text.strip())
-        self.btn_save.setEnabled(is_valid)
-        
-        from .logic_ai_classifier import get_ai_assets_dir
-        import os
-        assets_dir = get_ai_assets_dir()
-        if not self.dump_path or os.path.abspath(self.dump_path).startswith(os.path.abspath(assets_dir)):
-            self.btn_save_copy.setEnabled(False)
-            self.btn_save_copy.setToolTip("Эталон уже находится в системной директории" if self.is_ru else "Reference is already in system directory")
-        else:
-            self.btn_save_copy.setEnabled(is_valid)
-            self.btn_save_copy.setToolTip("Настройка будет сохранена в директорию программы" if self.is_ru else "Configuration will be saved to program directory")
-
-        if self.group_name:
-            self.btn_train.setEnabled(is_valid)
-        else:
-            self.btn_train.setEnabled(False)
-            
-        active_style = "background-color: #3b82f6; color: white; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold;"
-        disabled_style = "background-color: #222; color: #555; border: 1px solid #333; padding: 6px 16px; border-radius: 4px; font-weight: bold;"
-        
-        self.btn_save.setStyleSheet(active_style if is_valid else disabled_style)
-        self.btn_save_copy.setStyleSheet(active_style if self.btn_save_copy.isEnabled() else disabled_style)
-        
-        if not is_valid:
-            self.txt_name.setStyleSheet("QLineEdit { background-color: #451a1a; border: 1px solid #ef4444; padding: 4px 8px; border-radius: 4px; color: white; }")
-        else:
-            self.txt_name.setStyleSheet("QLineEdit { background-color: #2b2b2b; border: 1px solid #444; padding: 4px 8px; border-radius: 4px; color: white; }")
-
-    def choose_files(self, is_positive):
-        files, _ = QFileDialog.getOpenFileNames(
-            self, 
-            "Выберите картинки" if self.is_ru else "Select Images",
-            "", 
-            "Images (*.png *.jpg *.jpeg *.bmp *.webp)"
-        )
-        if files:
-            self.add_dropped_files(files, is_positive)
-
-    def add_dropped_files(self, file_paths, is_positive):
-        target_list = self.pending_pos if is_positive else self.pending_neg
-        target_widget = self.list_pos if is_positive else self.list_neg
-        
-        for path in file_paths:
-            if path not in target_list:
-                if is_positive:
-                    self.pending_pos.append(path)
-                else:
-                    self.pending_neg.append(path)
-                item = QListWidgetItem()
-                item.setIcon(QIcon(path))
-                item.setData(Qt.ItemDataRole.UserRole, path)
-                is_face = self.rad_face.isChecked()
-                item.setData(Qt.ItemDataRole.UserRole + 1, is_face)
-                try:
-                    stat = os.stat(path)
-                    if is_face:
-                        faces = self.classifier.cache.get_file_faces(path, stat.st_mtime, stat.st_size)
-                        item.setData(Qt.ItemDataRole.UserRole + 2, len(faces) > 0 if faces is not None else None)
-                    else:
-                        emb = self.classifier.cache.get_image_embedding(path, stat.st_mtime, stat.st_size)
-                        item.setData(Qt.ItemDataRole.UserRole + 2, True if emb is not None else None)
-                except:
-                    item.setData(Qt.ItemDataRole.UserRole + 2, None)
-                    
-                status = item.data(Qt.ItemDataRole.UserRole + 2)
-                tt = os.path.basename(path)
-                if is_face:
-                    if status == True: tt += "\n[🙂 Лицо найдено и сохранено]"
-                    elif status == False: tt += "\n[🙁 Ошибка: Лицо не найдено на фото]"
-                    else: tt += "\n[⚪ Файл не проанализирован]"
-                else:
-                    if status == True: tt += "\n[✓ Успешно проанализировано]"
-                    elif status == False: tt += "\n[✕ Ошибка при анализе файла]"
-                    else: tt += "\n[⚪ Файл не проанализирован]"
-                item.setToolTip(tt)
-                target_widget.addItem(item)
-                self.has_changes = True
-
-    def delete_selected_files(self, is_positive):
-        target_widget = self.list_pos if is_positive else self.list_neg
-        target_list = self.pending_pos if is_positive else self.pending_neg
-        
-        selected_items = target_widget.selectedItems()
-        if not selected_items:
-            return
-            
-        for item in selected_items:
-            path = item.data(Qt.ItemDataRole.UserRole)
-            if path == "HASH":
-                # User cannot delete HASH proxy yet, they must delete the whole group
-                QMessageBox.warning(self, "Внимание", "Нельзя удалить хэш-данные. Если нужно, удалите весь эталон.")
-                continue
-            if path in target_list:
-                target_list.remove(path)
-            target_widget.takeItem(target_widget.row(item))
-            self.has_changes = True
-
-    def reload_thumbnails(self):
-        self.list_pos.clear()
-        self.list_neg.clear()
-        
-        if self.is_hash_only:
-            # Add HASH proxies
-            if self.dump_path:
-                info = load_dump_info(self.dump_path)
-                if info.get("pos_features_count", 0) > 0:
-                    item = QListWidgetItem()
-                    # You could use a special icon here
-                    item.setText(" [ HASH ВЕКТОРЫ ] ")
-                    item.setData(Qt.ItemDataRole.UserRole, "HASH")
-                    item.setToolTip("Предобученные векторы из дампа")
-                    self.list_pos.addItem(item)
-                if info.get("neg_features_count", 0) > 0:
-                    item = QListWidgetItem()
-                    item.setText(" [ HASH ВЕКТОРЫ ] ")
-                    item.setData(Qt.ItemDataRole.UserRole, "HASH")
-                    item.setToolTip("Предобученные векторы из дампа")
-                    self.list_neg.addItem(item)
-        
-        for path in self.pending_pos:
-            item = QListWidgetItem()
-            item.setIcon(QIcon(path))
-            item.setData(Qt.ItemDataRole.UserRole, path)
-            is_face = self.rad_face.isChecked()
-            item.setData(Qt.ItemDataRole.UserRole + 1, is_face)
-            try:
-                stat = os.stat(path)
-                if is_face:
-                    faces = self.classifier.cache.get_file_faces(path, stat.st_mtime, stat.st_size)
-                    item.setData(Qt.ItemDataRole.UserRole + 2, len(faces) > 0 if faces is not None else None)
-                else:
-                    emb = self.classifier.cache.get_image_embedding(path, stat.st_mtime, stat.st_size)
-                    item.setData(Qt.ItemDataRole.UserRole + 2, True if emb is not None else None)
-            except:
-                item.setData(Qt.ItemDataRole.UserRole + 2, None)
-                
-            status = item.data(Qt.ItemDataRole.UserRole + 2)
-            tt = os.path.basename(path)
-            if is_face:
-                if status == True: tt += "\n[🙂 Лицо найдено и сохранено]"
-                elif status == False: tt += "\n[🙁 Ошибка: Лицо не найдено на фото]"
-                else: tt += "\n[⚪ Файл не проанализирован]"
-            else:
-                if status == True: tt += "\n[✓ Успешно проанализировано]"
-                elif status == False: tt += "\n[✕ Ошибка при анализе файла]"
-                else: tt += "\n[⚪ Файл не проанализирован]"
-            item.setToolTip(tt)
-            self.list_pos.addItem(item)
-            
-        for path in self.pending_neg:
-            item = QListWidgetItem()
-            item.setIcon(QIcon(path))
-            item.setData(Qt.ItemDataRole.UserRole, path)
-            is_face = self.rad_face.isChecked()
-            item.setData(Qt.ItemDataRole.UserRole + 1, is_face)
-            try:
-                stat = os.stat(path)
-                if is_face:
-                    faces = self.classifier.cache.get_file_faces(path, stat.st_mtime, stat.st_size)
-                    item.setData(Qt.ItemDataRole.UserRole + 2, len(faces) > 0 if faces is not None else None)
-                else:
-                    emb = self.classifier.cache.get_image_embedding(path, stat.st_mtime, stat.st_size)
-                    item.setData(Qt.ItemDataRole.UserRole + 2, True if emb is not None else None)
-            except:
-                item.setData(Qt.ItemDataRole.UserRole + 2, None)
-                
-            status = item.data(Qt.ItemDataRole.UserRole + 2)
-            tt = os.path.basename(path)
-            if is_face:
-                if status == True: tt += "\n[🙂 Лицо найдено и сохранено]"
-                elif status == False: tt += "\n[🙁 Ошибка: Лицо не найдено на фото]"
-                else: tt += "\n[⚪ Файл не проанализирован]"
-            else:
-                if status == True: tt += "\n[✓ Успешно проанализировано]"
-                elif status == False: tt += "\n[✕ Ошибка при анализе файла]"
-                else: tt += "\n[⚪ Файл не проанализирован]"
-            item.setToolTip(tt)
-            self.list_neg.addItem(item)
-
-    def _on_item_hover(self, path, global_pos):
-        if not path or path == "HASH" or not os.path.exists(path):
-            return
-            
-        if self.rad_face.isChecked() and self.classifier.ai.initialize_sessions():
-            try:
-                import cv2
-                import numpy as np
-                from PIL import Image
-                from PyQt6.QtGui import QImage, QPixmap
-                from PyQt6.QtCore import Qt
-                
-                faces = self.classifier.ai.detect_and_extract_faces(path)
-                if faces:
-                    with Image.open(path) as img:
-                        img = img.convert('RGB')
-                        img_data = np.array(img, dtype=np.uint8)
-                    
-                    bgr_img = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR)
-                    for face in faces:
-                        x, y, w, h = face["bbox"]
-                        cv2.rectangle(bgr_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                    
-                    rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
-                    height, width, ch = rgb_img.shape
-                    bytes_per_line = ch * width
-                    qt_img = QImage(rgb_img.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
-                    pixmap = QPixmap.fromImage(qt_img)
-                    
-                    if pixmap.width() > 300 or pixmap.height() > 300:
-                        pixmap = pixmap.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                        
-                    self.hover_tooltip.setPixmap(pixmap)
-                    # Adjust position slightly down/right
-                    self.hover_tooltip.move(global_pos.x() + 15, global_pos.y() + 15)
-                    self.hover_tooltip.show()
-                    return
-            except Exception:
-                pass
-                
-        self.hover_tooltip.show_image(path, global_pos)
 
     def save_settings(self, copy_to_system=False):
         new_name = self.txt_name.text().strip()
@@ -608,11 +404,21 @@ class AiGroupSettingsDialog(QDialog):
         QMessageBox.information(self, "Успех", "Расчет завершен! Лица распознаны." if search_type == "face" else "Расчет завершен!")
         
     def save_hash_dump(self):
-        new_name = self.txt_name.text().strip()
-        if not new_name: return
+        default_name = self.group_name if self.group_name else "Новый_хэш_эталон"
+        from .logic_ai_classifier import get_ai_assets_dir
+        default_path = os.path.join(get_ai_assets_dir(), default_name)
         
-        path, _ = QFileDialog.getSaveFileName(self, "Экспорт хэш-дампа", f"{new_name}.hash.mkaidump", "Hash Dumps (*.hash.mkaidump)")
+        path, _ = QFileDialog.getSaveFileName(self, "Экспорт хэш-дампа", default_path, "Hash Dumps (*.hash.mkaidump)")
         if path:
+            if not path.endswith(".hash.mkaidump"):
+                if path.endswith(".mkaidump"):
+                    path = path.replace(".mkaidump", ".hash.mkaidump")
+                else:
+                    path += ".hash.mkaidump"
+                    
+            if self.has_changes:
+                self.train_group_ui()
+                
             success = self.train_and_save(path, is_hash_only=True)
             if success:
                 QMessageBox.information(self, "Успех", "Хэш-дамп успешно экспортирован!")

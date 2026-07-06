@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QScrollArea, QSizePolicy, QComboBox, QCheckBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent
-from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor, QFont, QPainter, QPen
+from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor, QFont, QPainter, QPen, QDragEnterEvent, QDropEvent
 
 from config import AppContext, APP_DESIGN
 from ui_widgets_base import DropZoneWidget
@@ -206,9 +206,31 @@ class AiAdvancedSettingsDialog(QDialog):
         self.accept()
 
 
+
+class RefDropContainer(QWidget):
+    dump_dropped = pyqtSignal(str)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                if url.toLocalFile().lower().endswith(".mkaidump"):
+                    event.acceptProposedAction()
+                    return
+                    
+    def dropEvent(self, event: QDropEvent):
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if path.lower().endswith(".mkaidump"):
+                self.dump_dropped.emit(path)
+
 class AiGroupChipWidget(QFrame):
     state_changed = pyqtSignal(str, bool)
     settings_clicked = pyqtSignal(str)
+    remove_clicked = pyqtSignal(str)
     
     def __init__(self, name: str, is_enabled: bool, is_face: bool, status_color: str, count: int, parent=None):
         super().__init__(parent)
@@ -264,6 +286,25 @@ class AiGroupChipWidget(QFrame):
         """)
         self.btn_gear.clicked.connect(lambda: self.settings_clicked.emit(self.group_name))
         layout.addWidget(self.btn_gear)
+        
+        self.btn_remove = QPushButton("✕")
+        self.btn_remove.setToolTip("Убрать эталон из списка (файл не удалится)")
+        self.btn_remove.setFixedSize(18, 18)
+        self.btn_remove.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_remove.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+                color: #ef4444;
+                font-weight: bold;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                color: #fca5a5;
+            }
+        """)
+        self.btn_remove.clicked.connect(lambda: self.remove_clicked.emit(self.group_name))
+        layout.addWidget(self.btn_remove)
 
     def update_status_dot(self, color: str):
         hex_color = "#888888" # gray
@@ -493,7 +534,8 @@ class AiClassificationTab(QWidget):
         self.scroll_ref.setWidgetResizable(True)
         self.scroll_ref.setStyleSheet("QScrollArea { border: 1px solid #333; background-color: #111; border-radius: 4px; }")
         
-        self.ref_container = QWidget()
+        self.ref_container = RefDropContainer()
+        self.ref_container.dump_dropped.connect(self.add_external_dump)
         self.ref_container.setStyleSheet("background-color: #111;")
         self.group_list_layout_ai = QVBoxLayout(self.ref_container)
         self.group_list_layout_ai.setContentsMargins(5, 5, 5, 5)
@@ -1052,6 +1094,42 @@ class AiClassificationTab(QWidget):
         settings = load_ai_settings()
         groups = settings.get("groups", {})
         
+        import os
+        to_delete = []
+        for name, info in groups.items():
+            path = info.get("path")
+            if not path or not os.path.exists(path):
+                to_delete.append(name)
+                
+        if to_delete:
+            for name in to_delete:
+                del groups[name]
+            settings["groups"] = groups
+            save_ai_settings(settings)
+            
+        # Авто-добавление из системной директории
+        from .logic_ai_classifier import get_ai_assets_dir
+        assets_dir = get_ai_assets_dir()
+        added_new = False
+        if os.path.exists(assets_dir):
+            for f in os.listdir(assets_dir):
+                if f.lower().endswith(".mkaidump"):
+                    path = os.path.join(assets_dir, f)
+                    found = any(info.get("path") == path for info in groups.values())
+                    if not found:
+                        name = f.replace(".hash.mkaidump", "").replace(".mkaidump", "")
+                        orig_name = name
+                        c = 1
+                        while name in groups:
+                            name = f"{orig_name}_{c}"
+                            c += 1
+                        groups[name] = {"enabled": True, "path": path}
+                        added_new = True
+        
+        if added_new:
+            settings["groups"] = groups
+            save_ai_settings(settings)
+        
         # Сортируем: включенные сверху, затем по алфавиту
         sorted_groups = sorted(groups.items(), key=lambda item: (not item[1].get("enabled", True), item[0].lower()))
         
@@ -1060,13 +1138,32 @@ class AiClassificationTab(QWidget):
             is_face = info.get("type") == "face"
             is_enabled = info.get("enabled", True)
             
-            widget = AiGroupChipWidget(name, is_enabled, is_face, status, count, self)
+            # Check if it's a hash dump
+            is_hash = info.get("is_hash_only", False)
+            if not is_hash:
+                import os
+                if info.get("path") and os.path.exists(info.get("path")):
+                    from .logic_ai_dump import load_dump_info
+                    dump_info = load_dump_info(info["path"])
+                    is_hash = dump_info.get("is_hash_only", False)
+                    
+            display_name = f"[Hash] {name}" if is_hash else name
+            
+            widget = AiGroupChipWidget(display_name, is_enabled, is_face, status, count, self)
             widget.state_changed.connect(self.on_group_state_changed)
-            widget.settings_clicked.connect(self.open_edit_group_dialog)
+            widget.settings_clicked.connect(lambda n=name: self.open_edit_group_dialog(n))
+            widget.remove_clicked.connect(self.remove_group_from_list)
             self.group_list_layout_ai.addWidget(widget)
             self.chips_map[name] = widget
             
         self.update_scan_button_state()
+
+    def remove_group_from_list(self, group_name: str):
+        settings = load_ai_settings()
+        if "groups" in settings and group_name in settings["groups"]:
+            del settings["groups"][group_name]
+            save_ai_settings(settings)
+        self.reload_groups()
 
     def on_group_state_changed(self, group_name: str, is_enabled: bool):
         settings = load_ai_settings()
@@ -1088,42 +1185,29 @@ class AiClassificationTab(QWidget):
         dlg = AiAdvancedSettingsDialog(self)
         dlg.exec()
 
+    
+    def add_external_dump(self, path: str):
+        settings = load_ai_settings()
+        groups = settings.get("groups", {})
+        
+        name = os.path.basename(path).replace(".hash.mkaidump", "").replace(".mkaidump", "")
+        
+        original_name = name
+        counter = 1
+        while name in groups:
+            name = f"{original_name}_{counter}"
+            counter += 1
+            
+        groups[name] = {"enabled": True, "path": path}
+        settings["groups"] = groups
+        save_ai_settings(settings)
+        
+        self.reload_groups()
+        QMessageBox.information(self, "Успех", f"Дамп {name} успешно добавлен!")
+
     def create_group(self):
         dlg = AiGroupSettingsDialog(self.classifier, None, self)
         if dlg.exec():
-            name = dlg.txt_name.text().strip()
-            if not name:
-                return
-                
-            name = "".join(c for c in name if c.isalnum() or c in " _-").strip()
-            if not name:
-                return
-                
-            settings = load_ai_settings()
-            if name in settings.get("groups", {}):
-                QMessageBox.warning(self, "Ошибка" if AppContext.is_ru() else "Error", 
-                                    "Группа с таким именем уже существует!" if AppContext.is_ru() else "Group already exists!")
-                return
-                
-            group_type = "face" if dlg.rad_face.isChecked() else "general"
-            
-            group_dir = os.path.join(get_ai_assets_dir(), name)
-            os.makedirs(group_dir, exist_ok=True)
-            
-            import shutil
-            for fp in dlg.pending_files:
-                if os.path.exists(fp):
-                    try:
-                        shutil.copy2(fp, group_dir)
-                    except Exception as e:
-                        logging.error(f"Failed to copy {fp} to {group_dir}: {e}")
-            
-            settings["groups"][name] = {
-                "type": group_type,
-                "enabled": True
-            }
-            save_ai_settings(settings)
-            
             self.reload_groups()
 
     def on_threshold_changed(self, value):

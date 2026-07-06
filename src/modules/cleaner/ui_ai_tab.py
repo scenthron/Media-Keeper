@@ -232,7 +232,7 @@ class AiGroupChipWidget(QFrame):
     settings_clicked = pyqtSignal(str)
     remove_clicked = pyqtSignal(str)
     
-    def __init__(self, name: str, is_enabled: bool, is_face: bool, status_color: str, count: int, parent=None):
+    def __init__(self, name: str, is_enabled: bool, is_face: bool, status_color: str, count: int, is_external: bool = False, parent=None):
         super().__init__(parent)
         self.group_name = name
         
@@ -305,6 +305,8 @@ class AiGroupChipWidget(QFrame):
         """)
         self.btn_remove.clicked.connect(lambda: self.remove_clicked.emit(self.group_name))
         layout.addWidget(self.btn_remove)
+        if not is_external:
+            self.btn_remove.hide()
 
     def update_status_dot(self, color: str):
         hex_color = "#888888" # gray
@@ -1116,8 +1118,6 @@ class AiClassificationTab(QWidget):
                 if f.lower().endswith(".mkaidump"):
                     path = os.path.join(assets_dir, f)
                     path_norm = os.path.normpath(path).lower()
-                    if hasattr(self, "hidden_session_groups") and path_norm in self.hidden_session_groups:
-                        continue
                     found = any(os.path.normpath(info.get("path", "")).lower() == path_norm for info in groups.values())
                     if not found:
                         name = f.replace(".hash.mkaidump", "").replace(".mkaidump", "")
@@ -1152,7 +1152,12 @@ class AiClassificationTab(QWidget):
                     
             display_name = f"[Hash] {name}" if is_hash else name
             
-            widget = AiGroupChipWidget(display_name, is_enabled, is_face, status, count, self)
+            from .logic_ai_classifier import get_ai_assets_dir
+            assets_dir = os.path.normpath(get_ai_assets_dir()).lower()
+            path_norm = os.path.normpath(info.get("path", "")).lower() if info.get("path") else ""
+            is_external = not (path_norm and path_norm.startswith(assets_dir))
+            
+            widget = AiGroupChipWidget(display_name, is_enabled, is_face, status, count, is_external=is_external, parent=self)
             widget.state_changed.connect(self.on_group_state_changed)
             widget.settings_clicked.connect(lambda n=name: self.open_edit_group_dialog(n))
             widget.remove_clicked.connect(self.remove_group_from_list)
@@ -1164,11 +1169,6 @@ class AiClassificationTab(QWidget):
     def remove_group_from_list(self, group_name: str):
         settings = load_ai_settings()
         if "groups" in settings and group_name in settings["groups"]:
-            path = settings["groups"][group_name].get("path", "")
-            if path:
-                if not hasattr(self, "hidden_session_groups"):
-                    self.hidden_session_groups = set()
-                self.hidden_session_groups.add(os.path.normpath(path).lower())
             del settings["groups"][group_name]
             save_ai_settings(settings)
         self.reload_groups()

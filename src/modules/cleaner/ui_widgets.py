@@ -534,8 +534,6 @@ class ImageHoverToolTip(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent, Qt.WindowType.ToolTip | Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet("background-color: #2b2b2b; border: 2px solid #3b82f6; padding: 2px; border-radius: 6px;")
-        self.setScaledContents(True)
-        self.setFixedSize(650, 650) # В 2.5 раза больше (было 260x260)
         self.hide()
         
     def show_image(self, path: str, pos: QPoint):
@@ -549,7 +547,7 @@ class ImageHoverToolTip(QLabel):
                 # Масштабируем до 640x640 с сохранением пропорций
                 scaled = pixmap.scaled(640, 640, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                 self.setPixmap(scaled)
-                self.setFixedSize(scaled.width() + 10, scaled.height() + 10)
+                self.adjustSize()
                 
                 # Смещаем правее и ниже курсора
                 self.move(pos.x() + 15, pos.y() + 15)

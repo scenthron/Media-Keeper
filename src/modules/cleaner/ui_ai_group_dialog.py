@@ -307,7 +307,18 @@ class AiGroupSettingsDialog(QDialog):
                 else:
                     self.pending_neg.append(path)
                 item = QListWidgetItem()
-                item.setIcon(QIcon(path))
+                pixmap = QPixmap(path)
+                if not pixmap.isNull():
+                    scaled = pixmap.scaled(128, 128, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                    square = QPixmap(128, 128)
+                    square.fill(Qt.GlobalColor.transparent)
+                    from PyQt6.QtGui import QPainter
+                    painter = QPainter(square)
+                    painter.drawPixmap((128 - scaled.width()) // 2, (128 - scaled.height()) // 2, scaled)
+                    painter.end()
+                    item.setIcon(QIcon(square))
+                else:
+                    item.setIcon(QIcon(path))
                 item.setData(Qt.ItemDataRole.UserRole, path)
                 item.setToolTip(os.path.basename(path))
                 target_widget.addItem(item)
@@ -359,7 +370,19 @@ class AiGroupSettingsDialog(QDialog):
             
         def _create_item(path, list_widget):
             item = QListWidgetItem()
-            item.setIcon(QIcon(path))
+            pixmap = QPixmap(path)
+            if not pixmap.isNull():
+                scaled = pixmap.scaled(128, 128, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                # Чтобы превью были квадратными и не искажались, создадим квадратную основу
+                square = QPixmap(128, 128)
+                square.fill(Qt.GlobalColor.transparent)
+                from PyQt6.QtGui import QPainter
+                painter = QPainter(square)
+                painter.drawPixmap((128 - scaled.width()) // 2, (128 - scaled.height()) // 2, scaled)
+                painter.end()
+                item.setIcon(QIcon(square))
+            else:
+                item.setIcon(QIcon(path))
             
             item.setData(Qt.ItemDataRole.UserRole, path)
             
@@ -413,6 +436,7 @@ class AiGroupSettingsDialog(QDialog):
                         pixmap = pixmap.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                         
                     self.hover_tooltip.setPixmap(pixmap)
+                    self.hover_tooltip.adjustSize()
                     self.hover_tooltip.move(global_pos.x() + 15, global_pos.y() + 15)
                     self.hover_tooltip.show()
                     return

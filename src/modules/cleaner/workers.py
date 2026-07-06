@@ -436,17 +436,25 @@ class DBLoadWorker(QThread):
                     is_protected = False
                     is_reference = False
                     color = "#555"
+                    # Восстанавливаем префикс [Дамп] для файлов дампов
+                    real_path = item.get('real_path', path)
+                    if path.lower().endswith('.mkdump'):
+                        dump_name = os.path.basename(path)
+                        item['real_path'] = path
+                        item['path'] = f"[Дамп] {dump_name}"
+                        path = item['path']
+                        real_path = item['real_path']
                     
                     # Быстрое сопоставление по отсортированному списку папок
-                    if path.startswith('[Дамп]'):
+                    for src_path, data in sorted_folders:
+                        if is_subpath(real_path, src_path):
+                            is_reference = data.get('reference', False)
+                            is_protected = data.get('protected', False) or is_reference
+                            color = data.get('color', '#555')
+                            break
+                    
+                    if path.startswith('[Дамп]') and not is_protected:
                         is_protected = True
-                    else:
-                        for src_path, data in sorted_folders:
-                            if is_subpath(path, src_path):
-                                is_reference = data.get('reference', False)
-                                is_protected = data.get('protected', False) or is_reference
-                                color = data.get('color', '#555')
-                                break
                             
                     item['is_protected'] = is_protected
                     item['is_reference'] = is_reference

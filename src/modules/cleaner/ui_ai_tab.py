@@ -257,7 +257,7 @@ class AiGroupChipWidget(QFrame):
         
         self.lbl_icon = QLabel()
         self.lbl_icon.setFixedSize(14, 14)
-        self.lbl_icon.setText("👤" if is_face else "🖼️")
+        self.lbl_icon.setText("🙂" if is_face else "🖼️")
         self.lbl_icon.setStyleSheet("border: none; background: transparent;")
         layout.addWidget(self.lbl_icon)
         
@@ -1149,6 +1149,7 @@ class AiClassificationTab(QWidget):
                     from .logic_ai_dump import load_dump_info
                     dump_info = load_dump_info(info["path"])
                     is_hash = dump_info.get("is_hash_only", False)
+                    is_face = dump_info.get("type", "face") == "face"
                     
             display_name = f"[Hash] {name}" if is_hash else name
             

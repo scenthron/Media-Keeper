@@ -363,14 +363,24 @@ class AiGroupSettingsDialog(QDialog):
             if not pixmap.isNull():
                 pixmap = pixmap.scaled(128, 128, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
                 painter = QPainter(pixmap)
+                
+                is_face = self.rad_face.isChecked()
+                
                 if path in self.trained_status:
                     status = self.trained_status[path]
-                    painter.setBrush(QColor(0, 220, 0) if status else QColor(220, 0, 0))
+                    if is_face:
+                        text = "🙂" if status else "🔴"
+                    else:
+                        text = "✅" if status else "❌"
                 else:
-                    painter.setBrush(QColor(128, 128, 128))
-                painter.setPen(QPen(Qt.GlobalColor.white, 2))
-                painter.drawEllipse(6, 6, 24, 24)
+                    text = "⚪"
+                
+                font = painter.font()
+                font.setPointSize(22)
+                painter.setFont(font)
+                painter.drawText(6, 32, text)
                 painter.end()
+                
                 item.setIcon(QIcon(pixmap))
             else:
                 item.setIcon(QIcon(path))
@@ -558,40 +568,42 @@ class AiGroupSettingsDialog(QDialog):
         QApplication.processEvents()
         
         if not self.classifier.ai.initialize_sessions():
-            QMessageBox.critical(self, "Ошибка", "Не удалось запустить ИИ модели!")
             self.btn_train.setEnabled(True)
             self.btn_train.setText("Обучить" if self.is_ru else "Train")
             return
             
         search_type = "face" if self.rad_face.isChecked() else "general"
-        if search_type == "face":
-            for path in self.pending_pos + self.pending_neg:
-                if not os.path.exists(path): continue
-                try:
-                    stat = os.stat(path)
+        if not hasattr(self, "trained_status"):
+            self.trained_status = {}
+            
+        for path in self.pending_pos + self.pending_neg:
+            if not os.path.exists(path): continue
+            success = False
+            try:
+                stat = os.stat(path)
+                if search_type == "face":
                     faces = self.classifier.cache.get_file_faces(path, stat.st_mtime, stat.st_size)
                     if faces is None:
                         faces = self.classifier.ai.detect_and_extract_faces(path)
-                        self.classifier.cache.save_file_faces(path, stat.st_mtime, stat.st_size, faces)
-                except Exception:
-                    pass
-        else:
-            for path in self.pending_pos + self.pending_neg:
-                if not os.path.exists(path): continue
-                try:
-                    stat = os.stat(path)
+                        if faces is not None:
+                            self.classifier.cache.save_file_faces(path, stat.st_mtime, stat.st_size, faces)
+                    if faces:
+                        success = True
+                else:
                     emb = self.classifier.cache.get_image_embedding(path, stat.st_mtime, stat.st_size)
                     if emb is None:
                         emb = self.classifier.ai.extract_image_embedding(path)
                         if emb is not None:
                             self.classifier.cache.save_image_embedding(path, stat.st_mtime, stat.st_size, emb)
-                except Exception:
-                    pass
+                    if emb is not None:
+                        success = True
+            except Exception:
+                pass
+            self.trained_status[path] = success
                     
         self.reload_thumbnails()
         self.btn_train.setEnabled(True)
         self.btn_train.setText("Обучить" if self.is_ru else "Train")
-        QMessageBox.information(self, "Успех", "Расчет завершен! Лица распознаны." if search_type == "face" else "Расчет завершен!")
         
     def save_hash_dump(self):
         default_name = self.group_name if self.group_name else "Новый_хэш_эталон"

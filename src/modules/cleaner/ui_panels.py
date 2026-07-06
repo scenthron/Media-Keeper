@@ -902,7 +902,7 @@ class SimilarSettingsPanel(QWidget):
         self.drop_zone.folder_dropped.connect(self.folder_dropped.emit)
         self.drop_zone.clear_default_requested.connect(self.clear_folders_clicked.emit)
         self.drop_zone.btn_clear.show()
-        self.drop_zone.lbl_text.setText(AppContext.tr("cln_dropzone_text", "Перетащите внешнюю папку или файл дампа"))
+        self.drop_zone.lbl_text.setText(AppContext.tr("cln_dropzone_text") if AppContext.tr("cln_dropzone_text") != "cln_dropzone_text" else "Перетащите внешнюю папку или файл дампа")
         self.drop_zone.setStyleSheet(self.drop_zone.styleSheet() + "margin: 10px;")
         
         # Warning Label

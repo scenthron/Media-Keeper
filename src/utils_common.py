@@ -39,6 +39,7 @@ def get_folder_icon(path):
     Detects Drives, Network shares, etc.
     """
     provider = QFileIconProvider()
+    provider.setOptions(QFileIconProvider.Option.DontUseCustomDirectoryIcons)
     norm_path = os.path.normpath(path)
     info = QFileInfo(norm_path)
     

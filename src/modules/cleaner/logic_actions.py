@@ -221,7 +221,7 @@ class ActionMixin:
     def toggle_source_reference(self, path: str) -> None:
         if path not in self.source_folders: return
         # Защита и эталон взаимоисключающие: нельзя сделать эталоном защищённую папку
-        if not self.source_folders[path].get('reference', False) and self.source_folders[path].get('protected', False):
+        if not self.source_folders[path].get('reference', False) and self.source_folders[path].get('protected', False) and not path.lower().endswith('.mkdump'):
             return
         was_reference = self.source_folders[path].get('reference', False)
 

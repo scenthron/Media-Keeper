@@ -183,17 +183,54 @@ class AiGroupSettingsDialog(QDialog):
         self.list_neg.hover_left.connect(self.hover_tooltip.hide)
         
         self.reload_thumbnails()
+        self._update_save_state()
 
     def open_dump_folder(self):
         if self.dump_path and os.path.exists(self.dump_path):
             from utils_common import reveal_in_explorer
             reveal_in_explorer(self.dump_path)
 
+    def _update_save_state(self):
+        if not hasattr(self, 'btn_save'):
+            return
+            
+        has_data = len(self.pending_pos) > 0 or len(self.pending_neg) > 0 or self.is_hash_only
+        
+        if not has_data:
+            self.btn_save.setEnabled(False)
+            self.btn_save_as.setEnabled(False)
+            self.btn_save_hash.setEnabled(False)
+            self.btn_train.setEnabled(False)
+            
+            tooltip = "Добавьте изображения для анализа" if self.is_ru else "Add images for analysis"
+            self.btn_save.setToolTip(tooltip)
+            self.btn_save_as.setToolTip(tooltip)
+            self.btn_save_hash.setToolTip(tooltip)
+            
+            disabled_style = "background-color: #222; color: #555; border: 1px solid #333; padding: 6px 16px; border-radius: 4px; font-weight: bold;"
+            self.btn_save.setStyleSheet(disabled_style)
+            self.btn_save_as.setStyleSheet(disabled_style)
+        else:
+            self.btn_save.setToolTip("")
+            self.btn_save_as.setToolTip("")
+            self.btn_save_hash.setToolTip("")
+            
+            self.btn_save_as.setEnabled(True)
+            self.btn_save_as.setStyleSheet("background-color: #0ea5e9; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold; color: white;")
+            
+            self.btn_save_hash.setEnabled(bool(self.group_name))
+            self.btn_train.setEnabled(True)
+            
+            if self.has_changes or not self.dump_path:
+                self.btn_save.setEnabled(True)
+                self.btn_save.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold; color: white;")
+            else:
+                self.btn_save.setEnabled(False)
+                self.btn_save.setStyleSheet("background-color: #222; color: #555; border: 1px solid #333; padding: 6px 16px; border-radius: 4px; font-weight: bold;")
+
     def _on_type_changed(self):
         self.has_changes = True
-        if hasattr(self, 'btn_save'):
-            self.btn_save.setEnabled(True)
-            self.btn_save.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold; color: white;")
+        self._update_save_state()
 
     def _setup_tab(self, tab: QWidget, is_positive: bool):
         t_layout = QVBoxLayout(tab)
@@ -275,6 +312,7 @@ class AiGroupSettingsDialog(QDialog):
                 item.setToolTip(os.path.basename(path))
                 target_widget.addItem(item)
                 self.has_changes = True
+        self._update_save_state()
 
     def delete_selected_files(self, is_positive):
         target_widget = self.list_pos if is_positive else self.list_neg
@@ -293,6 +331,7 @@ class AiGroupSettingsDialog(QDialog):
                 target_list.remove(path)
             target_widget.takeItem(target_widget.row(item))
             self.has_changes = True
+        self._update_save_state()
 
     def reload_thumbnails(self):
         self.list_pos.clear()

@@ -219,6 +219,30 @@ class DuplicateFinderWorker(QThread):
             self.finished.emit({'groups': [], 'zero_files': [], 'empty_folders': []})
             return
 
+        # --- INJECT DUMPS ---
+        for folder in self.folders:
+            if folder.lower().endswith(".mkdump") and os.path.exists(folder):
+                try:
+                    import sqlite3
+                    dump_name = os.path.basename(folder)
+                    conn = sqlite3.connect(folder)
+                    cur = conn.cursor()
+                    cur.execute("SELECT hash, size FROM groups")
+                    for row in cur.fetchall():
+                        h, s = row[0], row[1]
+                        if s not in files_by_size: files_by_size[s] = []
+                        files_by_size[s].append({
+                            'path': f"[Дамп] {dump_name}",
+                            'real_path': folder,
+                            'size': s,
+                            'mtime': 0,
+                            'source_root': folder,
+                            'is_dump': True,
+                            'precalc_hash': h
+                        })
+                    conn.close()
+                except: pass
+
         candidates_size = {s: files for s, files in files_by_size.items() if len(files) > 1}
         if not candidates_size:
             if self.is_running:
@@ -252,12 +276,18 @@ class DuplicateFinderWorker(QThread):
                     last_emit_time = current_time
                 mtime = file_data['mtime']
                 p_hash, f_hash = None, None
-                if self.use_cache:
-                    cached = self.db.get_cached_data(real_path, size, mtime)
-                    if cached: p_hash, f_hash = cached
-                if not p_hash:
-                    p_hash = self.get_partial_hash(real_path)
-                    if not p_hash: continue 
+                
+                if file_data.get('is_dump'):
+                    p_hash = file_data['precalc_hash']
+                    f_hash = p_hash
+                else:
+                    if self.use_cache:
+                        cached = self.db.get_cached_data(real_path, size, mtime)
+                        if cached: p_hash, f_hash = cached
+                    if not p_hash:
+                        p_hash = self.get_partial_hash(real_path)
+                        if not p_hash: continue 
+                
                 if p_hash not in by_partial: by_partial[p_hash] = []
                 file_data['partial_hash'] = p_hash
                 file_data['full_hash'] = f_hash
@@ -280,6 +310,11 @@ class DuplicateFinderWorker(QThread):
                 
                 for f_hash, f_files in by_full.items():
                     if len(f_files) > 1:
+                        # --- DUMP ONLY FILTER ---
+                        has_real_file = any(not f.get('is_dump', False) for f in f_files)
+                        if not has_real_file:
+                            continue
+
                         # --- ON-THE-FLY REFERENCE FILTERING ---
                         if norm_ref:
                             has_ref = False
@@ -392,12 +427,15 @@ class DBLoadWorker(QThread):
                     color = "#555"
                     
                     # Быстрое сопоставление по отсортированному списку папок
-                    for src_path, data in sorted_folders:
-                        if is_subpath(path, src_path):
-                            is_reference = data.get('reference', False)
-                            is_protected = data.get('protected', False) or is_reference
-                            color = data.get('color', '#555')
-                            break
+                    if path.startswith('[Дамп]'):
+                        is_protected = True
+                    else:
+                        for src_path, data in sorted_folders:
+                            if is_subpath(path, src_path):
+                                is_reference = data.get('reference', False)
+                                is_protected = data.get('protected', False) or is_reference
+                                color = data.get('color', '#555')
+                                break
                             
                     item['is_protected'] = is_protected
                     item['is_reference'] = is_reference
@@ -1077,3 +1115,159 @@ class AiScanWorker(QThread):
         if self.is_running:
             self.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, groups_found, wasted_bytes, scanned_bytes, 0, 0)
         self.finished.emit(results)
+
+
+import sqlite3
+
+class CreateDumpWorker(QThread):
+    progress = pyqtSignal(int, float, str, int, int, object, object, int, int) 
+    finished = pyqtSignal(bool, str) 
+    
+    def __init__(self, folders, dump_path, use_cache=True):
+        super().__init__()
+        self.folders = folders
+        self.dump_path = dump_path
+        self.use_cache = use_cache
+        self.is_running = True
+        self.db = CleanerDB() if use_cache else None
+
+    def stop(self): self.is_running = False
+
+    def get_partial_hash(self, path):
+        try:
+            size = os.path.getsize(path)
+            with open(path, 'rb') as f:
+                if size <= 8192:
+                    return hashlib.md5(f.read()).hexdigest()
+                else:
+                    start = f.read(4096)
+                    f.seek(-4096, 2)
+                    hasher = hashlib.md5()
+                    hasher.update(start)
+                    hasher.update(f.read(4096))
+                    return hasher.hexdigest()
+        except: return None
+
+    def get_full_hash(self, path, size):
+        try:
+            if size > LARGE_FILE_THRESHOLD:
+                hasher = hashlib.sha256()
+                chunk_size = 4096 
+                with open(path, 'rb') as f:
+                    f.seek(0)
+                    hasher.update(f.read(chunk_size))
+                    if not self.is_running: return None
+                    pos_25 = int(size * 0.25)
+                    f.seek(pos_25)
+                    hasher.update(f.read(chunk_size))
+                    pos_50 = int(size * 0.50)
+                    f.seek(pos_50)
+                    hasher.update(f.read(chunk_size))
+                    if not self.is_running: return None
+                    pos_75 = int(size * 0.75)
+                    f.seek(pos_75)
+                    hasher.update(f.read(chunk_size))
+                    if size > chunk_size:
+                        f.seek(-chunk_size, 2)
+                        hasher.update(f.read(chunk_size))
+                return "sparse_" + hasher.hexdigest()
+            else:
+                hasher = hashlib.sha256() 
+                with open(path, 'rb') as f:
+                    while True:
+                        if not self.is_running: return None
+                        chunk = f.read(65536)
+                        if not chunk: break
+                        hasher.update(chunk)
+                return hasher.hexdigest()
+        except: return None
+
+    def run(self):
+        try:
+            hashes_to_save = set()
+            scanned_files = 0
+            scanned_bytes = 0
+            
+            for folder in self.folders:
+                if folder.lower().endswith(".mkdump") and os.path.exists(folder):
+                    try:
+                        conn = sqlite3.connect(folder)
+                        cur = conn.cursor()
+                        cur.execute("SELECT hash, size FROM groups")
+                        for row in cur.fetchall():
+                            hashes_to_save.add((row[0], row[1]))
+                        conn.close()
+                    except: pass
+            
+            real_folders = [f for f in self.folders if not f.lower().endswith(".mkdump")]
+            all_files = []
+            
+            self.progress.emit(STAGE_SCANNING, 0.0, "Поиск файлов...", 0, 0, 0, 0, 0, 0)
+            for folder in real_folders:
+                if not self.is_running: break
+                scan_path = ensure_win_path(os.path.normpath(folder))
+                if not os.path.exists(scan_path): continue
+                for root, _, files in os.walk(scan_path):
+                    if not self.is_running: break
+                    for f in files:
+                        path = os.path.join(root, f)
+                        all_files.append(path)
+                        
+            total_files = len(all_files)
+            last_emit_time = 0
+            
+            for i, path in enumerate(all_files):
+                if not self.is_running: break
+                try:
+                    stat = os.stat(path)
+                    size = stat.st_size
+                    if size == 0: continue
+                    
+                    scanned_files += 1
+                    scanned_bytes += size
+                    
+                    current_time = time.time()
+                    if current_time - last_emit_time > 0.1:
+                        pct = (i / total_files) * 100
+                        self.progress.emit(STAGE_ANALYSIS, pct, path, scanned_files, len(hashes_to_save), 0, scanned_bytes, 0, 0)
+                        last_emit_time = current_time
+                    
+                    mtime = stat.st_mtime
+                    p_hash, f_hash = None, None
+                    if self.use_cache:
+                        cached = self.db.get_cached_data(path, size, mtime)
+                        if cached: p_hash, f_hash = cached
+                    if not p_hash:
+                        p_hash = self.get_partial_hash(path)
+                    if not p_hash: continue
+                    
+                    if not f_hash:
+                        f_hash = self.get_full_hash(path, size)
+                        if self.use_cache and f_hash:
+                            self.db.upsert_hash(path, size, mtime, p_hash, f_hash)
+                            
+                    if f_hash:
+                        hashes_to_save.add((f_hash, size))
+                except: pass
+
+            if not self.is_running:
+                self.finished.emit(False, "Остановлено пользователем")
+                return
+
+            self.progress.emit(STAGE_ANALYSIS, 100.0, "Сохранение файла дампа...", scanned_files, len(hashes_to_save), 0, scanned_bytes, 0, 0)
+            
+            if os.path.exists(self.dump_path):
+                os.remove(self.dump_path)
+            conn = sqlite3.connect(self.dump_path)
+            cur = conn.cursor()
+            cur.execute('CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT)')
+            cur.execute('INSERT INTO metadata (key, value) VALUES ("version", "1.0")')
+            cur.execute('CREATE TABLE groups (id INTEGER PRIMARY KEY AUTOINCREMENT, hash TEXT, size INTEGER)')
+            
+            cur.executemany('INSERT INTO groups (hash, size) VALUES (?, ?)', list(hashes_to_save))
+            conn.commit()
+            conn.close()
+            
+            self.finished.emit(True, "")
+        except Exception as e:
+            self.finished.emit(False, str(e))

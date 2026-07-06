@@ -42,6 +42,7 @@ class CleanerSettingsPanel(QWidget):
     mode_zero_clicked = pyqtSignal()
     mode_empty_clicked = pyqtSignal()
     clear_cache_clicked = pyqtSignal()
+    create_dump_clicked = pyqtSignal()
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -68,6 +69,26 @@ class CleanerSettingsPanel(QWidget):
         src_header.addWidget(self.lbl_src_icon)
         src_header.addWidget(self.lbl_src)
         src_header.addStretch()
+        
+        self.btn_create_dump = QPushButton(AppContext.tr("cln_create_dump", "+ Создать дамп"))
+        self.btn_create_dump.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_create_dump.setStyleSheet("""
+            QPushButton {
+                background-color: #3b82f6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 3px 8px;
+                font-weight: bold;
+                font-size: 11px;
+            }
+            QPushButton:hover { background-color: #60a5fa; }
+            QPushButton:disabled { background-color: #333; color: #666; }
+        """)
+        self.btn_create_dump.setToolTip("Создает единый файл-дамп для всех указанных каталогов и/или добавленных дампов.\nФайл дампа применяется для поиска дубликатов на основе сохраненных \"отпечатков\" (хэшей), не требуя хранения оригинальных файлов. Отпечатки не содержат личной информации (имен и путей).\n\nСценарии использования:\n- Быстрая очистка диска от мусора на основании дампа ранее отобранных \"лишних\" файлов.\n- Мгновенное нахождение разбросанных семейных фото или важных архивов в новых папках на основании \"эталонного\" дампа.")
+        self.btn_create_dump.clicked.connect(self.create_dump_clicked.emit)
+        src_header.addWidget(self.btn_create_dump)
+        
         col_src.addLayout(src_header)
         
         self.sources_list_widget = QWidget()
@@ -85,6 +106,7 @@ class CleanerSettingsPanel(QWidget):
         self.drop_zone.folder_dropped.connect(self.folder_dropped.emit)
         self.drop_zone.clear_default_requested.connect(self.clear_folders_clicked.emit)
         self.drop_zone.btn_clear.show()
+        self.drop_zone.lbl_text.setText(AppContext.tr("cln_dropzone_text", "Перетащите внешнюю папку или файл дампа"))
         self.drop_zone.setStyleSheet(self.drop_zone.styleSheet() + "margin: 10px;")
         
         # Warning Label
@@ -880,6 +902,7 @@ class SimilarSettingsPanel(QWidget):
         self.drop_zone.folder_dropped.connect(self.folder_dropped.emit)
         self.drop_zone.clear_default_requested.connect(self.clear_folders_clicked.emit)
         self.drop_zone.btn_clear.show()
+        self.drop_zone.lbl_text.setText(AppContext.tr("cln_dropzone_text", "Перетащите внешнюю папку или файл дампа"))
         self.drop_zone.setStyleSheet(self.drop_zone.styleSheet() + "margin: 10px;")
         
         # Warning Label

@@ -131,14 +131,19 @@ class CleanerTreeMixin:
             menu.addAction(act_desel_all)
             menu.addSeparator()
         
-        if not is_empty_mode:
+        is_dump = path.startswith('[Дамп]')
+        
+        if not is_empty_mode and not is_dump:
             act_open = QAction(AppContext.tr("anl_ctx_file_open"), self)
             act_open.triggered.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(path)))
             menu.addAction(act_open)
         
         reveal_text = AppContext.tr("cln_ctx_show_folder")
         act_reveal = QAction(reveal_text, self)
-        act_reveal.triggered.connect(lambda: self.reveal_file_in_explorer(path))
+        from utils_common import reveal_in_explorer
+        act_reveal.triggered.connect(lambda: reveal_in_explorer(path))
+        if is_dump:
+            act_reveal.setEnabled(False)
         menu.addAction(act_reveal)
         
         if not is_empty_mode:

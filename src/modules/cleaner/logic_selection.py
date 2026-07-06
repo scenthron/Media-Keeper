@@ -53,12 +53,15 @@ class CleanerSelectionMixin:
                 is_protected = False
                 is_reference = False
                 color = "#555"
-                for src_path, data in self.source_folders.items():
-                    if is_subpath(path, src_path):
-                        is_reference = data.get('reference', False)
-                        is_protected = data.get('protected', False) or is_reference
-                        color = data.get('color', '#555')
-                        break
+                if path.startswith('[Дамп]'):
+                    is_protected = True
+                else:
+                    for src_path, data in self.source_folders.items():
+                        if is_subpath(path, src_path):
+                            is_reference = data.get('reference', False)
+                            is_protected = data.get('protected', False) or is_reference
+                            color = data.get('color', '#555')
+                            break
                 item['is_protected'] = is_protected
                 item['is_reference'] = is_reference
                 item['color'] = color

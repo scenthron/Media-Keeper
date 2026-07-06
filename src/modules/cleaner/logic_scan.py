@@ -18,6 +18,34 @@ class ScanMixin:
         else:
             self.start_scan()
 
+    def create_dump(self):
+        from PyQt6.QtWidgets import QFileDialog, QMessageBox
+        from .workers import CreateDumpWorker
+        
+        folders = list(self.source_folders.keys())
+        if not folders: return
+        
+        path, _ = QFileDialog.getSaveFileName(self, "Сохранить дамп", "", "Media Keeper Dump (*.mkdump)")
+        if not path: return
+        
+        self.overlay.start_loading_mode(0)
+        self.overlay.lbl_title.setText("Создание дампа...")
+        self.overlay.btn_stop.hide()
+        
+        self.dump_worker = CreateDumpWorker(folders, path, use_cache=True)
+        # We can reuse on_progress
+        self.dump_worker.progress.connect(self.on_progress)
+        self.dump_worker.finished.connect(self._on_dump_finished)
+        self.dump_worker.start()
+
+    def _on_dump_finished(self, success: bool, error: str):
+        self.overlay.hide()
+        from PyQt6.QtWidgets import QMessageBox
+        if success:
+            QMessageBox.information(self, "Готово", "Дамп успешно создан!")
+        else:
+            QMessageBox.warning(self, "Ошибка", f"Не удалось создать дамп: {error}")
+
     def reset_scan(self) -> None:
         if self.finder and self.finder.isRunning():
             self.was_reset_manually = True

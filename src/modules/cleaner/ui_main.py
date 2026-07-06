@@ -452,6 +452,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
             settings_panel.mode_duples_clicked.connect(lambda: self.switch_view_mode(VIEW_MODE_DUPLES))
             settings_panel.mode_zero_clicked.connect(lambda: self.switch_view_mode(VIEW_MODE_ZERO))
             settings_panel.mode_empty_clicked.connect(lambda: self.switch_view_mode(VIEW_MODE_EMPTY))
+            settings_panel.create_dump_clicked.connect(self.create_dump)
             
         settings_panel.set_scan_enabled(False)
         page_layout.addWidget(settings_panel)

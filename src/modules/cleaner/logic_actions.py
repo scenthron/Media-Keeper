@@ -19,7 +19,7 @@ class ActionMixin:
             
     def add_folder_paths(self, paths: list[str]) -> None:
         for p in paths:
-            if os.path.isdir(p):
+            if os.path.isdir(p) or p.lower().endswith(".mkdump"):
                 self.add_folder_path(p)
 
     def add_folder_path(self, path: str) -> None:
@@ -47,7 +47,8 @@ class ActionMixin:
         
         idx = len(self.source_folders)
         color = generate_vibrant_color(idx)
-        self.source_folders[path] = {'protected': False, 'color': color, 'is_system': is_system}
+        is_dump = path.lower().endswith(".mkdump")
+        self.source_folders[path] = {'protected': is_dump, 'color': color, 'is_system': is_system}
         
         if getattr(self, 'current_tab', 0) == 2 and hasattr(self, 'page_ai'):
             is_cached, is_face_cached = self.page_ai.classifier.cache.has_cached_files_for_folder(path)
@@ -123,12 +124,19 @@ class ActionMixin:
                 except ValueError: pass
 
         has_system_error = any(data.get('is_system', False) for data in self.source_folders.values())
-        is_ok = bool(self.source_folders) and not has_error and not has_system_error
+        
+        has_real_folders = any(not p.lower().endswith(".mkdump") for p in paths)
+        
+        is_scan_ok = bool(self.source_folders) and not has_error and not has_system_error and has_real_folders
+        is_dump_ok = bool(self.source_folders) and not has_error and not has_system_error and (has_real_folders or len(paths) > 1)
+        
         if hasattr(self, 'current_tab') and self.current_tab == 2:
-            self.page_ai.set_scan_enabled(is_ok)
+            self.page_ai.set_scan_enabled(is_scan_ok)
         else:
-            self.settings_panel.set_scan_enabled(is_ok)
-            self.settings_panel.btn_filter.setEnabled(is_ok)
+            self.settings_panel.set_scan_enabled(is_scan_ok)
+            self.settings_panel.btn_filter.setEnabled(is_scan_ok)
+            if hasattr(self.settings_panel, 'btn_create_dump'):
+                self.settings_panel.btn_create_dump.setEnabled(is_dump_ok)
         if hasattr(self, 'reset_scan_button'):
             self.reset_scan_button()
 
@@ -155,7 +163,7 @@ class ActionMixin:
 
         # 1. Открыть в проводнике
         act_open = QAction(AppContext.tr("menu_open_explorer"), self)
-        act_open.triggered.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(path)))
+        act_open.triggered.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(path if os.path.isdir(path) else os.path.dirname(path))))
         menu.addAction(act_open)
 
         menu.addSeparator()

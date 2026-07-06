@@ -59,9 +59,15 @@ class SourceListItem(QWidget):
         self.layout.addWidget(self.lbl_indicator)
         
         self.icon_lbl = QLabel()
-        icon = get_folder_icon(path)
-        self.icon_lbl.setPixmap(icon.pixmap(20, 20))
-        self.icon_lbl.setStyleSheet("background: transparent; border: none;")
+        if path.lower().endswith(".mkdump"):
+            self.icon_lbl.setText("🗄️")
+            self.icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.icon_lbl.setFixedSize(20, 20)
+            self.icon_lbl.setStyleSheet("border: none; background: transparent; font-size: 16px; color: #a855f7;")
+        else:
+            icon = get_folder_icon(path)
+            self.icon_lbl.setPixmap(icon.pixmap(20, 20))
+            self.icon_lbl.setStyleSheet("background: transparent; border: none;")
         self.layout.addWidget(self.icon_lbl)
         
         folder_name = os.path.basename(path) or path

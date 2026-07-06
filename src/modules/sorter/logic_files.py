@@ -409,11 +409,17 @@ class FileOpsMixin:
 
         if unsort_changed:
             logging.info("Watcher: Incoming directory changed. Quietly refreshing files list.")
-            self.refresh_files_list(show_progress=False)
+            if self.isVisible():
+                self.refresh_files_list(show_progress=False)
+            else:
+                self._incoming_dirty = True
             
         if sort_changed:
             logging.info("Watcher: Sort directory or category changed. Reloading categories UI.")
-            self.reload_categories_ui()
+            if self.isVisible():
+                self.reload_categories_ui()
+            else:
+                self._categories_dirty = True
 
         self.update_watcher_paths()
 

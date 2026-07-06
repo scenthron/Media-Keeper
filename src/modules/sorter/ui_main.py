@@ -729,6 +729,14 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             self.video_controls.hide()
 
     def on_tab_enter(self):
+        if getattr(self, '_categories_dirty', False):
+            self.reload_categories_ui()
+            self._categories_dirty = False
+            
+        if getattr(self, '_incoming_dirty', False):
+            self.refresh_files_list(show_progress=False)
+            self._incoming_dirty = False
+
         if self.current_file_path and os.path.exists(self.current_file_path):
             if self.viewer.stack.currentIndex() == 0:
                 if self.media_player.source().isEmpty():

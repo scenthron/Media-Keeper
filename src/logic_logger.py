@@ -271,8 +271,15 @@ class SafeFormatter(logging.Formatter):
         return anon_message
 
     def format(self, record):
+        if not hasattr(self, 'last_log_time'):
+            self.last_log_time = record.created
+            
+        elapsed = record.created - self.last_log_time
+        self.last_log_time = record.created
+        time_prefix = f"[+{elapsed:.3f}s] "
+
         if not getattr(sys, 'frozen', False):
-            return super().format(record)
+            return time_prefix + super().format(record)
             
         orig_msg = record.msg
         orig_args = record.args
@@ -295,7 +302,7 @@ class SafeFormatter(logging.Formatter):
             record.msg = orig_msg
             record.args = orig_args
             
-        return result
+        return time_prefix + result
 
     def formatException(self, ei):
         if not getattr(sys, 'frozen', False):

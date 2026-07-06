@@ -571,7 +571,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
                     if layout.indexOf(widget) != idx:
                         layout.removeWidget(widget)
                         layout.insertWidget(idx, widget)
-                    if has_sub:
+                    if has_sub and getattr(widget, '_sections_loaded', False):
                         widget.refresh_sections()
             else:
                 # Добавляем новый

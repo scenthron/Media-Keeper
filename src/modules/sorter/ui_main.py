@@ -668,7 +668,8 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                     layout.removeWidget(widget)
                     layout.insertWidget(idx, widget)
                 if item_type == "category" and isinstance(widget, CategoryWidget):
-                    widget.refresh_sections()
+                    if getattr(widget, '_sections_loaded', False):
+                        widget.refresh_sections()
             else:
                 if item_type == "category":
                     widget = CategoryWidget(name, path, self, level=0)

@@ -249,6 +249,126 @@ class AiGroupSettingsDialog(QDialog):
             except Exception as e:
                 QMessageBox.critical(self, "Ошибка" if self.is_ru else "Error", f"Ошибка извлечения: {e}")
 
+    def choose_files(self, is_positive):
+        files, _ = QFileDialog.getOpenFileNames(
+            self, 
+            "Выберите картинки" if self.is_ru else "Select Images",
+            "", 
+            "Images (*.png *.jpg *.jpeg *.bmp *.webp)"
+        )
+        if files:
+            self.add_dropped_files(files, is_positive)
+
+    def add_dropped_files(self, file_paths, is_positive):
+        target_list = self.pending_pos if is_positive else self.pending_neg
+        target_widget = self.list_pos if is_positive else self.list_neg
+        
+        for path in file_paths:
+            if path not in target_list:
+                if is_positive:
+                    self.pending_pos.append(path)
+                else:
+                    self.pending_neg.append(path)
+                item = QListWidgetItem()
+                item.setIcon(QIcon(path))
+                item.setData(Qt.ItemDataRole.UserRole, path)
+                item.setToolTip(os.path.basename(path))
+                target_widget.addItem(item)
+                self.has_changes = True
+
+    def delete_selected_files(self, is_positive):
+        target_widget = self.list_pos if is_positive else self.list_neg
+        target_list = self.pending_pos if is_positive else self.pending_neg
+        
+        selected_items = target_widget.selectedItems()
+        if not selected_items:
+            return
+            
+        for item in selected_items:
+            path = item.data(Qt.ItemDataRole.UserRole)
+            if path == "HASH":
+                QMessageBox.warning(self, "Внимание", "Нельзя удалить хэш-данные. Если нужно, удалите весь эталон.")
+                continue
+            if path in target_list:
+                target_list.remove(path)
+            target_widget.takeItem(target_widget.row(item))
+            self.has_changes = True
+
+    def reload_thumbnails(self):
+        self.list_pos.clear()
+        self.list_neg.clear()
+        
+        if self.is_hash_only:
+            if self.dump_path:
+                info = load_dump_info(self.dump_path)
+                if info.get("pos_features_count", 0) > 0:
+                    item = QListWidgetItem()
+                    item.setText(" [ HASH ВЕКТОРЫ ] ")
+                    item.setData(Qt.ItemDataRole.UserRole, "HASH")
+                    item.setToolTip("Предобученные векторы из дампа")
+                    self.list_pos.addItem(item)
+                if info.get("neg_features_count", 0) > 0:
+                    item = QListWidgetItem()
+                    item.setText(" [ HASH ВЕКТОРЫ ] ")
+                    item.setData(Qt.ItemDataRole.UserRole, "HASH")
+                    item.setToolTip("Предобученные векторы из дампа")
+                    self.list_neg.addItem(item)
+        
+        for path in self.pending_pos:
+            item = QListWidgetItem()
+            item.setIcon(QIcon(path))
+            item.setData(Qt.ItemDataRole.UserRole, path)
+            item.setToolTip(os.path.basename(path))
+            self.list_pos.addItem(item)
+            
+        for path in self.pending_neg:
+            item = QListWidgetItem()
+            item.setIcon(QIcon(path))
+            item.setData(Qt.ItemDataRole.UserRole, path)
+            item.setToolTip(os.path.basename(path))
+            self.list_neg.addItem(item)
+
+    def _on_item_hover(self, path, global_pos):
+        if not path or path == "HASH" or not os.path.exists(path):
+            return
+            
+        if self.rad_face.isChecked() and self.classifier.ai.initialize_sessions():
+            try:
+                import cv2
+                import numpy as np
+                from PIL import Image
+                from PyQt6.QtGui import QImage, QPixmap
+                from PyQt6.QtCore import Qt
+                
+                faces = self.classifier.ai.detect_and_extract_faces(path)
+                if faces:
+                    with Image.open(path) as img:
+                        img = img.convert('RGB')
+                        img_data = np.array(img, dtype=np.uint8)
+                    
+                    bgr_img = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR)
+                    for face in faces:
+                        x, y, w, h = face["bbox"]
+                        cv2.rectangle(bgr_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                    
+                    rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+                    height, width, ch = rgb_img.shape
+                    bytes_per_line = ch * width
+                    qt_img = QImage(rgb_img.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+                    pixmap = QPixmap.fromImage(qt_img)
+                    
+                    if pixmap.width() > 300 or pixmap.height() > 300:
+                        pixmap = pixmap.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                        
+                    self.hover_tooltip.setPixmap(pixmap)
+                    self.hover_tooltip.move(global_pos.x() + 15, global_pos.y() + 15)
+                    self.hover_tooltip.show()
+                    return
+            except Exception:
+                pass
+                
+        self.hover_tooltip.show_image(path, global_pos)
+
     def save_settings(self, is_save_as=False):
         settings = load_ai_settings()
         groups = settings.get("groups", {})

@@ -484,6 +484,7 @@ class AiGroupSettingsDialog(QDialog):
         
         self.has_changes = False
         self.btn_save_hash.setEnabled(True)
+        self.accept()
 
     def train_and_save(self, target_path, is_hash_only=False):
         # We compute features for all pending images

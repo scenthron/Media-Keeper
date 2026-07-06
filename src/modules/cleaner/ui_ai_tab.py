@@ -256,7 +256,7 @@ class AiGroupChipWidget(QFrame):
         layout.addWidget(self.chk)
         
         self.lbl_icon = QLabel()
-        self.lbl_icon.setFixedSize(14, 14)
+        self.lbl_icon.setFixedSize(22, 22)
         self.lbl_icon.setText("🙂" if is_face else "🖼️")
         self.lbl_icon.setStyleSheet("border: none; background: transparent;")
         layout.addWidget(self.lbl_icon)

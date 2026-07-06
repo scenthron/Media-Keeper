@@ -373,18 +373,34 @@ class AiGroupSettingsDialog(QDialog):
         if self.is_hash_only:
             if self.dump_path:
                 info = load_dump_info(self.dump_path)
+                from PyQt6.QtGui import QPixmap, QColor, QPainter, QIcon
+                from PyQt6.QtCore import Qt
+                
+                def create_hash_item(count, is_positive):
+                    item = QListWidgetItem()
+                    pixmap = QPixmap(128, 128)
+                    pixmap.fill(QColor("#22c55e") if is_positive else QColor("#ef4444"))
+                    painter = QPainter(pixmap)
+                    painter.setPen(QColor("white"))
+                    font = painter.font()
+                    font.setPointSize(18)
+                    font.setBold(True)
+                    painter.setFont(font)
+                    text = f"HASH\n{count} шт." if self.is_ru else f"HASH\n{count} items"
+                    painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, text)
+                    painter.end()
+                    
+                    item.setIcon(QIcon(pixmap))
+                    item.setData(Qt.ItemDataRole.UserRole, "HASH")
+                    item.setData(Qt.ItemDataRole.UserRole + 1, self.rad_face.isChecked())
+                    item.setData(Qt.ItemDataRole.UserRole + 2, True) # Show success emoji
+                    item.setToolTip("Предобученные векторы из дампа (без исходных фото)" if self.is_ru else "Pre-trained vectors from dump (no original photos)")
+                    return item
+
                 if info.get("pos_features_count", 0) > 0:
-                    item = QListWidgetItem()
-                    item.setText(" [ HASH ВЕКТОРЫ ] ")
-                    item.setData(Qt.ItemDataRole.UserRole, "HASH")
-                    item.setToolTip("Предобученные векторы из дампа")
-                    self.list_pos.addItem(item)
+                    self.list_pos.addItem(create_hash_item(info["pos_features_count"], True))
                 if info.get("neg_features_count", 0) > 0:
-                    item = QListWidgetItem()
-                    item.setText(" [ HASH ВЕКТОРЫ ] ")
-                    item.setData(Qt.ItemDataRole.UserRole, "HASH")
-                    item.setToolTip("Предобученные векторы из дампа")
-                    self.list_neg.addItem(item)
+                    self.list_neg.addItem(create_hash_item(info["neg_features_count"], False))
         
         from PyQt6.QtGui import QPainter, QColor, QPen, QPixmap
         if not hasattr(self, "trained_status"):

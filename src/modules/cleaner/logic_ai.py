@@ -4,6 +4,9 @@ import logging
 import requests
 import numpy as np
 import onnxruntime as ort
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="onnxruntime")
+ort.set_default_logger_severity(3)
 from PIL import Image
 import cv2
 

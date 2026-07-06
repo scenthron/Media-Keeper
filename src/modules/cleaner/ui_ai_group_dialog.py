@@ -191,8 +191,9 @@ class AiGroupSettingsDialog(QDialog):
 
     def _on_type_changed(self):
         self.has_changes = True
-        self.btn_save.setEnabled(True)
-        self.btn_save.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold; color: white;")
+        if hasattr(self, 'btn_save'):
+            self.btn_save.setEnabled(True)
+            self.btn_save.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold; color: white;")
 
     def _setup_tab(self, tab: QWidget, is_positive: bool):
         t_layout = QVBoxLayout(tab)
@@ -248,51 +249,36 @@ class AiGroupSettingsDialog(QDialog):
             except Exception as e:
                 QMessageBox.critical(self, "Ошибка" if self.is_ru else "Error", f"Ошибка извлечения: {e}")
 
-    def save_settings(self, copy_to_system=False):
-        new_name = self.txt_name.text().strip()
-        new_name = "".join(c for c in new_name if c.isalnum() or c in " _-").strip()
-        if not new_name:
-            QMessageBox.warning(self, "Ошибка" if self.is_ru else "Error", 
-                                "Некорректное имя группы!" if self.is_ru else "Invalid group name!")
-            return
-            
+    def save_settings(self, is_save_as=False):
         settings = load_ai_settings()
         groups = settings.get("groups", {})
+        from .logic_ai_classifier import get_ai_assets_dir
+        
+        target_path = self.dump_path
+        
+        if is_save_as or not target_path:
+            default_name = self.group_name if self.group_name else "Новый_эталон"
+            default_path = os.path.join(get_ai_assets_dir(), f"{default_name}.mkaidump")
+            path, _ = QFileDialog.getSaveFileName(self, "Сохранить эталон", default_path, "AI Dumps (*.mkaidump)")
+            if not path:
+                return
+            target_path = path
+            
+        new_name = os.path.basename(target_path).replace(".hash.mkaidump", "").replace(".mkaidump", "")
         
         if self.group_name and new_name != self.group_name:
             if new_name in groups:
                 QMessageBox.warning(self, "Ошибка" if self.is_ru else "Error", 
-                                    "Группа с таким именем уже существует!" if self.is_ru else "Group already exists!")
-                return
-            
-        # Determine paths
-        # If it's a new group, default path is in ai_assets
-        system_path = os.path.join(get_ai_assets_dir(), new_name + ".mkaidump")
-        target_path = self.dump_path if self.dump_path else system_path
-        
-        if copy_to_system:
-            target_path = system_path
-            
-        if not self.has_changes and target_path == self.dump_path:
-            # Rename group only in settings if no other changes
-            if self.group_name and new_name != self.group_name:
-                info = groups.pop(self.group_name)
-                groups[new_name] = info
-                self.group_name = new_name
-                save_ai_settings(settings)
-            self.accept()
-            return
-            
-        # Now we need features. If they didn't train, they cannot save!
-        QMessageBox.information(self, "Внимание", "Не забудьте нажать 'Обучить' перед сохранением, если вы добавляли новые фото." if self.is_ru else "Don't forget to press 'Train' before saving if you added new photos.")
-        # But we force train logic to happen inside train_group_ui which saves a temporary memory state?
-        # Actually, let's just train right here if needed!
-        if self.has_changes:
-            success = self.train_and_save(target_path, is_hash_only=False)
-            if not success:
+                                    "Эталон с таким именем уже добавлен!" if self.is_ru else "Group already exists!")
                 return
                 
-        # Update settings
+        if self.has_changes:
+            self.train_group_ui()
+            
+        success = self.train_and_save(target_path, is_hash_only=False)
+        if not success:
+            return
+            
         if self.group_name and new_name != self.group_name:
             if self.group_name in groups:
                 groups.pop(self.group_name)
@@ -303,7 +289,15 @@ class AiGroupSettingsDialog(QDialog):
         save_ai_settings(settings)
         
         self.dump_path = target_path
-        self.accept()
+        self.lbl_path.setText(self.dump_path)
+        self.btn_open_folder.setEnabled(True)
+        
+        self.btn_save.setEnabled(True)
+        self.btn_save.setStyleSheet("background-color: #3b82f6; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold; color: white;")
+        
+        self.has_changes = False
+        self.btn_save_hash.setEnabled(True)
+        QMessageBox.information(self, "Успех", "Эталон успешно сохранен!")
 
     def train_and_save(self, target_path, is_hash_only=False):
         # We compute features for all pending images
@@ -434,8 +428,8 @@ class AiGroupSettingsDialog(QDialog):
     def delete_group_ui(self):
         reply = QMessageBox.question(
             self,
-            "Удалить группу эталонов" if self.is_ru else "Delete Reference Group",
-            f"Удалить эталон '{self.group_name}' из программы?\\nСам файл дампа может остаться на диске.",
+            "Удалить эталон" if self.is_ru else "Delete Reference Group",
+            f"Вы действительно хотите физически удалить файл эталона '{self.group_name}' с диска?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
@@ -444,16 +438,13 @@ class AiGroupSettingsDialog(QDialog):
             if "groups" in settings and self.group_name in settings["groups"]:
                 del settings["groups"][self.group_name]
                 save_ai_settings(settings)
-                
-            if self.group_name in self.classifier.face_reference_descriptors:
-                del self.classifier.face_reference_descriptors[self.group_name]
-            if self.group_name in self.classifier.general_embeddings:
-                del self.classifier.general_embeddings[self.group_name]
-            if self.group_name in self.classifier.general_centroids:
-                del self.classifier.general_centroids[self.group_name]
             
-            self.has_changes = True
-            self.reject()
+            if self.dump_path and os.path.exists(self.dump_path):
+                try:
+                    os.remove(self.dump_path)
+                except Exception as e:
+                    QMessageBox.warning(self, "Ошибка", f"Не удалось удалить файл: {e}")
+            self.accept()
 
     def closeEvent(self, event):
         if self.temp_dir and os.path.exists(self.temp_dir):

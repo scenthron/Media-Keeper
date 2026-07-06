@@ -406,7 +406,7 @@ class CompactDropZone(QFrame):
         urls = event.mimeData().urls()
         if urls:
             path = urls[0].toLocalFile()
-            if os.path.isdir(path):
+            if os.path.isdir(path) or path.lower().endswith('.mkdump'):
                 self.set_path(path)
                 event.acceptProposedAction()
         self.reset_style()

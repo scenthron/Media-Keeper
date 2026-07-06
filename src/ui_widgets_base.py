@@ -434,7 +434,7 @@ class DropZoneWidget(QFrame):
                 self.files_dropped.emit(paths)
                 
                 # Legacy support: if one folder, emit folder_dropped
-                if len(paths) == 1 and os.path.isdir(paths[0]):
+                if len(paths) == 1 and (os.path.isdir(paths[0]) or paths[0].lower().endswith('.mkdump')):
                     self.folder_dropped.emit(paths[0])
                     
                 event.acceptProposedAction()

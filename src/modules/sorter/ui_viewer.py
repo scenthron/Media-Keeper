@@ -2743,6 +2743,8 @@ class SorterViewerArea(QWidget):
             
     # Proxy methods for Single mode compatibility
     def set_image(self, pixmap):
+        if self.stack.currentIndex() == 3:
+            self.stack.setCurrentIndex(0)
         self.single_view.set_image(pixmap)
         main_app = self.get_main_app()
         if main_app and getattr(main_app, 'current_file_path', None):
@@ -2752,6 +2754,8 @@ class SorterViewerArea(QWidget):
                 self.single_view.rotate(angle)
 
     def set_animated(self, filepath):
+        if self.stack.currentIndex() == 3:
+            self.stack.setCurrentIndex(0)
         self.single_view.set_animated(filepath)
         norm_path = os.path.normpath(filepath)
         angle = self.file_rotations.get(norm_path, 0)
@@ -2771,8 +2775,15 @@ class SorterViewerArea(QWidget):
             if widget and hasattr(widget, 'update_rotation'):
                 widget.update_rotation()
 
-    def set_video_mode(self): self.single_view.set_video_mode()
-    def set_audio_mode(self, text): self.single_view.set_audio_mode(text)
+    def set_video_mode(self): 
+        if self.stack.currentIndex() == 3:
+            self.stack.setCurrentIndex(0)
+        self.single_view.set_video_mode()
+        
+    def set_audio_mode(self, text): 
+        if self.stack.currentIndex() == 3:
+            self.stack.setCurrentIndex(0)
+        self.single_view.set_audio_mode(text)
     
     def show_empty_state(self, message):
         main_app = self.get_main_app()

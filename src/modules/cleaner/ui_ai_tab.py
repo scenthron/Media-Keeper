@@ -1685,13 +1685,14 @@ class AiClassificationTab(QWidget):
             return
             
         data = item.data(0, Qt.ItemDataRole.UserRole)
+        is_ru = AppContext.is_ru()
         if data and data.get("is_group", False):
             menu = QMenu(self)
-            menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; }")
+            menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; } QMenu::separator { height: 1px; background: #666; margin: 4px 8px; }")
             
-            act_select = QAction("Выделить все файлы в этой группе" if AppContext.is_ru() else "Select all files in this group", self)
-            act_deselect = QAction("Снять выделение со всех файлов в группе" if AppContext.is_ru() else "Deselect all files in this group", self)
-            act_invert = QAction("Инвертировать выделение" if AppContext.is_ru() else "Invert Selection", self)
+            act_select = QAction("Выделить все файлы в этой группе" if is_ru else "Select all files in this group", self)
+            act_deselect = QAction("Снять выделение со всех файлов в группе" if is_ru else "Deselect all files in this group", self)
+            act_invert = QAction("Инвертировать выделение" if is_ru else "Invert Selection", self)
             
             act_select.triggered.connect(lambda: self.set_group_selection_state(item, Qt.CheckState.Checked))
             act_deselect.triggered.connect(lambda: self.set_group_selection_state(item, Qt.CheckState.Unchecked))
@@ -1700,25 +1701,52 @@ class AiClassificationTab(QWidget):
             menu.addAction(act_select)
             menu.addAction(act_deselect)
             menu.addAction(act_invert)
+            
+            menu.addSeparator()
+            act_expand_all = QAction("Развернуть все группы" if is_ru else "Expand all groups", self)
+            act_collapse_all = QAction("Свернуть все группы" if is_ru else "Collapse all groups", self)
+            act_expand_all.triggered.connect(self.tree_results.expandAll)
+            act_collapse_all.triggered.connect(self.tree_results.collapseAll)
+            menu.addAction(act_expand_all)
+            menu.addAction(act_collapse_all)
+            
             menu.exec(self.tree_results.mapToGlobal(pos))
         elif data and not data.get("is_group", False):
             menu = QMenu(self)
             menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; } QMenu::separator { height: 1px; background: #666; margin: 4px 8px; }")
             path = data.get("path")
             
-            act_open = QAction("Открыть файл" if AppContext.is_ru() else "Open File", self)
+            act_open = QAction("Открыть файл" if is_ru else "Open File", self)
             act_open.triggered.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(path)))
             menu.addAction(act_open)
             
-            act_reveal = QAction("Показать в папке" if AppContext.is_ru() else "Show in folder", self)
+            act_reveal = QAction("Показать в папке" if is_ru else "Show in folder", self)
             from utils_common import reveal_in_explorer
             act_reveal.triggered.connect(lambda: reveal_in_explorer(path))
             menu.addAction(act_reveal)
             
             menu.addSeparator()
-            act_invert = QAction("Инвертировать выделение в группе" if AppContext.is_ru() else "Invert Selection in group", self)
-            act_invert.triggered.connect(lambda: self.invert_group_selection(item.parent()))
+            
+            group_item = item.parent()
+            act_select = QAction("Выделить все файлы в этой группе" if is_ru else "Select all files in this group", self)
+            act_deselect = QAction("Снять выделение со всех файлов в группе" if is_ru else "Deselect all files in this group", self)
+            act_invert = QAction("Инвертировать выделение в группе" if is_ru else "Invert Selection in group", self)
+            
+            act_select.triggered.connect(lambda: self.set_group_selection_state(group_item, Qt.CheckState.Checked))
+            act_deselect.triggered.connect(lambda: self.set_group_selection_state(group_item, Qt.CheckState.Unchecked))
+            act_invert.triggered.connect(lambda: self.invert_group_selection(group_item))
+            
+            menu.addAction(act_select)
+            menu.addAction(act_deselect)
             menu.addAction(act_invert)
+            
+            menu.addSeparator()
+            act_expand_all = QAction("Развернуть все группы" if is_ru else "Expand all groups", self)
+            act_collapse_all = QAction("Свернуть все группы" if is_ru else "Collapse all groups", self)
+            act_expand_all.triggered.connect(self.tree_results.expandAll)
+            act_collapse_all.triggered.connect(self.tree_results.collapseAll)
+            menu.addAction(act_expand_all)
+            menu.addAction(act_collapse_all)
             
             menu.exec(self.tree_results.mapToGlobal(pos))
 

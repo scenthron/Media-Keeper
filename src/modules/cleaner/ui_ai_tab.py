@@ -1115,7 +1115,10 @@ class AiClassificationTab(QWidget):
             for f in os.listdir(assets_dir):
                 if f.lower().endswith(".mkaidump"):
                     path = os.path.join(assets_dir, f)
-                    found = any(info.get("path") == path for info in groups.values())
+                    path_norm = os.path.normpath(path).lower()
+                    if hasattr(self, "hidden_session_groups") and path_norm in self.hidden_session_groups:
+                        continue
+                    found = any(os.path.normpath(info.get("path", "")).lower() == path_norm for info in groups.values())
                     if not found:
                         name = f.replace(".hash.mkaidump", "").replace(".mkaidump", "")
                         orig_name = name
@@ -1161,6 +1164,11 @@ class AiClassificationTab(QWidget):
     def remove_group_from_list(self, group_name: str):
         settings = load_ai_settings()
         if "groups" in settings and group_name in settings["groups"]:
+            path = settings["groups"][group_name].get("path", "")
+            if path:
+                if not hasattr(self, "hidden_session_groups"):
+                    self.hidden_session_groups = set()
+                self.hidden_session_groups.add(os.path.normpath(path).lower())
             del settings["groups"][group_name]
             save_ai_settings(settings)
         self.reload_groups()
@@ -1178,8 +1186,8 @@ class AiClassificationTab(QWidget):
 
     def open_edit_group_dialog(self, group_name: str):
         dlg = AiGroupSettingsDialog(self.classifier, group_name, self)
-        if dlg.exec():
-            self.reload_groups()
+        dlg.exec()
+        self.reload_groups()
 
     def open_ai_settings(self):
         dlg = AiAdvancedSettingsDialog(self)
@@ -1203,12 +1211,11 @@ class AiClassificationTab(QWidget):
         save_ai_settings(settings)
         
         self.reload_groups()
-        QMessageBox.information(self, "Успех", f"Дамп {name} успешно добавлен!")
 
     def create_group(self):
         dlg = AiGroupSettingsDialog(self.classifier, None, self)
-        if dlg.exec():
-            self.reload_groups()
+        dlg.exec()
+        self.reload_groups()
 
     def on_threshold_changed(self, value):
         pass

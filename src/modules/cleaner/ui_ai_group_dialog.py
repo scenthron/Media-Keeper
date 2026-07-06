@@ -353,19 +353,37 @@ class AiGroupSettingsDialog(QDialog):
                     item.setToolTip("Предобученные векторы из дампа")
                     self.list_neg.addItem(item)
         
-        for path in self.pending_pos:
+        from PyQt6.QtGui import QPainter, QColor, QPen, QPixmap
+        if not hasattr(self, "trained_status"):
+            self.trained_status = {}
+            
+        def _create_item(path, list_widget):
             item = QListWidgetItem()
-            item.setIcon(QIcon(path))
+            pixmap = QPixmap(path)
+            if not pixmap.isNull():
+                pixmap = pixmap.scaled(128, 128, Qt.AspectRatioMode.KeepAspectRatioByExpanding, Qt.TransformationMode.SmoothTransformation)
+                painter = QPainter(pixmap)
+                if path in self.trained_status:
+                    status = self.trained_status[path]
+                    painter.setBrush(QColor(0, 220, 0) if status else QColor(220, 0, 0))
+                else:
+                    painter.setBrush(QColor(128, 128, 128))
+                painter.setPen(QPen(Qt.GlobalColor.white, 2))
+                painter.drawEllipse(6, 6, 24, 24)
+                painter.end()
+                item.setIcon(QIcon(pixmap))
+            else:
+                item.setIcon(QIcon(path))
+                
             item.setData(Qt.ItemDataRole.UserRole, path)
             item.setToolTip(os.path.basename(path))
-            self.list_pos.addItem(item)
+            list_widget.addItem(item)
+
+        for path in self.pending_pos:
+            _create_item(path, self.list_pos)
             
         for path in self.pending_neg:
-            item = QListWidgetItem()
-            item.setIcon(QIcon(path))
-            item.setData(Qt.ItemDataRole.UserRole, path)
-            item.setToolTip(os.path.basename(path))
-            self.list_neg.addItem(item)
+            _create_item(path, self.list_neg)
 
     def _on_item_hover(self, path, global_pos):
         if not path or path == "HASH" or not os.path.exists(path):
@@ -456,7 +474,6 @@ class AiGroupSettingsDialog(QDialog):
         
         self.has_changes = False
         self.btn_save_hash.setEnabled(True)
-        QMessageBox.information(self, "Успех", "Эталон успешно сохранен!")
 
     def train_and_save(self, target_path, is_hash_only=False):
         # We compute features for all pending images
@@ -471,6 +488,7 @@ class AiGroupSettingsDialog(QDialog):
             
         search_type = "face" if self.rad_face.isChecked() else "general"
         pos_features = []
+        if not hasattr(self, "trained_status"): self.trained_status = {}
         neg_features = []
         
         # Load existing features if any
@@ -487,23 +505,33 @@ class AiGroupSettingsDialog(QDialog):
         
         for path in self.pending_pos:
             if not os.path.exists(path): continue
+            success = False
             if search_type == "face":
                 faces = self.classifier.ai.detect_and_extract_faces(path)
                 if faces:
+                    success = True
                     for f in faces: pos_features.append(f["descriptor"])
             else:
                 emb = self.classifier.ai.extract_image_embedding(path)
-                if emb is not None: pos_features.append(emb)
+                if emb is not None:
+                    success = True
+                    pos_features.append(emb)
+            self.trained_status[path] = success
                 
         for path in self.pending_neg:
             if not os.path.exists(path): continue
+            success = False
             if search_type == "face":
                 faces = self.classifier.ai.detect_and_extract_faces(path)
                 if faces:
+                    success = True
                     for f in faces: neg_features.append(f["descriptor"])
             else:
                 emb = self.classifier.ai.extract_image_embedding(path)
-                if emb is not None: neg_features.append(emb)
+                if emb is not None:
+                    success = True
+                    neg_features.append(emb)
+            self.trained_status[path] = success
                 
         if not pos_features and not is_hash_only:
             QMessageBox.warning(self, "Ошибка", "Не найдено ни одного лица/вектора в эталонах!")
@@ -520,6 +548,7 @@ class AiGroupSettingsDialog(QDialog):
             is_hash_only=is_hash_only
         )
         self.btn_save.setText("Сохранить")
+        self.reload_thumbnails()
         return True
 
     def train_group_ui(self):
@@ -581,8 +610,7 @@ class AiGroupSettingsDialog(QDialog):
                 self.train_group_ui()
                 
             success = self.train_and_save(path, is_hash_only=True)
-            if success:
-                QMessageBox.information(self, "Успех", "Хэш-дамп успешно экспортирован!")
+            pass
 
     def delete_group_ui(self):
         reply = QMessageBox.question(

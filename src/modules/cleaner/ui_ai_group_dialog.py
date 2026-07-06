@@ -366,19 +366,60 @@ class AiGroupSettingsDialog(QDialog):
                 
                 is_face = self.rad_face.isChecked()
                 
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
                 if path in self.trained_status:
                     status = self.trained_status[path]
+                    is_face = self.rad_face.isChecked()
+                    
                     if is_face:
-                        text = "🙂" if status else "🔴"
+                        if status:
+                            # Yellow smiley
+                            painter.setBrush(QColor(255, 204, 0))
+                            painter.setPen(Qt.GlobalColor.transparent)
+                            painter.drawEllipse(6, 6, 24, 24)
+                            painter.setBrush(QColor(0, 0, 0))
+                            painter.drawEllipse(12, 14, 4, 4)
+                            painter.drawEllipse(20, 14, 4, 4)
+                            pen = QPen(QColor(0, 0, 0), 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+                            painter.setPen(pen)
+                            painter.setBrush(Qt.GlobalColor.transparent)
+                            painter.drawArc(12, 16, 12, 10, -180 * 16, 180 * 16)
+                        else:
+                            # Red Sad face
+                            painter.setBrush(QColor(239, 68, 68))
+                            painter.setPen(Qt.GlobalColor.transparent)
+                            painter.drawEllipse(6, 6, 24, 24)
+                            painter.setBrush(QColor(0, 0, 0))
+                            painter.drawEllipse(12, 14, 4, 4)
+                            painter.drawEllipse(20, 14, 4, 4)
+                            pen = QPen(QColor(0, 0, 0), 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+                            painter.setPen(pen)
+                            painter.setBrush(Qt.GlobalColor.transparent)
+                            painter.drawArc(12, 22, 12, 10, 0 * 16, 180 * 16)
                     else:
-                        text = "✅" if status else "❌"
+                        if status:
+                            # Green checkmark
+                            painter.setBrush(QColor(34, 197, 94))
+                            painter.setPen(Qt.GlobalColor.transparent)
+                            painter.drawEllipse(6, 6, 24, 24)
+                            pen = QPen(QColor(255, 255, 255), 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+                            painter.setPen(pen)
+                            painter.drawLine(12, 18, 16, 22)
+                            painter.drawLine(16, 22, 24, 12)
+                        else:
+                            # Red cross
+                            painter.setBrush(QColor(239, 68, 68))
+                            painter.setPen(Qt.GlobalColor.transparent)
+                            painter.drawEllipse(6, 6, 24, 24)
+                            pen = QPen(QColor(255, 255, 255), 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+                            painter.setPen(pen)
+                            painter.drawLine(12, 12, 24, 24)
+                            painter.drawLine(24, 12, 12, 24)
                 else:
-                    text = "⚪"
-                
-                font = painter.font()
-                font.setPointSize(22)
-                painter.setFont(font)
-                painter.drawText(6, 32, text)
+                    # Solid grey circle (unprocessed)
+                    painter.setBrush(QColor(128, 128, 128))
+                    painter.setPen(Qt.GlobalColor.transparent)
+                    painter.drawEllipse(6, 6, 24, 24)
                 painter.end()
                 
                 item.setIcon(QIcon(pixmap))

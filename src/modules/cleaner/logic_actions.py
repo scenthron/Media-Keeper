@@ -171,7 +171,7 @@ class ActionMixin:
         # 2. Защитить группу
         act_prot = QAction(AppContext.tr("cln_ctx_unprotect") if is_prot else AppContext.tr("cln_ctx_protect"), self)
         act_prot.triggered.connect(lambda: self.toggle_source_protection(path))
-        act_prot.setEnabled(not is_ref and not is_system)
+        act_prot.setEnabled(not is_ref and not is_system and not path.lower().endswith('.mkdump'))
         
         if AppContext.LANG == "RU":
             prot_tip = "<b>Защитить группу</b><br>Файлы из этой папки никогда не будут автоматически отмечаться галочками для удаления во всех группах дубликатов. Это гарантирует защиту важных оригиналов от случайной очистки."

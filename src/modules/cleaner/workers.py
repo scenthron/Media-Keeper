@@ -264,6 +264,7 @@ class DuplicateFinderWorker(QThread):
 
         for size, files in candidates_size.items():
             if not self.is_running: break
+            has_dump_in_size = any(f.get('is_dump') for f in files)
             by_partial = {}
             for file_data in files:
                 if not self.is_running: break
@@ -284,9 +285,19 @@ class DuplicateFinderWorker(QThread):
                     if self.use_cache:
                         cached = self.db.get_cached_data(real_path, size, mtime)
                         if cached: p_hash, f_hash = cached
-                    if not p_hash:
-                        p_hash = self.get_partial_hash(real_path)
-                        if not p_hash: continue 
+                    
+                    if has_dump_in_size:
+                        if not f_hash:
+                            if size > LARGE_FILE_THRESHOLD: f_hash = self.get_sparse_hash(real_path, size)
+                            else: f_hash = self.get_full_hash(real_path)
+                            if self.use_cache and f_hash:
+                                _p = self.get_partial_hash(real_path)
+                                if _p: self.db.upsert_hash(real_path, size, mtime, _p, f_hash)
+                        p_hash = f_hash
+                    else:
+                        if not p_hash:
+                            p_hash = self.get_partial_hash(real_path)
+                            if not p_hash: continue 
                 
                 if p_hash not in by_partial: by_partial[p_hash] = []
                 file_data['partial_hash'] = p_hash

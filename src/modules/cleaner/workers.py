@@ -331,7 +331,7 @@ class DuplicateFinderWorker(QThread):
                             has_ref = False
                             subset_outside_ref = 0
                             for f in f_files:
-                                if is_subpath(f['path'], norm_ref):
+                                if is_subpath(f['real_path'], norm_ref):
                                     has_ref = True
                                 else:
                                     subset_outside_ref += 1
@@ -842,7 +842,7 @@ class SimilarScanWorker(QThread):
                     if has_ref and subset_outside_ref > 0:
                         groups.append({ 'hash': base_file['signature'], 'size': base_file['size'], 'files': current_group })
                         found_matches_count += subset_outside_ref
-                        current_wasted_bytes += sum(f['size'] for f in current_group if not is_subpath(os.path.normcase(os.path.normpath(f['path'])), norm_ref))
+                        current_wasted_bytes += sum(f['size'] for f in current_group if not is_subpath(os.path.normcase(os.path.normpath(f['real_path'])), norm_ref))
                 else:
                     groups.append({ 'hash': base_file['signature'], 'size': base_file['size'], 'files': current_group })
                     dupes_in_group = len(current_group) - 1

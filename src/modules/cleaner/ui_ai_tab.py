@@ -903,6 +903,30 @@ class AiClassificationTab(QWidget):
         self.action_bar.chk_preserve.hide()
         self.action_bar.combo_collision.hide()
         post_filter_layout = QHBoxLayout()
+        
+        icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
+        self.btn_exp_ai = QPushButton()
+        self.btn_exp_ai.setIcon(QIcon(os.path.join(icons_dir, "square-chevron-down.svg")))
+        self.btn_exp_ai.setIconSize(QSize(18, 18))
+        self.btn_exp_ai.setToolTip(AppContext.tr("cln_btn_expand") if hasattr(AppContext, "tr") else "Развернуть все группы")
+        
+        self.btn_col_ai = QPushButton()
+        self.btn_col_ai.setIcon(QIcon(os.path.join(icons_dir, "square-chevron-up.svg")))
+        self.btn_col_ai.setIconSize(QSize(18, 18))
+        self.btn_col_ai.setToolTip(AppContext.tr("cln_btn_collapse") if hasattr(AppContext, "tr") else "Свернуть все группы")
+        
+        for b in [self.btn_exp_ai, self.btn_col_ai]:
+            b.setFixedWidth(30)
+            b.setStyleSheet("QPushButton { background: #333; border: 1px solid #444; border-radius: 3px; } QPushButton:hover { background: #444; }")
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            
+        self.btn_exp_ai.clicked.connect(self.tree_results.expandAll)
+        self.btn_col_ai.clicked.connect(self.tree_results.collapseAll)
+        
+        post_filter_layout.addWidget(self.btn_exp_ai)
+        post_filter_layout.addWidget(self.btn_col_ai)
+        post_filter_layout.addSpacing(10)
+        
         self.lbl_post_filter = QLabel("Быстрый фильтр:" if AppContext.is_ru() else "Quick Filter:")
         tooltip_post = ("Скрывает из таблицы файлы, чья схожесть с лидером группы ниже выбранного процента.\n"
                         "Это НЕ удаляет файлы из списка результатов навсегда, а лишь временно скрывает их,\n"

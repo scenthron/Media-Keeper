@@ -505,7 +505,7 @@ class AiGroupSettingsDialog(QDialog):
         
         if is_save_as or not target_path:
             default_name = self.group_name if self.group_name else "Новый_эталон"
-            default_path = os.path.join(get_ai_assets_dir(), f"{default_name}.mkaidump")
+            default_path = os.path.join(get_ai_assets_dir(), default_name)
             path, _ = QFileDialog.getSaveFileName(self, "Сохранить эталон", default_path, "AI Dumps (*.mkaidump)")
             if not path:
                 return
@@ -696,7 +696,7 @@ class AiGroupSettingsDialog(QDialog):
         default_name = self.group_name if self.group_name else "Новый_хэш_эталон"
         default_name = default_name.replace(".hash.mkaidump", "").replace(".mkaidump", "")
         from .logic_ai_classifier import get_ai_assets_dir
-        default_path = os.path.join(get_ai_assets_dir(), default_name + ".hash.mkaidump")
+        default_path = os.path.join(get_ai_assets_dir(), default_name)
         
         path, _ = QFileDialog.getSaveFileName(self, "Экспорт хэш-дампа", default_path, "Hash Dumps (*.hash.mkaidump)")
         if path:

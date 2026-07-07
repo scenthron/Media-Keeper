@@ -319,7 +319,10 @@ class DuplicateDelegate(QStyledItemDelegate):
                 if not g_size:
                     display_text = f"{display_name}  ({item.get('file_count', 0)})"
                 else:
-                    size_fmt = format_size(g_size * item.get('file_count', 0))
+                    if getattr(index.model(), 'is_similar_mode', False):
+                        size_fmt = format_size(g_size)
+                    else:
+                        size_fmt = format_size(g_size * item.get('file_count', 0))
                     display_text = f"{display_name}  ({item.get('file_count', 0)} / {size_fmt})"
                 
                 text_rect = QRect(rect.left() + 50, rect.top(), 600, rect.height())

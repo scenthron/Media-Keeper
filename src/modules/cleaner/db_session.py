@@ -131,11 +131,12 @@ class SessionDB:
             groups_data = []
             for grp in groups_list:
                 files = grp['files']
-                wasted = grp['size'] * (len(files) - 1)
+                wasted = grp.get('wasted_size', grp['size'] * (len(files) - 1))
+                g_size = grp.get('total_size', grp['size'])
                 ext = ""
                 if files:
                     ext = os.path.splitext(files[0].get('real_path', files[0].get('path', '')))[1].lower()
-                groups_data.append((grp['hash'], grp['size'], len(files), wasted, ext))
+                groups_data.append((grp['hash'], g_size, len(files), wasted, ext))
             
             # Шаг 2. Пакетно вставляем все группы
             cursor.executemany(

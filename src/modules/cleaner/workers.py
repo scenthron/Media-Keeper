@@ -848,14 +848,18 @@ class SimilarScanWorker(QThread):
                         else:
                             subset_outside_ref += 1
                     if has_ref and subset_outside_ref > 0:
-                        groups.append({ 'hash': base_file['signature'], 'size': base_file['size'], 'files': current_group })
+                        w_bytes = sum(f['size'] for f in current_group if not is_subpath(os.path.normcase(os.path.normpath(f['real_path'])), norm_ref))
+                        t_bytes = sum(f['size'] for f in current_group)
+                        groups.append({ 'hash': base_file['signature'], 'size': base_file['size'], 'total_size': t_bytes, 'wasted_size': w_bytes, 'files': current_group })
                         found_matches_count += subset_outside_ref
-                        current_wasted_bytes += sum(f['size'] for f in current_group if not is_subpath(os.path.normcase(os.path.normpath(f['real_path'])), norm_ref))
+                        current_wasted_bytes += w_bytes
                 else:
-                    groups.append({ 'hash': base_file['signature'], 'size': base_file['size'], 'files': current_group })
+                    w_bytes = sum(f['size'] for f in current_group[1:])
+                    t_bytes = sum(f['size'] for f in current_group)
+                    groups.append({ 'hash': base_file['signature'], 'size': base_file['size'], 'total_size': t_bytes, 'wasted_size': w_bytes, 'files': current_group })
                     dupes_in_group = len(current_group) - 1
                     found_matches_count += dupes_in_group
-                    current_wasted_bytes += sum(f['size'] for f in current_group[1:])
+                    current_wasted_bytes += w_bytes
                     
         # Сортируем группы по общему объему "лишних" файлов
         groups.sort(key=lambda g: g['size'] * (len(g['files']) - 1), reverse=True)

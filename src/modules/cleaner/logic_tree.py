@@ -120,13 +120,13 @@ class CleanerTreeMixin:
         menu = QMenu(self.tree)
         menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; } QMenu::separator { height: 1px; background: #666; margin: 4px 8px; }")
         
-        if getattr(self, 'current_tab', 0) == 1:
+        if is_empty_mode == False and 'group_id' in item:
             group_item = {'id': item['group_id']}
             act_sel_all = QAction("Выделить всё в этой группе" if AppContext.LANG == "RU" else "Select all in this group", self)
             act_sel_all.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'all'))
             menu.addAction(act_sel_all)
             
-            act_desel_all = QAction("Снять выделение в этой группе" if AppContext.LANG == "RU" else "Deselect all in this group", self)
+            act_desel_all = QAction("Снять выделение со всех в этой группе" if AppContext.LANG == "RU" else "Deselect all in this group", self)
             act_desel_all.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'none'))
             menu.addAction(act_desel_all)
             menu.addSeparator()
@@ -235,16 +235,16 @@ class CleanerTreeMixin:
                 act_sel_smart = QAction(AppContext.tr("cln_ctx_select_all_except_first"), self)
                 act_sel_smart.triggered.connect(lambda: self._header_group_action(item, 'all_except_first'))
                 menu.addAction(act_sel_smart)
-            else:
-                act_sel_all = QAction("Выделить всё в этой группе" if AppContext.LANG == "RU" else "Select all in this group", self)
-                act_sel_all.triggered.connect(lambda: self._header_group_action(item, 'all'))
-                menu.addAction(act_sel_all)
+            
+            act_sel_all = QAction("Выделить всё в этой группе" if AppContext.LANG == "RU" else "Select all in this group", self)
+            act_sel_all.triggered.connect(lambda: self._header_group_action(item, 'all'))
+            menu.addAction(act_sel_all)
         else:
             act_sel_all = QAction(AppContext.tr("cln_ctx_select_all"), self)
             act_sel_all.triggered.connect(lambda: self._header_group_action(item, 'all'))
             menu.addAction(act_sel_all)
             
-        act_desel = QAction("Снять выделение со всех в группе" if AppContext.LANG == "RU" and current_tab == 1 else AppContext.tr("cln_ctx_deselect_all"), self)
+        act_desel = QAction("Снять выделение со всех в этой группе" if AppContext.LANG == "RU" else AppContext.tr("cln_ctx_deselect_all"), self)
         act_desel.triggered.connect(lambda: self._header_group_action(item, 'none'))
         menu.addAction(act_desel)
         menu.addSeparator()

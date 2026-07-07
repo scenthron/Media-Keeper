@@ -78,6 +78,23 @@ class CleanerListView(QListView):
 
         super().mousePressEvent(event)
 
+    def keyPressEvent(self, event: Any) -> None:
+        if event.key() == Qt.Key.Key_Space:
+            index = self.currentIndex()
+            if index.isValid():
+                item = index.data(Qt.ItemDataRole.UserRole)
+                if item:
+                    item_type = item.get('type')
+                    if item_type == 'file' and not item.get('is_protected', False):
+                        new_state = not bool(item.get('is_marked', 0))
+                        self.checkbox_clicked.emit(item, new_state)
+                        return
+                    elif item_type == 'empty_folder':
+                        new_state = not bool(item.get('is_marked', 0))
+                        self.checkbox_clicked.emit(item, new_state)
+                        return
+        super().keyPressEvent(event)
+
 
 class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin, CleanerSelectionMixin):
     def __init__(self, parent: Any = None) -> None:

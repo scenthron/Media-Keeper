@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QButtonGroup, QRadioButton, QMessageBox, QFileDialog, QTabWidget, QWidget, QListWidgetItem
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon, QPixmap, QImage
+from PyQt6.QtGui import QIcon, QPixmap, QImage, QPainter, QColor, QPen
 from config import AppContext
 from .logic_ai_classifier import get_ai_assets_dir, load_ai_settings, save_ai_settings
 from .logic_ai_dump import load_dump_info, extract_images_to_temp, save_dump, extract_images_to_dir, load_features
@@ -259,6 +259,12 @@ class AiGroupSettingsDialog(QDialog):
                 self.btn_save.setEnabled(False)
                 self.btn_save.setStyleSheet("background-color: #222; color: #555; border: 1px solid #333; padding: 6px 16px; border-radius: 4px; font-weight: bold;")
 
+    def _update_button_states(self):
+        has_photos = len(self.pending_pos) > 0 or len(self.pending_neg) > 0
+        has_data = has_photos or self.is_hash_only
+        self.btn_train.setEnabled(has_data)
+        self.btn_save_hash.setEnabled(self.dump_path is not None and has_data)
+
     def _on_type_changed(self):
         self.has_changes = True
         self._update_save_state()
@@ -382,9 +388,6 @@ class AiGroupSettingsDialog(QDialog):
         if self.is_hash_only:
             if self.dump_path:
                 info = load_dump_info(self.dump_path)
-                from PyQt6.QtGui import QPixmap, QColor, QPainter, QIcon
-                from PyQt6.QtCore import Qt
-                
                 def create_hash_item(count, is_positive):
                     item = QListWidgetItem()
                     pixmap = QPixmap(128, 128)
@@ -411,7 +414,6 @@ class AiGroupSettingsDialog(QDialog):
                 if info.get("neg_features_count", 0) > 0:
                     self.list_neg.addItem(create_hash_item(info["neg_features_count"], False))
         
-        from PyQt6.QtGui import QPainter, QColor, QPen, QPixmap
         if not hasattr(self, "trained_status"):
             self.trained_status = {}
             
@@ -423,7 +425,6 @@ class AiGroupSettingsDialog(QDialog):
                 # Чтобы превью были квадратными и не искажались, создадим квадратную основу
                 square = QPixmap(128, 128)
                 square.fill(Qt.GlobalColor.transparent)
-                from PyQt6.QtGui import QPainter
                 painter = QPainter(square)
                 painter.drawPixmap((128 - scaled.width()) // 2, (128 - scaled.height()) // 2, scaled)
                 painter.end()

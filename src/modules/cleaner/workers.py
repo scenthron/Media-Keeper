@@ -955,6 +955,7 @@ class AiScanWorker(QThread):
         results = {}
         processed_files = 0
         groups_found = 0
+        files_found = 0
         wasted_bytes = 0 # Суммарный размер найденных файлов
         
         self.progress.emit(STAGE_ANALYSIS, 0.0, f"ИИ Анализ: {total_files} файлов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
@@ -1070,6 +1071,7 @@ class AiScanWorker(QThread):
                             "type": details.get("type", "general")
                         })
                         wasted_bytes += size
+                        files_found += 1
                     
             except Exception as e:
                 logging.error(f"Ошибка ИИ-анализа файла {fp}: {e}")
@@ -1079,7 +1081,7 @@ class AiScanWorker(QThread):
             percent = (processed_files / total_files) * 100.0
             
             if processed_files % 5 == 0 or processed_files == total_files:
-                self.progress.emit(STAGE_ANALYSIS, percent, f"[{processed_files} / {total_files}]", scanned_files, groups_found, wasted_bytes, scanned_bytes, 0, 0)
+                self.progress.emit(STAGE_ANALYSIS, percent, f"[{processed_files} / {total_files}]", scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, 0)
 
         if getattr(self, "is_cluster", False):
             import numpy as np
@@ -1132,7 +1134,7 @@ class AiScanWorker(QThread):
             results[g].sort(key=lambda x: x["confidence"], reverse=True)
             
         if self.is_running:
-            self.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, groups_found, wasted_bytes, scanned_bytes, 0, 0)
+            self.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, 0)
         self.finished.emit(results)
 
 

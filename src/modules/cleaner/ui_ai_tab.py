@@ -1518,7 +1518,7 @@ class AiClassificationTab(QWidget):
         self.active_worker.finished.connect(self.on_scan_finished)
         self.active_worker.start()
 
-    def on_scan_progress(self, stage, percent, text, scanned_files, groups_found, wasted_bytes, scanned_bytes, zero, empty):
+    def on_scan_progress(self, stage, percent, text, scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, empty):
         if stage == STAGE_SCANNING:
             self.progress_bar.setMaximum(0)
             self.progress_bar.setFormat(text)
@@ -1529,8 +1529,8 @@ class AiClassificationTab(QWidget):
             
         from utils_common import format_size
         self.lbl_stats.setText(
-            f"Найдено совпадений: {groups_found} групп, {wasted_bytes // (1024*1024) if wasted_bytes else 0} MB" if AppContext.is_ru()
-            else f"Matches found: {groups_found} groups, {format_size(wasted_bytes)}"
+            f"Найдено совпадений: {groups_found} групп, {files_found} файлов, {wasted_bytes // (1024*1024) if wasted_bytes else 0} MB" if AppContext.is_ru()
+            else f"Matches found: {groups_found} groups, {files_found} files, {format_size(wasted_bytes)}"
         )
 
     def on_scan_finished(self, results):

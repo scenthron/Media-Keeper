@@ -920,8 +920,8 @@ class AiClassificationTab(QWidget):
             b.setStyleSheet("QPushButton { background: #333; border: 1px solid #444; border-radius: 3px; } QPushButton:hover { background: #444; }")
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             
-        self.btn_exp_ai.clicked.connect(self.tree_results.expandAll)
-        self.btn_col_ai.clicked.connect(self.tree_results.collapseAll)
+        self.btn_exp_ai.clicked.connect(lambda: hasattr(self, "tree_results") and self.tree_results.expandAll())
+        self.btn_col_ai.clicked.connect(lambda: hasattr(self, "tree_results") and self.tree_results.collapseAll())
         
         post_filter_layout.addWidget(self.btn_exp_ai)
         post_filter_layout.addWidget(self.btn_col_ai)

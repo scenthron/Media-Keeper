@@ -372,8 +372,8 @@ class AiGroupSettingsDialog(QDialog):
             
         for item in selected_items:
             path = item.data(Qt.ItemDataRole.UserRole)
-            if path == "HASH":
-                self._show_silent_msg("Внимание", "Нельзя удалить хэш-данные. Если нужно, удалите весь эталон.")
+            if path == "HASH" or str(path).endswith(".hash.mkaidump") or str(path).endswith(".mkaidump"):
+                self._show_silent_msg("Внимание", "Нельзя удалить хэш-данные. Для удаления нажмите красную кнопку 'Удалить эталон' внизу окна.")
                 continue
             if path in target_list:
                 target_list.remove(path)
@@ -700,11 +700,12 @@ class AiGroupSettingsDialog(QDialog):
         
         path, _ = QFileDialog.getSaveFileName(self, "Экспорт хэш-дампа", default_path, "Hash Dumps (*.hash.mkaidump)")
         if path:
-            if not path.endswith(".hash.mkaidump"):
-                if path.endswith(".mkaidump"):
-                    path = path.replace(".mkaidump", ".hash.mkaidump")
-                else:
-                    path += ".hash.mkaidump"
+            # Сначала удалим все возможные дублирующиеся расширения
+            while path.endswith(".hash.mkaidump"):
+                path = path[:-14]
+            while path.endswith(".mkaidump"):
+                path = path[:-9]
+            path += ".hash.mkaidump"
                     
             if self.has_changes:
                 self.train_group_ui()

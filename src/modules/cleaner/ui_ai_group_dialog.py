@@ -517,9 +517,6 @@ class AiGroupSettingsDialog(QDialog):
                 self._show_silent_msg("Ошибка" if self.is_ru else "Error", "Эталон с таким именем уже добавлен!" if self.is_ru else "Group already exists!")
                 return
                 
-        if self.has_changes:
-            self.train_group_ui()
-            
         success = self.train_and_save(target_path, is_hash_only=False)
         if not success:
             return
@@ -580,31 +577,55 @@ class AiGroupSettingsDialog(QDialog):
         for path in self.pending_pos:
             if not os.path.exists(path): continue
             success = False
-            if search_type == "face":
-                faces = self.classifier.ai.detect_and_extract_faces(path)
-                if faces:
-                    success = True
-                    for f in faces: pos_features.append(f["descriptor"])
-            else:
-                emb = self.classifier.ai.extract_image_embedding(path)
-                if emb is not None:
-                    success = True
-                    pos_features.append(emb)
+            try:
+                stat = os.stat(path)
+                if search_type == "face":
+                    faces = self.classifier.cache.get_file_faces(path, stat.st_mtime, stat.st_size)
+                    if faces is None:
+                        faces = self.classifier.ai.detect_and_extract_faces(path)
+                        if faces is not None:
+                            self.classifier.cache.save_file_faces(path, stat.st_mtime, stat.st_size, faces)
+                    if faces:
+                        success = True
+                        for f in faces: pos_features.append(f["descriptor"])
+                else:
+                    emb = self.classifier.cache.get_image_embedding(path, stat.st_mtime, stat.st_size)
+                    if emb is None:
+                        emb = self.classifier.ai.extract_image_embedding(path)
+                        if emb is not None:
+                            self.classifier.cache.save_image_embedding(path, stat.st_mtime, stat.st_size, emb)
+                    if emb is not None:
+                        success = True
+                        pos_features.append(emb)
+            except Exception:
+                pass
             self.trained_status[path] = success
                 
         for path in self.pending_neg:
             if not os.path.exists(path): continue
             success = False
-            if search_type == "face":
-                faces = self.classifier.ai.detect_and_extract_faces(path)
-                if faces:
-                    success = True
-                    for f in faces: neg_features.append(f["descriptor"])
-            else:
-                emb = self.classifier.ai.extract_image_embedding(path)
-                if emb is not None:
-                    success = True
-                    neg_features.append(emb)
+            try:
+                stat = os.stat(path)
+                if search_type == "face":
+                    faces = self.classifier.cache.get_file_faces(path, stat.st_mtime, stat.st_size)
+                    if faces is None:
+                        faces = self.classifier.ai.detect_and_extract_faces(path)
+                        if faces is not None:
+                            self.classifier.cache.save_file_faces(path, stat.st_mtime, stat.st_size, faces)
+                    if faces:
+                        success = True
+                        for f in faces: neg_features.append(f["descriptor"])
+                else:
+                    emb = self.classifier.cache.get_image_embedding(path, stat.st_mtime, stat.st_size)
+                    if emb is None:
+                        emb = self.classifier.ai.extract_image_embedding(path)
+                        if emb is not None:
+                            self.classifier.cache.save_image_embedding(path, stat.st_mtime, stat.st_size, emb)
+                    if emb is not None:
+                        success = True
+                        neg_features.append(emb)
+            except Exception:
+                pass
             self.trained_status[path] = success
                 
         if not pos_features and not is_hash_only:

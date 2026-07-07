@@ -76,6 +76,19 @@ class CleanerListView(QListView):
                             self.checkbox_clicked.emit(item, new_state)
                             return
 
+                    # Checkbox для группы
+                    elif item_type == 'group':
+                        visual_rect = self.visualRect(index)
+                        cb_x = visual_rect.left() + 28
+                        cb_y = visual_rect.top() + (visual_rect.height() - 16) // 2
+                        cb_rect = QRect(cb_x, cb_y, 16, 16)
+                        if cb_rect.contains(vp_pos):
+                            model = self.model()
+                            marked, unmark, total = model.calculate_group_status(item['id'])
+                            new_state = (marked == 0)
+                            self.checkbox_clicked.emit(item, new_state)
+                            return
+                            
         super().mousePressEvent(event)
 
     def keyPressEvent(self, event: Any) -> None:
@@ -91,6 +104,12 @@ class CleanerListView(QListView):
                         return
                     elif item_type == 'empty_folder':
                         new_state = not bool(item.get('is_marked', 0))
+                        self.checkbox_clicked.emit(item, new_state)
+                        return
+                    elif item_type == 'group':
+                        model = self.model()
+                        marked, unmark, total = model.calculate_group_status(item['id'])
+                        new_state = (marked == 0)
                         self.checkbox_clicked.emit(item, new_state)
                         return
         super().keyPressEvent(event)
@@ -908,6 +927,10 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         if item['type'] == 'file' and getattr(self, 'current_view_mode', 0) == 0:
             # Delegate to CleanerSelectionMixin which enforces Iron Rules in RAM
             self.toggle_single_file_mark(item, new_state)
+
+        elif item['type'] == 'group':
+            action = 'all' if new_state else 'none'
+            self._header_group_action(item, action)
 
         elif item['type'] == 'empty_folder' or (item['type'] == 'file' and getattr(self, 'current_view_mode', 0) == 1):
             # Empty folders and zero files are not part of duplicate groups — simple toggle via session_db

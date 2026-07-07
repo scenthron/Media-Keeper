@@ -273,6 +273,28 @@ class DuplicateDelegate(QStyledItemDelegate):
             painter.setFont(font_arrow)
             painter.drawText(QRect(rect.left() + 8, rect.top() + (rect.height() - 14) // 2, 14, 14), Qt.AlignmentFlag.AlignCenter, arrow_str)
 
+            # Checkbox
+            cb_size = 16
+            cb_x = rect.left() + 28
+            cb_y = rect.top() + (rect.height() - cb_size) // 2
+            cb_rect = QRect(cb_x, cb_y, cb_size, cb_size)
+            
+            painter.setPen(QPen(QColor("#666666"), 1))
+            painter.setBrush(QBrush(QColor("#333333")))
+            painter.drawRoundedRect(cb_rect, 3, 3)
+            
+            if marked_files > 0:
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(QBrush(QColor("#3b82f6")))
+                painter.drawRoundedRect(cb_rect, 3, 3)
+                
+                painter.setPen(QPen(QColor("#ffffff"), 2))
+                if effective_unmarked > 0:
+                    painter.drawLine(cb_x + 4, cb_y + cb_size // 2, cb_x + cb_size - 4, cb_y + cb_size // 2)
+                else:
+                    painter.drawLine(cb_x + 4, cb_y + 8, cb_x + 7, cb_y + 11)
+                    painter.drawLine(cb_x + 7, cb_y + 11, cb_x + 12, cb_y + 4)
+
             # Name and wasted stats
             name_font = QFont("Segoe UI", 10)
             name_font.setBold(True)
@@ -300,7 +322,7 @@ class DuplicateDelegate(QStyledItemDelegate):
                     size_fmt = format_size(g_size * item.get('file_count', 0))
                     display_text = f"{display_name}  ({item.get('file_count', 0)} / {size_fmt})"
                 
-                text_rect = QRect(rect.left() + 28, rect.top(), 600, rect.height())
+                text_rect = QRect(rect.left() + 50, rect.top(), 600, rect.height())
                 painter.drawText(text_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, str(display_text))
             except Exception as e:
                 logging.error(f"Draw Group Text Error: {e}")

@@ -413,15 +413,6 @@ class SorterGridItemWidget(QWidget):
         font.setPixelSize(font_px)
         self.lbl_name.setFont(font)
         
-        # Update elided text (excluding extension) with a safe margin to prevent clipping
-        base_name = os.path.basename(self.filepath)
-        name_without_ext = os.path.splitext(base_name)[0]
-        elided = elide_text_to_two_lines(name_without_ext, font, self.tile_size - 20)
-        
-        import html
-        escaped_lines = [html.escape(line) for line in elided.split('\\n')]
-        elided_html = f"<div style='line-height: 105%; text-align: center;'>{'<br>'.join(escaped_lines)}</div>"
-        self.lbl_name.setText(elided_html)        
         # Update elided text (excluding extension) with a safe 20px margin to prevent clipping
         base_name = os.path.basename(self.filepath)
         name_without_ext = os.path.splitext(base_name)[0]
@@ -3379,7 +3370,11 @@ class SorterViewerArea(QWidget):
         этот метод можно легко переписать или вызвать в цикле по списку пар (old_path, new_path).
         """
         norm_old = os.path.normpath(old_path)
+        if norm_old.startswith("\\\\?\\"):
+            norm_old = norm_old[4:]
         norm_new = os.path.normpath(new_path)
+        if norm_new.startswith("\\\\?\\"):
+            norm_new = norm_new[4:]
         
         self.grid_view.setUpdatesEnabled(False)
         self.list_view.setUpdatesEnabled(False)

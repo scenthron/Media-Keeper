@@ -145,6 +145,8 @@ class ThumbnailLoader(QObject):
     def rename_cache_key(self, old_path: str, new_path: str) -> None:
         """Переименовывает ключ в кэше миниатюр при переименовании файла, сохраняя миниатюру в RAM."""
         norm_old = os.path.normpath(old_path)
+        if norm_old.startswith("\\\\?\\"): norm_old = norm_old[4:]
         norm_new = os.path.normpath(new_path)
+        if norm_new.startswith("\\\\?\\"): norm_new = norm_new[4:]
         if norm_old in self.cache:
             self.cache[norm_new] = self.cache.pop(norm_old)

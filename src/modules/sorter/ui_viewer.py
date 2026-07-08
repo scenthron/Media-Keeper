@@ -1489,6 +1489,10 @@ class SorterBaseListView(QListWidget):
             self.current_hover_item = item
             self.current_hover_path = ensure_long_path(p)
             
+            if QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier:
+                if not item.isSelected():
+                    item.setSelected(True)
+            
             # Запускаем предохранитель дребезга на 100 мс
             self.debounce_timer.start(100)
 

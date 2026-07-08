@@ -173,6 +173,12 @@ class DuplicateVirtualModel(QAbstractListModel):
         item = self._flat_items[index.row()]
         if role == Qt.ItemDataRole.UserRole:
             return item
+        if role == Qt.ItemDataRole.ToolTipRole:
+            item_type = item.get('type', '')
+            if item_type in ('file', 'zero_file', 'empty_folder'):
+                return item.get('path', '')
+            elif item_type in ('group', 'zero_group', 'empty_group'):
+                return item.get('title', '')
         return None
 
     def parent_widget(self) -> Any:

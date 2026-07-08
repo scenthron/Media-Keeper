@@ -166,6 +166,20 @@ class ScanMixin:
         self.ui_timer.stop()
         self.update_timer_label()
         self.settings_panel.set_current_path("") # Сбрасываем динамический путь
+        
+        # Сбрасываем фильтры по типам для новых результатов
+        self.view_filter_exts = None
+        self.view_filter_mode = 'include'
+        if hasattr(self, 'virtual_model_dupes') and self.virtual_model_dupes:
+            self.virtual_model_dupes.set_filter(None, 'include')
+        if hasattr(self, 'virtual_model_similar') and self.virtual_model_similar:
+            self.virtual_model_similar.set_filter(None, 'include')
+            
+        from config import AppContext
+        if hasattr(self, 'btn_types_dupes') and self.btn_types_dupes:
+            self.btn_types_dupes.setText(AppContext.tr("cln_btn_types"))
+        if hasattr(self, 'btn_types_similar') and self.btn_types_similar:
+            self.btn_types_similar.setText(AppContext.tr("cln_btn_types"))
 
         # Восстанавливаем кнопки в UI
         if hasattr(self, 'restore_scan_buttons'):

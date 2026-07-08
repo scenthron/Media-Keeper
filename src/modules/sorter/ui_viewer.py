@@ -3256,37 +3256,53 @@ class SorterViewerArea(QWidget):
         self.grid_view.setUpdatesEnabled(False)
         self.list_view.setUpdatesEnabled(False)
         try:
+            items_to_remove_grid = set()
+            items_to_remove_list = set()
+            
+            # Извлекаем элементы из мапов за O(1) и собираем множества для удаления
             for path in paths:
                 norm_path = os.path.normpath(strip_long_path_prefix(path))
                 
-                # 1. Удаляем из Grid View
                 item_grid = self.grid_items_map.pop(norm_path, None)
                 if item_grid:
-                    row = self.grid_view.row(item_grid)
-                    if row >= 0:
-                        widget = self.grid_view.itemWidget(item_grid)
-                        self.grid_view.removeItemWidget(item_grid)
-                        self.grid_view.takeItem(row)
-                        if widget:
-                            widget.deleteLater()
-                            
-                # 2. Удаляем из List View
+                    items_to_remove_grid.add(item_grid)
+                    
                 item_list = self.list_items_map.pop(norm_path, None)
                 if item_list:
-                    row = self.list_view.row(item_list)
-                    if row >= 0:
-                        widget = self.list_view.itemWidget(item_list)
-                        self.list_view.removeItemWidget(item_list)
-                        self.list_view.takeItem(row)
+                    items_to_remove_list.add(item_list)
+                    
+            # Проходим по списку один раз с конца, удаляя нужные элементы за O(N) вместо O(N*K)
+            if items_to_remove_grid:
+                for i in range(self.grid_view.count() - 1, -1, -1):
+                    item = self.grid_view.item(i)
+                    if item in items_to_remove_grid:
+                        widget = self.grid_view.itemWidget(item)
+                        self.grid_view.removeItemWidget(item)
+                        self.grid_view.takeItem(i)
                         if widget:
                             widget.deleteLater()
                             
-            # Удаляем из списка загруженных файлов в памяти
-            norm_paths_set = set(os.path.normpath(strip_long_path_prefix(p)) for p in paths)
-            self.loading_files = [
-                f for f in self.loading_files 
-                if os.path.normpath(strip_long_path_prefix(os.path.join(self.current_inbox_dir, f))) not in norm_paths_set
-            ]
+            if items_to_remove_list:
+                for i in range(self.list_view.count() - 1, -1, -1):
+                    item = self.list_view.item(i)
+                    if item in items_to_remove_list:
+                        widget = self.list_view.itemWidget(item)
+                        self.list_view.removeItemWidget(item)
+                        self.list_view.takeItem(i)
+                        if widget:
+                            widget.deleteLater()
+                            
+            # Ускоряем удаление из списка загруженных файлов в памяти
+            if hasattr(self, 'loading_files') and self.loading_files and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir:
+                norm_paths_set = set(os.path.normpath(strip_long_path_prefix(p)) for p in paths)
+                base_dir = strip_long_path_prefix(self.current_inbox_dir)
+                
+                new_loading_files = []
+                for f in self.loading_files:
+                    full = os.path.normpath(os.path.join(base_dir, f))
+                    if full not in norm_paths_set:
+                        new_loading_files.append(f)
+                self.loading_files = new_loading_files
         finally:
             self.grid_view.setUpdatesEnabled(True)
             self.list_view.setUpdatesEnabled(True)

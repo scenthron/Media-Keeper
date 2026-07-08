@@ -403,7 +403,7 @@ class LargePreviewPopup(QDialog):
         self.lbl_title.setGraphicsEffect(self.title_opacity_effect)
         top_layout.addWidget(self.lbl_title, stretch=1)
         
-        self.right_btn_container = QWidget(self.top_overlay)
+        self.right_btn_container = QWidget(self)
         self.right_btn_container.setStyleSheet("background: transparent;")
         right_layout = QVBoxLayout(self.right_btn_container)
         right_layout.setContentsMargins(0, 0, 0, 0)
@@ -470,8 +470,6 @@ class LargePreviewPopup(QDialog):
         self.btn_select_file.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_select_file.setCursor(Qt.CursorShape.PointingHandCursor)
         right_layout.addWidget(self.btn_select_file)
-        
-        top_layout.addWidget(self.right_btn_container)
         
         self.content_area = QWidget()
         self.content_layout = QVBoxLayout(self.content_area)
@@ -1205,6 +1203,9 @@ class LargePreviewPopup(QDialog):
         if hasattr(self, 'top_overlay') and self.top_overlay:
             self.top_overlay.setGeometry(2, 2, w - 4, 38)
             self.top_overlay.raise_()
+        if hasattr(self, 'right_btn_container') and self.right_btn_container:
+            self.right_btn_container.setGeometry(w - 28, 6, 22, 48)
+            self.right_btn_container.raise_()
         if hasattr(self, 'bottom_overlay') and self.bottom_overlay:
             self.bottom_overlay.setGeometry(6, h - 36, 100, 30)
             self.bottom_overlay.raise_()

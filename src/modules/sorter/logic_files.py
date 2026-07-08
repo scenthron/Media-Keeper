@@ -673,15 +673,11 @@ class FileOpsMixin:
         # Разрешение конфликтов имен
         if conflicts:
             if len(selected_paths) == 1:
-                # Для одного файла сохраняем стандартный диалог конфликта
+                # Для одного файла просто добавляем инкремент без показа диалога
                 src, dst = conflicts[0]
-                dlg = FileConflictDialog(os.path.basename(src), destination_dir, self)
-                if dlg.exec():
-                    pairs.append((src, os.path.join(destination_dir, dlg.final_name)))
-                else:
-                    self.show_current_file()
-                    self.setFocus()
-                    return
+                unique_dst = get_unique_filepath(os.path.dirname(dst), os.path.basename(src))
+                if unique_dst:
+                    pairs.append((src, unique_dst))
             else:
                 # Для группы файлов показываем наш новый красивый диалог в стиле окна удаления
                 dlg = MultiFileConflictDialog(conflicts, self)

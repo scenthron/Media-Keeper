@@ -51,7 +51,9 @@ class ProgressDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 12, 15, 12)
         layout.setSpacing(6)
-        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
+        
+        # Задаем жесткий фиксированный размер как раньше, но больше ширину
+        self.setFixedSize(450, 135)
         
         self.lbl_title = QLabel(message)
         self.lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)

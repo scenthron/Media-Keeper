@@ -3265,17 +3265,17 @@ class SorterViewerArea(QWidget):
                 
                 item_grid = self.grid_items_map.pop(norm_path, None)
                 if item_grid:
-                    items_to_remove_grid.add(item_grid)
+                    items_to_remove_grid.add(id(item_grid))
                     
                 item_list = self.list_items_map.pop(norm_path, None)
                 if item_list:
-                    items_to_remove_list.add(item_list)
+                    items_to_remove_list.add(id(item_list))
                     
             # Проходим по списку один раз с конца, удаляя нужные элементы за O(N) вместо O(N*K)
             if items_to_remove_grid:
                 for i in range(self.grid_view.count() - 1, -1, -1):
                     item = self.grid_view.item(i)
-                    if item in items_to_remove_grid:
+                    if id(item) in items_to_remove_grid:
                         widget = self.grid_view.itemWidget(item)
                         self.grid_view.removeItemWidget(item)
                         self.grid_view.takeItem(i)
@@ -3285,7 +3285,7 @@ class SorterViewerArea(QWidget):
             if items_to_remove_list:
                 for i in range(self.list_view.count() - 1, -1, -1):
                     item = self.list_view.item(i)
-                    if item in items_to_remove_list:
+                    if id(item) in items_to_remove_list:
                         widget = self.list_view.itemWidget(item)
                         self.list_view.removeItemWidget(item)
                         self.list_view.takeItem(i)

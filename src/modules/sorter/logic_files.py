@@ -712,9 +712,8 @@ class FileOpsMixin:
             except:
                 pass
 
-        self.move_dlg = ProgressDialog(AppContext.tr("move_progress"), self)
-        self.move_dlg.bar.setRange(0, len(pairs))
-        self.move_dlg.bar.setValue(0)
+        self.move_dlg = ProgressDialog("Подготовка к перемещению...", self)
+        self.move_dlg.setup_for_transfer(len(pairs))
 
         # Показываем диалог сразу, если файлов > 1 или размер > 50 МБ
         if len(pairs) > 1 or total_size > 52428800:
@@ -731,15 +730,18 @@ class FileOpsMixin:
         self._ignore_watcher = True
         self.move_thread = MoveThread(pairs, start_time=start_time)
         self.move_thread.progress_update.connect(self.on_move_progress)
+        self.move_thread.detailed_progress.connect(self.on_move_detailed_progress)
         self.move_thread.finished_move.connect(self.on_move_finished)
         logging.info(f"[PROFILER] Запуск MoveThread. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
         self.move_thread.start()
 
-    def on_move_progress(self, current, total, filename):
+    def on_move_progress(self, current_idx, total, filename):
         if hasattr(self, 'move_dlg') and self.move_dlg:
-            self.move_dlg.label.setText(f"{AppContext.tr('move_progress')} ({current}/{total}):\n{filename}")
-            self.move_dlg.bar.setRange(0, total)
-            self.move_dlg.bar.setValue(current)
+            self.move_dlg.set_current_file(current_idx, filename)
+
+    def on_move_detailed_progress(self, current_bytes, total_bytes, overall_bytes, overall_total_bytes):
+        if hasattr(self, 'move_dlg') and self.move_dlg:
+            self.move_dlg.update_bars(current_bytes, total_bytes, overall_bytes, overall_total_bytes)
 
     def on_move_finished(self, success, error_msg, succeeded_pairs, failed_pairs=None):
         import time

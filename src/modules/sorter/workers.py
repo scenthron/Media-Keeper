@@ -104,6 +104,7 @@ def is_file_locked(filepath: str) -> bool:
 
 class MoveThread(QThread):
     progress_update = pyqtSignal(int, int, str)
+    detailed_progress = pyqtSignal(int, int, int, int)
     finished_move = pyqtSignal(bool, str, list, list)
 
     def __init__(self, src, dst=None, start_time=None):
@@ -132,6 +133,16 @@ class MoveThread(QThread):
         if not is_only_images:
             time.sleep(0.25)
         
+        # Подсчитываем общий объем всех перемещаемых файлов
+        overall_total_bytes = 0
+        for src, dst in self.pairs:
+            try:
+                overall_total_bytes += os.path.getsize(src)
+            except Exception:
+                pass
+                
+        overall_bytes_moved = 0
+        
         to_retry = []
         total = len(self.pairs)
         
@@ -140,10 +151,18 @@ class MoveThread(QThread):
             filename = os.path.basename(src)
             self.progress_update.emit(idx + 1, total, filename)
             
+            # Функция обратного вызова для передачи прогресса кусочного перемещения файла
+            file_bytes_moved = 0
+            def on_progress(bytes_moved, file_size):
+                nonlocal file_bytes_moved
+                file_bytes_moved = bytes_moved
+                self.detailed_progress.emit(bytes_moved, file_size, overall_bytes_moved + bytes_moved, overall_total_bytes)
+            
             # Полагаемся на встроенную логику retry в smart_move_file, не вызывая is_file_locked
-            success = smart_move_file(src, dst)
+            success = smart_move_file(src, dst, progress_callback=on_progress)
             if success:
                 succeeded.append((src, dst))
+                overall_bytes_moved += file_bytes_moved
             else:
                 to_retry.append((idx, src, dst, "Файл заблокирован или произошла ошибка ввода-вывода"))
                 
@@ -157,9 +176,16 @@ class MoveThread(QThread):
                 filename = os.path.basename(src)
                 self.progress_update.emit(idx + 1, total, f"[Повтор] {filename}")
                 
-                success = smart_move_file(src, dst)
+                file_bytes_moved = 0
+                def on_progress_retry(bytes_moved, file_size):
+                    nonlocal file_bytes_moved
+                    file_bytes_moved = bytes_moved
+                    self.detailed_progress.emit(bytes_moved, file_size, overall_bytes_moved + bytes_moved, overall_total_bytes)
+                
+                success = smart_move_file(src, dst, progress_callback=on_progress_retry)
                 if success:
                     succeeded.append((src, dst))
+                    overall_bytes_moved += file_bytes_moved
                 else:
                     still_failed.append((src, dst, initial_err))
             failed = still_failed

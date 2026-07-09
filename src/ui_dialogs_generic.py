@@ -4,7 +4,7 @@ import re
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
     QProgressBar, QLineEdit, QTextEdit, QMessageBox, QGridLayout, QFrame,
-    QScrollArea, QWidget, QTabWidget, QTextBrowser, QStyle
+    QScrollArea, QWidget, QTabWidget, QTextBrowser, QStyle, QLayout
 )
 from PyQt6.QtCore import Qt, QUrl, QSize, pyqtSignal
 from PyQt6.QtGui import QDesktopServices, QIcon, QPixmap, QPainter
@@ -34,54 +34,127 @@ class ProgressDialog(QDialog):
     def __init__(self, message, parent=None, show_cancel=False):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
-        height = 135 if show_cancel else 100
-        self.setFixedSize(380, height)
+        self.setMinimumWidth(400)
         self.setStyleSheet("""
             QDialog { background-color: #333333; border: 1px solid #555; border-radius: 8px; }
-            QLabel { color: #eeeeee; font-size: 14px; font-weight: bold; }
-            QProgressBar { border: 1px solid #444; border-radius: 4px; background-color: #222; text-align: center; color: white; }
-            QProgressBar::chunk { background-color: #3b82f6; width: 10px; margin: 0.5px; }
+            QLabel { color: #eeeeee; font-size: 13px; }
+            QProgressBar { border: 1px solid #444; border-radius: 4px; background-color: #222; text-align: center; color: transparent; }
+            QProgressBar::chunk { background-color: #3b82f6; border-radius: 3px; }
+            QProgressBar#BarCurrent::chunk { background-color: #10b981; }
             QPushButton#BtnStop {
-                background-color: #ef4444;
-                color: white;
-                font-weight: bold;
-                border: none;
-                border-radius: 4px;
-                padding: 6px 12px;
-                font-size: 13px;
+                background-color: #ef4444; color: white; font-weight: bold; border: none;
+                border-radius: 4px; padding: 6px 12px; font-size: 13px;
             }
-            QPushButton#BtnStop:hover {
-                background-color: #dc2626;
-            }
-            QPushButton#BtnStop:pressed {
-                background-color: #b91c1c;
-            }
+            QPushButton#BtnStop:hover { background-color: #dc2626; }
+            QPushButton#BtnStop:pressed { background-color: #b91c1c; }
         """)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 12, 15, 12)
-        layout.setSpacing(8)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setSpacing(6)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         
-        self.label = QLabel(message)
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label.setFixedWidth(350)
-        layout.addWidget(self.label)
+        self.lbl_title = QLabel(message)
+        self.lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_title.setWordWrap(True)
+        self.lbl_title.setStyleSheet("font-size: 15px; font-weight: bold; margin-bottom: 2px;")
+        layout.addWidget(self.lbl_title)
         
-        self.bar = QProgressBar()
-        self.bar.setRange(0, 0)
-        self.bar.setFixedHeight(10)
-        layout.addWidget(self.bar)
+        # Общий прогресс (Метка + Бар)
+        self.lbl_total = QLabel("")
+        self.lbl_total.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_total.setWordWrap(True)
+        self.lbl_total.setStyleSheet("color: #bbbbbb; font-size: 12px;")
+        layout.addWidget(self.lbl_total)
+        
+        self.bar_total = QProgressBar()
+        self.bar_total.setFixedHeight(8)
+        self.bar_total.setTextVisible(False)
+        layout.addWidget(self.bar_total)
+        
+        layout.addSpacing(6)
+        
+        # Прогресс текущего файла (Метка + Бар)
+        self.lbl_current = QLabel("")
+        self.lbl_current.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_current.setWordWrap(True)
+        self.lbl_current.setStyleSheet("font-weight: bold; color: #ffffff;")
+        layout.addWidget(self.lbl_current)
+        
+        self.bar_current = QProgressBar()
+        self.bar_current.setObjectName("BarCurrent")
+        self.bar_current.setFixedHeight(6)
+        self.bar_current.setTextVisible(False)
+        layout.addWidget(self.bar_current)
 
         if show_cancel:
-            self.btn_stop = QPushButton(AppContext.tr("btn_stop"))
+            layout.addSpacing(6)
+            self.btn_stop = QPushButton("Отмена" if show_cancel else "Cancel")
             self.btn_stop.setObjectName("BtnStop")
             self.btn_stop.setCursor(Qt.CursorShape.PointingHandCursor)
             self.btn_stop.clicked.connect(self._on_stop_clicked)
             layout.addWidget(self.btn_stop, 0, Qt.AlignmentFlag.AlignCenter)
+            
+        # Для обратной совместимости
+        self.label = self.lbl_title
+        self.bar = self.bar_total
 
     def _on_stop_clicked(self):
         self.cancelled.emit()
         self.reject()
+        
+    def setup_for_transfer(self, total_files):
+        self.total_files = total_files
+        self.current_filename = ""
+        self.current_file_idx = 0
+        self.overall_total_bytes = 0
+        self.overall_bytes_moved = 0
+        if total_files <= 1:
+            self.lbl_total.hide()
+            self.bar_total.hide()
+            
+    def set_current_file(self, idx, filename):
+        self.current_file_idx = idx
+        self.current_filename = filename
+        self.update_transfer_progress(0, 0)
+            
+    def update_transfer_progress(self, current_bytes, total_bytes):
+        from utils_common import format_size
+        size_str = f"{format_size(current_bytes)} из {format_size(total_bytes)}"
+        
+        if self.total_files > 1:
+            self.lbl_title.setText(f"Перемещение файлов ({self.current_file_idx} из {self.total_files})")
+            
+            # Если у нас есть общий размер в байтах, показываем и его
+            if self.overall_total_bytes > 0:
+                total_size_str = f"{format_size(self.overall_bytes_moved)} из {format_size(self.overall_total_bytes)}"
+                self.lbl_total.setText(f"Общий прогресс: {total_size_str}")
+            else:
+                self.lbl_total.setText("Общий прогресс...")
+                
+            self.lbl_current.setText(f"{self.current_filename}\n{size_str}")
+        else:
+            self.lbl_title.setText("Перемещение файла")
+            self.lbl_current.setText(f"{self.current_filename}\n{size_str}")
+            
+    def update_bars(self, current_bytes, total_bytes, overall_bytes_moved, overall_total_bytes):
+        self.overall_bytes_moved = overall_bytes_moved
+        self.overall_total_bytes = overall_total_bytes
+        
+        if total_bytes > 0:
+            self.bar_current.setRange(0, 100)
+            self.bar_current.setValue(int((current_bytes / total_bytes) * 100))
+        else:
+            self.bar_current.setRange(0, 0)
+            
+        if self.total_files > 1:
+            if overall_total_bytes > 0:
+                self.bar_total.setRange(0, 100)
+                self.bar_total.setValue(int((overall_bytes_moved / overall_total_bytes) * 100))
+            else:
+                self.bar_total.setRange(0, 0)
+        
+        # Обновляем текст с новыми байтами
+        self.update_transfer_progress(current_bytes, total_bytes)
 
 class SmartNameDialog(QDialog):
     def __init__(self, title_key, label_key, parent_dir, current_name="", parent=None):

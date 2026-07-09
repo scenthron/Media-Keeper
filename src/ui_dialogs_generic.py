@@ -34,11 +34,11 @@ class ProgressDialog(QDialog):
     def __init__(self, message, parent=None, show_cancel=False):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(480)
         self.setStyleSheet("""
             QDialog { background-color: #333333; border: 1px solid #555; border-radius: 8px; }
             QLabel { color: #eeeeee; font-size: 13px; }
-            QProgressBar { border: 1px solid #444; border-radius: 4px; background-color: #222; text-align: center; color: transparent; }
+            QProgressBar { border: 1px solid #444; border-radius: 4px; background-color: #262626; text-align: center; color: transparent; }
             QProgressBar::chunk { background-color: #3b82f6; border-radius: 3px; }
             QProgressBar#BarCurrent::chunk { background-color: #10b981; }
             QPushButton#BtnStop {
@@ -49,11 +49,9 @@ class ProgressDialog(QDialog):
             QPushButton#BtnStop:pressed { background-color: #b91c1c; }
         """)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 12, 15, 12)
-        layout.setSpacing(6)
-        
-        # Задаем жесткий фиксированный размер как раньше, но больше ширину
-        self.setFixedSize(450, 135)
+        layout.setContentsMargins(25, 20, 25, 20)
+        layout.setSpacing(8)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         
         self.lbl_title = QLabel(message)
         self.lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -66,10 +64,12 @@ class ProgressDialog(QDialog):
         self.lbl_total.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_total.setWordWrap(True)
         self.lbl_total.setStyleSheet("color: #bbbbbb; font-size: 12px;")
+        self.lbl_total.hide()
         layout.addWidget(self.lbl_total)
         
         self.bar_total = QProgressBar()
-        self.bar_total.setFixedHeight(8)
+        self.bar_total.setRange(0, 0) # По умолчанию прерывистая (для сканирования)
+        self.bar_total.setFixedHeight(10)
         self.bar_total.setTextVisible(False)
         layout.addWidget(self.bar_total)
         
@@ -80,17 +80,19 @@ class ProgressDialog(QDialog):
         self.lbl_current.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_current.setWordWrap(True)
         self.lbl_current.setStyleSheet("font-weight: bold; color: #ffffff;")
+        self.lbl_current.hide()
         layout.addWidget(self.lbl_current)
         
         self.bar_current = QProgressBar()
         self.bar_current.setObjectName("BarCurrent")
-        self.bar_current.setFixedHeight(6)
+        self.bar_current.setFixedHeight(8)
         self.bar_current.setTextVisible(False)
+        self.bar_current.hide()
         layout.addWidget(self.bar_current)
 
         if show_cancel:
             layout.addSpacing(6)
-            self.btn_stop = QPushButton("Отмена" if show_cancel else "Cancel")
+            self.btn_stop = QPushButton(AppContext.tr("btn_stop") if hasattr(AppContext, 'tr') else "Cancel")
             self.btn_stop.setObjectName("BtnStop")
             self.btn_stop.setCursor(Qt.CursorShape.PointingHandCursor)
             self.btn_stop.clicked.connect(self._on_stop_clicked)
@@ -110,7 +112,22 @@ class ProgressDialog(QDialog):
         self.current_file_idx = 0
         self.overall_total_bytes = 0
         self.overall_bytes_moved = 0
-        if total_files <= 1:
+        
+        # Возвращаем барам детерминированный режим
+        self.bar_total.setRange(0, 100)
+        self.bar_current.setRange(0, 100)
+        
+        # По умолчанию заполняем на 1%, чтобы полоски не казались слишком "тонкими" пустыми
+        self.bar_total.setValue(1)
+        self.bar_current.setValue(1)
+        
+        self.bar_current.show()
+        self.lbl_current.show()
+        
+        if total_files > 1:
+            self.lbl_total.show()
+            self.bar_total.show()
+        else:
             self.lbl_total.hide()
             self.bar_total.hide()
             
@@ -143,17 +160,12 @@ class ProgressDialog(QDialog):
         self.overall_total_bytes = overall_total_bytes
         
         if total_bytes > 0:
-            self.bar_current.setRange(0, 100)
-            self.bar_current.setValue(int((current_bytes / total_bytes) * 100))
-        else:
-            self.bar_current.setRange(0, 0)
+            val = max(1, int((current_bytes / total_bytes) * 100))
+            self.bar_current.setValue(val)
             
-        if self.total_files > 1:
-            if overall_total_bytes > 0:
-                self.bar_total.setRange(0, 100)
-                self.bar_total.setValue(int((overall_bytes_moved / overall_total_bytes) * 100))
-            else:
-                self.bar_total.setRange(0, 0)
+        if self.total_files > 1 and overall_total_bytes > 0:
+            val = max(1, int((overall_bytes_moved / overall_total_bytes) * 100))
+            self.bar_total.setValue(val)
         
         # Обновляем текст с новыми байтами
         self.update_transfer_progress(current_bytes, total_bytes)

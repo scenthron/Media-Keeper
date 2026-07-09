@@ -728,6 +728,13 @@ class FileOpsMixin:
         
         # Блокируем watcher перед запуском потока
         self._ignore_watcher = True
+        
+        # Запоминаем список перемещаемых файлов, чтобы блокировать предпросмотр
+        from utils_io import strip_long_path_prefix
+        if not hasattr(self, 'locked_files'):
+            self.locked_files = set()
+        self.locked_files.update(os.path.normpath(strip_long_path_prefix(src)) for src, dst in pairs)
+        
         self.move_thread = MoveThread(pairs, start_time=start_time)
         self.move_thread.progress_update.connect(self.on_move_progress)
         self.move_thread.detailed_progress.connect(self.on_move_detailed_progress)
@@ -749,6 +756,10 @@ class FileOpsMixin:
         if start_time is None:
             start_time = time.perf_counter()
         logging.info(f"[PROFILER] on_move_finished запущен. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
+
+        # Очищаем заблокированные файлы
+        if hasattr(self, 'locked_files'):
+            self.locked_files.clear()
 
         try:
             if hasattr(self, 'move_progress_timer') and self.move_progress_timer and self.move_progress_timer.isActive():
@@ -1100,6 +1111,12 @@ class FileOpsMixin:
             # Одиночный режим просмотра
             if not self.current_file_path or not os.path.exists(self.current_file_path):
                 return
+            
+            from utils_io import strip_long_path_prefix
+            norm_path = os.path.normpath(strip_long_path_prefix(self.current_file_path))
+            if hasattr(self, 'locked_files') and norm_path in self.locked_files:
+                return
+
             selected = [self.current_file_path]
         else:
             # Режимы Grid/List (множественный выбор)

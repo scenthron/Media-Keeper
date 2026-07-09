@@ -17,8 +17,8 @@ class PlayerMixin:
     def show_current_file(self):
         if not self.files_queue:
             self.current_file_path = None
-            self.lbl_filename.setText(AppContext.tr("msg_empty"))
-            self.viewer.show_empty_state(AppContext.tr("viewer_empty_msg"))
+            self.lbl_filename.setText(AppContext.tr("msg_empty") if hasattr(AppContext, 'tr') else "Папка пуста")
+            self.viewer.show_empty_state(AppContext.tr("viewer_empty_msg") if hasattr(AppContext, 'tr') else "Нет файлов для отображения")
             self.media_player.stop()
             self.media_player.setSource(QUrl())
             return
@@ -29,6 +29,18 @@ class PlayerMixin:
         filename = self.files_queue[self.current_index]
         self.current_file_path = ensure_long_path(os.path.join(self.UNSORT_DIR, filename))
         
+        # Проверяем, не перемещается ли файл в данный момент
+        from utils_io import strip_long_path_prefix
+        norm_path = os.path.normpath(strip_long_path_prefix(self.current_file_path))
+        if hasattr(self, 'locked_files') and norm_path in self.locked_files:
+            self.lbl_filename.setText(f"{filename} (Перемещение...)")
+            self.viewer.show_empty_state("Файл перемещается, предпросмотр недоступен...")
+            self.media_player.stop()
+            self.media_player.setSource(QUrl())
+            if hasattr(self, 'video_controls'):
+                self.video_controls.hide()
+            return
+            
         # --- Update Filename Label with Metadata (Mandatory) ---
         size = 0
         try: 

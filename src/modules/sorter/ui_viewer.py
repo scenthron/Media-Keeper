@@ -1506,6 +1506,13 @@ class SorterBaseListView(QListWidget):
 
     def _start_hover_playback(self):
         if not self.current_hover_path or not os.path.exists(self.current_hover_path): return
+        
+        from utils_io import strip_long_path_prefix
+        norm_path = os.path.normpath(strip_long_path_prefix(self.current_hover_path))
+        main_app = self.get_main_app()
+        if main_app and hasattr(main_app.logic, 'locked_files') and norm_path in main_app.logic.locked_files:
+            return
+            
         ext = os.path.splitext(self.current_hover_path)[1].lower()
         
         # Check if multiple items are selected. If so, don't play anything.
@@ -1622,6 +1629,12 @@ class SorterBaseListView(QListWidget):
             return
             
         if not self.current_hover_path or not os.path.exists(self.current_hover_path):
+            return
+            
+        from utils_io import strip_long_path_prefix
+        norm_path = os.path.normpath(strip_long_path_prefix(self.current_hover_path))
+        main_app = self.get_main_app()
+        if main_app and hasattr(main_app.logic, 'locked_files') and norm_path in main_app.logic.locked_files:
             return
             
         ext = os.path.splitext(self.current_hover_path)[1].lower()

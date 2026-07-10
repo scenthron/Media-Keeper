@@ -834,6 +834,8 @@ class ZoomableGraphicsView(QGraphicsView):
         
         self.is_fullscreen_mode = False
         self.floating_controls = None
+        self.time_overlay = None
+        self.current_is_video = False
         
         self.hide_timer = QTimer(self)
         self.hide_timer.setInterval(3000)
@@ -886,6 +888,24 @@ class ZoomableGraphicsView(QGraphicsView):
             x = 20
             y = self.height() - h - 20
             self.floating_controls.setGeometry(x, y, w, h)
+        if self.time_overlay and self.time_overlay.isVisible():
+            padding = 10
+            # If floating controls are visible, we should place the overlay above them. 
+            # But wait, floating controls cover the entire width at the bottom. 
+            # We can place it at the bottom right.
+            controls_h = self.floating_controls.height() if (self.floating_controls and self.is_fullscreen_mode) else 0
+            
+            x = self.width() - self.time_overlay.width() - padding
+            y = self.height() - controls_h - self.time_overlay.height() - padding
+            
+            # If not in fullscreen, the controls are not floating, they are outside the view.
+            # So controls_h is 0 in that case, which is correct because the view doesn't include the external controls.
+            self.time_overlay.move(x, y)
+            self.time_overlay.raise_()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.update_overlay_positions()
 
     def set_fullscreen_mode(self, enabled, controls_widget=None):
         self.is_fullscreen_mode = enabled
@@ -910,6 +930,7 @@ class ZoomableGraphicsView(QGraphicsView):
     def _reset_hide_timer(self):
         if not self.is_fullscreen_mode: return
         if self.floating_controls: self.floating_controls.show()
+        if self.time_overlay and getattr(self, 'current_is_video', False): self.time_overlay.show()
         self.setCursor(Qt.CursorShape.ArrowCursor)
         self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
         self.hide_timer.start()
@@ -920,6 +941,7 @@ class ZoomableGraphicsView(QGraphicsView):
             self.hide_timer.start()
             return
         if self.floating_controls: self.floating_controls.hide()
+        if self.time_overlay: self.time_overlay.hide()
         self.setCursor(Qt.CursorShape.BlankCursor)
         self.viewport().setCursor(Qt.CursorShape.BlankCursor)
 
@@ -969,6 +991,8 @@ class ZoomableGraphicsView(QGraphicsView):
         super().mouseDoubleClickEvent(event)
 
     def set_image(self, pixmap):
+        self.current_is_video = False
+        if self.time_overlay: self.time_overlay.hide()
         self.clear_scene_content()
         self.pixmap_item.setPixmap(pixmap)
         self.pixmap_item.show()
@@ -977,6 +1001,8 @@ class ZoomableGraphicsView(QGraphicsView):
         self.reset_view()
 
     def set_animated(self, filepath):
+        self.current_is_video = False
+        if self.time_overlay: self.time_overlay.hide()
         self.clear_scene_content()
         self.current_movie = QMovie(filepath)
         self.current_movie.frameChanged.connect(lambda: self.pixmap_item.setPixmap(self.current_movie.currentPixmap()))
@@ -993,6 +1019,10 @@ class ZoomableGraphicsView(QGraphicsView):
                 self.reset_view()
 
     def set_video_mode(self):
+        self.current_is_video = True
+        if self.time_overlay: 
+            self.time_overlay.show()
+            self.time_overlay.set_time(0, 0)
         self.clear_scene_content()
         self.video_item.show()
         if self.video_item.nativeSize().isValid():
@@ -1002,6 +1032,8 @@ class ZoomableGraphicsView(QGraphicsView):
             self.reset_view()
 
     def set_audio_mode(self, text):
+        self.current_is_video = False
+        if self.time_overlay: self.time_overlay.hide()
         self.clear_scene_content()
         
         # Получаем имя трека без расширения
@@ -1024,6 +1056,8 @@ class ZoomableGraphicsView(QGraphicsView):
         self.reset_view()
 
     def show_empty_state(self, message):
+        self.current_is_video = False
+        if self.time_overlay: self.time_overlay.hide()
         self.clear_scene_content()
         self.text_item.setPlainText(message)
         self.text_item.show()
@@ -1510,7 +1544,7 @@ class SorterBaseListView(QListWidget):
         from utils_io import strip_long_path_prefix
         norm_path = os.path.normpath(strip_long_path_prefix(self.current_hover_path))
         main_app = self.get_main_app()
-        if main_app and hasattr(main_app.logic, 'locked_files') and norm_path in main_app.logic.locked_files:
+        if main_app and hasattr(main_app, 'locked_files') and norm_path in main_app.locked_files:
             return
             
         ext = os.path.splitext(self.current_hover_path)[1].lower()
@@ -1634,7 +1668,7 @@ class SorterBaseListView(QListWidget):
         from utils_io import strip_long_path_prefix
         norm_path = os.path.normpath(strip_long_path_prefix(self.current_hover_path))
         main_app = self.get_main_app()
-        if main_app and hasattr(main_app.logic, 'locked_files') and norm_path in main_app.logic.locked_files:
+        if main_app and hasattr(main_app, 'locked_files') and norm_path in main_app.locked_files:
             return
             
         ext = os.path.splitext(self.current_hover_path)[1].lower()

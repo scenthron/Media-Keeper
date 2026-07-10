@@ -15,7 +15,7 @@ from PyQt6.QtMultimediaWidgets import QGraphicsVideoItem
 
 from config import AppContext, VIEWER_DESIGN
 from utils_common import format_size
-from modules.sorter.ui_player import VideoPlayerControls 
+from modules.sorter.ui_player import VideoPlayerControls, TimeOverlayWidget
 from modules.cleaner.ui_view import ClickableGraphicsView
 
 class CleanerPreviewWidget(QWidget):
@@ -135,8 +135,14 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.loop_toggled.connect(self._on_loop_toggled)
         self.video_controls.apply_all_toggled.connect(self._on_apply_all_toggled)
         
+        # Time Overlay
+        self.time_overlay = TimeOverlayWidget(self.media_container)
+        self.time_overlay.hide()
+
         self.player.positionChanged.connect(self.video_controls.update_position)
+        self.player.positionChanged.connect(self._update_overlay_time)
         self.player.durationChanged.connect(self.video_controls.update_duration)
+        self.player.durationChanged.connect(self._update_overlay_duration)
         self.player.playbackStateChanged.connect(self._on_player_state_changed)
         self.player.mediaStatusChanged.connect(self._on_media_status_changed)
         self.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
@@ -174,6 +180,46 @@ class CleanerPreviewWidget(QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         QTimer.singleShot(10, self.reset_view)
+        
+        # Position the overlay in bottom right corner of media_container
+        if hasattr(self, 'time_overlay') and self.time_overlay.isVisible():
+            padding = 10
+            controls_h = self.video_controls.height() if self.video_controls.isVisible() else 0
+            x = self.media_container.width() - self.time_overlay.width() - padding
+            y = self.media_container.height() - controls_h - self.time_overlay.height() - padding
+            self.time_overlay.move(x, y)
+
+    def _update_overlay_time(self, pos):
+        dur = self.player.duration()
+        self.time_overlay.set_time(pos, dur)
+
+    def _update_overlay_duration(self, dur):
+        pos = self.player.position()
+        self.time_overlay.set_time(pos, dur)
+        # Position may need to be updated since size changed
+        self.resizeEvent(None)
+        
+        # Update meta table with duration if not present
+        dur_sec = dur // 1000
+        if dur_sec > 0:
+            dur_str = f"{dur_sec // 60:02d}:{dur_sec % 60:02d}"
+            # Check if duration row exists
+            found = False
+            for row in range(self.meta_table.rowCount()):
+                if self.meta_table.item(row, 0) and self.meta_table.item(row, 0).text() == "Продолжительность:":
+                    self.meta_table.item(row, 1).setText(dur_str)
+                    found = True
+                    break
+            if not found:
+                row = self.meta_table.rowCount()
+                self.meta_table.insertRow(row)
+                key_item = QTableWidgetItem("Продолжительность:")
+                key_item.setForeground(QColor("#888"))
+                key_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+                val_item = QTableWidgetItem(dur_str)
+                val_item.setForeground(QColor("#fff"))
+                self.meta_table.setItem(row, 0, key_item)
+                self.meta_table.setItem(row, 1, val_item)
 
     def show_empty(self, msg):
         self.stop_playback(True)
@@ -183,6 +229,7 @@ class CleanerPreviewWidget(QWidget):
         self.pixmap_item.hide()
         self.video_item.hide()
         self.video_controls.hide()
+        self.time_overlay.hide()
         
         # Reset text item styling to default hint style
         self.text_item.setDefaultTextColor(QColor("#555555"))
@@ -229,12 +276,13 @@ class CleanerPreviewWidget(QWidget):
         self.update_meta(path)
         if ext in ['.jpg', '.jpeg', '.png', '.bmp']: self.setup_static_image(path)
         elif ext in ['.gif', '.webp']: self.setup_animated(path)
-        elif ext in ['.mp4', '.avi', '.mkv', '.mov', '.webm', '.mp3', '.wav', '.ogg', '.wmv', '.flv', '.flac', '.m4a', '.wma', '.aac', '.mpg', '.mpeg', '.m4v']: self.setup_video(path)
+        elif ext in ['.mp4', '.avi', '.mkv', '.mov', '.webm', '.mp3', '.wav', '.ogg', '.wmv', '.flac', '.m4a', '.wma', '.aac', '.mpg', '.mpeg', '.m4v']: self.setup_video(path)
         else:
             self.current_media_type = None
             self.video_item.hide()
             self.pixmap_item.hide()
             self.video_controls.hide()
+            self.time_overlay.hide()
             self.text_item.setPlainText(AppContext.tr("cln_prev_no_preview"))
             self.text_item.show()
             self.reset_view()
@@ -242,6 +290,7 @@ class CleanerPreviewWidget(QWidget):
     def setup_static_image(self, path):
         self.current_media_type = 'image'
         self.video_controls.hide()
+        self.time_overlay.hide()
         self.video_item.hide()
         self.text_item.hide()
         pix = QPixmap(path)
@@ -256,8 +305,9 @@ class CleanerPreviewWidget(QWidget):
 
     def setup_animated(self, path):
         self.current_media_type = 'movie'
-        self.video_item.hide()
         self.video_controls.hide()
+        self.time_overlay.hide()
+        self.video_item.hide()
         self.text_item.hide()
         self.movie = QMovie(path)
         self.movie.setCacheMode(QMovie.CacheMode.CacheAll)
@@ -281,6 +331,11 @@ class CleanerPreviewWidget(QWidget):
     def setup_video(self, path):
         self.current_media_type = 'video'
         self.pixmap_item.hide()
+        self.text_item.hide()
+        
+        self.time_overlay.show()
+        self.time_overlay.set_time(0, 0)
+        self.resizeEvent(None)
         
         ext = os.path.splitext(path)[1].lower()
         is_audio = ext in ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma', '.aac']

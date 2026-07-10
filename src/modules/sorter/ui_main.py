@@ -13,7 +13,7 @@ from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 from config import APP_DESIGN, AppContext
 from .ui_viewer import SorterViewerArea
-from .ui_player import VideoPlayerControls
+from .ui_player import VideoPlayerControls, TimeOverlayWidget
 from .ui_sidebar_base import DragContainer, DropZoneWidget, SIDEBAR_DESIGN
 from .ui_sidebar_leaf import LeafNodeWidget
 from .ui_sidebar_category import CategoryWidget
@@ -142,6 +142,14 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.media_player.positionChanged.connect(self.video_controls.update_position)
         self.media_player.durationChanged.connect(self.video_controls.update_duration)
         self.media_player.playbackStateChanged.connect(self._on_playback_state_changed)
+        
+        # Setup time overlay for main viewer
+        self.time_overlay = TimeOverlayWidget(self.viewer.single_view)
+        self.viewer.single_view.time_overlay = self.time_overlay
+        self.time_overlay.hide()
+        
+        self.media_player.positionChanged.connect(self._update_overlay_time)
+        self.media_player.durationChanged.connect(self._update_overlay_duration)
         
         self.video_controls.hide()
         self.left_layout.addWidget(self.video_controls)
@@ -777,6 +785,23 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.update_watcher_paths()
         
         self.btn_back.hide()
+
+    def _fit_video_size_changed(self, size):
+        if hasattr(self, 'viewer') and hasattr(self.viewer, 'single_view'):
+            # Force resize event to recalculate overlay position when video size changes
+            self.viewer.single_view.resizeEvent(None)
+            
+    def _update_overlay_time(self, pos):
+        if hasattr(self, 'media_player') and hasattr(self, 'time_overlay'):
+            dur = self.media_player.duration()
+            self.time_overlay.set_time(pos, dur)
+
+    def _update_overlay_duration(self, dur):
+        if hasattr(self, 'media_player') and hasattr(self, 'time_overlay'):
+            pos = self.media_player.position()
+            self.time_overlay.set_time(pos, dur)
+            if hasattr(self, 'viewer') and hasattr(self.viewer, 'single_view'):
+                self.viewer.single_view.resizeEvent(None)
 
     def on_nesting_changed(self, index):
         """Handle nesting level change from combobox."""

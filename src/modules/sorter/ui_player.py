@@ -8,6 +8,38 @@ from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QRectF, QPointF, QSizeF, QSize,
 from PyQt6.QtGui import QCursor, QIcon
 from config import AppContext, VIEWER_DESIGN
 
+class TimeOverlayWidget(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setStyleSheet("""
+            QLabel {
+                background-color: rgba(0, 0, 0, 0.6);
+                color: white;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-weight: bold;
+                font-size: 10px;
+                font-family: 'Segoe UI', sans-serif;
+            }
+        """)
+        self.setText("00:00 / 00:00")
+        self.hide()
+
+    def set_time(self, position: int, duration: int):
+        pos_sec = position // 1000
+        dur_sec = duration // 1000
+        
+        pos_str = f"{pos_sec // 60:02d}:{pos_sec % 60:02d}"
+        if duration > 0:
+            dur_str = f"{dur_sec // 60:02d}:{dur_sec % 60:02d}"
+        else:
+            dur_str = "00:00"
+            
+        self.setText(f"{pos_str} / {dur_str}")
+        self.adjustSize()
+
+
 class ClickableSlider(QSlider):
     seek_requested = pyqtSignal(int)
     seek_moved = pyqtSignal(int)

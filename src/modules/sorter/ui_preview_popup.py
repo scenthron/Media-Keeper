@@ -10,7 +10,7 @@ from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 from typing import Any
 from config import AppContext, VIEWER_DESIGN
-from .ui_player import VideoPlayerControls
+from modules.sorter.ui_player import VideoPlayerControls, ClickableSlider, TimeOverlayWidget
 from utils_io import ensure_long_path, strip_long_path_prefix
 
 class PopupImageViewer(QGraphicsView):
@@ -598,7 +598,9 @@ class LargePreviewPopup(QDialog):
             self._install_key_event_filters(self.controls)
             
             self.media_player.positionChanged.connect(self.controls.update_position)
+            self.media_player.positionChanged.connect(self._update_overlay_time)
             self.media_player.durationChanged.connect(self.controls.update_duration)
+            self.media_player.durationChanged.connect(self._update_overlay_duration)
             self.media_player.playbackStateChanged.connect(self._on_playback_state_changed)
             
             self.controls.seek_requested.connect(self.media_player.setPosition)
@@ -613,6 +615,9 @@ class LargePreviewPopup(QDialog):
             self.controls.apply_all_toggled.connect(self.on_apply_all_toggled)
             
             self.layout.addWidget(self.controls)
+            
+            self.time_overlay = TimeOverlayWidget(self)
+            self.time_overlay.show()
             
             if apply_all:
                 speed = getattr(self.main_app, 'session_video_speed', 1.0)
@@ -653,7 +658,9 @@ class LargePreviewPopup(QDialog):
             self._install_key_event_filters(self.controls)
             
             self.media_player.positionChanged.connect(self.controls.update_position)
+            self.media_player.positionChanged.connect(self._update_overlay_time)
             self.media_player.durationChanged.connect(self.controls.update_duration)
+            self.media_player.durationChanged.connect(self._update_overlay_duration)
             self.media_player.playbackStateChanged.connect(self._on_playback_state_changed)
             
             self.controls.seek_requested.connect(self.media_player.setPosition)
@@ -666,6 +673,9 @@ class LargePreviewPopup(QDialog):
             self.controls.apply_all_toggled.connect(self.on_apply_all_toggled)
             
             self.layout.addWidget(self.controls)
+            
+            self.time_overlay = TimeOverlayWidget(self)
+            self.time_overlay.show()
             
             self.controls.set_popup_values(1.0, loop, False, is_video=False)
             
@@ -1210,7 +1220,26 @@ class LargePreviewPopup(QDialog):
             self.bottom_overlay.setGeometry(6, h - 36, 100, 30)
             self.bottom_overlay.raise_()
             
+        if hasattr(self, 'time_overlay') and self.time_overlay and self.time_overlay.isVisible():
+            padding = 10
+            controls_h = self.controls.height() if hasattr(self, 'controls') and self.controls.isVisible() else 0
+            x = w - self.time_overlay.width() - padding
+            y = h - controls_h - self.time_overlay.height() - padding
+            self.time_overlay.move(x, y)
+            self.time_overlay.raise_()
+            
         self._update_gif_size()
+
+    def _update_overlay_time(self, pos):
+        if hasattr(self, 'media_player') and hasattr(self, 'time_overlay'):
+            dur = self.media_player.duration()
+            self.time_overlay.set_time(pos, dur)
+
+    def _update_overlay_duration(self, dur):
+        if hasattr(self, 'media_player') and hasattr(self, 'time_overlay'):
+            pos = self.media_player.position()
+            self.time_overlay.set_time(pos, dur)
+            self.resizeEvent(None)
 
     def leaveEvent(self, event):
         super().leaveEvent(event)

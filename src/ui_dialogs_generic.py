@@ -704,17 +704,18 @@ class FileDeletionConfirmDialog(QDialog):
         scroll_layout.setContentsMargins(10, 8, 10, 8)
         scroll_layout.setSpacing(4)
         
-        for path in file_paths:
-            fn = os.path.basename(path)
-            size_str_file = ""
-            try:
-                if os.path.exists(path):
-                    size_bytes = os.path.getsize(path)
-                    size_str_file = f" ({format_size(size_bytes)})"
-            except:
-                pass
+        display_limit = 50
+        for i, path in enumerate(file_paths):
+            if i >= display_limit:
+                remaining = len(file_paths) - display_limit
+                flbl = QLabel(AppContext.tr("dlg_confirm_del_more").format(remaining) if hasattr(AppContext, 'tr') and AppContext.tr("dlg_confirm_del_more") != "dlg_confirm_del_more" else f"... и еще {remaining} файлов")
+                flbl.setStyleSheet("font-size: 11px; font-style: italic; color: #6b7280; background: transparent; border: none;")
+                scroll_layout.addWidget(flbl)
+                break
                 
-            flbl = QLabel(f"{fn}{size_str_file}")
+            fn = os.path.basename(path)
+            # Skip individual file size calculation on disk to prevent UI freeze
+            flbl = QLabel(fn)
             flbl.setStyleSheet("font-size: 11px; color: #9ca3af; background: transparent; border: none;")
             flbl.setWordWrap(True)
             scroll_layout.addWidget(flbl)

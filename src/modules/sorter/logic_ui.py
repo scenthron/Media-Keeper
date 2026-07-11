@@ -655,6 +655,13 @@ class UiSetupMixin:
 
         dlg = PathSettingsDialog(self.config, self)
         if dlg.exec():
+            # Check if paths or critical scan settings changed
+            old_unsort = self.config.get("path_unsort", "")
+            old_sort = self.config.get("path_sort", "")
+            old_todel = self.config.get("path_todel", "")
+            old_recursive = self.config.get("scan_subfolders", False)
+            old_depth = self.config.get("max_nesting_depth", 5)
+
             new_data = dlg.get_new_config_data()
             self.config.update(new_data)
             
@@ -665,8 +672,15 @@ class UiSetupMixin:
             ConfigManager.save(self.config)
 
             self.update_paths_from_config()
-            self.manual_full_refresh(reset_position=True)
             self.update_watcher_paths()
+
+            # Trigger refresh only if source/target paths or scan options changed
+            if (new_data.get("path_unsort") != old_unsort or
+                new_data.get("path_sort") != old_sort or
+                new_data.get("path_todel") != old_todel or
+                new_data.get("scan_subfolders") != old_recursive or
+                new_data.get("max_nesting_depth") != old_depth):
+                self.manual_full_refresh(reset_position=True)
             
             # 3. Обновляем тексты интерфейса
             if self.window() and hasattr(self.window(), 'update_ui_text'):

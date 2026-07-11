@@ -179,12 +179,23 @@ class HotkeyRegistry:
         mode_idx: 0=single, 1=grid, 2=list
         """
         self._current_mode = mode_idx
+        
+        fast_key = self.get_effective_key("fast_move_to_target")
+        play_key = self.get_effective_key("toggle_playback")
+        conflict = (fast_key == play_key and fast_key)
+
         for action_id, sc in self._shortcuts.items():
             action = self._actions[action_id]
+            is_enabled = False
             if action.enabled_in_modes is None:
-                sc.setEnabled(True)
+                is_enabled = True
             else:
-                sc.setEnabled(mode_idx in action.enabled_in_modes)
+                is_enabled = mode_idx in action.enabled_in_modes
+                
+            if mode_idx == 0 and conflict and action_id == "toggle_playback":
+                is_enabled = False
+
+            sc.setEnabled(is_enabled)
 
     # ------------------------------------------------------------------
     # Активация / деактивация всего реестра (для переключения модулей)
@@ -407,7 +418,7 @@ _SORTER_ACTIONS: list[HotkeyAction] = [
         callback_name="fast_move_to_target",
         group="file",
         context=_W,
-        enabled_in_modes={1, 2},
+        enabled_in_modes=None,
     ),
 ]
 
@@ -497,6 +508,12 @@ class SorterHotkeysMixin:
     def fast_move_to_target(self) -> None:
         """Перемещает выделенные файлы в папку быстрой цели (Fast Move)."""
         if not getattr(self, 'quick_target_path', None) or not os.path.exists(self.quick_target_path):
+            if hasattr(self, '_hotkey_registry') and getattr(self, 'current_view_mode', None) == 0:
+                fast_key = self._hotkey_registry.get_effective_key("fast_move_to_target")
+                play_key = self._hotkey_registry.get_effective_key("toggle_playback")
+                if fast_key == play_key:
+                    self.toggle_playback()
+                    return
             logging.warning("Fast move triggered, but quick_target_path is not set or invalid.")
             return
 

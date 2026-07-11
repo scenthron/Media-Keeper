@@ -176,7 +176,11 @@ class HotkeyCaptureButton(QPushButton):
             return
 
         if key == Qt.Key.Key_Escape:
-            self.cancel_capture()
+            self.current_key = ""
+            self.capturing = False
+            self.releaseKeyboard()
+            self.update_button_text()
+            self.hotkey_captured.emit("")
             return
 
         modifiers = event.modifiers()

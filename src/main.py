@@ -12,13 +12,29 @@ if hasattr(sys, '__interactivehook__'):
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QStackedWidget, QPushButton, QStyle
 )
-from PyQt6.QtCore import Qt, QPropertyAnimation, QRect, QParallelAnimationGroup, QPoint, QEvent, QSize
+from PyQt6.QtCore import Qt, QPropertyAnimation, QRect, QParallelAnimationGroup, QPoint, QEvent, QSize, QtMsgType, qInstallMessageHandler
 from PyQt6.QtGui import QIcon, QAction
 import logging
 from logic_logger import setup_logging, shutdown_logging
 
 os.environ["QT_LOGGING_RULES"] = "*.debug=false;qt.multimedia.*=false"
 os.environ["AV_LOG_LEVEL"] = "quiet"
+
+def qt_message_handler(mode, context, message):
+    if "swscaler" in message or "deprecated pixel format used" in message or "Could not update timestamps for skipped samples" in message:
+        return
+    if mode == QtMsgType.QtInfoMsg:
+        logging.info(message)
+    elif mode == QtMsgType.QtWarningMsg:
+        logging.warning(message)
+    elif mode == QtMsgType.QtCriticalMsg:
+        logging.error(message)
+    elif mode == QtMsgType.QtFatalMsg:
+        logging.critical(message)
+    else:
+        logging.debug(message)
+
+qInstallMessageHandler(qt_message_handler)
 
 # --- Safe QFileDialog Monkey Patch for Windows native dialog stability ---
 from PyQt6.QtWidgets import QFileDialog

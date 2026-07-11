@@ -727,8 +727,8 @@ class UiSetupMixin:
         """Opens filter dialog to select file types for display."""
         logging.info("Opening filter dialog.")
         
-        # Scan current UNSORT_DIR for available extensions
-        found_exts = set()
+        # Scan current UNSORT_DIR for available extensions and their counts
+        found_exts = {}
         unsort_dir = getattr(self, 'UNSORT_DIR', None)
         if unsort_dir:
             long_unsort = ensure_long_path(unsort_dir)
@@ -738,12 +738,12 @@ class UiSetupMixin:
                     for root, _, files in os.walk(long_unsort):
                         for f in files:
                             ext = os.path.splitext(f)[1].lower()
-                            if ext: found_exts.add(ext)
+                            if ext: found_exts[ext] = found_exts.get(ext, 0) + 1
                 else:
                     for f in os.listdir(long_unsort):
                         if os.path.isfile(os.path.join(long_unsort, f)):
                             ext = os.path.splitext(f)[1].lower()
-                            if ext: found_exts.add(ext)
+                            if ext: found_exts[ext] = found_exts.get(ext, 0) + 1
         
         # Get current selections from config
         raw_filter = self.config.get("filter_extensions", "")
@@ -759,7 +759,7 @@ class UiSetupMixin:
         
         dlg = SorterFilterDialog(
             unsort_dir=unsort_dir,
-            found_extensions=list(found_exts),
+            found_extensions=found_exts,
             current_selection=current_exts,
             current_mode=current_mode,
             recursive_state=recursive_state,

@@ -30,7 +30,8 @@ class SorterFilterDialog(QDialog):
         """)
         
         self.unsort_dir = unsort_dir
-        self.found_extensions = set(found_extensions)
+        self.extension_counts = found_extensions if isinstance(found_extensions, dict) else {k: 0 for k in found_extensions}
+        self.found_extensions = set(self.extension_counts.keys())
         self.selected_exts = set(current_selection)
         self.mode = current_mode
         self.min_size = min_size
@@ -302,7 +303,9 @@ class SorterFilterDialog(QDialog):
             flow = FlowLayout(flow_container, margin=0, spacing=8)
             
             for ext in items:
-                btn = QPushButton(ext)
+                count = self.extension_counts.get(ext, 0)
+                btn_text = f"{ext} ({count})" if count > 0 else ext
+                btn = QPushButton(btn_text)
                 btn.setCheckable(True)
                 btn.setCursor(Qt.CursorShape.PointingHandCursor)
                 btn.clicked.connect(lambda _, e=ext: self.toggle_ext(e))
@@ -357,7 +360,9 @@ class SorterFilterDialog(QDialog):
             flow = FlowLayout(flow_container, margin=0, spacing=8)
             
             for ext in sorted(uncategorized):
-                btn = QPushButton(ext)
+                count = self.extension_counts.get(ext, 0)
+                btn_text = f"{ext} ({count})" if count > 0 else ext
+                btn = QPushButton(btn_text)
                 btn.setCheckable(True)
                 btn.setCursor(Qt.CursorShape.PointingHandCursor)
                 btn.clicked.connect(lambda _, e=ext: self.toggle_ext(e))

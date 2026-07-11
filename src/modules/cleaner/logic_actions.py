@@ -504,10 +504,20 @@ class ActionMixin:
         self.deleter.start()
 
     def on_delete_finished(self, deleted_paths: list[str], errors: list[tuple[str, str]]) -> None:
+        self.overlay.start_loading_mode(0)
+        self.overlay.lbl_title.setText("Обновление списка (Очистка кэша)...")
+        QCoreApplication.processEvents()
+
         if deleted_paths:
             from logic_cache import DirCache
-            for path in deleted_paths:
-                DirCache.inst().invalidate_with_parents(os.path.dirname(path))
+            unique_dirs = {os.path.dirname(p) for p in deleted_paths}
+            for d in unique_dirs:
+                DirCache.inst().invalidate_with_parents(d)
+
+        self.overlay.lbl_title.setText("Обновление списка (База данных)...")
+        QCoreApplication.processEvents()
+
+                self.session_db.mark_files_deleted(deleted_paths)
 
         if not deleted_paths:
             self.overlay.hide()
@@ -515,8 +525,7 @@ class ActionMixin:
                 QMessageBox.critical(self, AppContext.tr("err_title"), f"Не удалось удалить файлы:\n{errors[0][1]}")
             return
 
-        self.overlay.start_loading_mode(0)
-        self.overlay.lbl_title.setText("Обновление списка...")
+        self.overlay.lbl_title.setText("Обновление списка (Память)...")
         QCoreApplication.processEvents()
 
         try:
@@ -525,7 +534,6 @@ class ActionMixin:
             if hasattr(self, 'page_ai') and self.current_tab == 2:
                 self.page_ai.remove_processed_files(deleted_paths)
             elif self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
-                self.session_db.mark_files_deleted(deleted_paths)
                 moved_ids: set[int] = set()
                 for files in self.virtual_model._group_files_cache.values():
                     for f in files:
@@ -557,12 +565,14 @@ class ActionMixin:
                     for gid in groups_to_remove:
                         self.virtual_model._group_files_cache.pop(gid, None)
 
+                self.overlay.lbl_title.setText("Обновление списка (Сортировка)...")
+                QCoreApplication.processEvents()
+
                 self.virtual_model.beginResetModel()
                 self.virtual_model.rebuild_flat_items()
                 self.virtual_model._flat_items = list(self.virtual_model._source_flat_items)
                 self.virtual_model.endResetModel()
             else:
-                self.session_db.mark_files_deleted(deleted_paths)
                 self.cleanup_tree_after_move()
         finally:
             self.overlay.hide()
@@ -583,7 +593,13 @@ class ActionMixin:
 
     def on_move_finished(self, moved: list[str], errors: list[Any], affected_groups: Any = None) -> None:
         self.overlay.start_loading_mode(0)
-        self.overlay.lbl_title.setText("Обновление списка...")
+        self.overlay.lbl_title.setText("Обновление списка (База данных)...")
+        QCoreApplication.processEvents()
+
+        if moved:
+            self.session_db.mark_files_deleted(moved)
+
+        self.overlay.lbl_title.setText("Обновление списка (Память)...")
         QCoreApplication.processEvents()
 
         try:
@@ -592,7 +608,6 @@ class ActionMixin:
             if hasattr(self, 'page_ai') and self.current_tab == 2:
                 self.page_ai.remove_processed_files(moved)
             elif self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
-                self.session_db.mark_files_deleted(moved)
                 # Remove moved files from in-memory state
                 # Map paths to file_ids using group_files_cache
                 moved_ids: set[int] = set()
@@ -640,9 +655,12 @@ class ActionMixin:
             self.overlay.hide()
 
         if moved:
+            self.overlay.lbl_title.setText("Обновление списка (Очистка кэша)...")
+            QCoreApplication.processEvents()
             from logic_cache import DirCache
-            for path in moved:
-                DirCache.inst().invalidate_with_parents(os.path.dirname(path))
+            unique_dirs = {os.path.dirname(p) for p in moved}
+            for d in unique_dirs:
+                DirCache.inst().invalidate_with_parents(d)
             dest_root = self.action_bar.drop_zone.get_path()
             if dest_root:
                 DirCache.inst().invalidate_with_parents(dest_root)

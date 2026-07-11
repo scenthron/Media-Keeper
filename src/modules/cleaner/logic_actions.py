@@ -517,7 +517,8 @@ class ActionMixin:
         self.overlay.lbl_title.setText("Обновление списка (База данных)...")
         QCoreApplication.processEvents()
 
-                self.session_db.mark_files_deleted(deleted_paths)
+        if deleted_paths:
+            self.session_db.mark_files_deleted(deleted_paths)
 
         if not deleted_paths:
             self.overlay.hide()

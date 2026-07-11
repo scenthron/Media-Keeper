@@ -319,17 +319,7 @@ class PathSettingsDialog(QDialog):
         """)
         l.addWidget(self.chk_collapse_groups, 3, 0, 1, 3)
 
-        # Чекбокс: Быстрый просмотр с зажатым Ctrl
-        self.chk_ctrl_preview = QCheckBox("Открывать быстрый просмотр при выделении с Ctrl" if is_ru else "Open quick preview on Ctrl+Click selection")
-        self.chk_ctrl_preview.setChecked(self.config.get("ctrl_quick_preview", False))
-        self.chk_ctrl_preview.setStyleSheet("""
-            QCheckBox { color: white; font-size: 13px; font-weight: bold; margin-top: 5px; }
-            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
-            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
-        """)
-        l.addWidget(self.chk_ctrl_preview, 4, 0, 1, 3)
-
-        l.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 5, 0, 1, 3)
+        l.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 4, 0, 1, 3)
 
         # Подсказка о смене языка
         lbl_lang_hint = QLabel(
@@ -596,6 +586,5 @@ class PathSettingsDialog(QDialog):
             "path_unsort": self.config.get("path_unsort", ""),
             "path_sort": self.e_sort.text(),
             "path_todel": self.e_todel.text(),
-            "auto_collapse_groups": self.chk_collapse_groups.isChecked(),
-            "ctrl_quick_preview": self.chk_ctrl_preview.isChecked()
+            "auto_collapse_groups": self.chk_collapse_groups.isChecked()
         }

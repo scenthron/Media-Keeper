@@ -1514,14 +1514,6 @@ class SorterBaseListView(QListWidget):
             self.current_hover_item = item
             self.current_hover_path = ensure_long_path(p)
             
-            if QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier:
-                viewer_area = self.get_viewer_area()
-                main_app = viewer_area.get_main_app() if viewer_area and hasattr(viewer_area, 'get_main_app') else None
-                config = main_app.config if main_app and hasattr(main_app, 'config') else getattr(self, 'config', {})
-                if config.get("ctrl_quick_preview", False):
-                    if not item.isSelected():
-                        item.setSelected(True)
-            
             # Запускаем предохранитель дребезга на 100 мс
             self.debounce_timer.start(100)
 

@@ -34,7 +34,7 @@ class ProgressDialog(QDialog):
     def __init__(self, message, parent=None, show_cancel=False):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
-        self.setMinimumWidth(480)
+        self.setFixedSize(520, 200)
         self.setStyleSheet("""
             QDialog { background-color: #333333; border: 1px solid #555; border-radius: 8px; }
             QLabel { color: #eeeeee; font-size: 13px; }
@@ -51,7 +51,6 @@ class ProgressDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(25, 20, 25, 20)
         layout.setSpacing(8)
-        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         
         self.lbl_title = QLabel(message)
         self.lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -608,7 +607,7 @@ class FolderStatsDialog(QDialog):
 
 
 class FileDeletionConfirmDialog(QDialog):
-    def __init__(self, file_paths, parent=None):
+    def __init__(self, file_paths, parent=None, total_size_bytes=None):
         super().__init__(parent)
         self.setWindowTitle(AppContext.tr("dlg_confirm_del_title"))
         self.setStyleSheet("QDialog { background-color: #2b2b2b; color: white; }")
@@ -630,13 +629,21 @@ class FileDeletionConfirmDialog(QDialog):
         
         # Calculate total size of all files
         total_size = 0
-        for path in file_paths:
-            try:
-                if os.path.exists(path):
-                    total_size += os.path.getsize(path)
-            except:
-                pass
-        size_str = format_size(total_size)
+        if total_size_bytes is not None:
+            total_size = total_size_bytes
+        elif len(file_paths) <= 100:
+            for path in file_paths:
+                try:
+                    if os.path.exists(path):
+                        total_size += os.path.getsize(path)
+                except:
+                    pass
+        
+        if total_size > 0:
+            size_str = format_size(total_size)
+        else:
+            size_str = "?" if len(file_paths) > 100 else format_size(0)
+
         
         title_text = AppContext.tr("dlg_confirm_del_question").format(len(file_paths), size_str)
         title_lbl = QLabel(title_text)

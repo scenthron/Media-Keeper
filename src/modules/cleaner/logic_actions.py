@@ -458,24 +458,29 @@ class ActionMixin:
             return
 
         file_paths: list[str] = []
+        total_size_bytes = 0
 
         if hasattr(self, 'current_tab') and self.current_tab == 2:
             file_paths = self.page_ai.get_selected_files_paths()
+            total_size_bytes = self.page_ai.get_selected_files_size() if hasattr(self.page_ai, 'get_selected_files_size') else None
         elif self.current_view_mode == 0:
             if hasattr(self, 'in_memory_selection'):
                 raw_items = self.in_memory_selection.get_marked_items()
                 file_paths = [f['path'] for f in raw_items]
+                total_size_bytes = sum(f.get('size', f.get('file_size', 0)) for f in raw_items)
             else:
                 raw_items = self.session_db.get_global_marked_files()
                 file_paths = [f['src'] for f in raw_items]
+                total_size_bytes = sum(f.get('size', 0) for f in raw_items)
         elif self.current_view_mode == 1:
             raw_items = self.session_db.get_global_marked_zero_files()
             file_paths = [f['src'] for f in raw_items]
+            total_size_bytes = 0
 
         if not file_paths:
             return
 
-        confirm_dlg = FileDeletionConfirmDialog(file_paths, self)
+        confirm_dlg = FileDeletionConfirmDialog(file_paths, self, total_size_bytes=total_size_bytes)
         if confirm_dlg.exec() != QDialog.DialogCode.Accepted:
             return
 

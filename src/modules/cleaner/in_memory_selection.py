@@ -165,7 +165,7 @@ class InMemorySelection:
         for f in files:
             self._marked.discard(f['id'])
 
-    def apply_smart_filter(self, mode: str) -> None:
+    def apply_smart_filter(self, mode: str, target_group_id: int = None) -> None:
         """Apply one of the named smart-select strategies (cumulative).
 
         Each call preserves already-marked files and marks additional ones
@@ -180,12 +180,16 @@ class InMemorySelection:
         - keep_oldest:   keep the file with the smallest mtime, mark the rest
         - keep_shallow:  keep the file with the shallowest folder depth, mark the rest
         - keep_deep:     keep the file with the deepest folder depth, mark the rest
+        - keep_largest:  keep the file with the largest size, mark the rest
+        - keep_smallest: keep the file with the smallest size, mark the rest
         - protected_dupes: mark protected files that are duplicated outside protected dirs
         - reference_dupes: mark reference files that are duplicated outside reference dirs
         """
         import os
 
         for gid, files in self._group_files.items():
+            if target_group_id is not None and gid != target_group_id:
+                continue
             if not self._can_mark_more(gid):
                 continue
 
@@ -246,6 +250,10 @@ class InMemorySelection:
             elif mode == 'keep_deep':
                 keeper_id = max(candidates,
                                 key=lambda f: f['path'].count(os.sep))['id']
+            elif mode == 'keep_largest':
+                keeper_id = max(candidates, key=lambda f: f.get('size', 0))['id']
+            elif mode == 'keep_smallest':
+                keeper_id = min(candidates, key=lambda f: f.get('size', 0))['id']
             else:
                 continue
 

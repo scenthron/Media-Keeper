@@ -7,7 +7,7 @@
   "cln_btn_clear": "Очистить",
   "cln_algo_title": "2. АЛГОРИТМ И ФИЛЬТРЫ",
   "cln_chk_cache": "Использовать Кэш (Ускорение)",
-  "cln_lbl_method_info": "🛡️ <b>Метод поиска: Smart Hash</b><br><span style='color:#999;'>1. Сравнение размеров<br>2. Кэш базы данных<br>3. Partial Hash (Начало+Конец)<br>4. Full Hash (Мелкие) / Sparse Hash (Крупные)</span>",
+  "cln_lbl_method_info": "🛡️ <b>Метод поиска: Smart Hash</b><br><span style='color:#999;'>1. Ранний отсев эталона<br>2. Кэш БД & Partial Hash<br>3. Full Hash (< 30 МБ)<br>4. Sparse Hash (> 30 МБ)</span>",
   "cln_btn_info": "Информация",
   "cln_filter_all": "Фильтр: Все файлы",
   "cln_btn_scan_types": "Сканировать типы файлов",

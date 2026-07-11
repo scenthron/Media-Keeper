@@ -203,18 +203,28 @@ class CleanerSelectionMixin:
     def on_autoselect_changed(self, index: int) -> None:
         if index == 0:
             return
-        mode_map = {
-            2: 'keep_first',
-            3: 'keep_last',
-            5: 'keep_shortest',
-            6: 'keep_longest',
-            8: 'keep_newest',
-            9: 'keep_oldest',
-            11: 'keep_shallow',
-            12: 'keep_deep',
-            14: 'protected_dupes',
-            15: 'reference_dupes',
-        }
+        is_similar = getattr(self, 'current_tab', 0) == 1
+        
+        if is_similar:
+            mode_map = {
+                2: 'keep_largest',
+                3: 'keep_smallest',
+                8: 'keep_newest',
+                9: 'keep_oldest',
+            }
+        else:
+            mode_map = {
+                2: 'keep_first',
+                3: 'keep_last',
+                5: 'keep_shortest',
+                6: 'keep_longest',
+                8: 'keep_newest',
+                9: 'keep_oldest',
+                11: 'keep_shallow',
+                12: 'keep_deep',
+                14: 'protected_dupes',
+                15: 'reference_dupes',
+            }
         mode = mode_map.get(index)
         if mode:
             self.select_smart(mode)
@@ -336,9 +346,17 @@ class CleanerSelectionMixin:
             return
 
         try:
-            if action == 'all_except_first':
-                # Mark all files in this group except the survivor
-                self.in_memory_selection.select_group_except_survivor(group_id)
+            if action in ('all_except_first', 'keep_first', 'keep_largest', 'keep_smallest'):
+                # Handle smart filter modes per group
+                mode_map = {
+                    'all_except_first': 'keep_first',
+                    'keep_first': 'keep_first',
+                    'keep_largest': 'keep_largest',
+                    'keep_smallest': 'keep_smallest'
+                }
+                mode = mode_map.get(action)
+                if mode:
+                    self.in_memory_selection.apply_smart_filter(mode, target_group_id=group_id)
             elif action == 'all':
                 # Unrestricted: mark all (only reached in non-duplicate modes)
                 files = self.in_memory_selection.get_group_files().get(group_id, [])

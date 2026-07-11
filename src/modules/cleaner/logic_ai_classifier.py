@@ -60,147 +60,26 @@ class AiClassifier:
 
     def get_group_status(self, group_name: str) -> tuple:
         """
-        Проверяет файлы в папке группы и возвращает кортеж:
+        Проверяет наличие дампа группы и возвращает статус:
         (status_color, file_count)
-        Цвета:
-        - "gray": нет файлов
-        - "orange": файлы есть, но не для всех рассчитан кэш
-        - "green": все файлы кэшированы
         """
-        group_dir = os.path.join(get_ai_assets_dir(), group_name)
-        if not os.path.exists(group_dir):
-            return "gray", 0
-            
-        # Считаем только поддерживаемые изображения
-        valid_exts = {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}
-        files = []
-        try:
-            for f in os.listdir(group_dir):
-                fp = os.path.join(group_dir, f)
-                if os.path.isfile(fp) and os.path.splitext(f)[1].lower() in valid_exts:
-                    files.append(fp)
-        except Exception as e:
-            logging.error(f"Ошибка чтения директории эталона {group_name}: {e}")
-            
-        file_count = len(files)
-        if file_count == 0:
-            return "gray", 0
-            
-        # Проверяем, есть ли кэш для каждого файла
         settings = load_ai_settings()
         group_info = settings.get("groups", {}).get(group_name, {})
-        is_face_type = group_info.get("type") == "face"
+        dump_path = group_info.get("path")
         
-        all_cached = True
-        for fp in files:
-            try:
-                stat = os.stat(fp)
-                mtime = stat.st_mtime
-                size = stat.st_size
-                
-                if is_face_type:
-                    faces = self.cache.get_file_faces(fp, mtime, size)
-                    if faces is None:
-                        all_cached = False
-                        break
-                else:
-                    emb = self.cache.get_image_embedding(fp, mtime, size)
-                    if emb is None:
-                        all_cached = False
-                        break
-            except Exception:
-                all_cached = False
-                break
-                
-        status = "green" if all_cached else "orange"
-        return status, file_count
-
-    def train_group(self, group_name: str, progress_callback=None, force_recalculate=False) -> bool:
-        """
-        Рассчитывает эмбеддинги/лица для всех файлов в группе и сохраняет в SQLite.
-        progress_callback: функция (current, total)
-        """
-        group_dir = os.path.join(get_ai_assets_dir(), group_name)
-        if not os.path.exists(group_dir):
-            return False
+        if not dump_path or not os.path.exists(dump_path):
+            return "gray", 0
             
-        valid_exts = {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}
-        files = [
-            os.path.join(group_dir, f) for f in os.listdir(group_dir)
-            if os.path.isfile(os.path.join(group_dir, f)) and os.path.splitext(f)[1].lower() in valid_exts
-        ]
+        from .logic_ai_dump import load_dump_info
+        info = load_dump_info(dump_path)
         
-        if not files:
-            return True
-            
-        settings = load_ai_settings()
-        group_info = settings.get("groups", {}).get(group_name, {})
-        is_face_type = group_info.get("type") == "face"
-        
-        # Убедимся, что сессии ONNX инициализированы
-        if not self.ai.initialize_sessions():
-            return False
-            
-        total = len(files)
-        for idx, fp in enumerate(files):
-            try:
-                stat = os.stat(fp)
-                mtime = stat.st_mtime
-                size = stat.st_size
-                
-                if is_face_type:
-                    faces = self.cache.get_file_faces(fp, mtime, size) if not force_recalculate else None
-                    if faces is None:
-                        faces = self.ai.detect_and_extract_faces(fp)
-                        self.cache.save_file_faces(fp, mtime, size, faces)
-                else:
-                    emb = self.cache.get_image_embedding(fp, mtime, size) if not force_recalculate else None
-                    if emb is None:
-                        emb = self.ai.extract_image_embedding(fp)
-                        self.cache.save_image_embedding(fp, mtime, size, emb)
-            except Exception as e:
-                logging.error(f"Ошибка обучения на файле {fp}: {e}")
-                
-            if progress_callback:
-                progress_callback(idx + 1, total * 2) # we just estimate progress
-                
-        # Also process negatives
-        neg_dir = os.path.join(group_dir, "negative")
-        if os.path.exists(neg_dir):
-            neg_files = [
-                os.path.join(neg_dir, f) for f in os.listdir(neg_dir)
-                if os.path.isfile(os.path.join(neg_dir, f)) and os.path.splitext(f)[1].lower() in valid_exts
-            ]
-            for idx, fp in enumerate(neg_files):
-                try:
-                    stat = os.stat(fp)
-                    mtime = stat.st_mtime
-                    size = stat.st_size
-                    
-                    if is_face_type:
-                        faces = self.cache.get_file_faces(fp, mtime, size) if not force_recalculate else None
-                        if faces is None:
-                            faces = self.ai.detect_and_extract_faces(fp)
-                            self.cache.save_file_faces(fp, mtime, size, faces)
-                    else:
-                        emb = self.cache.get_image_embedding(fp, mtime, size) if not force_recalculate else None
-                        if emb is None:
-                            emb = self.ai.extract_image_embedding(fp)
-                            self.cache.save_image_embedding(fp, mtime, size, emb)
-                except Exception as e:
-                    logging.error(f"Ошибка обучения на негативном файле {fp}: {e}")
-                    
-                if progress_callback:
-                    progress_callback(total + idx + 1, total + len(neg_files))
-                
-            if progress_callback:
-                progress_callback(idx + 1, total)
-                
-        return True
+        count = info.get("pos_features_count", 0)
+        status = "green" if count > 0 else "gray"
+        return status, count
 
     def load_active_references(self) -> bool:
         """
-        Загружает в память центроиды и дескрипторы лиц для всех ВКЛЮЧЕННЫХ групп.
+        Загружает в память центроиды и дескрипторы лиц для всех ВКЛЮЧЕННЫХ групп из их дампов.
         Возвращает True, если есть хотя бы один активный класс для поиска.
         """
         self.general_centroids.clear()
@@ -211,61 +90,26 @@ class AiClassifier:
         active_groups = []
         for name, info in settings.get("groups", {}).items():
             if info.get("enabled", True):
-                active_groups.append((name, info.get("type") == "face"))
+                dump_path = info.get("path")
+                if dump_path and os.path.exists(dump_path):
+                    active_groups.append((name, dump_path))
                 
         if not active_groups:
             return False
             
-        # Собираем данные из SQLite
-        valid_exts = {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}
+        from .logic_ai_dump import load_dump_info, load_features
         
-        for group_name, is_face in active_groups:
-            group_dir = os.path.join(get_ai_assets_dir(), group_name)
-            if not os.path.exists(group_dir):
-                continue
-                
-            files = [
-                os.path.join(group_dir, f) for f in os.listdir(group_dir)
-                if os.path.isfile(os.path.join(group_dir, f)) and os.path.splitext(f)[1].lower() in valid_exts
-            ]
+        for group_name, dump_path in active_groups:
+            info = load_dump_info(dump_path)
+            is_face = info.get("type", "face") == "face"
             
-            if not files:
+            descriptors, neg_descriptors = load_features(dump_path)
+            
+            if not descriptors:
                 continue
-                
-            neg_dir = os.path.join(group_dir, "negative")
-            neg_files = []
-            if os.path.exists(neg_dir):
-                neg_files = [
-                    os.path.join(neg_dir, f) for f in os.listdir(neg_dir)
-                    if os.path.isfile(os.path.join(neg_dir, f)) and os.path.splitext(f)[1].lower() in valid_exts
-                ]
                 
             if is_face:
-                descriptors = []
-                neg_descriptors = []
-                
-                for fp in files:
-                    try:
-                        stat = os.stat(fp)
-                        faces = self.cache.get_file_faces(fp, stat.st_mtime, stat.st_size)
-                        if faces:
-                            for face in faces:
-                                descriptors.append(face["descriptor"])
-                    except:
-                        pass
-                        
-                for fp in neg_files:
-                    try:
-                        stat = os.stat(fp)
-                        faces = self.cache.get_file_faces(fp, stat.st_mtime, stat.st_size)
-                        if faces:
-                            for face in faces:
-                                neg_descriptors.append(face["descriptor"])
-                    except:
-                        pass
-                        
                 if descriptors:
-                    # if we have negatives, we subtract the negative centroid from each descriptor
                     if neg_descriptors:
                         neg_centroid = np.mean(neg_descriptors, axis=0)
                         norm_neg = np.linalg.norm(neg_centroid)
@@ -284,33 +128,12 @@ class AiClassifier:
                         
                     self.face_reference_descriptors[group_name] = descriptors
             else:
-                embeddings = []
-                neg_embeddings = []
-                
-                for fp in files:
-                    try:
-                        stat = os.stat(fp)
-                        emb = self.cache.get_image_embedding(fp, stat.st_mtime, stat.st_size)
-                        if emb is not None:
-                            embeddings.append(emb)
-                    except:
-                        pass
-                        
-                for fp in neg_files:
-                    try:
-                        stat = os.stat(fp)
-                        emb = self.cache.get_image_embedding(fp, stat.st_mtime, stat.st_size)
-                        if emb is not None:
-                            neg_embeddings.append(emb)
-                    except:
-                        pass
-                        
-                if embeddings:
-                    self.general_embeddings[group_name] = embeddings
-                    mean_emb = np.mean(embeddings, axis=0)
+                if descriptors:
+                    self.general_embeddings[group_name] = descriptors
+                    mean_emb = np.mean(descriptors, axis=0)
                     
-                    if neg_embeddings:
-                        neg_centroid = np.mean(neg_embeddings, axis=0)
+                    if neg_descriptors:
+                        neg_centroid = np.mean(neg_descriptors, axis=0)
                         mean_emb = mean_emb - 0.5 * neg_centroid
                         
                     norm = np.linalg.norm(mean_emb)

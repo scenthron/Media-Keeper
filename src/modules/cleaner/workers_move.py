@@ -166,12 +166,20 @@ class SessionDeleteWorker(QThread):
 
         from PyQt6.QtCore import QFile
         import shutil
+        import time
+
+        last_emit_time = 0.0
+        emit_interval = 0.05  # Max 20 UI updates per second
 
         for idx, path in enumerate(self.items):
             if self.stop_event.is_set():
                 break
 
-            self.file_started.emit(os.path.basename(path) if not self.is_folders else path)
+            current_time = time.time()
+            if current_time - last_emit_time >= emit_interval or idx == 0 or idx == total - 1:
+                self.file_started.emit(os.path.basename(path) if not self.is_folders else path)
+                self.progress_total.emit(idx + 1, total)
+                last_emit_time = current_time
 
             path_long = ensure_long_path(path)
 
@@ -202,19 +210,21 @@ class SessionDeleteWorker(QThread):
                             else:
                                 os.remove(path_long)
                         deleted_paths.append(path)
-                        logging.info(f"[Cleaner] Файл удален: {path}")
+                        # logging.info(f"[Cleaner] Файл удален: {path}") # Disabled to prevent log flood
                     else:
                         if os.path.isdir(path_long):
                             shutil.rmtree(path_long)
                         else:
                             os.remove(path_long)
                         deleted_paths.append(path)
-                        logging.info(f"[Cleaner] Файл удален жестко: {path}")
+                        # logging.info(f"[Cleaner] Файл удален жестко: {path}") # Disabled to prevent log flood
             except Exception as e:
                 logging.error(f"[Cleaner] Не удалось удалить '{path}': {e}")
                 errors.append((path, str(e)))
 
-            self.progress_total.emit(idx + 1, total)
+        # Final emit
+        if total > 0:
+            self.progress_total.emit(total, total)
 
         self.finished.emit(deleted_paths, errors)
 

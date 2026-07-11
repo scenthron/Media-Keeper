@@ -11,7 +11,7 @@ from .db_cache import CleanerDB
 
 STAGE_SCANNING = 1
 STAGE_ANALYSIS = 2
-LARGE_FILE_THRESHOLD = 50 * 1024 * 1024 
+LARGE_FILE_THRESHOLD = 30 * 1024 * 1024 
 
 EXT_GROUPS = {
     "Images": {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.raw', '.heic', '.heif', '.svg', '.ico', '.tga', '.psd', '.apng'},
@@ -264,6 +264,19 @@ class DuplicateFinderWorker(QThread):
 
         for size, files in candidates_size.items():
             if not self.is_running: break
+            
+            # --- EARLY REFERENCE FILTERING ---
+            # If a size group has no reference file at all, we can safely skip hashing it entirely!
+            if norm_ref:
+                has_ref = False
+                for file_data in files:
+                    if is_subpath(file_data['real_path'], norm_ref):
+                        has_ref = True
+                        break
+                if not has_ref:
+                    processed_count += len(files)
+                    continue
+            
             has_dump_in_size = any(f.get('is_dump') for f in files)
             by_partial = {}
             for file_data in files:
@@ -485,7 +498,7 @@ class SimilarScanWorker(QThread):
     progress = pyqtSignal(int, float, str, int, int, object, object, int, int)
     finished = pyqtSignal(dict)
     
-    def __init__(self, folders_dict, use_cache=True, filter_config=None, size_limits=(0, 0), media_type=0, threshold=90, hash_size=16, algorithm="phash", monotone_filter=False, monotone_threshold=15.0):
+    def __init__(self, folders_dict, use_cache=True, filter_config=None, size_limits=(0, 0), media_type=0, threshold=90, hash_size=16, algorithm="phash", monotone_filter=False, monotone_threshold=15.0, video_frames=5):
         super().__init__()
         self.folders_dict = folders_dict
         self.folders = list(folders_dict.keys())
@@ -499,6 +512,7 @@ class SimilarScanWorker(QThread):
         self.algorithm = algorithm.lower()
         self.monotone_filter = monotone_filter
         self.monotone_threshold = monotone_threshold
+        self.video_frames = video_frames
         
         if media_type == 0 and self.algorithm == "phash":
             self.total_bits = self.hash_size * self.hash_size - 1
@@ -509,7 +523,7 @@ class SimilarScanWorker(QThread):
         self.is_running = True
         
         from .db_cache import SimilarDB
-        self.db = SimilarDB(hash_size=self.hash_size, algorithm=self.algorithm) if use_cache else None
+        self.db = SimilarDB(hash_size=self.hash_size, algorithm=self.algorithm, video_frames=self.video_frames if self.media_type == 2 else None) if use_cache else None
 
     def stop(self):
         self.is_running = False
@@ -702,7 +716,7 @@ class SimilarScanWorker(QThread):
                     try:
                         from .vhash import extract_video_fingerprint
                         from logic_paths import get_ffmpeg_exe, get_ffprobe_exe
-                        res = extract_video_fingerprint(file_data['real_path'], get_ffmpeg_exe(), get_ffprobe_exe(), self.hash_size)
+                        res = extract_video_fingerprint(file_data['real_path'], get_ffmpeg_exe(), get_ffprobe_exe(), self.hash_size, self.algorithm, self.video_frames)
                         if res:
                             fp_list, meta = res
                             if fp_list:
@@ -760,6 +774,7 @@ class SimilarScanWorker(QThread):
             self.finished.emit({})
             return
 
+        threshold_bits = 0
         if self.media_type != 1 and self.media_type != 2:
             threshold_bits = int((100 - self.threshold) / 100.0 * self.total_bits)
         

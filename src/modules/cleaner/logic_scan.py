@@ -117,11 +117,16 @@ class ScanMixin:
             algorithm = "phash" if alg_idx == 0 else ("dhash" if alg_idx == 1 else "ahash")
             monotone_filter = self.settings_panel.chk_monotone.isChecked()
             
+            # Чтение количества кадров видео
+            vframes_idx = self.settings_panel.combo_video_frames.currentIndex()
+            vframes = 1 if vframes_idx == 0 else (3 if vframes_idx == 1 else (5 if vframes_idx == 2 else 10))
+            
             self.finder = SimilarScanWorker(
                 self.source_folders, use_cache, self.filter_config, 
                 size_limits=size_limits, media_type=media_type, 
                 threshold=threshold, hash_size=hash_size,
-                algorithm=algorithm, monotone_filter=monotone_filter
+                algorithm=algorithm, monotone_filter=monotone_filter,
+                video_frames=vframes
             )
         else:
             safe_scan = self.settings_panel.chk_safe_scan.isChecked()
@@ -170,10 +175,6 @@ class ScanMixin:
         # Сбрасываем фильтры по типам для новых результатов
         self.view_filter_exts = None
         self.view_filter_mode = 'include'
-        if hasattr(self, 'virtual_model_dupes') and self.virtual_model_dupes:
-            self.virtual_model_dupes.set_filter(None, 'include')
-        if hasattr(self, 'virtual_model_similar') and self.virtual_model_similar:
-            self.virtual_model_similar.set_filter(None, 'include')
             
         from config import AppContext
         if hasattr(self, 'btn_types_dupes') and self.btn_types_dupes:

@@ -374,6 +374,9 @@ class CleanerResultDialog(QDialog):
         btn_layout.addWidget(btn_ok)
         text_layout.addLayout(btn_layout)
         layout.addLayout(text_layout)
+        
+        if error_count == 0:
+            QTimer.singleShot(2000, self.accept)
 
 class MovePreviewDialog(QDialog):
     def __init__(self, mapping: list[dict], parent=None):

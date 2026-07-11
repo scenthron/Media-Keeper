@@ -178,7 +178,8 @@ class CleanerPreviewWidget(QWidget):
             self.splitter.setSizes([800, 0])
 
     def resizeEvent(self, event):
-        super().resizeEvent(event)
+        if event is not None:
+            super().resizeEvent(event)
         QTimer.singleShot(10, self.reset_view)
         
         # Position the overlay in bottom right corner of media_container

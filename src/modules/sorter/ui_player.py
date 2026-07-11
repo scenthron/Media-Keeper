@@ -36,8 +36,10 @@ class TimeOverlayWidget(QLabel):
         else:
             dur_str = "00:00"
             
-        self.setText(f"{pos_str} / {dur_str}")
-        self.adjustSize()
+        new_text = f"{pos_str} / {dur_str}"
+        if self.text() != new_text:
+            self.setText(new_text)
+            self.adjustSize()
 
 
 class ClickableSlider(QSlider):

@@ -51,10 +51,10 @@ def get_video_bitrate(filepath: str, ffprobe_path: str) -> str:
         pass
     return ""
 
-def extract_video_fingerprint(filepath: str, ffmpeg_path: str, ffprobe_path: str, hash_size: int = 16) -> Tuple[List[str], str]:
+def extract_video_fingerprint(filepath: str, ffmpeg_path: str, ffprobe_path: str, hash_size: int = 16, algorithm: str = "ahash", frames_count: int = 5) -> Tuple[List[str], str]:
     """
-    Extracts 10 keyframes from the video and calculates dHash for each.
-    Returns (list of 10 hex hashes, resolution_string).
+    Extracts keyframes from the video and calculates hashes for each.
+    Returns (list of hex hashes, resolution_string).
     """
     if not os.path.exists(ffmpeg_path) or not os.path.exists(ffprobe_path):
         raise FileNotFoundError("ffmpeg/ffprobe not found")
@@ -68,18 +68,24 @@ def extract_video_fingerprint(filepath: str, ffmpeg_path: str, ffprobe_path: str
     if duration <= 0:
         return [], res_str
         
-    frames_count = 10
-    # Create temp directory for frames
+    start_ts = duration * 0.1
+    end_ts = duration * 0.9
+    eff_duration = end_ts - start_ts
+    if eff_duration <= 0:
+        return [], res_str
+        
+    max_keep = frames_count
     hashes = []
+    
     with tempfile.TemporaryDirectory() as tmpdir:
-        # We calculate timestamps for 10 frames evenly spaced.
-        # Starting slightly after 0 to avoid black screens, ending slightly before duration.
-        step = duration / (frames_count + 1)
+        step = eff_duration / (frames_count + 1)
         
         for i in range(1, frames_count + 1):
-            ts = step * i
+            if len(hashes) >= max_keep:
+                break
+                
+            ts = start_ts + step * i
             out_img = os.path.join(tmpdir, f"frame_{i}.jpg")
-            # ffmpeg -y -ss TS -i filepath -vframes 1 -q:v 2 out_img
             cmd = [ffmpeg_path, "-y", "-ss", f"{ts:.3f}", "-i", filepath, "-vframes", "1", "-q:v", "5", out_img]
             try:
                 if os.name == 'nt':
@@ -88,17 +94,19 @@ def extract_video_fingerprint(filepath: str, ffmpeg_path: str, ffprobe_path: str
                     subprocess.run(cmd, capture_output=True, text=True, timeout=10)
                     
                 if os.path.exists(out_img):
-                    # Compute dHash
-                    h_val, _ = get_image_ahash(out_img, hash_size)
-                    if h_val:
-                        hashes.append(h_val)
+                    if algorithm == "phash":
+                        from .dhash import get_image_phash as get_hash
+                    elif algorithm == "dhash":
+                        from .dhash import get_image_dhash as get_hash
                     else:
-                        hashes.append("0" * (hash_size * hash_size // 4)) # empty hash fallback
-                else:
-                    hashes.append("0" * (hash_size * hash_size // 4))
+                        from .dhash import get_image_ahash as get_hash
+                        
+                    h_val, _, std_dev = get_hash(out_img, hash_size)
+                    # Фильтр однородных (черных/белых) кадров: std_dev > 10.0
+                    if h_val and std_dev > 10.0:
+                        hashes.append(h_val)
             except Exception as e:
                 logging.error(f"Failed to extract frame {i} for {filepath}: {e}")
-                hashes.append("0" * (hash_size * hash_size // 4))
                 
     return hashes, res_str
 
@@ -116,21 +124,27 @@ def compare_video_fingerprints(hashes1: List[str], hashes2: List[str], hash_size
     Compares two lists of video hashes using a sliding window of +/- 1 frame to account for minor shifts.
     Returns similarity percentage (0.0 to 100.0).
     """
-    if not hashes1 or not hashes2 or len(hashes1) != len(hashes2):
+    if not hashes1 or not hashes2:
         return 0.0
         
-    num_frames = len(hashes1)
     bits_per_hash = hash_size * hash_size
     
-    # We will slide array 1 over array 2 by offsets -1, 0, +1
+    # Убеждаемся, что hashes1 - более короткий (или равный) список
+    if len(hashes1) > len(hashes2):
+        hashes1, hashes2 = hashes2, hashes1
+        
+    num_frames1 = len(hashes1)
+    num_frames2 = len(hashes2)
+    
     best_overall_sim = 0.0
     
-    for offset in [-1, 0, 1]:
+    # Скользим коротким массивом по длинному
+    for offset in range(-1, num_frames2 - num_frames1 + 2):
         total_dist = 0
         compared_frames = 0
-        for i in range(num_frames):
+        for i in range(num_frames1):
             j = i + offset
-            if 0 <= j < num_frames:
+            if 0 <= j < num_frames2:
                 dist = hamming_hex(hashes1[i], hashes2[j])
                 total_dist += dist
                 compared_frames += 1

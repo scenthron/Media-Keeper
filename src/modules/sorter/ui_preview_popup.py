@@ -618,6 +618,8 @@ class LargePreviewPopup(QDialog):
             
             self.time_overlay = TimeOverlayWidget(self)
             self.time_overlay.show()
+            self.time_overlay.adjustSize()
+            self.resizeEvent(None)
             
             if apply_all:
                 speed = getattr(self.main_app, 'session_video_speed', 1.0)
@@ -676,6 +678,8 @@ class LargePreviewPopup(QDialog):
             
             self.time_overlay = TimeOverlayWidget(self)
             self.time_overlay.show()
+            self.time_overlay.adjustSize()
+            self.resizeEvent(None)
             
             self.controls.set_popup_values(1.0, loop, False, is_video=False)
             
@@ -1120,6 +1124,12 @@ class LargePreviewPopup(QDialog):
                 sz = self.video_viewer.video_item.nativeSize()
                 if sz.isValid():
                     self.video_viewer._on_native_size_changed(sz)
+            if hasattr(self, 'time_overlay'):
+                self.time_overlay.show()
+                self.resizeEvent(None)
+        elif status == QMediaPlayer.MediaStatus.InvalidMedia:
+            if hasattr(self, 'time_overlay'):
+                self.time_overlay.hide()
 
     def _on_playback_state_changed(self, state):
         is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
@@ -1207,7 +1217,8 @@ class LargePreviewPopup(QDialog):
                     )
                     
     def resizeEvent(self, event):
-        super().resizeEvent(event)
+        if event is not None:
+            super().resizeEvent(event)
         w = self.width()
         h = self.height()
         if hasattr(self, 'top_overlay') and self.top_overlay:

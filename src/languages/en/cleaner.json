@@ -7,7 +7,7 @@
   "cln_btn_clear": "Clear",
   "cln_algo_title": "2. ALGORITHM & FILTERS",
   "cln_chk_cache": "Use Cache (Faster)",
-  "cln_lbl_method_info": "🛡️ <b>Search Method: Smart Hash</b><br><span style='color:#999;'>1. Size Compare<br>2. Database Cache<br>3. Partial Hash (Head+Tail)<br>4. Full Hash (SHA-256)</span>",
+  "cln_lbl_method_info": "🛡️ <b>Search Method: Smart Hash</b><br><span style='color:#999;'>1. Early Reference Filter<br>2. DB Cache & Partial Hash<br>3. Full Hash (< 30 MB)<br>4. Sparse Hash (> 30 MB)</span>",
   "cln_btn_info": "Info",
   "cln_filter_all": "Filter: All files",
   "cln_btn_scan_types": "Scan File Types",

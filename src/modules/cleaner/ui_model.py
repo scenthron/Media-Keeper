@@ -2,7 +2,7 @@ import os
 import logging
 from typing import Any
 from PyQt6.QtCore import Qt, QAbstractListModel, QModelIndex, QRect, QPoint, QSize, QEvent, QRectF
-from PyQt6.QtGui import QPainter, QColor, QFont, QPen, QBrush, QMouseEvent
+from PyQt6.QtGui import QPainter, QColor, QFont, QPen, QBrush, QMouseEvent, QFontMetrics
 from PyQt6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem, QStyle
 from PyQt6.QtSvg import QSvgRenderer
 
@@ -319,6 +319,8 @@ class DuplicateDelegate(QStyledItemDelegate):
             elif not display_name:
                 display_name = f"Копии: {first_file}" if is_ru else f"Copies: {first_file}"
             
+            indicators_x = rect.right() - 120
+            
             # Formatted text e.g. (5 / 6.5mb)
             try:
                 g_size = item.get('size')
@@ -333,11 +335,12 @@ class DuplicateDelegate(QStyledItemDelegate):
                 
                 text_rect = QRect(rect.left() + 50, rect.top(), 600, rect.height())
                 painter.drawText(text_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, str(display_text))
+                
+                metrics = QFontMetrics(name_font)
+                text_end_x = rect.left() + 50 + metrics.horizontalAdvance(str(display_text))
+                indicators_x = max(rect.right() - 120, text_end_x + 20)
             except Exception as e:
                 logging.error(f"Draw Group Text Error: {e}")
-
-            # Draw participating color indicators
-            indicators_x = rect.right() - 120
             # Resolve participating colors for this group
             colors: list[str] = []
             has_ref = False
@@ -437,8 +440,9 @@ class DuplicateDelegate(QStyledItemDelegate):
             
             # Draw file name
             painter.drawText(rect.left() + 75, rect.top(), 230, rect.height(), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, filename)
+            current_x = rect.left() + 315
             
-            # Draw similarity percentage + size if in similar mode
+            # Draw similarity percentage (if in similar mode)
             if getattr(index.model(), 'is_similar_mode', False):
                 pct = item.get('similarity_pct', 100)
                 pct_str = f"{pct}%"
@@ -454,39 +458,35 @@ class DuplicateDelegate(QStyledItemDelegate):
                     pct_color = QColor("#f59e0b")
                     
                 painter.setPen(QPen(pct_color))
-                painter.drawText(rect.left() + 315, rect.top(), 45, rect.height(),
+                painter.drawText(current_x, rect.top(), 45, rect.height(),
                                  Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, pct_str)
-
-                # Размер файла после процента
-                size_str = format_size(item.get('size', 0))
-                size_font = QFont("Segoe UI", 9)
-                painter.setFont(size_font)
-                painter.setPen(QPen(QColor("#cccccc")))
-                painter.drawText(rect.left() + 363, rect.top(), 60, rect.height(),
-                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, size_str)
-
-                # Метаданные (например, разрешение 1920x1080 | 5000 kbps)
-                meta_str = item.get('metadata', '')
-                if meta_str:
-                    meta_font = QFont("Segoe UI", 8)
-                    painter.setFont(meta_font)
-                    painter.setPen(QPen(QColor("#8b5cf6"))) # Светло-фиолетовый акцент для метаданных
-                    painter.drawText(rect.left() + 425, rect.top(), 130, rect.height(),
-                                     Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, meta_str)
-
-                # Путь к папке (еще правее в similar-режиме)
-                path_font = QFont("Consolas", 8)
-                painter.setFont(path_font)
-                painter.setPen(QPen(QColor("#888888")))
-                painter.drawText(rect.left() + 555, rect.top(), rect.width() - 565, rect.height(),
-                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, folder)
-            else:
-                # Draw folder path (обычный режим дублей)
-                path_font = QFont("Consolas", 8)
-                painter.setFont(path_font)
-                painter.setPen(QPen(QColor("#aaaaaa")))
-                painter.drawText(rect.left() + 375, rect.top(), rect.width() - 385, rect.height(),
-                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, folder)
+                current_x += 48
+                
+            # Размер файла
+            size_str = format_size(item.get('size', 0))
+            size_font = QFont("Segoe UI", 9)
+            painter.setFont(size_font)
+            painter.setPen(QPen(QColor("#cccccc")))
+            painter.drawText(current_x, rect.top(), 60, rect.height(),
+                             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, size_str)
+            current_x += 65
+            
+            # Метаданные (разрешение и т.д.)
+            meta_str = item.get('metadata', '')
+            if meta_str:
+                meta_font = QFont("Segoe UI", 8)
+                painter.setFont(meta_font)
+                painter.setPen(QPen(QColor("#8b5cf6")))
+                painter.drawText(current_x, rect.top(), 130, rect.height(),
+                                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, meta_str)
+                current_x += 135
+                
+            # Путь к папке
+            path_font = QFont("Consolas", 8)
+            painter.setFont(path_font)
+            painter.setPen(QPen(QColor("#888888") if getattr(index.model(), 'is_similar_mode', False) else QColor("#aaaaaa")))
+            painter.drawText(current_x, rect.top(), rect.right() - current_x - 5, rect.height(),
+                             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, folder)
 
         elif item['type'] == 'empty_folder':
             # --- Paint Empty Folder ---

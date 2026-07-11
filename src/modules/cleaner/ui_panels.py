@@ -12,6 +12,7 @@ from config import AppContext
 from ui_widgets_base import DropZoneWidget, SizeFilterWidget
 from utils_common import format_size
 from .ui_widgets import SourceListItem, CleanSpinBox, ModeBadgeButton, CompactDropZone
+from .settings_manager import SimilarSettings
 
 def load_svg_pixmap(file_path: str, size: QSize, mirror_horizontal: bool = False) -> QPixmap:
     renderer = QSvgRenderer(file_path)
@@ -789,9 +790,9 @@ class CleanerActionBar(QFrame):
         if is_similar:
             add_item("Автовыбор" if is_ru else "Autoselect", "Выберите условие автоматического выделения" if is_ru else "Choose autoselect condition", 0)
             add_sep()
-            add_item("Оставить с наибольшим качеством (весом)" if is_ru else "Keep highest quality (size)", 
+            add_item("Оставить больший размер" if is_ru else "Keep largest size", 
                      "Выделить все файлы в группе, кроме файла с наибольшим размером" if is_ru else "Mark all files except the one with largest size", 2)
-            add_item("Оставить с наименьшим качеством (весом)" if is_ru else "Keep lowest quality (size)", 
+            add_item("Оставить меньший размер" if is_ru else "Keep smallest size", 
                      "Выделить все файлы в группе, кроме файла с наименьшим размером" if is_ru else "Mark all files except the one with smallest size", 3)
             add_sep()
             add_item("Оставить самый новый" if is_ru else "Keep newest", 
@@ -874,6 +875,8 @@ class SimilarSettingsPanel(QWidget):
         self.setStyleSheet("background-color: #1e1e1e;")
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         
+        self.settings_manager = SimilarSettings()
+        
         self.layout = QHBoxLayout(self)
         self.layout.setContentsMargins(15, 4, 15, 4)
         self.layout.setSpacing(12)
@@ -947,6 +950,25 @@ class SimilarSettingsPanel(QWidget):
         algo_header.addWidget(self.lbl_algo_icon)
         algo_header.addWidget(self.lbl_algo)
         algo_header.addStretch()
+        
+        self.btn_reset_settings = QPushButton(AppContext.tr("cln_btn_default") if AppContext.tr("cln_btn_default") != "cln_btn_default" else "По умолчанию")
+        self.btn_reset_settings.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_reset_settings.setStyleSheet("""
+            QPushButton {
+                background-color: #3b82f6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 3px 8px;
+                font-weight: bold;
+                font-size: 11px;
+            }
+            QPushButton:hover { background-color: #60a5fa; }
+            QPushButton:disabled { background-color: #333; color: #666; }
+        """)
+        self.btn_reset_settings.clicked.connect(self._on_reset_settings_clicked)
+        algo_header.addWidget(self.btn_reset_settings)
+        
         col_filters.addLayout(algo_header)
         
         algo_frame = QFrame()
@@ -1056,6 +1078,16 @@ class SimilarSettingsPanel(QWidget):
         self.chk_monotone.setToolTip(monotone_info_tooltip)
         algo_select_layout.addWidget(self.chk_monotone)
         
+        self.combo_video_frames = QComboBox()
+        self.combo_video_frames.addItems(["1 кадр", "3 кадра", "5 кадров", "10 кадров"] if is_ru else ["1 frame", "3 frames", "5 frames", "10 frames"])
+        self.combo_video_frames.setCurrentIndex(2)
+        self.combo_video_frames.setFixedHeight(24)
+        self.combo_video_frames.setFixedWidth(90)
+        self.combo_video_frames.setStyleSheet(self.combo_algorithm.styleSheet())
+        self.combo_video_frames.setVisible(False)
+        self.combo_video_frames.currentIndexChanged.connect(self._on_setting_changed)
+        algo_select_layout.addWidget(self.combo_video_frames)
+        
         algo_layout.addLayout(algo_select_layout)
         
         # Media Type Selection Line
@@ -1069,6 +1101,7 @@ class SimilarSettingsPanel(QWidget):
         
         self.combo_media_type = QComboBox()
         self.combo_media_type.addItems(["Изображения", "Аудио", "Видео"] if is_ru else ["Images", "Audio", "Video"])
+        self.combo_media_type.currentIndexChanged.connect(self._on_media_type_changed)
         
         from logic_paths import get_fpcalc_exe, get_ffmpeg_exe
         
@@ -1238,8 +1271,18 @@ class SimilarSettingsPanel(QWidget):
         self.combo_resolution.currentIndexChanged.connect(lambda: self.settings_changed_for_rescan.emit())
         self.combo_algorithm.currentIndexChanged.connect(lambda: self.settings_changed_for_rescan.emit())
         self.chk_monotone.stateChanged.connect(lambda: self.settings_changed_for_rescan.emit())
+        # Подключаем сигналы изменения настроек
+        self.combo_algorithm.currentIndexChanged.connect(self._on_setting_changed)
+        self.combo_resolution.currentIndexChanged.connect(self._on_setting_changed)
+        self.chk_monotone.stateChanged.connect(self._on_setting_changed)
+        self.spin_similarity.valueChanged.connect(self._on_setting_changed)
+        self.combo_range.currentIndexChanged.connect(self._on_setting_changed)
         self.combo_media_type.currentIndexChanged.connect(self._on_media_type_changed)
+        
         self._slider_updating = False
+        
+        # Применяем настройки по умолчанию для текущего режима
+        self._apply_settings_from_manager()
         self._update_slider_range()
         
         # Size Filters
@@ -1594,7 +1637,7 @@ class SimilarSettingsPanel(QWidget):
             self.combo_range.setEnabled(False)
         else:
             self.combo_resolution.setEnabled(True)
-            self.combo_algorithm.setEnabled(idx == 0) # Только для изображений
+            self.combo_algorithm.setEnabled(idx == 0 or idx == 2) # Изображения и видео
             self.chk_monotone.setEnabled(idx == 0)    # Только для изображений
             self.spin_similarity.setEnabled(True)
             self.slider_similarity.setEnabled(True)
@@ -1654,31 +1697,81 @@ class SimilarSettingsPanel(QWidget):
         self._on_spin_changed(self.spin_similarity.value())
 
     def _on_media_type_changed(self, idx):
+        self._apply_settings_from_manager()
+        self.settings_changed_for_rescan.emit()
+        
+    def _apply_settings_from_manager(self):
+        idx = self.combo_media_type.currentIndex()
+        settings = self.settings_manager.load_settings(idx)
+        
+        # Блокируем сигналы, чтобы не зациклиться на сохранение
+        self.combo_algorithm.blockSignals(True)
+        self.combo_resolution.blockSignals(True)
+        self.chk_monotone.blockSignals(True)
+        self.spin_similarity.blockSignals(True)
+        self.combo_range.blockSignals(True)
+        self.combo_video_frames.blockSignals(True)
+        
+        # Видимость и доступность
         if idx == 1: # Аудио
             self.combo_resolution.setEnabled(False)
             self.spin_similarity.setEnabled(False)
             self.slider_similarity.setEnabled(False)
             self.combo_range.setEnabled(False)
+            self.combo_algorithm.setEnabled(False)
+            self.chk_monotone.setVisible(True)
+            self.chk_monotone.setEnabled(False)
+            self.combo_video_frames.setVisible(False)
         else:
             self.combo_resolution.setEnabled(True)
             self.spin_similarity.setEnabled(True)
             self.slider_similarity.setEnabled(True)
             self.combo_range.setEnabled(True)
-            
-        # Алгоритм хэширования и фильтр монотонности применимы ТОЛЬКО для изображений (idx == 0)
-        if idx == 0:
             self.combo_algorithm.setEnabled(True)
-            self.chk_monotone.setEnabled(True)
-        else:
-            self.combo_algorithm.setEnabled(False)
-            self.chk_monotone.setEnabled(False)
             
-        if idx == 2: # Видео
-            self.combo_range.setCurrentIndex(3) # Диапазон 30%
-            self.spin_similarity.setValue(70.0)
-        elif idx == 0: # Изображения
-            self.combo_range.setCurrentIndex(0) # Диапазон 5%
-            self.spin_similarity.setValue(95.0)
+            if idx == 0: # Изображения
+                self.chk_monotone.setVisible(True)
+                self.chk_monotone.setEnabled(True)
+                self.combo_video_frames.setVisible(False)
+            elif idx == 2: # Видео
+                self.chk_monotone.setVisible(False)
+                self.combo_video_frames.setVisible(True)
+                self.combo_video_frames.setEnabled(True)
+        
+        # Устанавливаем значения
+        self.combo_algorithm.setCurrentIndex(settings.get("algorithm", 0))
+        self.combo_resolution.setCurrentIndex(settings.get("resolution", 1))
+        self.chk_monotone.setChecked(settings.get("monotone_filter", False))
+        self.combo_range.setCurrentIndex(settings.get("range", 0))
+        self._update_slider_range()
+        self.spin_similarity.setValue(settings.get("similarity", 95.0))
+        self.combo_video_frames.setCurrentIndex(settings.get("video_frames", 2))
+        
+        # Разблокируем
+        self.combo_algorithm.blockSignals(False)
+        self.combo_resolution.blockSignals(False)
+        self.chk_monotone.blockSignals(False)
+        self.spin_similarity.blockSignals(False)
+        self.combo_range.blockSignals(False)
+        self.combo_video_frames.blockSignals(False)
+        
+    def _on_setting_changed(self, *args):
+        idx = self.combo_media_type.currentIndex()
+        data = {
+            "algorithm": self.combo_algorithm.currentIndex(),
+            "resolution": self.combo_resolution.currentIndex(),
+            "monotone_filter": self.chk_monotone.isChecked(),
+            "similarity": self.spin_similarity.value(),
+            "range": self.combo_range.currentIndex(),
+            "video_frames": self.combo_video_frames.currentIndex()
+        }
+        self.settings_manager.save_settings(idx, data)
+        self.settings_changed_for_rescan.emit()
+        
+    def _on_reset_settings_clicked(self):
+        idx = self.combo_media_type.currentIndex()
+        self.settings_manager.reset_settings(idx)
+        self._apply_settings_from_manager()
         self.settings_changed_for_rescan.emit()
 
     def dropEvent(self, event):

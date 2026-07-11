@@ -5,6 +5,8 @@ import json
 import numpy as np
 import pytest
 from unittest.mock import MagicMock, patch
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from modules.cleaner.logic_ai_cache import AiCacheManager
 from modules.cleaner.logic_ai_classifier import (

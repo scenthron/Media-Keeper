@@ -122,6 +122,16 @@ class CleanerTreeMixin:
         
         if is_empty_mode == False and 'group_id' in item:
             group_item = {'id': item['group_id']}
+            
+            if getattr(self, 'current_tab', 0) == 1:
+                act_keep_largest = QAction("Оставить больший размер" if AppContext.LANG == "RU" else "Keep largest size", self)
+                act_keep_largest.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'keep_largest'))
+                menu.addAction(act_keep_largest)
+                
+                act_keep_smallest = QAction("Оставить меньший размер" if AppContext.LANG == "RU" else "Keep smallest size", self)
+                act_keep_smallest.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'keep_smallest'))
+                menu.addAction(act_keep_smallest)
+                
             act_sel_all = QAction("Выделить всё в этой группе" if AppContext.LANG == "RU" else "Select all in this group", self)
             act_sel_all.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'all'))
             menu.addAction(act_sel_all)
@@ -235,6 +245,14 @@ class CleanerTreeMixin:
                 act_sel_smart = QAction(AppContext.tr("cln_ctx_select_all_except_first"), self)
                 act_sel_smart.triggered.connect(lambda: self._header_group_action(item, 'all_except_first'))
                 menu.addAction(act_sel_smart)
+            elif current_tab == 1:
+                act_keep_largest = QAction("Оставить больший размер" if AppContext.LANG == "RU" else "Keep largest size", self)
+                act_keep_largest.triggered.connect(lambda: self._header_group_action(item, 'keep_largest'))
+                menu.addAction(act_keep_largest)
+                
+                act_keep_smallest = QAction("Оставить меньший размер" if AppContext.LANG == "RU" else "Keep smallest size", self)
+                act_keep_smallest.triggered.connect(lambda: self._header_group_action(item, 'keep_smallest'))
+                menu.addAction(act_keep_smallest)
             
             act_sel_all = QAction("Выделить всё в этой группе" if AppContext.LANG == "RU" else "Select all in this group", self)
             act_sel_all.triggered.connect(lambda: self._header_group_action(item, 'all'))

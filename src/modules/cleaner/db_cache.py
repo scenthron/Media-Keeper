@@ -77,10 +77,13 @@ class CleanerDB:
 
 class SimilarDB:
     DB_NAME = "similar_cache.db"
-    def __init__(self, root_dir=None, hash_size=16, algorithm="phash"):
+    def __init__(self, root_dir=None, hash_size=16, algorithm="phash", video_frames=None):
         self.hash_size = hash_size
         self.algorithm = algorithm.lower()
+        self.video_frames = video_frames
         self.table_name = f"file_sigs_{self.algorithm}_{self.hash_size}"
+        if self.video_frames is not None:
+            self.table_name += f"_vf_{self.video_frames}"
         if root_dir is None:
             from logic_paths import get_app_data_dir
             self.db_dir = get_app_data_dir()

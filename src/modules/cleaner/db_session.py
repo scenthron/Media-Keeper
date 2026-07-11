@@ -1084,7 +1084,8 @@ class SessionDB:
                 items.append({
                     'src': r['path'],
                     'survivor_base': os.path.splitext(survivors[r['group_id']])[0],
-                    'group_index': r['group_id']
+                    'group_index': r['group_id'],
+                    'size': r['size']
                 })
             conn.close()
         except Exception as e:

@@ -50,7 +50,10 @@ class PlayerMixin:
         size_str = format_size(size)
         idx_str = f"[{self.current_index + 1}/{len(self.files_queue)}]"
         
-        display_text = f"[{size_str}]  {filename}  {idx_str}"
+        from utils_io import strip_long_path_prefix
+        display_name = os.path.basename(strip_long_path_prefix(filename))
+        
+        display_text = f"[{size_str}]  {display_name}  {idx_str}"
         self.lbl_filename.setText(display_text)
         # --------------------------------------------------------
         

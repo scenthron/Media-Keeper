@@ -26,7 +26,10 @@ def safe_relpath(path: str, start: str) -> str:
         return strip_long_path_prefix(path)
     p = strip_long_path_prefix(path)
     s = strip_long_path_prefix(start)
-    return os.path.relpath(p, s)
+    try:
+        return os.path.relpath(p, s)
+    except ValueError:
+        return p
 
 class FileOpsMixin:
     def _safe_close_dialog(self, dialog_attr_name):

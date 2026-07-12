@@ -909,10 +909,42 @@ class UiSetupMixin:
             self.viewer.sync_files_queue(self.UNSORT_DIR, self.files_queue, self.current_index)
 
     def show_inbox_context_menu(self, pos) -> None:
-        path = self.UNSORT_DIR
+        if getattr(self, 'virtual_folder_name', None):
+            self._show_virtual_folder_context_menu(self.lbl_unsort_count, pos)
+            return
+
+        path = getattr(self, 'UNSORT_DIR', "")
         if not path or not os.path.exists(path):
             return
         self._show_folder_context_menu(self.lbl_unsort_count, path, "inbox", pos)
+
+    def _show_virtual_folder_context_menu(self, widget, pos) -> None:
+        menu = QMenu(self)
+        menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; }")
+        
+        clear_action = QAction("Очистить виртуальный список" if AppContext.LANG == "RU" else "Clear Virtual List", self)
+        clear_action.triggered.connect(self.clear_virtual_list)
+        menu.addAction(clear_action)
+        menu.exec(widget.mapToGlobal(pos))
+
+    def clear_virtual_list(self) -> None:
+        self.virtual_folder_name = None
+        self._raw_dir_files = []
+        self.files_queue = []
+        
+        from logic_paths import get_app_data_dir
+        session_path = os.path.join(get_app_data_dir(), "virtual_session.json")
+        if os.path.exists(session_path):
+            try: os.remove(session_path)
+            except: pass
+            
+        if hasattr(self, 'lbl_unsort_count'):
+            self.lbl_unsort_count.virtual_getter = None
+            self.lbl_unsort_count.setStyleSheet("color: #3b82f6; font-weight: bold;")
+            
+        self.update_paths_from_config()
+        self.manual_full_refresh(reset_position=True)
+        self.refresh_sidebar_styling()
 
     def show_trash_context_menu(self, pos) -> None:
         session_tp = getattr(self, 'session_trash_path', None)

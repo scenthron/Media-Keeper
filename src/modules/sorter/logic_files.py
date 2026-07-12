@@ -53,11 +53,81 @@ class FileOpsMixin:
             return
 
         if not self.UNSORT_DIR or not os.path.exists(self.UNSORT_DIR):
-            logging.warning(f"Scan path invalid: {self.UNSORT_DIR}")
-            self.files_queue = []
-            self._raw_dir_files = []
-            if self.isVisible(): self.show_current_file()
+            if not getattr(self, 'virtual_folder_name', None):
+                logging.warning(f"Scan path invalid: {self.UNSORT_DIR}")
+import os
+import re
+import shutil
+import traceback
+import sys
+import ctypes
+import subprocess
+import logging
+from PyQt6.QtWidgets import QMessageBox, QApplication, QLabel, QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QFrame, QScrollArea, QWidget
+from PyQt6.QtCore import QTimer, QUrl, Qt, QFile
+from PyQt6.QtGui import QDesktopServices
+
+from config import AppContext
+from ui_dialogs_generic import ProgressDialog, SmartNameDialog, FileConflictDialog, FileDeletionConfirmDialog, BatchRenameErrorsDialog, MultiFileConflictDialog, MoveErrorsDialog
+from .ui_sidebar_category import CategoryWidget
+from .ui_sidebar_leaf import LeafNodeWidget
+from .workers import ScanThread, MoveThread
+from .logic_automation import AutomationConfig, TemplateEngine
+from utils_common import format_size, get_unique_filepath
+from logic_cache import DirCache
+from utils_io import smart_move_file, ensure_long_path, strip_long_path_prefix
+
+def safe_relpath(path: str, start: str) -> str:
+    p = strip_long_path_prefix(path)
+    s = strip_long_path_prefix(start)
+    return os.path.relpath(p, s)
+
+class FileOpsMixin:
+    def _safe_close_dialog(self, dialog_attr_name):
+        if not hasattr(self, dialog_attr_name): return
+        dlg = getattr(self, dialog_attr_name)
+        if dlg:
+            try:
+                dlg.setParent(None)
+                if dlg.isVisible():
+                    dlg.hide()
+                    dlg.close()
+                dlg.deleteLater()
+            except RuntimeError: pass
+            except Exception as e: logging.error(f"Error closing dialog: {e}")
+            setattr(self, dialog_attr_name, None)
+
+    def refresh_files_list(self, show_progress=True):
+        """
+        Scans Incoming folder to build the queue.
+        show_progress: if True, shows the "Scanning..." dialog.
+        """
+        logging.info(f"Requesting file list refresh (show_progress={show_progress}).")
+        
+        if hasattr(self, 'scan_thread') and self.scan_thread and self.scan_thread.isRunning():
+            logging.debug("Scan already in progress, skipping.")
             return
+
+        if not self.UNSORT_DIR or not os.path.exists(self.UNSORT_DIR):
+            if not getattr(self, 'virtual_folder_name', None):
+                logging.warning(f"Scan path invalid: {self.UNSORT_DIR}")
+                self.files_queue = []
+                self._raw_dir_files = []
+                if self.isVisible(): self.show_current_file()
+                return
+        else:
+            # We are scanning a real folder, clear virtual session and thumbnail cache
+            self.virtual_folder_name = None
+            if hasattr(self, 'lbl_unsort_count'):
+                self.lbl_unsort_count.virtual_getter = None
+            from logic_paths import get_app_data_dir
+            session_path = os.path.join(get_app_data_dir(), "virtual_session.json")
+            if os.path.exists(session_path):
+                try: os.remove(session_path)
+                except: pass
+                
+            from modules.sorter.thumbnail_loader import ThumbnailLoader
+            ThumbnailLoader.inst().clear_disk_cache()
 
         if show_progress:
             logging.debug("Show scan dialog.")
@@ -69,11 +139,78 @@ class FileOpsMixin:
         
         recursive = self.config.get("scan_subfolders", False)
         
+        if getattr(self, 'virtual_folder_name', None):
+            # We are in virtual folder mode, but the user clicked refresh.
+            # We just re-apply filters on existing _raw_dir_files.
+            logging.info("Refreshing virtual folder via apply_local_filters_and_sorting")
+            self._safe_close_dialog('scan_dlg')
+            self.apply_local_filters_and_sorting(trigger_sync=True)
+            return
+
         logging.info(f"Starting scan thread: {self.UNSORT_DIR}")
         # Передаем пустые расширения в ScanThread, чтобы он сканировал все файлы без дисковой фильтрации
         self.scan_thread = ScanThread(self.UNSORT_DIR, recursive, [], "include")
         self.scan_thread.finished_scan.connect(self.on_scan_finished)
         self.scan_thread.start()
+
+    def load_virtual_files(self, file_paths: list[str], source_name: str):
+        """Loads an explicit list of absolute file paths (Virtual Folder)."""
+        logging.info(f"Loading virtual folder from {source_name} with {len(file_paths)} files.")
+        
+        import json
+        from logic_paths import get_app_data_dir
+        session_path = os.path.join(get_app_data_dir(), "virtual_session.json")
+        try:
+            with open(session_path, 'w', encoding='utf-8') as f:
+                json.dump({"source_name": source_name, "files": file_paths}, f, ensure_ascii=False)
+        except Exception as e:
+            logging.error(f"Failed to save virtual session: {e}")
+            
+        # Clean thumbnail cache for new virtual session
+        from modules.sorter.thumbnail_loader import ThumbnailLoader
+        ThumbnailLoader.inst().clear_disk_cache()
+        
+        self.UNSORT_DIR = ""  # Empty string trick for absolute rel_paths
+        self._raw_dir_files = []
+        
+        for p in file_paths:
+            if not os.path.exists(p):
+                continue
+            try:
+                stat = os.stat(p)
+                self._raw_dir_files.append({
+                    'rel_path': ensure_long_path(p),
+                    'size': stat.st_size,
+                    'mtime': stat.st_mtime,
+                    'ctime': stat.st_ctime
+                })
+            except Exception:
+                pass
+                
+        self.virtual_folder_name = source_name
+        self.files_queue = []
+        self.current_index = 0
+        
+        # We must trigger UI refresh directly since there's no ScanThread
+        self.apply_local_filters_and_sorting(trigger_sync=True)
+        if hasattr(self, 'update_ui_for_virtual_folder'):
+            self.update_ui_for_virtual_folder()
+
+    def _get_virtual_folder_text(self):
+        if not getattr(self, 'virtual_folder_name', None): return None
+        count = len(self._raw_dir_files) if hasattr(self, '_raw_dir_files') else 0
+        total_size = sum(f.get('size', 0) for f in self._raw_dir_files) if hasattr(self, '_raw_dir_files') else 0
+        from utils_common import format_size
+        size_str = format_size(total_size)
+        return f"{self.virtual_folder_name} ({count} файлов, {size_str})"
+
+    def update_ui_for_virtual_folder(self):
+        if not getattr(self, 'virtual_folder_name', None): return
+        
+        if hasattr(self, 'lbl_unsort_count'):
+            self.lbl_unsort_count.virtual_getter = self._get_virtual_folder_text
+            self.lbl_unsort_count.update_info()
+            self.lbl_unsort_count.setStyleSheet("color: #8b5cf6; font-weight: bold;")
 
     def cancel_scan(self):
         logging.info("Сканирование входящей папки отменено пользователем.")
@@ -87,7 +224,6 @@ class FileOpsMixin:
 
     def on_scan_finished(self, files):
         if getattr(self, '_scan_was_cancelled', False):
-            logging.info("Результаты сканирования проигнорированы, так как оно было отменено.")
             self._scan_was_cancelled = False
             self._safe_close_dialog('scan_dlg')
             if hasattr(self, 'scan_thread') and self.scan_thread:
@@ -252,7 +388,29 @@ class FileOpsMixin:
             reverse = sort_type in ["size_desc", "mtime_desc", "ctime_desc"]
             filtered_files.sort(key=get_sort_key, reverse=reverse)
             
-        new_queue = [f['rel_path'] for f in filtered_files]
+        self._all_filtered_files_queue = [f['rel_path'] for f in filtered_files]
+        
+        # --- Pagination Slicing ---
+        if not hasattr(self, 'page_index'):
+            self.page_index = 0
+            
+        page_size = self.config.get("pagination_size", 1000)
+        total_items = len(self._all_filtered_files_queue)
+        
+        total_pages = max(1, (total_items + page_size - 1) // page_size)
+        if self.page_index >= total_pages:
+            self.page_index = total_pages - 1
+        if self.page_index < 0:
+            self.page_index = 0
+            
+        start_idx = self.page_index * page_size
+        end_idx = min(start_idx + page_size, total_items)
+        
+        new_queue = self._all_filtered_files_queue[start_idx:end_idx]
+        
+        # Update Viewer Pagination UI
+        if hasattr(self, 'viewer') and self.viewer and hasattr(self.viewer, 'update_pagination_ui'):
+            self.viewer.update_pagination_ui(self.page_index, total_pages)
         
         current_file = None
         if self.files_queue and self.current_index < len(self.files_queue):
@@ -269,6 +427,30 @@ class FileOpsMixin:
             self.viewer.sync_files_queue(self.UNSORT_DIR, self.files_queue, self.current_index)
             if self.isVisible():
                 self.show_current_file()
+
+    def change_page(self, delta):
+        if not hasattr(self, '_all_filtered_files_queue'): return
+        
+        page_size = self.config.get("pagination_size", 1000)
+        total_items = len(self._all_filtered_files_queue)
+        total_pages = max(1, (total_items + page_size - 1) // page_size)
+        
+        new_page = getattr(self, 'page_index', 0) + delta
+        if new_page < 0:
+            new_page = total_pages - 1
+        elif new_page >= total_pages:
+            new_page = 0
+            
+        if new_page != getattr(self, 'page_index', -1):
+            self.page_index = new_page
+            # Trigger full re-sync of UI
+            self.apply_local_filters_and_sorting(trigger_sync=True)
+
+    def refresh_pagination(self):
+        # Clears disk thumbnail cache and triggers full refresh to reset state
+        from modules.sorter.thumbnail_loader import ThumbnailLoader
+        ThumbnailLoader.inst().clear_disk_cache()
+        self.manual_full_refresh(reset_position=False, silent=False)
 
     def apply_sorting_to_queue(self, sort_type, trigger_sync=True):
         self.config["sort_type"] = sort_type
@@ -1125,6 +1307,201 @@ class FileOpsMixin:
                 return
             if len(selected) > 40:
                 return
+
+        # ЗАЩИТА: Если перемещение/переименование уже идет, игнорируем
+        if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
+            return
+
+        template = payload
+        errors = []
+        simulated_counters = self.session_counters.copy()
+        target_paths = {}
+        new_paths_set = set()
+        
+        # Виртуальная симуляция (Dry Run)
+        for old_path in selected:
+            if not os.path.exists(old_path):
+                errors.append(f"Файл не существует: {old_path}")
+                continue
+                
+            current_dir = os.path.dirname(old_path)
+            old_filename = os.path.basename(old_path)
+            name_no_ext, ext = os.path.splitext(old_filename)
+            
+            current_seq_count = simulated_counters.get(template, 0) + 1
+            simulated_counters[template] = current_seq_count
+            
+            if "%dell" in template:
+                final_template = template
+            else:
+                mode = self.affix_window.get_mode()
+                sep = self.config.get("affix_separator", "_")
+                if mode == "prefix":
+                    final_template = f"{template}{sep}%name"
+                else:
+                    final_template = f"%name{sep}{template}"
+                    
+            parent_name = os.path.basename(current_dir)
+            clean_template = final_template
+            match_dell = re.match(r'^%dell\[(.*)\]$', final_template)
+            if match_dell:
+                clean_template = match_dell.group(1)
+            elif "%dell" in final_template:
+                clean_template = final_template.replace("%dell", "")
+                
+            base_name = TemplateEngine.parse_template(clean_template, old_filename, parent_name, iterator=current_seq_count)
+            
+            # 1. Проверка на запрещенные символы в имени
+            forbidden_chars = [c for c in r'\/:*?"<>|' if c in base_name]
+            if forbidden_chars:
+                forbidden_str = "".join(forbidden_chars)
+                errors.append(f"Файл '{old_filename}': имя '{base_name}' содержит запрещенные символы: {forbidden_str}")
+                continue
+                
+            # Целевой путь
+            new_path = os.path.join(current_dir, base_name + ext)
+            new_path_norm = os.path.normpath(new_path)
+            old_path_norm = os.path.normpath(old_path)
+            
+            # 2. Проверка на дублирование в пакете
+            if new_path_norm in new_paths_set:
+                errors.append(f"Файл '{old_filename}': имя '{base_name + ext}' дублируется в пакете переименования")
+                continue
+                
+            # 3. Проверка на существование файла на диске
+            if new_path_norm != old_path_norm and os.path.exists(new_path):
+                errors.append(f"Файл '{old_filename}': целевой файл уже существует: {os.path.basename(new_path)}")
+                continue
+                
+            target_paths[old_path] = new_path
+            new_paths_set.add(new_path_norm)
+
+        # Вывод предупреждений
+        if errors:
+            if btn_widget and hasattr(self, 'animate_conflict_button'):
+                self.animate_conflict_button(btn_widget)
+                
+            # Показываем красивый диалог со скроллируемым списком всех ошибок
+            dlg = BatchRenameErrorsDialog(errors, self)
+            dlg.exec()
+            return
+
+        any_changes = any(os.path.normpath(op) != os.path.normpath(np) for op, np in target_paths.items())
+        if not any_changes:
+            return
+
+        # Физическое переименование
+        if self.current_file_path and self.current_file_path in target_paths:
+            self.media_player.stop()
+            self.media_player.setSource(QUrl())
+            self.viewer.clear_scene_content()
+            QApplication.processEvents()
+
+        self._ignore_watcher = True
+        rename_pairs = []
+        try:
+            for old_path, new_path in target_paths.items():
+                if os.path.normpath(old_path) == os.path.normpath(new_path):
+                    continue
+                os.rename(old_path, new_path)
+                rename_pairs.append((new_path, old_path))
+                
+            # Сохраняем в историю одной операцией
+            self.history.append(rename_pairs)
+            self.session_counters = simulated_counters
+            
+            # Обновляем RAM-кэш и UI
+            for new_path, old_path in rename_pairs:
+                rel_old = safe_relpath(old_path, self.UNSORT_DIR)
+                rel_new = safe_relpath(new_path, self.UNSORT_DIR)
+                
+                # Обновляем files_queue
+                if rel_old in self.files_queue:
+                    idx = self.files_queue.index(rel_old)
+                    self.files_queue[idx] = rel_new
+                    
+                # Обновляем _raw_dir_files
+                if hasattr(self, '_raw_dir_files') and self._raw_dir_files:
+                    for f_info in self._raw_dir_files:
+                        if os.path.normpath(f_info['rel_path']) == os.path.normpath(rel_old):
+                            f_info['rel_path'] = rel_new
+                            try:
+                                stat = os.stat(new_path)
+                                f_info['size'] = stat.st_size
+                                f_info['mtime'] = stat.st_mtime
+                                f_info['ctime'] = stat.st_ctime
+                            except Exception:
+                                pass
+                            break
+                            
+                self.viewer.update_file_path_in_view(old_path, new_path)
+
+            if self.current_file_path and self.current_file_path in target_paths:
+                self.current_file_path = target_paths[self.current_file_path]
+                self.lbl_filename.setText(os.path.basename(self.current_file_path))
+                
+            if self.viewer.stack.currentIndex() == 0:
+                self.show_current_file()
+            else:
+                self.on_selection_changed()
+                
+        except Exception as e:
+            logging.error(f"Affix batch rename error: {e}", exc_info=True)
+            # Откат в случае частичной ошибки на диске
+            for np, op in reversed(rename_pairs):
+                try:
+                    os.rename(np, op)
+                except Exception:
+                    pass
+            QMessageBox.critical(self, AppContext.tr("err_title"), f"{AppContext.tr('msg_rename_affix_err')} {e}")
+            if self.viewer.stack.currentIndex() == 0:
+                self.show_current_file()
+        finally:
+            QTimer.singleShot(1000, lambda: setattr(self, '_ignore_watcher', False))
+
+    def create_category(self):
+        if not self.SORT_DIR or not os.path.exists(self.SORT_DIR): 
+            logging.error("Root sort dir missing.")
+            return
+
+        dlg = SmartNameDialog("dlg_new_cat_title", "dlg_enter_name", self.SORT_DIR, "", self)
+        if dlg.exec() and dlg.final_name:
+            path = os.path.join(self.SORT_DIR, dlg.final_name)
+            try:
+                self._ignore_watcher = True
+                os.makedirs(path, exist_ok=True)
+                self.reload_categories_ui()
+                self.update_watcher_paths() 
+            except Exception as e:
+                QMessageBox.critical(self, AppContext.tr("err_title"), f"{AppContext.tr('msg_create_cat_fail')} {e}")
+            finally:
+                QTimer.singleShot(1000, lambda: setattr(self, '_ignore_watcher', False))
+        self.setFocus()
+
+    def reload_categories_ui(self):
+        pass
+
+    def update_sort_order(self, parent_path, filename, new_index):
+        try:
+            norm_parent = os.path.normpath(parent_path)
+            items = []
+            
+            if norm_parent in self.custom_orders: 
+                items = self.custom_orders[norm_parent]
+            else:
+                try: items = sorted(os.listdir(parent_path))
+                except: items = []
+            
+            if filename in items: items.remove(filename)
+            if new_index < 0: new_index = 0
+            if new_index > len(items): new_index = len(items)
+            items.insert(new_index, filename)
+            self.custom_orders[norm_parent] = items
+            self.reload_categories_ui()
+        except Exception as e:
+            logging.error(f"Sort order update error: {e}", exc_info=True)
+
+
 
         # ЗАЩИТА: Если перемещение/переименование уже идет, игнорируем
         if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():

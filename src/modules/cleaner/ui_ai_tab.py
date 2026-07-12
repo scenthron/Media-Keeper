@@ -227,6 +227,31 @@ class RefDropContainer(QWidget):
             if path.lower().endswith(".mkaidump"):
                 self.dump_dropped.emit(path)
 
+class AiFolderDropContainer(QWidget):
+    folder_dropped = pyqtSignal(str)
+    files_dropped = pyqtSignal(list)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+            
+    def dropEvent(self, event: QDropEvent):
+        paths = []
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            import os
+            if os.path.exists(path):
+                if os.path.isdir(path):
+                    self.folder_dropped.emit(path)
+                else:
+                    paths.append(path)
+        if paths:
+            self.files_dropped.emit(paths)
+
 class AiGroupChipWidget(QFrame):
     state_changed = pyqtSignal(str, bool)
     settings_clicked = pyqtSignal(str)
@@ -565,8 +590,11 @@ class AiClassificationTab(QWidget):
         scroll_dirs.setWidgetResizable(True)
         scroll_dirs.setStyleSheet("QScrollArea { border: 1px solid #333; background-color: #111; border-radius: 4px; }")
         
-        self.sources_list_widget_ai = QWidget()
+        self.sources_list_widget_ai = AiFolderDropContainer()
         self.sources_list_widget_ai.setStyleSheet("background-color: #111111;")
+        self.sources_list_widget_ai.folder_dropped.connect(self.cleaner.add_folder_path)
+        if hasattr(self.cleaner, 'add_folder_paths'):
+            self.sources_list_widget_ai.files_dropped.connect(self.cleaner.add_folder_paths)
         
         dirs_container_layout = QVBoxLayout(self.sources_list_widget_ai)
         dirs_container_layout.setContentsMargins(5, 5, 5, 5)

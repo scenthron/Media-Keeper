@@ -21,7 +21,8 @@ class ConfigManager:
         "hover_delay": 0.4,
         "session_loop": False,
         "session_all_videos_active": False,
-        "auto_collapse_groups": True
+        "auto_collapse_groups": True,
+        "pagination_size": 1000
     }
     
     @staticmethod
@@ -67,12 +68,19 @@ class ConfigManager:
                                 config[k] = (v.lower() == "true")
                             elif k == "auto_collapse_groups":
                                 config[k] = (v.lower() == "true")
+                            elif k == "pagination_size":
+                                try:
+                                    config[k] = int(v)
+                                except ValueError:
+                                    config[k] = 1000
                             else:
                                 config[k] = v
                 
                 # Если у пользователя старая версия конфига, применяем новую по умолчанию
-                if not cp.has_option("General", "auto_collapse_groups"):
+                if not cp.has_option("Main", "auto_collapse_groups"):
                     config["auto_collapse_groups"] = True
+                if not cp.has_option("Main", "pagination_size"):
+                    config["pagination_size"] = 1000
                 
                 # Загружаем другие секции (например, переопределения горячих клавиш)
                 for section in cp.sections():

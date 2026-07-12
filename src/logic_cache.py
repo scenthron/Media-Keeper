@@ -37,6 +37,8 @@ class ScanWorker(QRunnable):
         except: pass
         self.signals.result_ready.emit(self.path, file_count, total_size)
 
+from utils_io import strip_long_path_prefix
+
 class DirCache(QObject):
     updated = pyqtSignal(str) # path that changed
     
@@ -62,7 +64,8 @@ class DirCache(QObject):
         Returns (count, size). 
         If not cached, returns (0, 0) and triggers background scan.
         """
-        path = os.path.normpath(path)
+        if not path: return 0, 0
+        path = strip_long_path_prefix(os.path.normpath(path))
         
         # Check cache
         if path in self._cache:
@@ -74,7 +77,8 @@ class DirCache(QObject):
         return 0, 0
 
     def refresh_path(self, path):
-        path = os.path.normpath(path)
+        if not path: return
+        path = strip_long_path_prefix(os.path.normpath(path))
         if path in self._active_scans: return # Already scanning
         
         self._active_scans.add(path)
@@ -83,7 +87,7 @@ class DirCache(QObject):
         self.thread_pool.start(worker)
 
     def _on_worker_finished(self, path, count, size):
-        path = os.path.normpath(path)
+        path = strip_long_path_prefix(os.path.normpath(path))
         self._active_scans.discard(path)
         self._cache[path] = {'c': count, 's': size}
         self.updated.emit(path)
@@ -92,7 +96,8 @@ class DirCache(QObject):
         """
         Updates cache immediately without disk access. 
         """
-        path = os.path.normpath(path)
+        if not path: return
+        path = strip_long_path_prefix(os.path.normpath(path))
         if path in self._cache:
             self._cache[path]['c'] += delta_count
             self._cache[path]['s'] += delta_size

@@ -1017,11 +1017,16 @@ class FileOpsMixin:
             self._stop_all_media_players()
 
             deleted_paths = []
+            deleted_cache_updates = []
             for path in file_paths:
                 long_p = ensure_long_path(path)
                 if not os.path.exists(long_p):
                     continue
                 try:
+                    file_size = 0
+                    if os.path.isfile(long_p):
+                        file_size = os.path.getsize(long_p)
+                        
                     success = QFile.moveToTrash(long_p)
                     # QFile.moveToTrash returns (bool, str) on Windows in PyQt6, or bool on other platforms
                     trash_ok = success[0] if isinstance(success, tuple) else bool(success)
@@ -1030,13 +1035,19 @@ class FileOpsMixin:
                             shutil.rmtree(long_p)
                         else:
                             os.remove(long_p)
+                            
                     deleted_paths.append(path)
+                    deleted_cache_updates.append((os.path.dirname(path), file_size))
                     logging.info(f"[Files] Файл удален: {path}")
                 except Exception as e:
                     logging.error(f"[Files] Не удалось удалить файл '{path}': {e}", exc_info=True)
                     
             if not deleted_paths:
                 return
+                
+            for parent_dir, file_size in deleted_cache_updates:
+                from logic_cache import DirCache
+                DirCache.inst().optimistic_update(parent_dir, -1, -file_size)
                 
             norm_deleted_set = set(strip_long_path_prefix(os.path.normpath(p)) for p in deleted_paths)
             

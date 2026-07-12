@@ -661,6 +661,7 @@ class UiSetupMixin:
             old_todel = self.config.get("path_todel", "")
             old_recursive = self.config.get("scan_subfolders", False)
             old_depth = self.config.get("max_nesting_depth", 5)
+            old_pagination = self.config.get("pagination_size", 1000)
 
             new_data = dlg.get_new_config_data()
             self.config.update(new_data)
@@ -681,6 +682,10 @@ class UiSetupMixin:
                 new_data.get("scan_subfolders") != old_recursive or
                 new_data.get("max_nesting_depth") != old_depth):
                 self.manual_full_refresh(reset_position=True)
+            elif new_data.get("pagination_size") != old_pagination:
+                # Если изменилась только пагинация, переприменяем фильтры (обновит количество страниц и список)
+                if hasattr(self, 'apply_local_filters_and_sorting'):
+                    self.apply_local_filters_and_sorting(trigger_sync=True)
             
             # 3. Обновляем тексты интерфейса
             if self.window() and hasattr(self.window(), 'update_ui_text'):

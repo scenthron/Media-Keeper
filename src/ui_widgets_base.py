@@ -192,11 +192,22 @@ class FolderLabel(QLabel):
         self.update_info()
 
     def _on_cache_updated(self, updated_path):
+        if hasattr(self, 'virtual_getter') and self.virtual_getter:
+            self.update_info()
+            return
+            
         current_path = self.path_getter()
         if current_path and os.path.normpath(current_path) == os.path.normpath(updated_path):
             self.update_info()
 
     def update_info(self):
+        if hasattr(self, 'virtual_getter') and self.virtual_getter:
+            v_text = self.virtual_getter()
+            if v_text:
+                self.setText(v_text)
+                self.setToolTip(v_text)
+                return
+            
         path = self.path_getter()
         prefix = AppContext.tr(self.text_prefix_key) 
         

@@ -323,7 +323,62 @@ class PathSettingsDialog(QDialog):
         """)
         l.addWidget(self.chk_collapse_groups, 3, 0, 1, 3)
 
-        l.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 4, 0, 1, 3)
+        row_pagination = QHBoxLayout()
+        lbl_pagination = QLabel("Файлов на страницу (Пагинация):" if is_ru else "Files per page (Pagination):")
+        lbl_pagination.setStyleSheet("font-weight: normal; color: #ccc;")
+        row_pagination.addWidget(lbl_pagination)
+        
+        from PyQt6.QtWidgets import QSpinBox
+        self.spin_pagination = QSpinBox()
+        self.spin_pagination.setRange(50, 100000)
+        self.spin_pagination.setSingleStep(100)
+        self.spin_pagination.setValue(self.config.get("pagination_size", 1000))
+        self.spin_pagination.setFixedWidth(100)
+        self.spin_pagination.setFixedHeight(26)
+        
+        up_arrow = os.path.join(self.icons_dir, "square-chevron-up.svg").replace('\\', '/')
+        down_arrow = os.path.join(self.icons_dir, "square-chevron-down.svg").replace('\\', '/')
+        
+        self.spin_pagination.setStyleSheet(f"""
+            QSpinBox {{
+                background-color: #333;
+                color: white;
+                border: 1px solid #555;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 13px;
+                padding-left: 5px;
+            }}
+            QSpinBox::up-button, QSpinBox::down-button {{
+                width: 20px;
+                background: rgba(0, 0, 0, 0.2);
+                border: none;
+            }}
+            QSpinBox::up-button {{
+                border-top-right-radius: 4px;
+                border-bottom: 1px solid #444;
+            }}
+            QSpinBox::down-button {{
+                border-bottom-right-radius: 4px;
+            }}
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+                background: rgba(255, 255, 255, 0.1);
+            }}
+            QSpinBox::up-arrow {{
+                image: url('{up_arrow}');
+                width: 12px; height: 12px;
+            }}
+            QSpinBox::down-arrow {{
+                image: url('{down_arrow}');
+                width: 12px; height: 12px;
+            }}
+        """)
+        
+        row_pagination.addWidget(self.spin_pagination)
+        row_pagination.addStretch()
+        l.addLayout(row_pagination, 4, 0, 1, 3)
+
+        l.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 5, 0, 1, 3)
 
         # Подсказка о смене языка
         lbl_lang_hint = QLabel(
@@ -590,5 +645,6 @@ class PathSettingsDialog(QDialog):
             "path_unsort": self.config.get("path_unsort", ""),
             "path_sort": self.e_sort.text(),
             "path_todel": self.e_todel.text(),
-            "auto_collapse_groups": self.chk_collapse_groups.isChecked()
+            "auto_collapse_groups": self.chk_collapse_groups.isChecked(),
+            "pagination_size": self.spin_pagination.value()
         }

@@ -2613,7 +2613,10 @@ class SorterViewerArea(QWidget):
         self.total_pages = total
         self.lbl_page_text.setText(f"{current + 1}/{total}")
         
-        show_pagination = total > 1
+        # Только для режима сетки (1) и списка (2)
+        is_single_view = getattr(self, 'current_view_mode', 0) == 0
+        show_pagination = (total > 1) and not is_single_view
+        
         self.btn_page_prev.setVisible(show_pagination)
         self.lbl_page_text.setVisible(show_pagination)
         self.btn_page_next.setVisible(show_pagination)

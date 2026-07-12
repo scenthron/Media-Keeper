@@ -2824,20 +2824,29 @@ class SorterViewerArea(QWidget):
             self.btn_view_mode.setText("")
             self.btn_view_mode.setIcon(self.icon_grid)
             self.btn_view_mode.setToolTip("Режим сетки" if AppContext.LANG == "RU" else "Grid Mode")
-            # Hide hover preview button in single mode
             self.btn_toggle_preview.hide()
+            self.btn_page_prev.hide()
+            self.lbl_page_text.hide()
+            self.btn_page_next.hide()
+            self.btn_page_refresh.hide()
         elif mode_idx == 1:
             self.btn_view_mode.setText("")
             self.btn_view_mode.setIcon(self.icon_list)
             self.btn_view_mode.setToolTip("Режим списка" if AppContext.LANG == "RU" else "List Mode")
-            # Show hover preview button in grid/list mode
             self.btn_toggle_preview.show()
+            self.btn_page_prev.show()
+            self.lbl_page_text.show()
+            self.btn_page_next.show()
+            self.btn_page_refresh.show()
         else:
             self.btn_view_mode.setText("")
             self.btn_view_mode.setIcon(self.icon_single)
             self.btn_view_mode.setToolTip("Одиночный просмотр" if AppContext.LANG == "RU" else "Single View")
-            # Show hover preview button in grid/list mode
             self.btn_toggle_preview.show()
+            self.btn_page_prev.show()
+            self.lbl_page_text.show()
+            self.btn_page_next.show()
+            self.btn_page_refresh.show()
             
         self.resizeEvent(None)
         self.update_quick_target_visibility()

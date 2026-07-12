@@ -280,7 +280,24 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.apply_theme()
         self.update_ui_text() 
         self.update_watcher_paths()
-        self.refresh_files_list()
+        has_virtual = False
+        try:
+            from logic_paths import get_app_data_dir
+            import json
+            session_path = os.path.join(get_app_data_dir(), "virtual_session.json")
+            if os.path.exists(session_path):
+                with open(session_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                if data.get('source_name') and data.get('files'):
+                    self.load_virtual_files(data['files'], data['source_name'])
+                    has_virtual = True
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to load virtual session: {e}")
+            
+        if not has_virtual:
+            self.refresh_files_list()
+            
         self.reload_categories_ui()
         self.init_hotkeys()
         

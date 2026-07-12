@@ -22,6 +22,17 @@ from .ui_affix import AffixToolWindow
 from .logic_config import ConfigManager
 from utils_common import format_size
 from utils_io import ensure_long_path, strip_long_path_prefix
+
+def safe_relpath(path: str, start: str) -> str:
+    if not start:
+        return strip_long_path_prefix(path)
+    p = strip_long_path_prefix(path)
+    s = strip_long_path_prefix(start)
+    try:
+        return os.path.relpath(p, s)
+    except ValueError:
+        return p
+
 from .logic_ui import UiSetupMixin
 from .logic_files import FileOpsMixin
 from .logic_player import PlayerMixin
@@ -909,7 +920,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                 # Sync index
                 long_path = ensure_long_path(path)
                 long_unsort = ensure_long_path(self.UNSORT_DIR)
-                rel_path = os.path.relpath(long_path, long_unsort)
+                rel_path = safe_relpath(long_path, long_unsort)
                 rel_path_norm = os.path.normpath(rel_path)
                 for idx, f in enumerate(self.files_queue):
                     if os.path.normpath(f) == rel_path_norm:
@@ -974,7 +985,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         
         # Find index in queue
         long_unsort = ensure_long_path(self.UNSORT_DIR)
-        rel_path = os.path.relpath(long_curr, long_unsort)
+        rel_path = safe_relpath(long_curr, long_unsort)
         rel_path_norm = os.path.normpath(rel_path)
         idx_str = ""
         for idx, f in enumerate(self.files_queue):

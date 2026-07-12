@@ -1819,6 +1819,11 @@ class AiClassificationTab(QWidget):
             menu.addAction(act_invert)
             
             menu.addSeparator()
+            act_send_sorter = QAction("Отправить эту группу в Сортировщик", self)
+            act_send_sorter.triggered.connect(lambda checked, gi=item: self._send_group_to_sorter(gi))
+            menu.addAction(act_send_sorter)
+            
+            menu.addSeparator()
             act_expand_all = QAction("Развернуть все группы" if is_ru else "Expand all groups", self)
             act_collapse_all = QAction("Свернуть все группы" if is_ru else "Collapse all groups", self)
             act_expand_all.triggered.connect(self.tree_results.expandAll)
@@ -1855,6 +1860,11 @@ class AiClassificationTab(QWidget):
             menu.addAction(act_select)
             menu.addAction(act_deselect)
             menu.addAction(act_invert)
+            
+            menu.addSeparator()
+            act_send_sorter = QAction("Отправить эту группу в Сортировщик", self)
+            act_send_sorter.triggered.connect(lambda checked, gi=group_item: self._send_group_to_sorter(gi))
+            menu.addAction(act_send_sorter)
             
             menu.addSeparator()
             act_expand_all = QAction("Развернуть все группы" if is_ru else "Expand all groups", self)
@@ -1897,6 +1907,36 @@ class AiClassificationTab(QWidget):
         finally:
             self.tree_results.blockSignals(False)
         self.update_cleaner_action_bar_info()
+
+    def _send_group_to_sorter(self, group_item):
+        if not group_item: return
+        data = group_item.data(0, Qt.ItemDataRole.UserRole)
+        if not data or not data.get("is_group", False): return
+        
+        group_name = data.get("name", "Unknown")
+        
+        files = []
+        total_size = 0
+        
+        for i in range(group_item.childCount()):
+            child = group_item.child(i)
+            c_data = child.data(0, Qt.ItemDataRole.UserRole)
+            if c_data:
+                path = c_data.get("path")
+                if path and os.path.exists(path):
+                    files.append(path)
+                    total_size += c_data.get("size", 0)
+                    
+        if not files: return
+        
+        from utils_common import format_size
+        virtual_name = f"ИИ Поиск ({len(files)} файлов, {format_size(total_size)})"
+        
+        main_win = self.window()
+        if hasattr(main_win, 'sorter_tab') and hasattr(main_win, 'switch_tab'):
+            main_win.sorter_tab.load_virtual_files(files, virtual_name)
+            main_win.switch_tab(0)
+
 
 
 # -----------------------------------------------------------------------------

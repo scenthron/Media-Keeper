@@ -924,13 +924,13 @@ class FileOpsMixin:
 
                 # Перестраиваем files_queue
                 succeeded_src_rels = [safe_relpath(src, self.UNSORT_DIR) for src, dst in succeeded_pairs]
-                succeeded_src_rels_set = set(os.path.normpath(r) for r in succeeded_src_rels)
+                succeeded_src_rels_set = set(strip_long_path_prefix(os.path.normpath(r)) for r in succeeded_src_rels)
                 
                 # Удаляем перемещенные файлы из RAM-кэша
                 if hasattr(self, '_raw_dir_files') and self._raw_dir_files:
                     self._raw_dir_files = [
                         f for f in self._raw_dir_files 
-                        if os.path.normpath(f['rel_path']) not in succeeded_src_rels_set
+                        if strip_long_path_prefix(os.path.normpath(f['rel_path'])) not in succeeded_src_rels_set
                     ]
                 
                 new_queue = []
@@ -938,7 +938,7 @@ class FileOpsMixin:
                 found_next = False
                 
                 for idx, rel_path in enumerate(self.files_queue):
-                    norm_rel = os.path.normpath(rel_path)
+                    norm_rel = strip_long_path_prefix(os.path.normpath(rel_path))
                     if norm_rel in succeeded_src_rels_set:
                         continue
                     new_queue.append(rel_path)
@@ -1034,14 +1034,14 @@ class FileOpsMixin:
             if not deleted_paths:
                 return
                 
-            norm_deleted_set = set(os.path.normpath(p) for p in deleted_paths)
+            norm_deleted_set = set(strip_long_path_prefix(os.path.normpath(p)) for p in deleted_paths)
             
             new_queue = []
             found_next = False
             new_current_index = self.current_index
             
             for idx, rel_path in enumerate(self.files_queue):
-                full_path = os.path.normpath(os.path.join(self.UNSORT_DIR, rel_path))
+                full_path = strip_long_path_prefix(os.path.normpath(os.path.join(self.UNSORT_DIR, rel_path)))
                 if full_path in norm_deleted_set:
                     continue
                 new_queue.append(rel_path)

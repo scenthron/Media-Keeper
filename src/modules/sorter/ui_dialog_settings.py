@@ -330,14 +330,16 @@ class PathSettingsDialog(QDialog):
         
         from PyQt6.QtWidgets import QSpinBox
         self.spin_pagination = QSpinBox()
-        self.spin_pagination.setRange(50, 100000)
+        self.spin_pagination.setRange(50, 5000)
         self.spin_pagination.setSingleStep(100)
         self.spin_pagination.setValue(self.config.get("pagination_size", 1000))
         self.spin_pagination.setFixedWidth(100)
         self.spin_pagination.setFixedHeight(26)
+        self.spin_pagination.setToolTip("50-5000")
+        self.spin_pagination.lineEdit().setPlaceholderText("50-5000")
         
-        up_arrow = os.path.join(self.icons_dir, "square-chevron-up.svg").replace('\\', '/')
-        down_arrow = os.path.join(self.icons_dir, "square-chevron-down.svg").replace('\\', '/')
+        up_arrow = os.path.join(self.icons_dir, "chevron-up.svg").replace('\\', '/')
+        down_arrow = os.path.join(self.icons_dir, "chevron-down.svg").replace('\\', '/')
         
         self.spin_pagination.setStyleSheet(f"""
             QSpinBox {{

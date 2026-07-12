@@ -2457,6 +2457,50 @@ class SorterViewerArea(QWidget):
         self.btn_quick_target.move(0, 100)
         self.btn_quick_target.hide()
         
+        # --- Pagination Buttons ---
+        self.btn_page_prev = QPushButton("◀", self.overlay_container_right)
+        self.btn_page_prev.setFixedSize(40, 40)
+        self.btn_page_prev.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_page_prev.setStyleSheet(btn_style)
+        self.btn_page_prev.clicked.connect(lambda: self.change_page(-1))
+        self.btn_page_prev.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_page_prev.setToolTip("Предыдущая страница" if AppContext.LANG == "RU" else "Previous Page")
+        self.btn_page_prev.move(0, 200)
+        
+        self.lbl_page_text = QLabel("1/1", self.overlay_container_right)
+        self.lbl_page_text.setFixedSize(40, 40)
+        self.lbl_page_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_page_text.setStyleSheet("""
+            background-color: rgba(30, 30, 30, 0.7);
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 4px;
+        """)
+        self.lbl_page_text.setToolTip("Текущая страница" if AppContext.LANG == "RU" else "Current Page")
+        self.lbl_page_text.move(0, 250)
+        
+        self.btn_page_next = QPushButton("▶", self.overlay_container_right)
+        self.btn_page_next.setFixedSize(40, 40)
+        self.btn_page_next.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_page_next.setStyleSheet(btn_style)
+        self.btn_page_next.clicked.connect(lambda: self.change_page(1))
+        self.btn_page_next.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_page_next.setToolTip("Следующая страница" if AppContext.LANG == "RU" else "Next Page")
+        self.btn_page_next.move(0, 300)
+        
+        self.btn_page_refresh = QPushButton("↻", self.overlay_container_right)
+        self.btn_page_refresh.setFixedSize(40, 40)
+        self.btn_page_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_page_refresh.setStyleSheet(btn_style)
+        self.btn_page_refresh.clicked.connect(lambda: self.refresh_pagination())
+        self.btn_page_refresh.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_page_refresh.setToolTip("Обновить пагинацию" if AppContext.LANG == "RU" else "Refresh Pagination")
+        self.btn_page_refresh.move(0, 350)
+        
+        self.current_page_idx = 0
+        self.total_pages = 1
+        
         self.btn_quick_target_icon = QLabel(self.btn_quick_target)
         self.btn_quick_target_icon.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.btn_quick_target_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -2549,6 +2593,29 @@ class SorterViewerArea(QWidget):
         self.loading_overlay.hide()
         self.update_fullscreen_tooltip(False)
 
+    def change_page(self, delta: int):
+        main_app = self.get_main_app()
+        if main_app and hasattr(main_app, 'change_page'):
+            main_app.change_page(delta)
+
+    def refresh_pagination(self):
+        main_app = self.get_main_app()
+        if main_app and hasattr(main_app, 'refresh_pagination'):
+            main_app.refresh_pagination()
+
+    def update_pagination_ui(self, current: int, total: int):
+        self.current_page_idx = current
+        self.total_pages = total
+        self.lbl_page_text.setText(f"{current + 1}/{total}")
+        
+        show_pagination = total > 1
+        self.btn_page_prev.setVisible(show_pagination)
+        self.lbl_page_text.setVisible(show_pagination)
+        self.btn_page_next.setVisible(show_pagination)
+        self.btn_page_refresh.setVisible(show_pagination)
+        
+        self.resizeEvent(None)
+
     def get_grid_columns_count(self):
         grid_w = self.grid_view.gridSize().width()
         if grid_w <= 0:
@@ -2612,10 +2679,11 @@ class SorterViewerArea(QWidget):
         w = 40
         spacing = 10
         
-        # Right container (view mode, hover preview, and quick target toggles)
-        # Width: 40px, Height: 140px (three 40px buttons + 20px spacing)
+        # Right container (view mode, hover preview, quick target toggles, and 4 pagination buttons)
+        # We need to calculate height based on visible buttons. 
+        # For now, there are 7 buttons (indices 0 to 300) -> 340px
         container_right_w = w
-        container_right_h = w * 3 + spacing * 2
+        container_right_h = 340
         self.overlay_container_right.setGeometry(self.width() - container_right_w - m_right, m, container_right_w, container_right_h)
         self.overlay_container_right.show()
         self.overlay_container_right.raise_()

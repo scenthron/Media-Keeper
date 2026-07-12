@@ -22,62 +22,8 @@ from logic_cache import DirCache
 from utils_io import smart_move_file, ensure_long_path, strip_long_path_prefix
 
 def safe_relpath(path: str, start: str) -> str:
-    p = strip_long_path_prefix(path)
-    s = strip_long_path_prefix(start)
-    return os.path.relpath(p, s)
-
-class FileOpsMixin:
-    def _safe_close_dialog(self, dialog_attr_name):
-        if not hasattr(self, dialog_attr_name): return
-        dlg = getattr(self, dialog_attr_name)
-        if dlg:
-            try:
-                dlg.setParent(None)
-                if dlg.isVisible():
-                    dlg.hide()
-                    dlg.close()
-                dlg.deleteLater()
-            except RuntimeError: pass
-            except Exception as e: logging.error(f"Error closing dialog: {e}")
-            setattr(self, dialog_attr_name, None)
-
-    def refresh_files_list(self, show_progress=True):
-        """
-        Scans Incoming folder to build the queue.
-        show_progress: if True, shows the "Scanning..." dialog.
-        """
-        logging.info(f"Requesting file list refresh (show_progress={show_progress}).")
-        
-        if hasattr(self, 'scan_thread') and self.scan_thread and self.scan_thread.isRunning():
-            logging.debug("Scan already in progress, skipping.")
-            return
-
-        if not self.UNSORT_DIR or not os.path.exists(self.UNSORT_DIR):
-            if not getattr(self, 'virtual_folder_name', None):
-                logging.warning(f"Scan path invalid: {self.UNSORT_DIR}")
-import os
-import re
-import shutil
-import traceback
-import sys
-import ctypes
-import subprocess
-import logging
-from PyQt6.QtWidgets import QMessageBox, QApplication, QLabel, QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QFrame, QScrollArea, QWidget
-from PyQt6.QtCore import QTimer, QUrl, Qt, QFile
-from PyQt6.QtGui import QDesktopServices
-
-from config import AppContext
-from ui_dialogs_generic import ProgressDialog, SmartNameDialog, FileConflictDialog, FileDeletionConfirmDialog, BatchRenameErrorsDialog, MultiFileConflictDialog, MoveErrorsDialog
-from .ui_sidebar_category import CategoryWidget
-from .ui_sidebar_leaf import LeafNodeWidget
-from .workers import ScanThread, MoveThread
-from .logic_automation import AutomationConfig, TemplateEngine
-from utils_common import format_size, get_unique_filepath
-from logic_cache import DirCache
-from utils_io import smart_move_file, ensure_long_path, strip_long_path_prefix
-
-def safe_relpath(path: str, start: str) -> str:
+    if not start:
+        return strip_long_path_prefix(path)
     p = strip_long_path_prefix(path)
     s = strip_long_path_prefix(start)
     return os.path.relpath(p, s)

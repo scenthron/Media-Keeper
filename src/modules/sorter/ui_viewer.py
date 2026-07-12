@@ -20,6 +20,8 @@ from .ui_preview_popup import LargePreviewPopup
 from utils_io import ensure_long_path, strip_long_path_prefix
 
 def safe_relpath(path: str, start: str) -> str:
+    if not start:
+        return strip_long_path_prefix(path)
     p = strip_long_path_prefix(path)
     s = strip_long_path_prefix(start)
     return os.path.relpath(p, s)

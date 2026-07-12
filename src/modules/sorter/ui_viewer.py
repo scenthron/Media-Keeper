@@ -2952,8 +2952,7 @@ class SorterViewerArea(QWidget):
         """Управляет видимостью кнопки Быстрой цели на холсте."""
         main_app = self.get_main_app()
         has_target = main_app and getattr(main_app, 'quick_target_path', None) is not None
-        in_valid_mode = self.current_view_mode in [1, 2, 3]
-        
+        in_valid_mode = self.current_view_mode in [0, 1, 2, 3]
         if has_target and in_valid_mode:
             self.btn_quick_target.show()
         else:

@@ -959,6 +959,10 @@ class FileOpsMixin:
                 self.refresh_sidebar_styling()
                 logging.info(f"[PROFILER] Шаг 2: refresh_sidebar_styling завершен. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
                 
+                # Update top labels for folder count/size
+                if hasattr(self, 'lbl_unsort_count'): self.lbl_unsort_count.update_info()
+                if hasattr(self, 'lbl_todel_count'): self.lbl_todel_count.update_info()
+                
                 # Синхронизируем очередь в UI точечно без полной перерисовки
                 succeeded_srcs = [src for src, dst in succeeded_pairs]
                 self.viewer.remove_files_from_view(succeeded_srcs)
@@ -1036,6 +1040,13 @@ class FileOpsMixin:
                 
             norm_deleted_set = set(strip_long_path_prefix(os.path.normpath(p)) for p in deleted_paths)
             
+            # Удаляем удаленные файлы из RAM-кэша виртуальной папки
+            if hasattr(self, '_raw_dir_files') and self._raw_dir_files:
+                self._raw_dir_files = [
+                    f for f in self._raw_dir_files 
+                    if strip_long_path_prefix(os.path.normpath(f['rel_path'])) not in norm_deleted_set
+                ]
+            
             new_queue = []
             found_next = False
             new_current_index = self.current_index
@@ -1056,6 +1067,10 @@ class FileOpsMixin:
                 
             self.files_queue = new_queue
             self.current_index = new_current_index
+            
+            # Update top labels for folder count/size
+            if hasattr(self, 'lbl_unsort_count'): self.lbl_unsort_count.update_info()
+            if hasattr(self, 'lbl_todel_count'): self.lbl_todel_count.update_info()
             
             # Обновляем UI
             self.viewer.remove_files_from_view(deleted_paths)

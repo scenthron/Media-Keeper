@@ -206,8 +206,11 @@ class FolderLabel(QLabel):
             if v_text:
                 self.setText(v_text)
                 self.setToolTip(v_text)
+                self.setStyleSheet("color: #8b5cf6; font-weight: bold;")
                 return
             
+        self.setStyleSheet("color: #3b82f6; font-weight: bold;")
+
         path = self.path_getter()
         prefix = AppContext.tr(self.text_prefix_key) 
         

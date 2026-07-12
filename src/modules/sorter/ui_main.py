@@ -386,6 +386,10 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
     def set_session_inbox(self, path):
         self.session_inbox_path = path
 
+        self.virtual_folder_name = None
+        if hasattr(self, 'lbl_unsort_count'):
+            self.lbl_unsort_count.virtual_getter = None
+
         # Reset filter on new inbox
         self.config["filter_extensions"] = ""
         ConfigManager.save(self.config)
@@ -398,6 +402,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
     def set_permanent_inbox(self, path):
         self.session_inbox_path = None  # Reset temporary override
         
+        self.virtual_folder_name = None
+        if hasattr(self, 'lbl_unsort_count'):
+            self.lbl_unsort_count.virtual_getter = None
         # Reset filter on new inbox
         self.config["filter_extensions"] = ""
         self.config["path_unsort"] = path if path else ""

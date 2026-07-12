@@ -688,8 +688,7 @@ class FileDetailTree(QTreeWidget):
                     
         if not files: return
         
-        from utils_common import format_size
-        virtual_name = f"Анализатор диска ({len(files)} файлов, {format_size(total_size)})"
+        virtual_name = "Анализатор диска"
         
         shell = self.window()
         if shell and hasattr(shell, 'sorter_tab') and hasattr(shell, 'switch_tab'):

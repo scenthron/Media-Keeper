@@ -1957,8 +1957,7 @@ class AiClassificationTab(QWidget):
                     
         if not files: return
         
-        from utils_common import format_size
-        virtual_name = f"ИИ Поиск ({len(files)} файлов, {format_size(total_size)})"
+        virtual_name = "ИИ Поиск"
         
         main_win = self.window()
         if hasattr(main_win, 'sorter_tab') and hasattr(main_win, 'switch_tab'):

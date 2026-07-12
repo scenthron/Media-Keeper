@@ -364,8 +364,7 @@ class CleanerTreeMixin:
         else:
             source_name = "Поиск дубликатов"
             
-        from utils_common import format_size
-        virtual_name = f"{source_name} ({len(files)} файлов, {format_size(total_size)})"
+        virtual_name = source_name
         
         main_win = self.window()
         if hasattr(main_win, 'sorter_tab') and hasattr(main_win, 'switch_tab'):

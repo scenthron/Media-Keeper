@@ -29,8 +29,13 @@ class SidebarNodeMixin:
         sess_inbox = getattr(self.app, 'session_inbox_path', None)
         sess_trash = getattr(self.app, 'session_trash_path', None)
 
-        is_inbox = (sess_inbox and os.path.normpath(sess_inbox) == my_norm) or \
-                   (inbox_conf and os.path.normpath(inbox_conf) == my_norm)
+        is_virtual = getattr(self.app, 'virtual_folder_name', None) is not None
+        
+        if is_virtual:
+            is_inbox = False
+        else:
+            is_inbox = (sess_inbox and os.path.normpath(sess_inbox) == my_norm) or \
+                       (inbox_conf and os.path.normpath(inbox_conf) == my_norm)
         
         is_trash = (sess_trash and os.path.normpath(sess_trash) == my_norm) or \
                    (trash_conf and os.path.normpath(trash_conf) == my_norm)

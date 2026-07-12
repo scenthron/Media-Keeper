@@ -117,6 +117,7 @@ class FileOpsMixin:
                 return
         else:
             # We are scanning a real folder, clear virtual session and thumbnail cache
+            was_virtual = getattr(self, 'virtual_folder_name', None) is not None
             self.virtual_folder_name = None
             if hasattr(self, 'lbl_unsort_count'):
                 self.lbl_unsort_count.virtual_getter = None
@@ -128,6 +129,9 @@ class FileOpsMixin:
                 
             from modules.sorter.thumbnail_loader import ThumbnailLoader
             ThumbnailLoader.inst().clear_disk_cache()
+            
+            if was_virtual and hasattr(self, 'refresh_sidebar_styling'):
+                self.refresh_sidebar_styling()
 
         if show_progress:
             logging.debug("Show scan dialog.")
@@ -211,6 +215,9 @@ class FileOpsMixin:
             self.lbl_unsort_count.virtual_getter = self._get_virtual_folder_text
             self.lbl_unsort_count.update_info()
             self.lbl_unsort_count.setStyleSheet("color: #8b5cf6; font-weight: bold;")
+            
+        if hasattr(self, 'refresh_sidebar_styling'):
+            self.refresh_sidebar_styling()
 
     def cancel_scan(self):
         logging.info("Сканирование входящей папки отменено пользователем.")

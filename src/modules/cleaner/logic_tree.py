@@ -140,6 +140,12 @@ class CleanerTreeMixin:
             act_desel_all.triggered.connect(lambda checked, gi=group_item: self._header_group_action(gi, 'none'))
             menu.addAction(act_desel_all)
             menu.addSeparator()
+
+            if getattr(self, 'current_tab', 0) in (1, 2):
+                act_send_sorter = QAction("Отправить эту группу в Сортировщик", self)
+                act_send_sorter.triggered.connect(lambda checked, gi=group_item: self._send_group_to_sorter(gi))
+                menu.addAction(act_send_sorter)
+                menu.addSeparator()
         
         is_dump = path.startswith('[Дамп]')
         
@@ -257,6 +263,12 @@ class CleanerTreeMixin:
             act_sel_all = QAction("Выделить всё в этой группе" if AppContext.LANG == "RU" else "Select all in this group", self)
             act_sel_all.triggered.connect(lambda: self._header_group_action(item, 'all'))
             menu.addAction(act_sel_all)
+            
+            if current_tab in (1, 2):
+                menu.addSeparator()
+                act_send_sorter = QAction("Отправить эту группу в Сортировщик", self)
+                act_send_sorter.triggered.connect(lambda: self._send_group_to_sorter(item))
+                menu.addAction(act_send_sorter)
         else:
             act_sel_all = QAction(AppContext.tr("cln_ctx_select_all"), self)
             act_sel_all.triggered.connect(lambda: self._header_group_action(item, 'all'))
@@ -313,6 +325,52 @@ class CleanerTreeMixin:
         finally:
             self.tree.setUpdatesEnabled(True)
             self.update_selection_info()
+
+    def _header_group_action(self, item: dict, action: str) -> None:
+        group_id = item.get('id')
+        if not group_id: return
+        for fi in self.virtual_model._all_items:
+            if fi['type'] == 'file' and fi.get('group_id') == group_id:
+                if action == 'all':
+                    fi['is_marked'] = 1
+                    self.session_db.mark_file_selected(fi['path'], 1)
+                elif action == 'none':
+                    fi['is_marked'] = 0
+                    self.session_db.mark_file_selected(fi['path'], 0)
+        self.virtual_model.rebuild_flat_items()
+        self.virtual_model.layoutChanged.emit()
+        self.update_selection_info()
+
+    def _send_group_to_sorter(self, group_item: dict) -> None:
+        group_id = group_item.get('id')
+        if not group_id: return
+        
+        files = []
+        total_size = 0
+        for fi in self.virtual_model._all_items:
+            if fi['type'] == 'file' and fi.get('group_id') == group_id:
+                path = fi.get('path')
+                if path and os.path.exists(path):
+                    files.append(path)
+                    total_size += fi.get('size', 0)
+                
+        if not files: return
+        
+        current_tab = getattr(self, 'current_tab', 0)
+        if current_tab == 1:
+            source_name = "Поиск похожих"
+        elif current_tab == 2:
+            source_name = "ИИ Поиск"
+        else:
+            source_name = "Поиск дубликатов"
+            
+        from utils_common import format_size
+        virtual_name = f"{source_name} ({len(files)} файлов, {format_size(total_size)})"
+        
+        main_win = self.window()
+        if hasattr(main_win, 'sorter_tab') and hasattr(main_win, 'switch_tab'):
+            main_win.sorter_tab.load_virtual_files(files, virtual_name)
+            main_win.switch_tab(0) # 0 is Sorter
 
     def update_selection_info(self) -> None:
         self.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")

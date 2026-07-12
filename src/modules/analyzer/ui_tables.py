@@ -664,6 +664,39 @@ class FileDetailTree(QTreeWidget):
             shell.sorter_tab.set_session_inbox(folder_path)
             shell.switch_tab(0)
 
+    def _send_all_to_sorter(self):
+        files = []
+        total_size = 0
+        for i in range(self.topLevelItemCount()):
+            item = self.topLevelItem(i)
+            if item.childCount() > 0:
+                for j in range(item.childCount()):
+                    child = item.child(j)
+                    path = child.data(1, Qt.ItemDataRole.UserRole + 1)
+                    if path and os.path.exists(path):
+                        files.append(path)
+                        size_val = child.data(2, Qt.ItemDataRole.UserRole)
+                        if isinstance(size_val, (int, float)):
+                            total_size += size_val
+            else:
+                path = item.data(1, Qt.ItemDataRole.UserRole + 1)
+                if path and os.path.exists(path):
+                    files.append(path)
+                    size_val = item.data(2, Qt.ItemDataRole.UserRole)
+                    if isinstance(size_val, (int, float)):
+                        total_size += size_val
+                    
+        if not files: return
+        
+        from utils_common import format_size
+        virtual_name = f"Анализатор диска ({len(files)} файлов, {format_size(total_size)})"
+        
+        shell = self.window()
+        if shell and hasattr(shell, 'sorter_tab') and hasattr(shell, 'switch_tab'):
+            shell.sorter_tab.load_virtual_files(files, virtual_name)
+            shell.switch_tab(0)
+
+
     def open_menu(self, pos):
         item = self.itemAt(pos)
         if not item: return
@@ -745,5 +778,10 @@ class FileDetailTree(QTreeWidget):
             a_disassemble = QAction(f"⚡ {AppContext.tr('anl_ctx_disassemble')}", self)
             a_disassemble.triggered.connect(lambda: self.trigger_disassemble(path))
             menu.addAction(a_disassemble)
+
+        menu.addSeparator()
+        a_send_all = QAction("📤 Отправить список в Сортировщик", self)
+        a_send_all.triggered.connect(self._send_all_to_sorter)
+        menu.addAction(a_send_all)
 
         menu.exec(self.mapToGlobal(pos))

@@ -276,7 +276,6 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.cats_container.setObjectName("CatsContainer")
         self.cats_container.external_folders_dropped.connect(self.add_temporary_roots)
         self.cats_container.internal_reorder.connect(self.on_internal_reorder)
-        
         self.cats_layout = self.cats_container.v_layout
         self.cats_scroll.setWidget(self.cats_container)
         
@@ -284,6 +283,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         
         # --- Tree Controls ---
         self.tree_controls_widget = QWidget()
+        self.tree_controls_widget.setObjectName("TreeControls")
         tree_ctrl_layout = QHBoxLayout(self.tree_controls_widget)
         tree_ctrl_layout.setContentsMargins(5, 5, 5, 5)
         tree_ctrl_layout.setSpacing(5)
@@ -292,21 +292,21 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.btn_collapse_all.setFixedHeight(30)
         self.btn_collapse_all.setStyleSheet("background-color: #333; color: #ccc; border: 1px solid #555; border-radius: 4px;")
         self.btn_collapse_all.clicked.connect(self.collapse_all_folders)
+        self.btn_collapse_all.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         
-        self.btn_remember_tree = QPushButton("📌")
+        self.btn_remember_tree = QPushButton("📌 Сохранять вид")
         self.btn_remember_tree.setCheckable(True)
-        self.btn_remember_tree.setFixedSize(30, 30)
+        self.btn_remember_tree.setFixedHeight(30)
         self.btn_remember_tree.setStyleSheet("""
-            QPushButton { background-color: #333; border: 1px solid #555; border-radius: 4px; font-size: 14px;}
-            QPushButton:checked { background-color: #3b82f6; border: 1px solid #60a5fa; }
+            QPushButton { background-color: #333; color: #ccc; border: 1px solid #555; border-radius: 4px; font-size: 14px;}
+            QPushButton:checked { background-color: #3b82f6; color: white; border: 1px solid #60a5fa; }
         """)
         self.btn_remember_tree.setToolTip("Запоминать состояние дерева (Фокус или Общий вид)")
         self.btn_remember_tree.clicked.connect(self.toggle_remember_tree)
+        self.btn_remember_tree.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         
         tree_ctrl_layout.addWidget(self.btn_collapse_all, stretch=1)
-        tree_ctrl_layout.addWidget(self.btn_remember_tree)
-        
-        self.sidebar_layout.addWidget(self.tree_controls_widget)
+        tree_ctrl_layout.addWidget(self.btn_remember_tree, stretch=1)
         # ----------------------
         
         self.splitter.addWidget(self.sidebar)
@@ -752,6 +752,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                      target_items.append((cat_name, cat_path, "category"))
 
         target_items.append(("", self.SORT_DIR, "drop_zone"))
+        target_items.append(("", self.SORT_DIR, "tree_controls"))
 
         t4 = time.perf_counter()
         logging.info(f"[PROFILER] target_items ({len(target_items)} items) assembled in {t4 - t3:.4f}s")
@@ -766,18 +767,21 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                     current_widgets[w.path] = w
                 elif w.__class__.__name__ == "DropZoneWidget":
                     current_widgets["__drop_zone__"] = w
+                elif w.objectName() == "TreeControls":
+                    current_widgets["__tree_controls__"] = w
 
         # 3. Удаляем те виджеты, которых больше нет в целевом списке
-        target_keys = {item[1] if item[2] != "drop_zone" else "__drop_zone__" for item in target_items}
+        target_keys = {item[1] if item[2] == "category" else f"__{item[2]}__" for item in target_items}
         for key, w in list(current_widgets.items()):
             if key not in target_keys:
                 layout.removeWidget(w)
-                w.deleteLater()
+                if w.objectName() != "TreeControls":
+                    w.deleteLater()
                 del current_widgets[key]
 
         # 4. Инкрементально вставляем и синхронизируем
         for idx, (name, path, item_type) in enumerate(target_items):
-            key = path if item_type != "drop_zone" else "__drop_zone__"
+            key = path if item_type == "category" else f"__{item_type}__"
             
             if key in current_widgets:
                 widget = current_widgets[key]
@@ -794,7 +798,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                         if not widget.is_collapsed:
                             widget.toggle_collapse()
                     layout.insertWidget(idx, widget)
-                else:
+                elif item_type == "drop_zone":
                     drop_zone = DropZoneWidget()
                     drop_zone.set_folder_info(self.SORT_DIR)
                     drop_zone.clicked.connect(self.browse_and_add_temp_root)
@@ -806,6 +810,8 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                     else:
                         drop_zone.btn_clear.hide()
                     layout.insertWidget(idx, drop_zone)
+                elif item_type == "tree_controls":
+                    layout.insertWidget(idx, self.tree_controls_widget)
 
         t5 = time.perf_counter()
         logging.info(f"[PROFILER] UI widgets inserted/updated in {t5 - t4:.4f}s. Total reload_categories_ui time: {t5 - t3:.4f}s")

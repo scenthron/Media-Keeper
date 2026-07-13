@@ -120,7 +120,9 @@ class PlayerMixin:
             self.video_controls.set_popup_values(speed, loop, apply_all, True)
             
             self.media_player.stop()
-            self.media_player.setSource(QUrl.fromLocalFile(self.current_file_path))
+            from utils_io import strip_long_path_prefix
+            clean_path = strip_long_path_prefix(self.current_file_path)
+            self.media_player.setSource(QUrl.fromLocalFile(clean_path))
             self.media_player.setPlaybackRate(speed)
             
             if loop:
@@ -142,7 +144,9 @@ class PlayerMixin:
             self.video_controls.set_popup_values(1.0, False, False, False)
             
             self.media_player.stop()
-            self.media_player.setSource(QUrl.fromLocalFile(self.current_file_path))
+            from utils_io import strip_long_path_prefix
+            clean_path = strip_long_path_prefix(self.current_file_path)
+            self.media_player.setSource(QUrl.fromLocalFile(clean_path))
             self.viewer.set_audio_mode(filename)
             is_loading = hasattr(self, 'viewer') and hasattr(self.viewer, 'loading_overlay') and not self.viewer.loading_overlay.isHidden()
             if not is_loading:

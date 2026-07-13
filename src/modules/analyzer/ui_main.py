@@ -1334,7 +1334,7 @@ class AnalyzerWidget(QWidget):
         shell = self.window()
         if shell and hasattr(shell, "sorter_tab") and hasattr(shell, "switch_tab"):
             logging.info(f"Analyzer: Requesting Sorter disassembly for {folder_path}")
-            shell.sorter_tab.set_session_inbox(folder_path)
+            shell.sorter_tab.set_permanent_inbox(folder_path)
             shell.switch_tab(0)
 
     def reveal_file(self, path):

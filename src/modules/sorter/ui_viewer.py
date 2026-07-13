@@ -2637,7 +2637,9 @@ class SorterViewerArea(QWidget):
         self.btn_page_prev.setVisible(show_pagination)
         self.lbl_page_text.setVisible(show_pagination)
         self.btn_page_next.setVisible(show_pagination)
-        self.btn_page_refresh.setVisible(show_pagination)
+        
+        # Кнопка обновления видна всегда в режимах сетки/списка (даже если 1 страница)
+        self.btn_page_refresh.setVisible(not is_single_view)
         
         self.resizeEvent(None)
 

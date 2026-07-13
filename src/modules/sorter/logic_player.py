@@ -245,6 +245,31 @@ class PlayerMixin:
         AppContext.session_all_videos_active = enabled
         AppContext.save_media_settings()
 
+    def _log_media_error(self, error, errorString):
+        logging.error(f"[MediaPlayer] Error: {error}, Description: {errorString}")
+
+    def _log_media_status(self, status):
+        from PyQt6.QtMultimedia import QMediaPlayer
+        status_name = {
+            QMediaPlayer.MediaStatus.NoMedia: "NoMedia",
+            QMediaPlayer.MediaStatus.LoadingMedia: "LoadingMedia",
+            QMediaPlayer.MediaStatus.LoadedMedia: "LoadedMedia",
+            QMediaPlayer.MediaStatus.StalledMedia: "StalledMedia",
+            QMediaPlayer.MediaStatus.BufferingMedia: "BufferingMedia",
+            QMediaPlayer.MediaStatus.BufferedMedia: "BufferedMedia",
+            QMediaPlayer.MediaStatus.EndOfMedia: "EndOfMedia",
+            QMediaPlayer.MediaStatus.InvalidMedia: "InvalidMedia",
+        }.get(status, f"Unknown ({status})")
+        logging.info(f"[MediaPlayer] Status changed: {status_name}")
+
     def _on_playback_state_changed(self, state):
+        from PyQt6.QtMultimedia import QMediaPlayer
+        state_name = {
+            QMediaPlayer.PlaybackState.StoppedState: "Stopped",
+            QMediaPlayer.PlaybackState.PlayingState: "Playing",
+            QMediaPlayer.PlaybackState.PausedState: "Paused",
+        }.get(state, f"Unknown ({state})")
+        logging.info(f"[MediaPlayer] Playback state changed: {state_name}")
+        
         is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
         self.video_controls.set_playing_state(is_playing)

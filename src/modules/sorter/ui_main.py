@@ -129,6 +129,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.audio_output.setVolume(self.global_volume)
         self.media_player.mediaStatusChanged.connect(self._fit_video)
         
+        self.media_player.errorOccurred.connect(self._log_media_error)
+        self.media_player.mediaStatusChanged.connect(self._log_media_status)
+        
         self.viewer.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
         
         self.left_layout.addWidget(self.viewer, stretch=1)

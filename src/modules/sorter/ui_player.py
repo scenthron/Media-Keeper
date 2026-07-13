@@ -102,6 +102,21 @@ class ClickableSlider(QSlider):
         super().mouseReleaseEvent(event)
         self.seek_drag_stop.emit()
 
+    def wheelEvent(self, event):
+        # Игнорируем системный множитель (wheelScrollLines), 1 щелчок = ровно 1 шаг
+        delta = event.angleDelta().y()
+        if delta > 0:
+            val = min(self.maximum(), self.value() + self.singleStep())
+        elif delta < 0:
+            val = max(self.minimum(), self.value() - self.singleStep())
+        else:
+            return
+            
+        self.setValue(val)
+        self.seek_requested.emit(val)
+        self.seek_moved.emit(val)
+        event.accept()
+
     def pixelPosToRangeValue(self, pos):
         opt = QStyleOptionSlider()
         self.initStyleOption(opt)

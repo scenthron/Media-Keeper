@@ -628,6 +628,7 @@ class LargePreviewPopup(QDialog):
                 
             self.controls.set_popup_values(speed, loop, apply_all, is_video=True)
             
+            self.media_player.stop()
             self.media_player.setSource(QUrl.fromLocalFile(filepath))
             self.audio_output.setVolume(volume_pct / 100.0)
             self.controls.vol_slider.setValue(volume_pct)
@@ -683,6 +684,7 @@ class LargePreviewPopup(QDialog):
             
             self.controls.set_popup_values(1.0, loop, False, is_video=False)
             
+            self.media_player.stop()
             self.media_player.setSource(QUrl.fromLocalFile(filepath))
             self.audio_output.setVolume(volume_pct / 100.0)
             self.controls.vol_slider.setValue(volume_pct)

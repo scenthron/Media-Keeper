@@ -1041,20 +1041,21 @@ class ZoomableGraphicsView(QGraphicsView):
         if self.time_overlay: self.time_overlay.hide()
         self.clear_scene_content()
         
-        # Берем имя с расширением
         track_name = os.path.basename(text)
         
-        import html
-        escaped_name = html.escape(track_name)
-        
-        # HTML-разметка с синим цветом и иконкой ноты
-        html_text = f"<div style='text-align: center; line-height: 1.4; color: #3b82f6;'>🎵<br>{escaped_name}</div>"
-        
-        self.text_item.setTextWidth(800)  # Фиксированная ширина для корректного переноса
+        self.text_item.setTextWidth(1000)
         self.text_item.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
-        self.text_item.setHtml(html_text)
+        self.text_item.setDefaultTextColor(QColor("#3b82f6"))
         
-        # Центрируем на виртуальном холсте 1280x720
+        # Настройка выравнивания по центру без HTML
+        from PyQt6.QtGui import QTextOption
+        doc = self.text_item.document()
+        option = QTextOption()
+        option.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        doc.setDefaultTextOption(option)
+        
+        self.text_item.setPlainText(f"🎵\n{track_name}")
+        
         base_w, base_h = 1280.0, 720.0
         text_rect = self.text_item.boundingRect()
         x_text = (base_w - text_rect.width()) / 2

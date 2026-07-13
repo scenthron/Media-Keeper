@@ -508,7 +508,7 @@ class SorterHotkeysMixin:
     def fast_move_to_target(self) -> None:
         """Перемещает выделенные файлы в папку быстрой цели (Fast Move)."""
         if not getattr(self, 'quick_target_path', None) or not os.path.exists(self.quick_target_path):
-            if hasattr(self, '_hotkey_registry') and getattr(self, 'current_view_mode', None) == 0:
+            if hasattr(self, '_hotkey_registry') and hasattr(self, 'viewer') and getattr(self.viewer, 'current_view_mode', None) == 0:
                 fast_key = self._hotkey_registry.get_effective_key("fast_move_to_target")
                 play_key = self._hotkey_registry.get_effective_key("toggle_playback")
                 if fast_key == play_key:

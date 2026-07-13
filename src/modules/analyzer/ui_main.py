@@ -1268,6 +1268,13 @@ class AnalyzerWidget(QWidget):
             a_analyze_parent = QAction(f"📊 {AppContext.tr('anl_ctx_analyze_parent')}", self)
             a_analyze_parent.triggered.connect(lambda: self.analyze_parent_folder(path))
             menu.addAction(a_analyze_parent)
+            
+            name_dis = AppContext.tr('anl_ctx_disassemble_with_switch')
+            a_disassemble = QAction(name_dis, self)
+            a_disassemble.setToolTip(AppContext.tr("anl_ctx_disassemble_tip"))
+            a_disassemble.setStatusTip(AppContext.tr("anl_ctx_disassemble_tip"))
+            a_disassemble.triggered.connect(lambda: self.disassemble_folder(os.path.dirname(path)))
+            menu.addAction(a_disassemble)
 
             menu.addSeparator()
 

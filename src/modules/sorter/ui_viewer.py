@@ -1004,6 +1004,7 @@ class ZoomableGraphicsView(QGraphicsView):
         self.pixmap_item.show()
         if not pixmap.isNull():
             self.scene.setSceneRect(self.pixmap_item.boundingRect())
+        self._current_rotation = 0
         self.reset_view()
 
     def set_animated(self, filepath):
@@ -1143,6 +1144,9 @@ class ZoomableGraphicsView(QGraphicsView):
 
     def reset_view(self):
         self.resetTransform()
+        if getattr(self, '_current_rotation', 0) != 0:
+            super().rotate(self._current_rotation)
+            
         self.horizontalScrollBar().setValue(0)
         self.verticalScrollBar().setValue(0)
         
@@ -1165,11 +1169,14 @@ class ZoomableGraphicsView(QGraphicsView):
         if content_rect.width() > 0 and content_rect.height() > 0:
             width_diff = content_rect.width() - view_rect.width()
             height_diff = content_rect.height() - view_rect.height()
+            
+            is_rotated = getattr(self, '_current_rotation', 0) % 180 != 0
+            
             if active_item == self.video_item:
                 self.fitInView(active_item, Qt.AspectRatioMode.KeepAspectRatio)
                 self.centerOn(active_item)
             elif active_item in (self.pixmap_item, self.text_item):
-                if width_diff > 0 or height_diff > 0:
+                if width_diff > 0 or height_diff > 0 or is_rotated:
                     self.fitInView(active_item, Qt.AspectRatioMode.KeepAspectRatio)
                     self.centerOn(active_item)
                 else:
@@ -1180,7 +1187,16 @@ class ZoomableGraphicsView(QGraphicsView):
     def change_rotation(self, angle):
         if self.video_item.isVisible() or self.text_item.isVisible():
             return
-        self.rotate(angle)
+        if not hasattr(self, '_current_rotation'):
+            self._current_rotation = 0
+        self._current_rotation = (self._current_rotation + angle) % 360
+        self.reset_view()
+
+    def set_absolute_rotation(self, angle):
+        if self.video_item.isVisible() or self.text_item.isVisible():
+            return
+        self._current_rotation = angle % 360
+        self.reset_view()
 
     def set_background_color(self, color):
         self.setBackgroundBrush(QColor(color))
@@ -2893,7 +2909,10 @@ class SorterViewerArea(QWidget):
             norm_path = os.path.normpath(main_app.current_file_path)
             angle = self.file_rotations.get(norm_path, 0)
             if angle != 0:
-                self.single_view.rotate(angle)
+                if hasattr(self.single_view, 'set_absolute_rotation'):
+                    self.single_view.set_absolute_rotation(angle)
+                else:
+                    self.single_view.rotate(angle)
 
     def set_animated(self, filepath):
         if self.stack.currentIndex() == 3:
@@ -2902,7 +2921,10 @@ class SorterViewerArea(QWidget):
         norm_path = os.path.normpath(filepath)
         angle = self.file_rotations.get(norm_path, 0)
         if angle != 0:
-            self.single_view.rotate(angle)
+            if hasattr(self.single_view, 'set_absolute_rotation'):
+                self.single_view.set_absolute_rotation(angle)
+            else:
+                self.single_view.rotate(angle)
 
     def update_item_preview(self, filepath):
         norm_path = os.path.normpath(filepath)

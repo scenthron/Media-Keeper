@@ -35,16 +35,24 @@ class PopupImageViewer(QGraphicsView):
 
         self.pixmap_item = QGraphicsPixmapItem()
         self.scene.addItem(self.pixmap_item)
+        self._current_rotation = 0
 
     def set_pixmap(self, pixmap):
         self.pixmap_item.setPixmap(pixmap)
         if not pixmap.isNull():
             self.scene.setSceneRect(self.pixmap_item.boundingRect())
+        self._current_rotation = 0
+        self.reset_view()
+        
+    def rotate(self, angle):
+        self._current_rotation = (self._current_rotation + angle) % 360
         self.reset_view()
 
     def reset_view(self):
         if not self.pixmap_item.pixmap().isNull():
             self.resetTransform()
+            if getattr(self, '_current_rotation', 0) != 0:
+                super().rotate(self._current_rotation)
             self.horizontalScrollBar().setValue(0)
             self.verticalScrollBar().setValue(0)
             self.pixmap_item.setPos(0, 0)
@@ -100,6 +108,7 @@ class PopupVideoViewer(QGraphicsView):
         self.video_item = QGraphicsVideoItem()
         self.scene.addItem(self.video_item)
         self.video_item.nativeSizeChanged.connect(self._on_native_size_changed)
+        self._current_rotation = 0
 
     def _on_native_size_changed(self, size):
         if size.isValid():
@@ -107,10 +116,16 @@ class PopupVideoViewer(QGraphicsView):
             self.scene.setSceneRect(QRectF(QPointF(0, 0), size))
             self.reset_view()
 
+    def rotate(self, angle):
+        self._current_rotation = (self._current_rotation + angle) % 360
+        self.reset_view()
+
     def reset_view(self):
         content_rect = self.scene.sceneRect()
         if content_rect.width() > 0 and content_rect.height() > 0:
             self.resetTransform()
+            if getattr(self, '_current_rotation', 0) != 0:
+                super().rotate(self._current_rotation)
             self.horizontalScrollBar().setValue(0)
             self.verticalScrollBar().setValue(0)
             self.video_item.setPos(0, 0)

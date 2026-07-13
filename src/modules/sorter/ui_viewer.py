@@ -1041,8 +1041,8 @@ class ZoomableGraphicsView(QGraphicsView):
         if self.time_overlay: self.time_overlay.hide()
         self.clear_scene_content()
         
-        # Получаем имя трека без расширения
-        track_name = os.path.splitext(text)[0]
+        # Берем имя с расширением
+        track_name = os.path.basename(text)
         
         import html
         escaped_name = html.escape(track_name)
@@ -1050,14 +1050,20 @@ class ZoomableGraphicsView(QGraphicsView):
         # HTML-разметка с синим цветом и иконкой ноты
         html_text = f"<div style='text-align: center; line-height: 1.4; color: #3b82f6;'>🎵<br>{escaped_name}</div>"
         
-        self.text_item.setPos(0, 0)
-        self.text_item.setTextWidth(600)  # Фиксированная ширина для корректного переноса
-        self.text_item.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
+        self.text_item.setTextWidth(800)  # Фиксированная ширина для корректного переноса
+        self.text_item.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
         self.text_item.setHtml(html_text)
+        
+        # Центрируем на виртуальном холсте 1280x720
+        base_w, base_h = 1280.0, 720.0
+        text_rect = self.text_item.boundingRect()
+        x_text = (base_w - text_rect.width()) / 2
+        y_text = (base_h - text_rect.height()) / 2
+        
+        self.text_item.setPos(x_text, y_text)
         self.text_item.show()
         
-        # Устанавливаем границы сцены строго равными границам текстового элемента
-        self.scene.setSceneRect(self.text_item.boundingRect())
+        self.scene.setSceneRect(0, 0, base_w, base_h)
         self.reset_view()
 
     def show_empty_state(self, message):

@@ -1187,7 +1187,6 @@ class FileOpsMixin:
             self.locked_files.update(os.path.normpath(strip_long_path_prefix(src)) for src, dst in resolved_pairs)
 
             import time
-            from workers import MoveThread
             self.undo_thread = MoveThread(resolved_pairs, start_time=time.perf_counter())
             self.undo_thread.progress_update.connect(lambda c, t, f: self.undo_dlg.set_current_file(c, f) if hasattr(self, 'undo_dlg') and self.undo_dlg else None)
             self.undo_thread.detailed_progress.connect(lambda c, t, o, ot: self.undo_dlg.update_bars(c, t, o, ot) if hasattr(self, 'undo_dlg') and self.undo_dlg else None)

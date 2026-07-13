@@ -57,6 +57,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.temp_roots = []
         self.ui_root_order = [] 
         
+        self.collapsed_states_cache = {}
+        self.custom_orders = {}
+        
         self.session_inbox_path = None
         self.session_trash_path = None
         
@@ -279,6 +282,33 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         
         self.sidebar_layout.addWidget(self.cats_scroll)
         
+        # --- Tree Controls ---
+        self.tree_controls_widget = QWidget()
+        tree_ctrl_layout = QHBoxLayout(self.tree_controls_widget)
+        tree_ctrl_layout.setContentsMargins(5, 5, 5, 5)
+        tree_ctrl_layout.setSpacing(5)
+        
+        self.btn_collapse_all = QPushButton("Свернуть все")
+        self.btn_collapse_all.setFixedHeight(30)
+        self.btn_collapse_all.setStyleSheet("background-color: #333; color: #ccc; border: 1px solid #555; border-radius: 4px;")
+        self.btn_collapse_all.clicked.connect(self.collapse_all_folders)
+        
+        self.btn_remember_tree = QPushButton("📌")
+        self.btn_remember_tree.setCheckable(True)
+        self.btn_remember_tree.setFixedSize(30, 30)
+        self.btn_remember_tree.setStyleSheet("""
+            QPushButton { background-color: #333; border: 1px solid #555; border-radius: 4px; font-size: 14px;}
+            QPushButton:checked { background-color: #3b82f6; border: 1px solid #60a5fa; }
+        """)
+        self.btn_remember_tree.setToolTip("Запоминать состояние дерева (Фокус или Общий вид)")
+        self.btn_remember_tree.clicked.connect(self.toggle_remember_tree)
+        
+        tree_ctrl_layout.addWidget(self.btn_collapse_all, stretch=1)
+        tree_ctrl_layout.addWidget(self.btn_remember_tree)
+        
+        self.sidebar_layout.addWidget(self.tree_controls_widget)
+        # ----------------------
+        
         self.splitter.addWidget(self.sidebar)
         
         self.splitter.setStretchFactor(0, 1)
@@ -383,7 +413,41 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                      self.custom_orders[target_norm] = items
                      need_reload = True
 
+    def load_tree_state_from_root(self, root_path=None, inherit_cache=False):
+        from logic_tree_state import TreeStateManager
+        if root_path is None:
+            root_path = self.session_inbox_path if self.session_inbox_path else self.SORT_DIR
+            
+        if not root_path or not os.path.exists(root_path):
+            if hasattr(self, 'btn_remember_tree'):
+                self.btn_remember_tree.setChecked(False)
+            self._tree_remember_enabled = False
+            return
+            
+        state = TreeStateManager.load_state(root_path)
+        if state is not None:
+            self._tree_remember_enabled = state.get("enabled", False)
+            if hasattr(self, 'btn_remember_tree'):
+                self.btn_remember_tree.setChecked(self._tree_remember_enabled)
+            
+            if self._tree_remember_enabled:
+                self.collapsed_states_cache = state.get("collapsed_states", {})
+                self.custom_orders = state.get("custom_orders", {})
+        else:
+            if inherit_cache:
+                if hasattr(self, 'btn_remember_tree'):
+                    self.btn_remember_tree.setChecked(self._tree_remember_enabled)
+                if self._tree_remember_enabled:
+                    self.save_tree_state_if_enabled()
+            else:
+                self._tree_remember_enabled = False
+                if hasattr(self, 'btn_remember_tree'):
+                    self.btn_remember_tree.setChecked(False)
+                self.collapsed_states_cache = {}
+                self.custom_orders = {}
+
         if need_reload:
+            self.save_tree_state_if_enabled()
             QTimer.singleShot(0, self.reload_categories_ui)
     
     def set_session_inbox(self, path):
@@ -486,6 +550,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             
         if not self.is_focus_mode:
             self.SORT_DIR = self.config.get("path_sort", "")
+            self.load_tree_state_from_root(self.SORT_DIR, inherit_cache=False)
         
         self.TO_DEL_DIR = self.config.get("path_todel", "")
         if hasattr(self, 'cats_container'):
@@ -592,10 +657,16 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         import time
         import logging
         t3 = time.perf_counter()
-        # Очищаем кэш автоматизации перед перерисовкой дерева
         AutomationConfig.clear_cache()
-        # Сохраняем состояние свернутости для всех уровней
-        self.collapsed_states_cache = self._collect_collapsed_states()
+        
+        if not getattr(self, '_tree_remember_enabled', False):
+            self.collapsed_states_cache = self._collect_collapsed_states()
+        else:
+            # Update cache with currently visible widgets, but don't overwrite invisible ones
+            current_states = self._collect_collapsed_states()
+            if not hasattr(self, 'collapsed_states_cache'):
+                self.collapsed_states_cache = {}
+            self.collapsed_states_cache.update(current_states)
         
         # Update btn_new_cat style based on state (Sync with Analyzer)
         has_any_root = bool(self.SORT_DIR and os.path.exists(self.SORT_DIR)) or bool(self.temp_roots)
@@ -806,6 +877,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.SORT_DIR = new_root_path
         self.cats_container.parent_path = self.SORT_DIR
         
+        # Load or inherit tree state
+        self.load_tree_state_from_root(self.SORT_DIR, inherit_cache=True)
+        
         self.reload_categories_ui()
         self.update_watcher_paths()
         
@@ -818,6 +892,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.is_focus_mode = False
         self.SORT_DIR = self.original_sort_dir
         self.cats_container.parent_path = self.SORT_DIR
+        
+        # Load general view tree state
+        self.load_tree_state_from_root(self.SORT_DIR, inherit_cache=False)
         
         self.reload_categories_ui()
         self.update_watcher_paths()
@@ -1093,3 +1170,71 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         if hasattr(self, 'viewer') and self.viewer:
             self.viewer.refresh_video_thumbnails()
 
+    def save_tree_state_if_enabled(self):
+        if not getattr(self, '_tree_remember_enabled', False):
+            return
+        from logic_tree_state import TreeStateManager
+        root = self.session_inbox_path if self.session_inbox_path else self.SORT_DIR
+        
+        current_states = self._collect_collapsed_states()
+        if not hasattr(self, 'collapsed_states_cache'):
+            self.collapsed_states_cache = {}
+        self.collapsed_states_cache.update(current_states)
+        
+        TreeStateManager.save_state(root, True, self.collapsed_states_cache, self.custom_orders)
+
+    def toggle_remember_tree(self):
+        from logic_tree_state import TreeStateManager
+        from config import AppContext
+        root = self.session_inbox_path if self.session_inbox_path else self.SORT_DIR
+        if not root or not os.path.exists(root):
+            self.btn_remember_tree.setChecked(False)
+            return
+            
+        is_checked = self.btn_remember_tree.isChecked()
+        if is_checked and TreeStateManager.state_exists(root):
+            from PyQt6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(self, AppContext.tr("app_name"), 
+                                         "Для данного каталога уже есть сохраненные настройки вида дерева.\n\n"
+                                         "Восстановить их (Да) или перезаписать текущим видом (Нет)?",
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel)
+            if reply == QMessageBox.StandardButton.Cancel:
+                self.btn_remember_tree.setChecked(False)
+                return
+            elif reply == QMessageBox.StandardButton.Yes:
+                self._tree_remember_enabled = True
+                self.load_tree_state_from_root(root, inherit_cache=False)
+                self.reload_categories_ui()
+                return
+            else:
+                self._tree_remember_enabled = True
+                self.save_tree_state_if_enabled()
+                return
+                
+        self._tree_remember_enabled = is_checked
+        if is_checked:
+            self.save_tree_state_if_enabled()
+        else:
+            TreeStateManager.save_state(root, False, {}, {})
+
+    def collapse_all_folders(self):
+        layout = self.cats_container.v_layout
+        from ui_sidebar_category import CategoryWidget
+        def collapse_recursive(w):
+            if isinstance(w, CategoryWidget):
+                if not w.is_collapsed:
+                    w.toggle_collapse()
+                if hasattr(w, 'sections_container') and w.sections_container:
+                    sec_layout = w.sections_container.layout
+                    if sec_layout:
+                        for i in range(sec_layout.count()):
+                            child_w = sec_layout.itemAt(i).widget()
+                            if child_w:
+                                collapse_recursive(child_w)
+
+        for i in range(layout.count()):
+            widget = layout.itemAt(i).widget()
+            if widget:
+                collapse_recursive(widget)
+        
+        self.save_tree_state_if_enabled()

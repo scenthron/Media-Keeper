@@ -596,6 +596,10 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         if not hasattr(self.app, 'collapsed_states_cache'):
             self.app.collapsed_states_cache = {}
         self.app.collapsed_states_cache[self.path] = self.is_collapsed
+        
+        if hasattr(self.app, 'save_tree_state_if_enabled'):
+            self.app.save_tree_state_if_enabled()
+
     def create_section(self):
         dlg = SmartNameDialog("dlg_new_sub_title", "dlg_enter_name", self.path, "", self)
         if dlg.exec() and dlg.final_name:

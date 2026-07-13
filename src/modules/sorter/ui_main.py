@@ -413,6 +413,10 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                      self.custom_orders[target_norm] = items
                      need_reload = True
 
+        if need_reload:
+            self.save_tree_state_if_enabled()
+            QTimer.singleShot(0, self.reload_categories_ui)
+
     def load_tree_state_from_root(self, root_path=None, inherit_cache=False):
         from .logic_tree_state import TreeStateManager
         if root_path is None:
@@ -445,10 +449,6 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                     self.btn_remember_tree.setChecked(False)
                 self.collapsed_states_cache = {}
                 self.custom_orders = {}
-
-        if need_reload:
-            self.save_tree_state_if_enabled()
-            QTimer.singleShot(0, self.reload_categories_ui)
     
     def set_session_inbox(self, path):
         self.session_inbox_path = path

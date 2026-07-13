@@ -414,7 +414,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                      need_reload = True
 
     def load_tree_state_from_root(self, root_path=None, inherit_cache=False):
-        from logic_tree_state import TreeStateManager
+        from .logic_tree_state import TreeStateManager
         if root_path is None:
             root_path = self.session_inbox_path if self.session_inbox_path else self.SORT_DIR
             
@@ -1173,7 +1173,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
     def save_tree_state_if_enabled(self):
         if not getattr(self, '_tree_remember_enabled', False):
             return
-        from logic_tree_state import TreeStateManager
+        from .logic_tree_state import TreeStateManager
         root = self.session_inbox_path if self.session_inbox_path else self.SORT_DIR
         
         current_states = self._collect_collapsed_states()
@@ -1184,7 +1184,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         TreeStateManager.save_state(root, True, self.collapsed_states_cache, self.custom_orders)
 
     def toggle_remember_tree(self):
-        from logic_tree_state import TreeStateManager
+        from .logic_tree_state import TreeStateManager
         from config import AppContext
         root = self.session_inbox_path if self.session_inbox_path else self.SORT_DIR
         if not root or not os.path.exists(root):

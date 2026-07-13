@@ -296,6 +296,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         
         self.btn_remember_tree = QPushButton("📌 Сохранять вид")
         self.btn_remember_tree.setCheckable(True)
+        self.btn_remember_tree.setChecked(getattr(self, '_tree_remember_enabled', False))
         self.btn_remember_tree.setFixedHeight(30)
         self.btn_remember_tree.setStyleSheet("""
             QPushButton { background-color: #333; color: #ccc; border: 1px solid #555; border-radius: 4px; font-size: 14px;}

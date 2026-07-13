@@ -21,7 +21,31 @@ class TreeStateManager:
             return None
         try:
             with open(path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                data = json.load(f)
+                
+            root_norm = os.path.normpath(root_path)
+            
+            if "collapsed_states" in data:
+                new_states = {}
+                for rel_k, v in data["collapsed_states"].items():
+                    if rel_k == "." or rel_k == "":
+                        abs_k = root_norm
+                    else:
+                        abs_k = os.path.normpath(os.path.join(root_norm, rel_k))
+                    new_states[abs_k] = v
+                data["collapsed_states"] = new_states
+                
+            if "custom_orders" in data:
+                new_orders = {}
+                for rel_k, v in data["custom_orders"].items():
+                    if rel_k == "." or rel_k == "":
+                        abs_k = root_norm
+                    else:
+                        abs_k = os.path.normpath(os.path.join(root_norm, rel_k))
+                    new_orders[abs_k] = v
+                data["custom_orders"] = new_orders
+                
+            return data
         except Exception as e:
             logging.error(f"Failed to load tree state from {path}: {e}")
             return None
@@ -42,11 +66,32 @@ class TreeStateManager:
             pass
 
         path = TreeStateManager.get_state_path(root_path)
+        root_norm = os.path.normpath(root_path)
+        
+        rel_states = {}
+        for k, v in collapsed_states.items():
+            try:
+                rel_k = os.path.relpath(k, root_norm)
+                # Ensure slashes are uniform, though JSON dumps whatever string we give it.
+                # using forward slashes makes the JSON cleaner and cross-platform
+                rel_k = rel_k.replace('\\', '/')
+            except ValueError:
+                rel_k = k
+            rel_states[rel_k] = v
+            
+        rel_orders = {}
+        for k, v in custom_orders.items():
+            try:
+                rel_k = os.path.relpath(k, root_norm)
+                rel_k = rel_k.replace('\\', '/')
+            except ValueError:
+                rel_k = k
+            rel_orders[rel_k] = v
         
         data = {
             "enabled": is_enabled,
-            "collapsed_states": collapsed_states,
-            "custom_orders": custom_orders
+            "collapsed_states": rel_states,
+            "custom_orders": rel_orders
         }
         
         try:

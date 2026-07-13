@@ -1139,6 +1139,8 @@ class FileOpsMixin:
             # Блокируем watcher
             self._ignore_watcher = True
 
+            resolved_pairs = []
+            total_size = 0
             for current_loc, original_loc in reversed(pairs):
                 long_curr = ensure_long_path(current_loc)
                 long_orig = ensure_long_path(original_loc)
@@ -1159,11 +1161,62 @@ class FileOpsMixin:
                         long_target = long_orig
                     
                     file_size = os.path.getsize(long_curr)
-                    success = smart_move_file(long_curr, long_target)
-                    if not success:
-                        raise Exception(f"Не удалось переместить файл при Undo: {long_curr} -> {long_target}")
-                    succeeded.append((current_loc, target_path, file_size))
+                    resolved_pairs.append((long_curr, long_target))
+                    total_size += file_size
                     
+            if not resolved_pairs:
+                self._ignore_watcher = False
+                return
+                
+            self.undo_dlg = ProgressDialog("Отмена перемещения...", self)
+            self.undo_dlg.setup_for_transfer(len(resolved_pairs))
+
+            if len(resolved_pairs) > 1 or total_size > 52428800:
+                self.undo_dlg.show()
+                self.undo_progress_timer = None
+            else:
+                self.undo_progress_timer = QTimer()
+                self.undo_progress_timer.setSingleShot(True)
+                self.undo_progress_timer.setInterval(5000)
+                self.undo_progress_timer.timeout.connect(self.undo_dlg.show)
+                self.undo_progress_timer.start()
+
+            from utils_io import strip_long_path_prefix
+            if not hasattr(self, 'locked_files'):
+                self.locked_files = set()
+            self.locked_files.update(os.path.normpath(strip_long_path_prefix(src)) for src, dst in resolved_pairs)
+
+            import time
+            from workers import MoveThread
+            self.undo_thread = MoveThread(resolved_pairs, start_time=time.perf_counter())
+            self.undo_thread.progress_update.connect(lambda c, t, f: self.undo_dlg.set_current_file(c, f) if hasattr(self, 'undo_dlg') and self.undo_dlg else None)
+            self.undo_thread.detailed_progress.connect(lambda c, t, o, ot: self.undo_dlg.update_bars(c, t, o, ot) if hasattr(self, 'undo_dlg') and self.undo_dlg else None)
+            self.undo_thread.finished_move.connect(self.on_undo_finished)
+            self.undo_thread.start()
+
+        except Exception as e:
+            logging.error(f"Undo setup error: {e}", exc_info=True)
+            QMessageBox.critical(self, AppContext.tr("err_title"), AppContext.tr("msg_undo_fail") + f"\n{e}")
+            self.history.append(action)
+            QTimer.singleShot(1000, lambda: setattr(self, '_ignore_watcher', False))
+
+    def on_undo_finished(self, success, error_msg, succeeded_pairs, failed_pairs=None):
+        if hasattr(self, 'locked_files'):
+            self.locked_files.clear()
+            
+        try:
+            if hasattr(self, 'undo_progress_timer') and self.undo_progress_timer and self.undo_progress_timer.isActive():
+                self.undo_progress_timer.stop()
+            self._safe_close_dialog('undo_dlg')
+            
+            succeeded = []
+            for src, dst in succeeded_pairs:
+                try:
+                    file_size = os.path.getsize(ensure_long_path(dst))
+                except:
+                    file_size = 0
+                succeeded.append((src, dst, file_size))
+                
             if succeeded:
                 # Обновляем кэш статистики
                 for current_loc, target_path, file_size in succeeded:
@@ -1234,14 +1287,12 @@ class FileOpsMixin:
                     self.current_index = 0
                 
                 if group_enabled:
-                    # Если группировка включена, делаем тихую синхронизацию
                     self.viewer.sync_files_queue(self.UNSORT_DIR, self.files_queue, self.current_index, silent=True)
                     if self.viewer.stack.currentIndex() == 0:
                         self.show_current_file()
                     else:
                         self.on_selection_changed()
                 else:
-                    # Если группировка выключена, делаем точечную вставку
                     files_to_insert = []
                     for current_loc, target_path, file_size in succeeded:
                         rel_path = safe_relpath(target_path, self.UNSORT_DIR)
@@ -1250,21 +1301,20 @@ class FileOpsMixin:
                             files_to_insert.append((target_path, idx))
                             
                     if files_to_insert:
-                        # Сортируем по индексу по возрастанию, чтобы вставка шла корректно по очереди
                         files_to_insert.sort(key=lambda x: x[1])
                         self.viewer.insert_files_into_view(files_to_insert)
-                        
-                        # Выделяем первый возвращенный файл
                         self.viewer.sync_active_index(self.current_index)
                         if self.viewer.stack.currentIndex() == 0:
                             self.show_current_file()
                         else:
                             self.on_selection_changed()
                 
-        except Exception as e:
-            logging.error(f"Undo error: {e}", exc_info=True)
-            QMessageBox.critical(self, AppContext.tr("err_title"), AppContext.tr("msg_undo_fail") + f"\n{e}")
-            self.history.append(action) 
+            if not success:
+                logging.error(f"Undo thread error: {error_msg}")
+                if failed_pairs:
+                    from ui_dialogs_generic import MoveErrorsDialog
+                    err_dlg = MoveErrorsDialog(failed_pairs, self)
+                    err_dlg.exec()
         finally:
             QTimer.singleShot(1000, lambda: setattr(self, '_ignore_watcher', False))
             

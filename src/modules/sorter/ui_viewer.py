@@ -825,6 +825,7 @@ class ZoomableGraphicsView(QGraphicsView):
         self.video_item = QGraphicsVideoItem()
         self.scene.addItem(self.video_item)
         self.video_item.hide()
+        self.video_item.nativeSizeChanged.connect(self._on_video_native_size_changed)
 
         self.text_item = QGraphicsTextItem()
         self.text_item.setDefaultTextColor(QColor(VIEWER_DESIGN['audio_text_color']))
@@ -1022,6 +1023,15 @@ class ZoomableGraphicsView(QGraphicsView):
             if rect.width() > 0 and rect.height() > 0:
                 self.scene.setSceneRect(rect)
                 self.reset_view()
+
+    def _on_video_native_size_changed(self, size):
+        if not size.isValid():
+            return
+        self.video_item.setSize(size)
+        if getattr(self, 'current_is_video', False):
+            from PyQt6.QtCore import QRectF, QPointF
+            self.scene.setSceneRect(QRectF(QPointF(0, 0), size))
+            self.reset_view()
 
     def set_video_mode(self):
         self.current_is_video = True

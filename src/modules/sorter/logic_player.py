@@ -37,12 +37,8 @@ class SmartPreviewManager:
             return 0, 0
         elif dur_sec <= 60:
             return 6, 1500
-        elif dur_sec <= 300:
-            return 10, 2000
-        elif dur_sec <= 600:
-            return 10, 3000
         else:
-            return 10, 4000
+            return 5, 1500
 
     def start_video(self, duration_ms):
         self.total_duration_ms = duration_ms

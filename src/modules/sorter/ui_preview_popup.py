@@ -1338,6 +1338,16 @@ class LargePreviewPopup(QDialog):
                         True
                     )
                     
+    def on_segment_view_toggled(self, enabled):
+        from config import AppContext
+        AppContext.session_segment_view = enabled
+        AppContext.save_media_settings()
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.set_active(enabled)
+            
+        if hasattr(self, 'video_viewer') and hasattr(self.video_viewer, 'update_segment_indicator'):
+            self.video_viewer.update_segment_indicator()
+            
     def resizeEvent(self, event):
         if event is not None:
             super().resizeEvent(event)

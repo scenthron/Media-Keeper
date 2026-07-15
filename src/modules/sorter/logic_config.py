@@ -37,7 +37,7 @@ class ConfigManager:
         return os.path.dirname(get_app_data_dir())
 
     @staticmethod
-    def load():
+    def load(sync_appcontext=True):
         config = ConfigManager.DEFAULT_CONFIG.copy()
         path = ConfigManager.get_config_path()
         logging.info(f"Загрузка конфигурации из файла: {path}")

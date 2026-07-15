@@ -1,7 +1,7 @@
 
 import os
 import logging
-from PyQt6.QtCore import QUrl, Qt
+from PyQt6.QtCore import QUrl, Qt, QTimer
 from PyQt6.QtMultimedia import QMediaPlayer
 from PyQt6.QtGui import QPixmap, QImageReader
 from config import AppContext, VIEWER_DESIGN

@@ -1308,10 +1308,6 @@ class SorterBaseListView(QListWidget):
                 color: white;
             }
         """)
-
-        # Trigger segment update
-        if hasattr(self.viewer, 'update_segment_indicator'):
-            self.viewer.update_segment_indicator()
             
         # Hover Player
         self.hover_player = QMediaPlayer()

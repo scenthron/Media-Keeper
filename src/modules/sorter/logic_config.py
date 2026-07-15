@@ -112,11 +112,12 @@ class ConfigManager:
                     valid.append(p)
             config["temp_roots"] = "|".join(valid)
             
-        from config import AppContext
-        AppContext.session_video_speed = config.get("session_video_speed", 1.0)
-        AppContext.session_loop = config.get("session_loop", False)
-        AppContext.session_all_videos_active = config.get("session_all_videos_active", False)
-        AppContext.session_segment_view = config.get("session_segment_view", False)
+        if sync_appcontext:
+            from config import AppContext
+            AppContext.session_video_speed = config.get("session_video_speed", 1.0)
+            AppContext.session_loop = config.get("session_loop", False)
+            AppContext.session_all_videos_active = config.get("session_all_videos_active", False)
+            AppContext.session_segment_view = config.get("session_segment_view", False)
                  
         return config
 

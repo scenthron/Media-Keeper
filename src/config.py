@@ -101,7 +101,7 @@ class AppContext:
     def save_media_settings():
         try:
             from modules.sorter.logic_config import ConfigManager
-            config = ConfigManager.load()
+            config = ConfigManager.load(sync_appcontext=False)
             config["session_loop"] = AppContext.session_loop
             config["session_all_videos_active"] = AppContext.session_all_videos_active
             config["session_segment_view"] = AppContext.session_segment_view

@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QListWidget, QListWidgetItem, QFileDialog, QMessageBox, QSlider,
     QTreeWidget, QTreeWidgetItem, QProgressBar, QDialog, QLineEdit,
     QRadioButton, QButtonGroup, QAbstractItemView, QMenu, QSplitter,
-    QScrollArea, QSizePolicy, QComboBox, QCheckBox
+    QScrollArea, QSizePolicy, QComboBox, QCheckBox, QTabWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor, QFont, QPainter, QPen, QDragEnterEvent, QDropEvent
@@ -699,10 +699,14 @@ class AiClassificationTab(QWidget):
         col_params.addLayout(params_header)
         
         params_container = QFrame()
-        params_container.setStyleSheet("QFrame { background-color: #1a1a1a; border: 1px solid #333; border-radius: 6px; }")
-        params_sub_layout = QVBoxLayout(params_container)
-        params_sub_layout.setContentsMargins(8, 8, 8, 8)
+        params_container.setStyleSheet("QFrame { background-color: #1a1a1a; border: none; }")
+        params_main_layout = QVBoxLayout(params_container)
+        params_main_layout.setContentsMargins(8, 8, 8, 8)
+        
+        params_sub_layout = QVBoxLayout()
+        params_sub_layout.setContentsMargins(0, 0, 0, 0)
         params_sub_layout.setSpacing(8)
+        params_main_layout.addLayout(params_sub_layout)
         
         # Панель размера и очистки кэша
         cache_layout = QHBoxLayout()
@@ -897,6 +901,8 @@ class AiClassificationTab(QWidget):
         """)
         self.btn_start_scan.clicked.connect(self.toggle_scan)
         params_sub_layout.addWidget(self.btn_start_scan)
+        
+
         
         col_params.addWidget(params_container)
         top_layout.addLayout(col_params, 1)
@@ -1287,6 +1293,8 @@ class AiClassificationTab(QWidget):
         
         self.update_scan_button_state()
 
+
+
     def _on_slider_moved(self, value):
         if getattr(self, "is_cluster_results", False) and hasattr(self, "cluster_unique_sizes"):
             if 0 <= value < len(self.cluster_unique_sizes):
@@ -1361,9 +1369,9 @@ class AiClassificationTab(QWidget):
     def update_cache_info_ai(self):
         try:
             db_path = self.cache.db_path
+            from utils_common import format_size
             if os.path.exists(db_path):
                 size = os.path.getsize(db_path)
-                from utils_common import format_size
                 self.lbl_cache_info_ai.setText(f"{format_size(size)}")
             else:
                 self.lbl_cache_info_ai.setText("0 B")
@@ -1443,6 +1451,8 @@ class AiClassificationTab(QWidget):
         base_text = " Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search"
         self.btn_start_scan.setText(base_text)
 
+
+
     def toggle_scan(self):
         if self.active_worker and self.active_worker.isRunning():
             self.active_worker.stop()
@@ -1461,8 +1471,11 @@ class AiClassificationTab(QWidget):
             enabled_groups = [name for name, info in settings.get("groups", {}).items() if info.get("enabled", True)]
             
             if not enabled_groups:
-                QMessageBox.warning(self, "Ошибка" if AppContext.is_ru() else "Error", 
-                                    "Выберите хотя бы одну группу эталонов для поиска!" if AppContext.is_ru() else "Select at least one reference group to search!")
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Icon.NoIcon)
+                msg.setWindowTitle("Ошибка" if AppContext.is_ru() else "Error")
+                msg.setText("Выберите хотя бы одну группу эталонов для поиска!" if AppContext.is_ru() else "Select at least one reference group to search!")
+                msg.exec()
                 return
                 
             for name in enabled_groups:
@@ -1470,12 +1483,12 @@ class AiClassificationTab(QWidget):
                 if status == "gray":
                     if name in self.chips_map:
                         self.chips_map[name].set_error_highlight(True)
-                    QMessageBox.critical(
-                        self, 
-                        "Ошибка" if AppContext.is_ru() else "Error", 
-                        f"Группа '{name}' включена в поиск, но не содержит картинок-примеров! Загрузите картинки или выключите группу." if AppContext.is_ru()
-                        else f"Group '{name}' is enabled but contains no reference images! Load images or disable the group."
-                    )
+                    msg = QMessageBox(self)
+                    msg.setIcon(QMessageBox.Icon.NoIcon)
+                    msg.setWindowTitle("Ошибка" if AppContext.is_ru() else "Error")
+                    msg.setText(f"Группа '{name}' включена в поиск, но не содержит картинок-примеров! Загрузите картинки или выключите группу." if AppContext.is_ru()
+                                else f"Group '{name}' is enabled but contains no reference images! Load images or disable the group.")
+                    msg.exec()
                     return
                     
             needs_training = []
@@ -1579,6 +1592,8 @@ class AiClassificationTab(QWidget):
             self.update_folders_label(self.cleaner.get_active_source_folders())
         
         self.populate_results(results)
+
+
 
     def populate_results(self, results):
         self.tree_results.clear()

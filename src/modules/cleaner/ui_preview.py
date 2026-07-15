@@ -1,5 +1,6 @@
 
 import os
+from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS, get_filtered_exts
 import datetime
 import subprocess
 import logging
@@ -17,6 +18,7 @@ from config import AppContext, VIEWER_DESIGN
 from utils_common import format_size
 from modules.sorter.ui_player import VideoPlayerControls, TimeOverlayWidget
 from modules.cleaner.ui_view import ClickableGraphicsView
+from modules.sorter.logic_player import SmartPreviewManager
 
 class CleanerPreviewWidget(QWidget):
     def __init__(self, parent=None):
@@ -31,6 +33,7 @@ class CleanerPreviewWidget(QWidget):
         self.session_video_speed = AppContext.session_video_speed
         self.session_loop = AppContext.session_loop
         self.session_apply_all = AppContext.session_all_videos_active
+        self.session_segment_view = AppContext.session_segment_view
         self.current_media_type = None
         self.current_path = None
         
@@ -70,6 +73,39 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls = VideoPlayerControls()
         self.video_controls.hide()
         self.media_layout.addWidget(self.video_controls)
+        
+        self.btn_seg_prev = QPushButton("<", self.media_container)
+        self.btn_seg_next = QPushButton(">", self.media_container)
+        
+        btn_style = """
+            QPushButton {
+                background-color: rgba(0, 0, 0, 0.4);
+                color: rgba(255, 255, 255, 0.6);
+                border: none;
+                border-radius: 8px;
+                font-size: 32px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: rgba(59, 130, 246, 0.7);
+                color: white;
+            }
+        """
+        for btn in (self.btn_seg_prev, self.btn_seg_next):
+            btn.setStyleSheet(btn_style)
+            btn.setFixedSize(50, 100)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            btn.hide()
+            
+        self.btn_seg_prev.clicked.connect(self._on_seg_prev)
+        self.btn_seg_next.clicked.connect(self._on_seg_next)
+        self.media_container.setMouseTracking(True)
+        self.view.setMouseTracking(True)
+        
+        # Override mouse move for hover
+        self.view.mouseMoveEvent = self._view_mouse_move_event
+        self.view.leaveEvent = self._view_leave_event
         
         self.splitter.addWidget(self.media_container)
         
@@ -134,6 +170,10 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.speed_changed.connect(self._on_speed_changed)
         self.video_controls.loop_toggled.connect(self._on_loop_toggled)
         self.video_controls.apply_all_toggled.connect(self._on_apply_all_toggled)
+        self.video_controls.segment_view_toggled.connect(self._on_segment_view_toggled)
+        
+        self.smart_preview_mgr = SmartPreviewManager(self.player, lambda: self.session_video_speed if self.session_apply_all else 1.0)
+        self.smart_preview_mgr.set_active(self.session_segment_view)
         
         # Time Overlay
         self.time_overlay = TimeOverlayWidget(self.media_container)
@@ -143,6 +183,7 @@ class CleanerPreviewWidget(QWidget):
         self.player.positionChanged.connect(self._update_overlay_time)
         self.player.durationChanged.connect(self.video_controls.update_duration)
         self.player.durationChanged.connect(self._update_overlay_duration)
+        self.player.durationChanged.connect(self._on_media_duration_changed)
         self.player.playbackStateChanged.connect(self._on_player_state_changed)
         self.player.mediaStatusChanged.connect(self._on_media_status_changed)
         self.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
@@ -189,6 +230,51 @@ class CleanerPreviewWidget(QWidget):
             x = self.media_container.width() - self.time_overlay.width() - padding
             y = self.media_container.height() - controls_h - self.time_overlay.height() - padding
             self.time_overlay.move(x, y)
+            
+        if hasattr(self, 'btn_seg_prev') and self.btn_seg_prev:
+            y_center = (self.media_container.height() - self.btn_seg_prev.height()) // 2
+            self.btn_seg_prev.move(20, y_center)
+            self.btn_seg_next.move(self.media_container.width() - self.btn_seg_next.width() - 20, y_center)
+            self.btn_seg_prev.raise_()
+            self.btn_seg_next.raise_()
+
+    def _on_media_duration_changed(self, dur):
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.on_duration_changed(dur)
+            
+    def _on_seg_prev(self):
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.skip_prev()
+            
+    def _on_seg_next(self):
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.skip_next()
+            
+    def _view_mouse_move_event(self, event):
+        QGraphicsView.mouseMoveEvent(self.view, event)
+        segment_active = False
+        if hasattr(self, 'smart_preview_mgr'):
+            segment_active = self.smart_preview_mgr.active and self.smart_preview_mgr.num_segments > 0
+            
+        if segment_active and self.current_media_type == 'video':
+            pos = event.pos()
+            if pos.x() < self.view.width() * 0.3:
+                self.btn_seg_prev.show()
+                self.btn_seg_next.hide()
+            elif pos.x() > self.view.width() * 0.7:
+                self.btn_seg_next.show()
+                self.btn_seg_prev.hide()
+            else:
+                self.btn_seg_prev.hide()
+                self.btn_seg_next.hide()
+        else:
+            self.btn_seg_prev.hide()
+            self.btn_seg_next.hide()
+
+    def _view_leave_event(self, event):
+        QGraphicsView.leaveEvent(self.view, event)
+        if hasattr(self, 'btn_seg_prev'): self.btn_seg_prev.hide()
+        if hasattr(self, 'btn_seg_next'): self.btn_seg_next.hide()
 
     def _update_overlay_time(self, pos):
         dur = self.player.duration()
@@ -277,7 +363,7 @@ class CleanerPreviewWidget(QWidget):
         self.update_meta(path)
         if ext in ['.jpg', '.jpeg', '.png', '.bmp']: self.setup_static_image(path)
         elif ext in ['.gif', '.webp']: self.setup_animated(path)
-        elif ext in ['.mp4', '.avi', '.mkv', '.mov', '.webm', '.mp3', '.wav', '.ogg', '.wmv', '.flac', '.m4a', '.wma', '.aac', '.mpg', '.mpeg', '.m4v']: self.setup_video(path)
+        elif ext in VIDEO_EXTS: self.setup_video(path)
         else:
             self.current_media_type = None
             self.video_item.hide()
@@ -369,9 +455,10 @@ class CleanerPreviewWidget(QWidget):
             
         loop = self.session_loop
         apply_all = self.session_apply_all
+        segment_view = self.session_segment_view
         
         # Sync UI controls
-        self.video_controls.set_popup_values(speed, loop, apply_all, is_video=not is_audio)
+        self.video_controls.set_popup_values(speed, loop, apply_all, segment_view, is_video=not is_audio)
         
         # Apply to Player
         self.player.setPlaybackRate(speed)
@@ -479,6 +566,14 @@ class CleanerPreviewWidget(QWidget):
         from config import AppContext
         AppContext.session_all_videos_active = enabled
         AppContext.save_media_settings()
+
+    def _on_segment_view_toggled(self, enabled):
+        self.session_segment_view = enabled
+        from config import AppContext
+        AppContext.session_segment_view = enabled
+        AppContext.save_media_settings()
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.set_active(enabled)
 
     # --- Mouse Actions ---
     def open_current_file(self):

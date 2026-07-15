@@ -158,28 +158,44 @@ class LauncherWindow(QWidget):
         self.update()
 
     def launch_cleaner(self):
-        self.hide()
-        self.cleaner_window = MediaKeeperShell()
-        self.cleaner_window.switch_tab(2)
-        self.cleaner_window.show()
+        try:
+            self.cleaner_window = MediaKeeperShell()
+            self.cleaner_window.switch_tab(2)
+            self.cleaner_window.show()
+            self.hide()
+        except Exception as e:
+            import logging
+            logging.critical(f"Failed to launch cleaner: {e}", exc_info=True)
 
     def launch_sorter(self):
-        self.hide()
-        self.cleaner_window = MediaKeeperShell()
-        self.cleaner_window.switch_tab(0)
-        self.cleaner_window.show()
+        try:
+            self.cleaner_window = MediaKeeperShell()
+            self.cleaner_window.switch_tab(0)
+            self.cleaner_window.show()
+            self.hide()
+        except Exception as e:
+            import logging
+            logging.critical(f"Failed to launch sorter: {e}", exc_info=True)
 
     def launch_editor(self):
-        self.hide()
-        self.cleaner_window = MediaKeeperShell()
-        self.cleaner_window.switch_tab(1)
-        self.cleaner_window.show()
+        try:
+            self.cleaner_window = MediaKeeperShell()
+            self.cleaner_window.switch_tab(1)
+            self.cleaner_window.show()
+            self.hide()
+        except Exception as e:
+            import logging
+            logging.critical(f"Failed to launch editor: {e}", exc_info=True)
 
     def launch_analyzer(self):
-        self.hide()
-        self.cleaner_window = MediaKeeperShell()
-        self.cleaner_window.switch_tab(3)
-        self.cleaner_window.show()
+        try:
+            self.cleaner_window = MediaKeeperShell()
+            self.cleaner_window.switch_tab(3)
+            self.cleaner_window.show()
+            self.hide()
+        except Exception as e:
+            import logging
+            logging.critical(f"Failed to launch analyzer: {e}", exc_info=True)
 
     def paintEvent(self, event):
         painter = QPainter(self)

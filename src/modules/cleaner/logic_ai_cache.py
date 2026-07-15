@@ -191,7 +191,7 @@ class AiCacheManager:
                 if cursor.fetchone():
                     has_faces = True
         except Exception as e:
-            logging.error(f"Ошибка проверки ИИ-кэша для папки {folder_path}: {e}")
+            logging.error(f"Ошибка проверки кэша для папки {folder_path}: {e}")
         return has_general, has_faces
 
     def clear_cache(self):

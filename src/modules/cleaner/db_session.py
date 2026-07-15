@@ -34,6 +34,12 @@ class SessionDB:
             cursor.execute('CREATE TABLE IF NOT EXISTS zero_files (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, extension TEXT, is_deleted INTEGER DEFAULT 0, is_marked INTEGER DEFAULT 0)')
             cursor.execute('CREATE TABLE IF NOT EXISTS empty_folders (id INTEGER PRIMARY KEY AUTOINCREMENT, path TEXT, is_deleted INTEGER DEFAULT 0, is_marked INTEGER DEFAULT 0)')
             
+            # Indexes for ultra-fast deletion and lookups
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_files_path ON files(path)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_files_group_id ON files(group_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_zero_files_path ON zero_files(path)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_empty_folders_path ON empty_folders(path)')
+            
             # Внедряем IRON RULE на уровне базы данных через SQLite триггер (100% гарантия)
             cursor.execute("DROP TRIGGER IF EXISTS enforce_survivor_rule")
             cursor.execute("""

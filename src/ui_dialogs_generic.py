@@ -145,9 +145,9 @@ class ProgressDialog(QDialog):
             # Если у нас есть общий размер в байтах, показываем и его
             if self.overall_total_bytes > 0:
                 total_size_str = f"{format_size(self.overall_bytes_moved)} из {format_size(self.overall_total_bytes)}"
-                self.lbl_total.setText(f"Общий прогресс: {total_size_str}")
+                self.lbl_total.setText(f"Общий прогресс: {self.current_file_idx} из {self.total_files} файлов ({total_size_str})")
             else:
-                self.lbl_total.setText("Общий прогресс...")
+                self.lbl_total.setText(f"Общий прогресс: {self.current_file_idx} из {self.total_files} файлов...")
                 
             self.lbl_current.setText(f"{self.current_filename}\n{size_str}")
         else:

@@ -20,7 +20,8 @@ from logic_cache import DirCache
 class LeafNodeWidget(QWidget, SidebarNodeMixin):
     def __init__(self, name, path, app, parent_category_widget, level=0):
         super().__init__()
-        self.path = path
+        import os
+        self.path = os.path.normpath(path)
         self.app = app
         self.name = name
         self.level = level
@@ -113,7 +114,8 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
         QTimer.singleShot(0, self.update_visual_state)
 
     def _on_cache_updated(self, updated_path):
-        if os.path.normpath(self.path) == os.path.normpath(updated_path):
+        from utils_io import strip_long_path_prefix
+        if strip_long_path_prefix(os.path.normpath(self.path)) == strip_long_path_prefix(os.path.normpath(updated_path)):
             self.update_count_visual()
 
     def handle_click(self):

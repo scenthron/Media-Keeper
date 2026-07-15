@@ -104,7 +104,7 @@ def is_file_locked(filepath: str) -> bool:
 
 class MoveThread(QThread):
     progress_update = pyqtSignal(int, int, str)
-    detailed_progress = pyqtSignal(int, int, int, int)
+    detailed_progress = pyqtSignal(object, object, object, object)
     finished_move = pyqtSignal(bool, str, list, list)
 
     def __init__(self, src, dst=None, start_time=None):

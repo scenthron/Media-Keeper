@@ -44,6 +44,15 @@ class TreeStateManager:
                         abs_k = os.path.normpath(os.path.join(root_norm, rel_k))
                     new_orders[abs_k] = v
                 data["custom_orders"] = new_orders
+            if "category_colors" in data:
+                new_colors = {}
+                for rel_k, v in data["category_colors"].items():
+                    if rel_k == "." or rel_k == "":
+                        abs_k = root_norm
+                    else:
+                        abs_k = os.path.normpath(os.path.join(root_norm, rel_k))
+                    new_colors[abs_k] = v
+                data["category_colors"] = new_colors
                 
             return data
         except Exception as e:
@@ -51,7 +60,9 @@ class TreeStateManager:
             return None
 
     @staticmethod
-    def save_state(root_path, is_enabled, collapsed_states, custom_orders):
+    def save_state(root_path, is_enabled, collapsed_states, custom_orders, category_colors=None):
+        if category_colors is None:
+            category_colors = {}
         if not root_path or not os.path.exists(root_path):
             return
             
@@ -88,10 +99,20 @@ class TreeStateManager:
                 rel_k = k
             rel_orders[rel_k] = v
         
+        rel_colors = {}
+        for k, v in category_colors.items():
+            try:
+                rel_k = os.path.relpath(k, root_norm)
+                rel_k = rel_k.replace('\\', '/')
+            except ValueError:
+                rel_k = k
+            rel_colors[rel_k] = v
+        
         data = {
             "enabled": is_enabled,
             "collapsed_states": rel_states,
-            "custom_orders": rel_orders
+            "custom_orders": rel_orders,
+            "category_colors": rel_colors
         }
         
         try:

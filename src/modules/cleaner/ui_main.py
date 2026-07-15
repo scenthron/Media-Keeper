@@ -741,9 +741,9 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
     def update_toggle_settings_button(self) -> None:
         if self.current_tab == 2:
-            visible = self.page_ai.top_settings.isVisible()
+            visible = not self.page_ai.top_settings.isHidden()
         else:
-            visible = self.settings_panel.isVisible()
+            visible = not self.settings_panel.isHidden()
             
         text_key = "cln_toggle_settings_hide" if visible else "cln_toggle_settings_show"
         self.btn_toggle_settings.setText(AppContext.tr(text_key))
@@ -785,12 +785,12 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
     def toggle_settings(self) -> None:
         if self.current_tab == 2:
-            if self.page_ai.top_settings.isVisible():
+            if not self.page_ai.top_settings.isHidden():
                 self.page_ai.top_settings.hide()
             else:
                 self.page_ai.top_settings.show()
         else:
-            if self.settings_panel.isVisible():
+            if not self.settings_panel.isHidden():
                 self.settings_panel.hide()
                 self.settings_separator.hide()
             else:

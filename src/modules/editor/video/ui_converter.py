@@ -1,5 +1,6 @@
 
 import os
+from utils_extensions import VIDEO_EXTS, AUDIO_EXTS
 import time
 import logging
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidgetItem, 
@@ -143,7 +144,7 @@ class VideoConverterWidget(QWidget):
         self.check_ffmpeg_and_switch()
 
     def add_files_dialog(self):
-        video_exts = "*.mp4 *.mkv *.avi *.mov *.wmv *.flv *.webm *.ts *.m2ts *.3gp *.mpeg *.mpg *.m4v *.f4v *.asf *.vob *.m2v *.vro *.divx *.xvid *.ogv *.gif"
+        video_exts = " ".join([f"*{ext}" for ext in VIDEO_EXTS])
         fmt = f"Video Files ({video_exts});;All Files (*)"
         files, _ = QFileDialog.getOpenFileNames(self, AppContext.tr("msg_select_video_files"), "", fmt)
         if files:

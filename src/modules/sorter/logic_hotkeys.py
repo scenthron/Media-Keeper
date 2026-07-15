@@ -478,10 +478,8 @@ class SorterHotkeysMixin:
             show_player = False
             if hasattr(self, 'current_file_path') and self.current_file_path:
                 ext = os.path.splitext(self.current_file_path)[1].lower()
-                show_player = ext in [
-                    '.mp4', '.avi', '.mkv', '.mov', '.webm', '.wmv', '.flv', '.mpg', '.mpeg', '.m4v', # видео
-                    '.mp3', '.wav', '.ogg', '.flac' # аудио
-                ]
+                from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, get_filtered_exts
+                show_player = ext in get_filtered_exts(VIDEO_EXTS, "logic_player_video") | get_filtered_exts(AUDIO_EXTS, "logic_player_audio")
             if show_player:
                 self.video_controls.show()
             else:

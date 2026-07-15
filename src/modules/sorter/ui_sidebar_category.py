@@ -23,7 +23,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
     def __init__(self, name, path, parent_app, level=0, parent_cat=None):
         super().__init__()
         self.name = name
-        self.path = path
+        self.path = os.path.normpath(path)
         self.app = parent_app
         self.level = level 
         self.parent_cat = parent_cat
@@ -186,7 +186,8 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         self.btn_collapse.setVisible(has_child)
 
     def _on_cache_updated(self, updated_path):
-        if os.path.normpath(self.path) == os.path.normpath(updated_path):
+        from utils_io import strip_long_path_prefix
+        if strip_long_path_prefix(os.path.normpath(self.path)) == strip_long_path_prefix(os.path.normpath(updated_path)):
             self.update_count_visual()
 
     def handle_click(self):
@@ -492,6 +493,8 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         self.current_color = self.generate_random_color()
         self.app.category_colors_cache[self.path] = self.current_color
         self.update_style()
+        if hasattr(self.app, 'save_tree_state_if_enabled'):
+            self.app.save_tree_state_if_enabled()
 
     def refresh_sections(self):
         if not os.path.exists(self.path):

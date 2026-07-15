@@ -11,7 +11,9 @@ from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from typing import Any
 from config import AppContext, VIEWER_DESIGN
 from modules.sorter.ui_player import VideoPlayerControls, ClickableSlider, TimeOverlayWidget
+from modules.sorter.logic_player import SmartPreviewManager
 from utils_io import ensure_long_path, strip_long_path_prefix
+from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS
 
 class PopupImageViewer(QGraphicsView):
     double_clicked = pyqtSignal()
@@ -109,6 +111,47 @@ class PopupVideoViewer(QGraphicsView):
         self.scene.addItem(self.video_item)
         self.video_item.nativeSizeChanged.connect(self._on_native_size_changed)
         self._current_rotation = 0
+        
+        self.btn_seg_prev = QPushButton("<", self)
+        self.btn_seg_next = QPushButton(">", self)
+        
+        btn_style = """
+            QPushButton {
+                background-color: rgba(0, 0, 0, 0.4);
+                color: rgba(255, 255, 255, 0.6);
+                border: none;
+                border-radius: 8px;
+                font-size: 32px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: rgba(59, 130, 246, 0.7);
+                color: white;
+            }
+        """
+        for btn in (self.btn_seg_prev, self.btn_seg_next):
+            btn.setStyleSheet(btn_style)
+            btn.setFixedSize(50, 100)
+            from PyQt6.QtGui import QCursor
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            btn.hide()
+            
+        self.btn_seg_prev.clicked.connect(self._on_seg_prev)
+        self.btn_seg_next.clicked.connect(self._on_seg_next)
+        
+        # We must enable mouse tracking to catch hover
+        self.setMouseTracking(True)
+
+    def _on_seg_prev(self):
+        win = self.window()
+        if hasattr(win, 'smart_preview_mgr'):
+            win.smart_preview_mgr.skip_prev()
+            
+    def _on_seg_next(self):
+        win = self.window()
+        if hasattr(win, 'smart_preview_mgr'):
+            win.smart_preview_mgr.skip_next()
 
     def _on_native_size_changed(self, size):
         if size.isValid():
@@ -138,6 +181,12 @@ class PopupVideoViewer(QGraphicsView):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.reset_view()
+        if self.btn_seg_prev and self.btn_seg_next:
+            y_center = (self.height() - self.btn_seg_prev.height()) // 2
+            self.btn_seg_prev.move(20, y_center)
+            self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 20, y_center)
+            self.btn_seg_prev.raise_()
+            self.btn_seg_next.raise_()
 
     def mouseDoubleClickEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -152,6 +201,34 @@ class PopupVideoViewer(QGraphicsView):
             event.accept()
             return
         super().mousePressEvent(event)
+        
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        
+        segment_active = False
+        win = self.window()
+        if hasattr(win, 'smart_preview_mgr'):
+            segment_active = win.smart_preview_mgr.active and win.smart_preview_mgr.num_segments > 0
+            
+        if segment_active:
+            pos = event.pos()
+            if pos.x() < self.width() * 0.3:
+                self.btn_seg_prev.show()
+                self.btn_seg_next.hide()
+            elif pos.x() > self.width() * 0.7:
+                self.btn_seg_next.show()
+                self.btn_seg_prev.hide()
+            else:
+                self.btn_seg_prev.hide()
+                self.btn_seg_next.hide()
+        else:
+            self.btn_seg_prev.hide()
+            self.btn_seg_next.hide()
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        if hasattr(self, 'btn_seg_prev'): self.btn_seg_prev.hide()
+        if hasattr(self, 'btn_seg_next'): self.btn_seg_next.hide()
 
 
 class SizeSettingsPopup(QWidget):
@@ -499,6 +576,7 @@ class LargePreviewPopup(QDialog):
         speed = 1.0
         loop = False
         apply_all = False
+        segment_view = getattr(self.main_app, 'session_segment_view_active', AppContext.session_segment_view) if self.main_app else False
         volume_pct = 10
         self._context_menu_active = False
         self._click_start_pos = None
@@ -596,7 +674,7 @@ class LargePreviewPopup(QDialog):
             
             bottom_layout.addStretch(1)
             
-        elif ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']:
+        elif ext in VIDEO_EXTS:
             self.video_viewer = PopupVideoViewer()
             self.video_viewer.double_clicked.connect(self.open_file_system)
             self.video_viewer.middle_clicked.connect(self.open_folder_with_file)
@@ -616,6 +694,7 @@ class LargePreviewPopup(QDialog):
             self.media_player.positionChanged.connect(self._update_overlay_time)
             self.media_player.durationChanged.connect(self.controls.update_duration)
             self.media_player.durationChanged.connect(self._update_overlay_duration)
+            self.media_player.durationChanged.connect(self._on_media_duration_changed)
             self.media_player.playbackStateChanged.connect(self._on_playback_state_changed)
             
             self.controls.seek_requested.connect(self.media_player.setPosition)
@@ -628,6 +707,10 @@ class LargePreviewPopup(QDialog):
             self.controls.speed_changed.connect(self.on_speed_changed)
             self.controls.loop_toggled.connect(self.on_loop_toggled)
             self.controls.apply_all_toggled.connect(self.on_apply_all_toggled)
+            self.controls.segment_view_toggled.connect(self.on_segment_view_toggled)
+            
+            self.smart_preview_mgr = SmartPreviewManager(self.media_player, lambda: getattr(self.main_app, 'session_video_speed', 1.0) if apply_all else 1.0)
+            self.smart_preview_mgr.set_active(segment_view)
             
             self.layout.addWidget(self.controls)
             
@@ -641,7 +724,7 @@ class LargePreviewPopup(QDialog):
             else:
                 speed = 1.0
                 
-            self.controls.set_popup_values(speed, loop, apply_all, is_video=True)
+            self.controls.set_popup_values(speed, loop, apply_all, segment_view, is_video=True)
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix
@@ -691,6 +774,7 @@ class LargePreviewPopup(QDialog):
             self.controls.speed_changed.connect(self.on_speed_changed)
             self.controls.loop_toggled.connect(self.on_loop_toggled)
             self.controls.apply_all_toggled.connect(self.on_apply_all_toggled)
+            self.controls.segment_view_toggled.connect(self.on_segment_view_toggled)
             
             self.layout.addWidget(self.controls)
             
@@ -699,7 +783,7 @@ class LargePreviewPopup(QDialog):
             self.time_overlay.adjustSize()
             self.resizeEvent(None)
             
-            self.controls.set_popup_values(1.0, loop, False, is_video=False)
+            self.controls.set_popup_values(1.0, loop, False, False, is_video=False)
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix
@@ -1036,9 +1120,9 @@ class LargePreviewPopup(QDialog):
         
         ext = os.path.splitext(self.filepath)[1].lower()
         
-        video_exts = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.flv', '.mpg', '.mpeg', '.m4v']
-        audio_exts = ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma']
-        image_exts = ['.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif']
+        video_exts = VIDEO_EXTS
+        audio_exts = AUDIO_EXTS
+        image_exts = IMAGE_EXTS
         
         act_open = QAction(AppContext.tr("srt_ctx_open_file"), self)
         act_open.triggered.connect(self.open_file_system)
@@ -1170,7 +1254,7 @@ class LargePreviewPopup(QDialog):
                 
     def on_speed_changed(self, speed):
         ext = os.path.splitext(self.filepath)[1].lower()
-        is_video = ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
+        is_video = ext in VIDEO_EXTS
         
         if self.media_player:
             self.media_player.setPlaybackRate(speed)
@@ -1189,7 +1273,7 @@ class LargePreviewPopup(QDialog):
 
     def on_loop_toggled(self, enabled):
         ext = os.path.splitext(self.filepath)[1].lower()
-        is_video = ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
+        is_video = ext in VIDEO_EXTS
         
         if self.media_player:
             self.media_player.setLoops(QMediaPlayer.Loops.Infinite if enabled else QMediaPlayer.Loops.Once)
@@ -1211,7 +1295,7 @@ class LargePreviewPopup(QDialog):
 
     def on_apply_all_toggled(self, enabled):
         ext = os.path.splitext(self.filepath)[1].lower()
-        is_video = ext in ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
+        is_video = ext in VIDEO_EXTS
         
         if self.main_app:
             self.main_app.session_all_videos_active = enabled

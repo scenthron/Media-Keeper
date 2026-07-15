@@ -64,9 +64,10 @@ class CleanerDB:
         except Exception as e: logging.error(f"DB Write Error: {e}")
 
     def check_path_scanned(self, folder_path):
+        from utils_io import strip_long_path_prefix
         try:
-            folder = os.path.normpath(folder_path)
-            pattern = f"{folder_path}%"
+            folder = strip_long_path_prefix(os.path.normpath(folder_path))
+            pattern = f"{folder}%"
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM file_hashes WHERE path LIKE ? LIMIT 1", (pattern,))
@@ -140,9 +141,10 @@ class SimilarDB:
         except Exception as e: logging.error(f"Similar DB Write Error: {e}")
 
     def check_path_scanned(self, folder_path):
+        from utils_io import strip_long_path_prefix
         try:
-            folder = os.path.normpath(folder_path)
-            pattern = f"{folder_path}%"
+            folder = strip_long_path_prefix(os.path.normpath(folder_path))
+            pattern = f"{folder}%"
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             cursor.execute(f"SELECT 1 FROM {self.table_name} WHERE path LIKE ? LIMIT 1", (pattern,))

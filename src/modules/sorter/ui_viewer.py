@@ -17,6 +17,7 @@ from .thumbnail_loader import ThumbnailLoader
 from .ui_player import VideoPlayerControls
 
 from .ui_preview_popup import LargePreviewPopup
+from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS
 from utils_io import ensure_long_path, strip_long_path_prefix
 
 def safe_relpath(path: str, start: str) -> str:
@@ -333,11 +334,7 @@ class SorterGridItemWidget(QWidget):
         
         # Check if preview is available (media files)
         ext_lower = os.path.splitext(filepath)[1].lower()
-        is_previewable = ext_lower in [
-            '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
-            '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
-        ]
+        is_previewable = ext_lower in VIDEO_EXTS
         
         if is_previewable:
             # Sleek dark green color for previewable files
@@ -620,11 +617,7 @@ class SorterListItemWidget(QWidget):
         
         # Check if preview is available (media files)
         ext_lower = os.path.splitext(filepath)[1].lower()
-        is_previewable = ext_lower in [
-            '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
-            '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
-        ]
+        is_previewable = ext_lower in VIDEO_EXTS
         
         if is_previewable:
             badge_bg = "rgba(22, 101, 52, 0.85)"
@@ -847,6 +840,45 @@ class ZoomableGraphicsView(QGraphicsView):
         self.hide_timer.setInterval(3000)
         self.hide_timer.setSingleShot(True)
         self.hide_timer.timeout.connect(self._hide_overlays)
+        
+        self.btn_seg_prev = QPushButton("<", self)
+        self.btn_seg_next = QPushButton(">", self)
+        
+        btn_style = """
+            QPushButton {
+                background-color: rgba(0, 0, 0, 0.4);
+                color: rgba(255, 255, 255, 0.6);
+                border: none;
+                border-radius: 8px;
+                font-size: 32px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: rgba(59, 130, 246, 0.7);
+                color: white;
+            }
+        """
+        for btn in (self.btn_seg_prev, self.btn_seg_next):
+            btn.setStyleSheet(btn_style)
+            btn.setFixedSize(50, 100)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            btn.hide()
+            
+        self.btn_seg_prev.clicked.connect(self._on_seg_prev)
+        self.btn_seg_next.clicked.connect(self._on_seg_next)
+        
+    def _on_seg_prev(self):
+        from .ui_main import SorterModule
+        main_app = self.window()
+        if isinstance(main_app, SorterModule) and hasattr(main_app, 'smart_preview_mgr'):
+            main_app.smart_preview_mgr.skip_prev()
+            
+    def _on_seg_next(self):
+        from .ui_main import SorterModule
+        main_app = self.window()
+        if isinstance(main_app, SorterModule) and hasattr(main_app, 'smart_preview_mgr'):
+            main_app.smart_preview_mgr.skip_next()
 
     def keyPressEvent(self, event: QKeyEvent):
         key = event.key()
@@ -908,6 +940,13 @@ class ZoomableGraphicsView(QGraphicsView):
             # So controls_h is 0 in that case, which is correct because the view doesn't include the external controls.
             self.time_overlay.move(x, y)
             self.time_overlay.raise_()
+            
+        if self.btn_seg_prev and self.btn_seg_next:
+            y_center = (self.height() - self.btn_seg_prev.height()) // 2
+            self.btn_seg_prev.move(20, y_center)
+            self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 20, y_center)
+            self.btn_seg_prev.raise_()
+            self.btn_seg_next.raise_()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -1158,7 +1197,7 @@ class ZoomableGraphicsView(QGraphicsView):
         elif self.text_item.isVisible():
             active_item = self.text_item
             
-        if active_item:
+        if active_item and active_item != self.text_item:
             active_item.setPos(0, 0)
             if hasattr(active_item, 'setTransform'):
                 from PyQt6.QtGui import QTransform
@@ -1175,13 +1214,14 @@ class ZoomableGraphicsView(QGraphicsView):
             if active_item == self.video_item:
                 self.fitInView(active_item, Qt.AspectRatioMode.KeepAspectRatio)
                 self.centerOn(active_item)
-            elif active_item in (self.pixmap_item, self.text_item):
+            elif active_item == self.pixmap_item:
                 if width_diff > 0 or height_diff > 0 or is_rotated:
                     self.fitInView(active_item, Qt.AspectRatioMode.KeepAspectRatio)
                     self.centerOn(active_item)
                 else:
                     self.centerOn(active_item)
             else:
+                self.fitInView(content_rect, Qt.AspectRatioMode.KeepAspectRatio)
                 self.centerOn(content_rect.center())
 
     def change_rotation(self, angle):
@@ -1575,6 +1615,7 @@ class SorterBaseListView(QListWidget):
     def _start_hover_playback(self):
         if not self.current_hover_path or not os.path.exists(self.current_hover_path): return
         
+        from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS
         from utils_io import strip_long_path_prefix
         norm_path = os.path.normpath(strip_long_path_prefix(self.current_hover_path))
         main_app = self.get_main_app()
@@ -1699,6 +1740,7 @@ class SorterBaseListView(QListWidget):
         if not self.current_hover_path or not os.path.exists(self.current_hover_path):
             return
             
+        from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS
         from utils_io import strip_long_path_prefix
         norm_path = os.path.normpath(strip_long_path_prefix(self.current_hover_path))
         main_app = self.get_main_app()
@@ -1706,11 +1748,7 @@ class SorterBaseListView(QListWidget):
             return
             
         ext = os.path.splitext(self.current_hover_path)[1].lower()
-        is_media = ext in [
-            '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
-            '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
-        ]
+        is_media = ext in VIDEO_EXTS
         if not is_media:
             return
             
@@ -1898,9 +1936,9 @@ class SorterBaseListView(QListWidget):
             }
         """)
 
-        video_exts = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.3gp', '.ts', '.m2ts', '.webm', '.flv', '.mpg', '.mpeg', '.m4v']
-        audio_exts = ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma']
-        image_exts = ['.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif']
+        video_exts = VIDEO_EXTS
+        audio_exts = AUDIO_EXTS
+        image_exts = IMAGE_EXTS
 
         if len(paths) == 1:
             path = paths[0]
@@ -2116,11 +2154,7 @@ class SorterGridView(SorterBaseListView):
             if end_row < 0:
                 end_row = self.count() - 1
             
-            _thumb_exts = {
-                '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-                '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
-                '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
-            }
+            _thumb_exts = VIDEO_EXTS
             target_thumb_size = QSize(max(256, self.tile_size), max(256, self.tile_size))
             
             for i in range(max(0, start_row), min(self.count(), end_row + 1)):
@@ -2179,11 +2213,7 @@ class SorterGridView(SorterBaseListView):
             return
             
         end = min(self.count(), self._commit_index + 500)
-        _thumb_exts = {
-            '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
-            '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
-        }
+        _thumb_exts = VIDEO_EXTS
         target_thumb_size = QSize(max(256, self.tile_size), max(256, self.tile_size))
         
         for i in range(self._commit_index, end):
@@ -2532,8 +2562,7 @@ class SorterViewerArea(QWidget):
         self.btn_page_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_page_refresh.setStyleSheet(btn_style)
         self.btn_page_refresh.clicked.connect(lambda: self.refresh_pagination())
-        self.btn_page_refresh.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.btn_page_refresh.setToolTip("Обновить пагинацию" if AppContext.LANG == "RU" else "Refresh Pagination")
+        self.btn_page_refresh.setToolTip("Обновить списки и переформировать группы" if AppContext.LANG == "RU" else "Refresh lists and regroup")
         self.btn_page_refresh.move(0, 350)
         
         self.current_page_idx = 0
@@ -2648,14 +2677,16 @@ class SorterViewerArea(QWidget):
         
         # Только для режима сетки (1) и списка (2)
         is_single_view = getattr(self, 'current_view_mode', 0) == 0
-        show_pagination = (total > 1) and not is_single_view
+        show_pagination = not is_single_view
         
         self.btn_page_prev.setVisible(show_pagination)
+        self.btn_page_prev.setEnabled(total > 1)
         self.lbl_page_text.setVisible(show_pagination)
         self.btn_page_next.setVisible(show_pagination)
+        self.btn_page_next.setEnabled(total > 1)
         
-        # Кнопка обновления видна всегда в режимах сетки/списка (даже если 1 страница)
-        self.btn_page_refresh.setVisible(not is_single_view)
+        # Кнопка обновления видна всегда в режимах сетки/списка
+        self.btn_page_refresh.setVisible(show_pagination)
         
         self.resizeEvent(None)
 
@@ -2724,9 +2755,9 @@ class SorterViewerArea(QWidget):
         
         # Right container (view mode, hover preview, quick target toggles, and 4 pagination buttons)
         # We need to calculate height based on visible buttons. 
-        # For now, there are 7 buttons (indices 0 to 300) -> 340px
+        # For now, there are 8 buttons (indices 0 to 350 + 40 height) -> 400px
         container_right_w = w
-        container_right_h = 340
+        container_right_h = 400
         self.overlay_container_right.setGeometry(self.width() - container_right_w - m_right, m, container_right_w, container_right_h)
         self.overlay_container_right.show()
         self.overlay_container_right.raise_()
@@ -3141,9 +3172,9 @@ class SorterViewerArea(QWidget):
                     return "#"
                     
                 elif sort_type == "type_asc":
-                    video_exts = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
-                    audio_exts = ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.wma']
-                    image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.ico']
+                    video_exts = VIDEO_EXTS
+                    audio_exts = AUDIO_EXTS
+                    image_exts = IMAGE_EXTS
                     
                     clean_ext = ext.lstrip('.')
                     if not clean_ext:
@@ -3303,11 +3334,7 @@ class SorterViewerArea(QWidget):
                     
                     # Request async thumbnail generation
                     ext = os.path.splitext(rel_path)[1].lower()
-                    if ext in [
-                        '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-                        '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
-                        '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
-                    ]:
+                    if ext in VIDEO_EXTS:
                         ThumbnailLoader.inst().get_thumbnail(full_path, QSize(256, 256))
         finally:
             self.grid_view.setUpdatesEnabled(True)
@@ -3398,7 +3425,7 @@ class SorterViewerArea(QWidget):
     def refresh_video_thumbnails(self) -> None:
         """Перегенерирует превью для всех видеофайлов в текущем каталоге."""
         logging.info("Начато обновление видео-превью после скачивания FFmpeg.")
-        video_extensions = {'.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v'}
+        video_extensions = VIDEO_EXTS
         
         # Собираем все видеофайлы из текущего кэша отображения
         paths_to_refresh = []
@@ -3526,11 +3553,7 @@ class SorterViewerArea(QWidget):
                 
                 # Запуск асинхронной загрузки превью
                 ext = os.path.splitext(full_path)[1].lower()
-                if ext in [
-                    '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-                    '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
-                    '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
-                ]:
+                if ext in VIDEO_EXTS:
                     ThumbnailLoader.inst().get_thumbnail(full_path, QSize(256, 256))
                     
             # Также обновим self.loading_files в памяти

@@ -149,67 +149,66 @@ class AiClassifier:
         Возвращает кортеж: (best_group_name, confidence_percent, details)
         или (None, 0, None)
         """
-        # 1. Сначала проверяем классификацию лица (если есть активные face-группы)
+    def get_features_for_image(self, filepath: str, mtime: float, size: int, use_cache: bool = True) -> dict:
+        features = {"faces": [], "general": None}
+        
         if self.face_reference_descriptors:
             faces = None
             if use_cache:
                 faces = self.cache.get_file_faces(filepath, mtime, size)
-                
             if faces is None:
                 faces = self.ai.detect_and_extract_faces(filepath)
                 if use_cache:
                     self.cache.save_file_faces(filepath, mtime, size, faces)
-                
             if faces:
-                best_face_group = None
-                best_face_score = 0.0
+                features["faces"] = [f["descriptor"] for f in faces]
                 
-                settings = load_ai_settings()
-                match_thresh = settings.get("face_match_threshold", 1.128)
-                
-                for face in faces:
-                    desc = face["descriptor"]
-                    for group_name, ref_descs in self.face_reference_descriptors.items():
-                        for ref_desc in ref_descs:
-                            dist = np.linalg.norm(desc - ref_desc)
-                            # Map actual threshold to 75.0 score internally so the rest of the app 
-                            # (which expects scores > user spin_threshold) keeps working.
-                            if dist <= match_thresh:
-                                score = 100.0 - (dist / match_thresh) * 25.0
-                            else:
-                                if match_thresh >= 2.0:
-                                    score = 0.0
-                                else:
-                                    score = 75.0 - ((dist - match_thresh) / (2.0 - match_thresh)) * 75.0
-                            score = max(0.0, min(100.0, score))
-                            
-                            if score > best_face_score:
-                                best_face_score = score
-                                best_face_group = group_name
-                                
-                if best_face_group and best_face_score > 0.0:
-                    return best_face_group, best_face_score, {"type": "face"}
-                    
-        # 2. Если лица не распознаны, делаем общее сопоставление картинок с учетом выбранного режима
         if self.general_embeddings or self.general_centroids:
             emb = None
             if use_cache:
                 emb = self.cache.get_image_embedding(filepath, mtime, size)
-                
             if emb is None:
                 emb = self.ai.extract_image_embedding(filepath)
                 if use_cache:
                     self.cache.save_image_embedding(filepath, mtime, size, emb)
+            features["general"] = emb
+            
+        return features
+
+    def match_features(self, features: dict, match_mode: str = "centroid", threshold: float = 75.0) -> tuple:
+        if self.face_reference_descriptors and features.get("faces"):
+            best_face_group = None
+            best_face_score = 0.0
+            settings = load_ai_settings()
+            match_thresh = settings.get("face_match_threshold", 1.128)
+            
+            for desc in features["faces"]:
+                for group_name, ref_descs in self.face_reference_descriptors.items():
+                    for ref_desc in ref_descs:
+                        dist = np.linalg.norm(desc - ref_desc)
+                        if dist <= match_thresh:
+                            score = 100.0 - (dist / match_thresh) * 25.0
+                        else:
+                            if match_thresh >= 2.0:
+                                score = 0.0
+                            else:
+                                score = 75.0 - ((dist - match_thresh) / (2.0 - match_thresh)) * 75.0
+                        score = max(0.0, min(100.0, score))
+                        if score > best_face_score:
+                            best_face_score = score
+                            best_face_group = group_name
+                            
+            if best_face_group and best_face_score > 0.0:
+                return best_face_group, best_face_score, {"type": "face"}
                 
+        if (self.general_embeddings or self.general_centroids) and features.get("general") is not None:
+            emb = features["general"]
             best_group = None
             best_score = 0.0
-            
-            # Собираем все доступные группы
             all_groups = set(self.general_embeddings.keys()) | set(self.general_centroids.keys())
             
             for group_name in all_groups:
                 if match_mode == "centroid" or group_name not in self.general_embeddings:
-                    # Режим "Средний образ" или если у нас есть только предрассчитанный центроид (например, в тестах)
                     centroid = self.general_centroids.get(group_name)
                     if centroid is not None:
                         similarity = np.dot(emb, centroid)
@@ -224,19 +223,16 @@ class AiClassifier:
                         similarity = np.dot(emb, ref_emb)
                         score = max(0.0, (similarity - 0.3) / 0.7) * 100.0
                         scores.append(score)
-                        
                     if not scores:
                         continue
-                        
                     if match_mode == "majority":
-                        # Должно быть выше threshold для >= 50% эталонов
                         passed = [s for s in scores if s >= threshold]
                         if len(passed) >= max(1, len(scores) / 2.0):
                             mean_passed = np.mean(passed)
                             if mean_passed > best_score:
                                 best_score = mean_passed
                                 best_group = group_name
-                    else:  # "best_match"
+                    else:
                         max_score = max(scores)
                         if max_score > best_score:
                             best_score = max_score
@@ -246,3 +242,7 @@ class AiClassifier:
                 return best_group, best_score, {"type": "general"}
                 
         return None, 0, None
+
+    def match_image(self, filepath: str, mtime: float, size: int, match_mode: str = "centroid", threshold: float = 75.0, use_cache: bool = True) -> tuple:
+        features = self.get_features_for_image(filepath, mtime, size, use_cache)
+        return self.match_features(features, match_mode, threshold)

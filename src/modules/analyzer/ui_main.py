@@ -2,6 +2,7 @@
 
 
 import os
+from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS, get_filtered_exts
 import subprocess
 import logging
 from PyQt6.QtWidgets import (
@@ -1299,7 +1300,7 @@ class AnalyzerWidget(QWidget):
             ext = os.path.splitext(path)[1].lower().replace('.', '')
             shell = self.window()
             if shell:
-                video_exts = {'mp4', 'avi', 'mov', 'mkv', 'webm', 'wmv', 'flv'}
+                video_exts = VIDEO_EXTS
                 audio_exts = {'mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'wma'}
                 image_exts = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'tiff'}
 

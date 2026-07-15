@@ -1,5 +1,6 @@
 
 import os
+from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS, get_filtered_exts
 import hashlib
 from utils_common import is_subpath
 from config import AppContext
@@ -15,7 +16,7 @@ LARGE_FILE_THRESHOLD = 30 * 1024 * 1024
 
 EXT_GROUPS = {
     "Images": {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.raw', '.heic', '.heif', '.svg', '.ico', '.tga', '.psd', '.apng'},
-    "Video": {'.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.3gp', '.3g2', '.mpg', '.mpeg', '.ts', '.m2ts', '.vob', '.asf', '.rm', '.rmvb'},
+    "Video": VIDEO_EXTS,
     "Audio": {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a', '.opus', '.aiff', '.amr', '.mid', '.midi'},
     "Documents": {'.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.rtf'},
     "Archives": {'.zip', '.rar', '.7z', '.tar', '.gz', '.iso'},
@@ -535,7 +536,7 @@ class SimilarScanWorker(QThread):
         elif self.media_type == 1:
             allowed_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma'}
         else:
-            allowed_exts = {'.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm'}
+            allowed_exts = VIDEO_EXTS
             
         if ext not in allowed_exts:
             return False
@@ -1155,6 +1156,7 @@ class AiScanWorker(QThread):
         if self.is_running:
             self.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, 0)
         self.finished.emit(results)
+
 
 
 import sqlite3

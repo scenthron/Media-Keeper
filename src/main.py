@@ -368,15 +368,31 @@ class MediaKeeperShell(QMainWindow):
     def closeEvent(self, event):
         logging.info("Завершение работы приложения.")
         shutdown_logging() # Flush logs
+        from PyQt6.QtWidgets import QApplication
+        QApplication.quit()
         super().closeEvent(event)
 
 def global_excepthook(exctype, value, traceback_obj):
     import traceback
     import logging
+    import sys
     try:
         tb_lines = traceback.format_exception(exctype, value, traceback_obj)
         tb_text = "".join(tb_lines)
         logging.critical(f"Unhandled Python exception:\n{tb_text}")
+        
+        # Пытаемся показать диалог пользователю
+        try:
+            from PyQt6.QtWidgets import QApplication, QMessageBox
+            if QApplication.instance():
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Icon.Critical)
+                msg.setWindowTitle("Критическая ошибка")
+                msg.setText("Произошла непредвиденная ошибка. Приложение может работать нестабильно.")
+                msg.setDetailedText(tb_text)
+                msg.exec()
+        except Exception:
+            pass
         
         # Принудительный сброс логов на диск
         root_logger = logging.getLogger()

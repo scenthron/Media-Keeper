@@ -246,7 +246,6 @@ class UiSetupMixin:
         self.lbl_unsort_dot.hide()
 
         self.lbl_unsort_count = FolderLabel("lbl_unsort", lambda: getattr(self, 'UNSORT_DIR', ""))
-        self.lbl_unsort_count.setStyleSheet("color: #3b82f6; font-weight: bold;")
         self.lbl_unsort_count.clicked.connect(self.browse_for_inbox)
         self.lbl_unsort_count.customContextMenuRequested.connect(self.show_inbox_context_menu)
         
@@ -256,11 +255,6 @@ class UiSetupMixin:
             return self.config.get("path_todel", "")
 
         self.lbl_todel_count = FolderLabel("lbl_todel", get_trash_path)
-        path_todel = get_trash_path()
-        if path_todel:
-            self.lbl_todel_count.setStyleSheet("color: #b91c1c; font-weight: bold;")
-        else:
-            self.lbl_todel_count.setStyleSheet("color: #aaa;")
         self.lbl_todel_count.clicked.connect(self.browse_for_trash_path)
         self.lbl_todel_count.customContextMenuRequested.connect(self.show_trash_context_menu)
         
@@ -940,7 +934,6 @@ class UiSetupMixin:
             
         if hasattr(self, 'lbl_unsort_count'):
             self.lbl_unsort_count.virtual_getter = None
-            self.lbl_unsort_count.setStyleSheet("color: #3b82f6; font-weight: bold;")
             
         self.update_paths_from_config()
         self.manual_full_refresh(reset_position=True)

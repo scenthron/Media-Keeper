@@ -50,10 +50,16 @@ class ActionMixin:
         is_dump = path.lower().endswith(".mkdump")
         self.source_folders[path] = {'protected': is_dump, 'color': color, 'is_system': is_system}
         
-        if getattr(self, 'current_tab', 0) == 2 and hasattr(self, 'page_ai'):
+        current_tab = getattr(self, 'current_tab', 0)
+        is_face_cached = False
+        if current_tab == 2 and hasattr(self, 'page_ai'):
             is_cached, is_face_cached = self.page_ai.classifier.cache.has_cached_files_for_folder(path)
+        elif current_tab == 0 and hasattr(self, 'db_helper_dupes'):
+            is_cached = self.db_helper_dupes.check_path_scanned(path)
+        elif current_tab == 1 and hasattr(self, 'db_helper_similar'):
+            is_cached = self.db_helper_similar.check_path_scanned(path)
         else:
-            is_cached, is_face_cached = False, False
+            is_cached = False
             
         item_widget = SourceListItem(path, color, is_protected=is_dump, is_cached=is_cached, is_face_cached=is_face_cached)
         if is_system:

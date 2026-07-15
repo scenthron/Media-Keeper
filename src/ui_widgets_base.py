@@ -197,7 +197,8 @@ class FolderLabel(QLabel):
             return
             
         current_path = self.path_getter()
-        if current_path and os.path.normpath(current_path) == os.path.normpath(updated_path):
+        from utils_io import strip_long_path_prefix
+        if current_path and strip_long_path_prefix(os.path.normpath(current_path)) == strip_long_path_prefix(os.path.normpath(updated_path)):
             self.update_info()
 
     def update_info(self):
@@ -208,8 +209,6 @@ class FolderLabel(QLabel):
                 self.setToolTip(v_text)
                 self.setStyleSheet("color: #8b5cf6; font-weight: bold;")
                 return
-            
-        self.setStyleSheet("color: #3b82f6; font-weight: bold;")
 
         path = self.path_getter()
         prefix = AppContext.tr(self.text_prefix_key) 
@@ -224,8 +223,10 @@ class FolderLabel(QLabel):
             display_text = f"{truncate_text(folder_name)}: {count} ({size_str})"
             self.setText(display_text)
             
-            # Restore normal style (handled by parent logic usually, but ensure no 'empty' color)
-            # We assume parent sets color.
+            if self.text_prefix_key == "lbl_todel":
+                self.setStyleSheet("color: #b91c1c; font-weight: bold;")
+            else:
+                self.setStyleSheet("color: #3b82f6; font-weight: bold;")
             
             hint_open = AppContext.tr('tooltip_scroll_open_hint')
             hint_settings = AppContext.tr('tooltip_right_click_menu_hint')
@@ -240,6 +241,7 @@ class FolderLabel(QLabel):
             self.setToolTip(tooltip_text)
         else:
             # EMPTY STATE
+            self.setStyleSheet("color: #aaa;")
             not_set_mark = AppContext.tr("lbl_not_set") # [?]
             self.setText(f"{prefix}: {not_set_mark}")
             

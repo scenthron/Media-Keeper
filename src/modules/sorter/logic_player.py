@@ -7,6 +7,134 @@ from PyQt6.QtGui import QPixmap, QImageReader
 from config import AppContext, VIEWER_DESIGN
 from utils_common import format_size
 from utils_io import ensure_long_path
+from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS, get_filtered_exts
+
+class SmartPreviewManager:
+    """Manages the logic for segmented video playback (Smart Preview)."""
+    def __init__(self, media_player, get_speed_func):
+        self.media_player = media_player
+        self.get_speed_func = get_speed_func # func returning current playback rate
+        
+        self.active = False
+        self.user_paused = False
+        
+        self.total_duration_ms = 0
+        self.num_segments = 0
+        self.segment_play_time_ms = 0
+        
+        self.current_segment_idx = 0
+        
+        self.timer = QTimer()
+        self.timer.timeout.connect(self._check_segment)
+        self.timer.setInterval(200) # Check every 200ms
+        
+        # We also need to know when user manually seeks to pause it
+        self.last_known_pos = 0
+
+    def calculate_segments(self, duration_ms):
+        dur_sec = duration_ms / 1000.0
+        if dur_sec < 15:
+            return 0, 0
+        elif dur_sec <= 60:
+            return 3, 3000
+        elif dur_sec <= 300:
+            return 5, 4000
+        else:
+            return 10, 4000
+
+    def start_video(self, duration_ms):
+        self.total_duration_ms = duration_ms
+        self.num_segments, self.segment_play_time_ms = self.calculate_segments(duration_ms)
+        self.current_segment_idx = 0
+        self.user_paused = False
+        
+        if self.active and self.num_segments > 0:
+            self._jump_to_segment(0)
+            self.timer.start()
+        else:
+            self.timer.stop()
+            
+    def stop(self):
+        self.timer.stop()
+        
+    def set_active(self, active):
+        self.active = active
+        if active and self.total_duration_ms > 0 and self.num_segments > 0 and not self.user_paused:
+            self._jump_to_segment(self.current_segment_idx)
+            self.timer.start()
+        else:
+            self.timer.stop()
+            
+    def set_user_paused(self, paused):
+        self.user_paused = paused
+        if paused:
+            self.timer.stop()
+        else:
+            if self.active and self.num_segments > 0:
+                self.timer.start()
+
+    def _jump_to_segment(self, idx):
+        if self.num_segments <= 0: return
+        self.current_segment_idx = max(0, min(idx, self.num_segments - 1))
+        
+        # calculate start time for this segment
+        # length of each chunk
+        chunk_len = self.total_duration_ms / self.num_segments
+        target_pos = int(self.current_segment_idx * chunk_len)
+        
+        # small offset so we don't start at exact 0 frame if it's black
+        if target_pos == 0 and self.total_duration_ms > 1000:
+            target_pos = 500
+            
+        self.media_player.setPosition(target_pos)
+        self.last_known_pos = target_pos
+        self.segment_start_real_time = self.media_player.position()
+
+    def _check_segment(self):
+        if not self.active or self.user_paused or self.num_segments == 0:
+            return
+            
+        # If user seeked manually, pause mode
+        current_pos = self.media_player.position()
+        speed = self.get_speed_func()
+        if speed <= 0: speed = 1.0
+        
+        # Check how much we played in this segment (scaled by speed)
+        chunk_len = self.total_duration_ms / self.num_segments
+        segment_start_pos = int(self.current_segment_idx * chunk_len)
+        
+        time_played_ms = (current_pos - segment_start_pos)
+        
+        # if user seeked manually far away, disable segment view
+        if abs(current_pos - self.last_known_pos) > 2000:
+            self.set_user_paused(True)
+            return
+            
+        self.last_known_pos = current_pos
+        
+        # time_played scaled by speed to check actual watch time
+        real_time_watched_ms = time_played_ms / speed
+        
+        if real_time_watched_ms >= self.segment_play_time_ms:
+            # jump to next
+            next_idx = self.current_segment_idx + 1
+            if next_idx >= self.num_segments:
+                # Loop back or stop
+                next_idx = 0
+            self._jump_to_segment(next_idx)
+
+    def skip_next(self):
+        if self.num_segments > 0:
+            next_idx = (self.current_segment_idx + 1) % self.num_segments
+            self._jump_to_segment(next_idx)
+            self.set_user_paused(False)
+
+    def skip_prev(self):
+        if self.num_segments > 0:
+            prev_idx = (self.current_segment_idx - 1) % self.num_segments
+            self._jump_to_segment(prev_idx)
+            self.set_user_paused(False)
+
 
 class PlayerMixin:
     """
@@ -92,7 +220,7 @@ class PlayerMixin:
             logging.info(f"[PlayerMixin] File: {filename}, supportsAnimation: {reader.supportsAnimation()}, imageCount: {reader.imageCount()}, resolved is_animated: {is_animated}")
         
         # 1. Images (Static)
-        if ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.heic', '.avif', '.apng', '.jfif'] or (is_gif_or_webp and not is_animated):
+        if ext in IMAGE_EXTS or (is_gif_or_webp and not is_animated):
             self.video_controls.hide()
             self.current_media_is_video = False
             self.viewer.set_image(QPixmap(self.current_file_path))
@@ -104,7 +232,7 @@ class PlayerMixin:
             self.viewer.set_animated(self.current_file_path)
             
         # 3. Video
-        elif ext in ['.mp4', '.avi', '.mkv', '.mov', '.webm', '.wmv', '.flv', '.mpg', '.mpeg', '.m4v']:
+        elif ext in get_filtered_exts(VIDEO_EXTS, "logic_player_video"):
             self.video_controls.show()
             self.current_media_is_video = True
             
@@ -114,10 +242,12 @@ class PlayerMixin:
             else:
                 speed = 1.0
                 
+                
             loop = self.session_loop
             apply_all = self.session_all_videos_active
+            segment_view = getattr(self, 'session_segment_view_active', AppContext.session_segment_view)
             
-            self.video_controls.set_popup_values(speed, loop, apply_all, True)
+            self.video_controls.set_popup_values(speed, loop, apply_all, segment_view, True)
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix
@@ -136,12 +266,13 @@ class PlayerMixin:
                 self.media_player.play()
             
         # 4. Audio
-        elif ext in ['.mp3', '.wav', '.ogg', '.flac']:
+        elif ext in get_filtered_exts(AUDIO_EXTS, "logic_player_audio"):
             self.video_controls.show()
             self.current_media_is_video = False # Treat as audio for UI logic
             
+            
             # Audio always resets speed by default logic
-            self.video_controls.set_popup_values(1.0, False, False, False)
+            self.video_controls.set_popup_values(1.0, False, False, False, False)
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix
@@ -160,6 +291,8 @@ class PlayerMixin:
     def toggle_playback(self):
         if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.media_player.pause()
+            if hasattr(self, 'smart_preview_mgr'):
+                self.smart_preview_mgr.set_user_paused(True)
         else:
             self.media_player.play()
 
@@ -167,7 +300,7 @@ class PlayerMixin:
         # Click on canvas toggles playback if it's video/audio
         if self.current_file_path:
             ext = os.path.splitext(self.current_file_path)[1].lower()
-            if ext in ['.mp4', '.avi', '.mkv', '.mov', '.webm', '.mp3', '.wav', '.wmv', '.flv', '.mpg', '.mpeg', '.m4v']:
+            if ext in get_filtered_exts(VIDEO_EXTS, "logic_player_video") | get_filtered_exts(AUDIO_EXTS, "logic_player_audio"):
                 self.toggle_playback()
             else:
                 self.setFocus()
@@ -185,10 +318,7 @@ class PlayerMixin:
             show_player = False
             if hasattr(self, 'current_file_path') and self.current_file_path:
                 ext = os.path.splitext(self.current_file_path)[1].lower()
-                show_player = ext in [
-                    '.mp4', '.avi', '.mkv', '.mov', '.webm', '.wmv', '.flv', '.mpg', '.mpeg', '.m4v', # видео
-                    '.mp3', '.wav', '.ogg', '.flac' # аудио
-                ]
+                show_player = ext in get_filtered_exts(VIDEO_EXTS, "logic_player_video") | get_filtered_exts(AUDIO_EXTS, "logic_player_audio")
             if show_player:
                 self.video_controls.show()
             else:
@@ -225,6 +355,8 @@ class PlayerMixin:
 
     def _on_scrub_start(self):
         self.media_player.pause()
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.set_user_paused(True)
 
     def _on_scrub_stop(self):
         self.media_player.play()
@@ -248,6 +380,13 @@ class PlayerMixin:
         self.session_all_videos_active = enabled
         AppContext.session_all_videos_active = enabled
         AppContext.save_media_settings()
+
+    def _on_segment_view_toggled(self, enabled):
+        self.session_segment_view_active = enabled
+        AppContext.session_segment_view = enabled
+        AppContext.save_media_settings()
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.set_active(enabled)
 
     def _log_media_error(self, error, errorString):
         logging.error(f"[MediaPlayer] Error: {error}, Description: {errorString}")

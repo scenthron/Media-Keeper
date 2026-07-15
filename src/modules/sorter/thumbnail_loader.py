@@ -34,9 +34,9 @@ class ThumbnailWorker(QRunnable):
             
             long_path = ensure_long_path(self.filepath)
             ext = os.path.splitext(long_path)[1].lower()
-            video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
+            from utils_extensions import VIDEO_EXTS
             
-            if ext in video_extensions:
+            if ext in VIDEO_EXTS:
                 from logic_paths import get_ffmpeg_exe
                 import subprocess
                 ffmpeg = get_ffmpeg_exe()

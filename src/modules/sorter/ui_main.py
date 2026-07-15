@@ -35,7 +35,7 @@ def safe_relpath(path: str, start: str) -> str:
 
 from .logic_ui import UiSetupMixin
 from .logic_files import FileOpsMixin
-from .logic_player import PlayerMixin
+from .logic_player import PlayerMixin, SmartPreviewManager
 from .logic_hotkeys import SorterHotkeysMixin
 from .logic_automation import AutomationConfig
 
@@ -137,6 +137,8 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         
         self.viewer.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
         
+        self.smart_preview_mgr = SmartPreviewManager(self.media_player, lambda: self.session_video_speed)
+        
         self.left_layout.addWidget(self.viewer, stretch=1)
 
         self.video_controls = VideoPlayerControls()
@@ -151,6 +153,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.video_controls.speed_changed.connect(self._on_speed_changed)
         self.video_controls.loop_toggled.connect(self._set_loop_state)
         self.video_controls.apply_all_toggled.connect(self._on_apply_all_toggled)
+        self.video_controls.segment_view_toggled.connect(self._on_segment_view_toggled)
         self.video_controls.volume_changed.connect(self.change_volume)
         
         # Sync initial volume
@@ -158,6 +161,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
 
         self.media_player.positionChanged.connect(self.video_controls.update_position)
         self.media_player.durationChanged.connect(self.video_controls.update_duration)
+        self.media_player.durationChanged.connect(self._on_media_duration_changed)
         self.media_player.playbackStateChanged.connect(self._on_playback_state_changed)
         
         # Setup time overlay for main viewer
@@ -170,6 +174,8 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         
         self.video_controls.hide()
         self.left_layout.addWidget(self.video_controls)
+        
+        self.smart_preview_mgr.set_active(getattr(self, 'session_segment_view_active', AppContext.session_segment_view))
         
         t2 = time.perf_counter()
         logging.info(f"[PROFILER] Viewer and video controls created in {t2 - t1:.4f}s")
@@ -365,6 +371,10 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             if hasattr(win, 'analyzer_tab'):
                 win.analyzer_tab.start_analysis(path, from_sorter=True)
 
+    def _on_media_duration_changed(self, duration_ms):
+        if duration_ms > 0 and self.current_media_is_video:
+            self.smart_preview_mgr.start_video(duration_ms)
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, 'sidebar'):
@@ -402,8 +412,11 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                  if target_norm in self.custom_orders: 
                      items = self.custom_orders[target_norm]
                  else:
-                     try: items = sorted(os.listdir(target_norm))
-                     except: items = []
+                     try:
+                         items = [d for d in os.listdir(target_norm) if os.path.isdir(os.path.join(target_norm, d))]
+                         items = sorted(items)
+                     except:
+                         items = []
                 
                  if filename in items: 
                      items.remove(filename)
@@ -438,6 +451,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             if self._tree_remember_enabled:
                 self.collapsed_states_cache = state.get("collapsed_states", {})
                 self.custom_orders = state.get("custom_orders", {})
+                self.category_colors_cache = state.get("category_colors", {})
         else:
             if inherit_cache:
                 if hasattr(self, 'btn_remember_tree'):
@@ -450,6 +464,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                     self.btn_remember_tree.setChecked(False)
                 self.collapsed_states_cache = {}
                 self.custom_orders = {}
+                self.category_colors_cache = {}
     
     def set_session_inbox(self, path):
         self.session_inbox_path = path
@@ -1188,7 +1203,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             self.collapsed_states_cache = {}
         self.collapsed_states_cache.update(current_states)
         
-        TreeStateManager.save_state(root, True, self.collapsed_states_cache, self.custom_orders)
+        TreeStateManager.save_state(root, True, self.collapsed_states_cache, self.custom_orders, getattr(self, 'category_colors_cache', {}))
 
     def toggle_remember_tree(self):
         from .logic_tree_state import TreeStateManager

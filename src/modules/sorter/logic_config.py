@@ -18,9 +18,10 @@ class ConfigManager:
         "affix_text": "<Work>, <Family>, <Humor>, <%date_%time>",
         "temp_roots": "",
         "sort_type": "type_asc",
-        "hover_delay": 0.4,
+        "session_video_speed": 1.0,
         "session_loop": False,
         "session_all_videos_active": False,
+        "session_segment_view": False,
         "auto_collapse_groups": True,
         "pagination_size": 1000
     }
@@ -66,6 +67,8 @@ class ConfigManager:
                                 config[k] = (v.lower() == "true")
                             elif k == "session_all_videos_active":
                                 config[k] = (v.lower() == "true")
+                            elif k == "session_segment_view":
+                                config[k] = (v.lower() == "true")
                             elif k == "auto_collapse_groups":
                                 config[k] = (v.lower() == "true")
                             elif k == "pagination_size":
@@ -110,16 +113,20 @@ class ConfigManager:
             config["temp_roots"] = "|".join(valid)
             
         from config import AppContext
+        AppContext.session_video_speed = config.get("session_video_speed", 1.0)
         AppContext.session_loop = config.get("session_loop", False)
         AppContext.session_all_videos_active = config.get("session_all_videos_active", False)
+        AppContext.session_segment_view = config.get("session_segment_view", False)
                  
         return config
 
     @staticmethod
     def save(config):
         from config import AppContext
+        config["session_video_speed"] = AppContext.session_video_speed
         config["session_loop"] = AppContext.session_loop
         config["session_all_videos_active"] = AppContext.session_all_videos_active
+        config["session_segment_view"] = AppContext.session_segment_view
         
         path = ConfigManager.get_config_path()
         logging.info(f"Сохранение конфигурации в файл: {path}")

@@ -20,7 +20,7 @@ def ensure_long_path(path):
 class SessionMoveWorker(QThread):
     progress_total = pyqtSignal(int, int)
     file_started = pyqtSignal(str)
-    file_progress = pyqtSignal(int, int)
+    file_progress = pyqtSignal(object, object)
     finished = pyqtSignal(list, int, set)
 
     def __init__(self, items, dest_root, rename_idx, preserve_struct, explicit_mapping=False):

@@ -1,5 +1,6 @@
 
 import os
+from utils_extensions import VIDEO_EXTS, AUDIO_EXTS
 import time
 import logging
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidgetItem, 
@@ -99,20 +100,15 @@ class AudioConverterWidget(QWidget):
 
     def add_files_dialog(self):
         # Allow audio AND video files (to extract sound)
-        audio_exts = "*.mp3 *.wav *.ogg *.flac *.m4a *.aac *.opus *.ac3 *.dts *.wma *.m4b *.m4r *.wv *.ape *.aiff *.aif *.au *.mp2 *.mpk *.snd *.oga"
-        video_exts = "*.mp4 *.mkv *.avi *.mov *.wmv *.flv *.webm *.ts *.m2ts *.3gp *.mpeg *.mpg *.m4v *.f4v *.asf *.vob *.m2v"
+        audio_exts = " ".join([f"*{ext}" for ext in AUDIO_EXTS])
+        video_exts = " ".join([f"*{ext}" for ext in VIDEO_EXTS])
         fmt = f"Audio/Video ({audio_exts} {video_exts});;All (*)"
         files, _ = QFileDialog.getOpenFileNames(self, AppContext.tr("msg_select_audio_files"), "", fmt)
         if files: self.on_files_dropped(files)
 
     def on_files_dropped(self, paths):
         # Allow audio and video for extraction
-        valid_exts = {
-            '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.opus', '.ac3', '.dts', '.wma',
-            '.m4b', '.m4r', '.wv', '.ape', '.aiff', '.aif', '.au', '.mp2', '.mpk', '.snd', '.oga',
-            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.ts', '.m2ts', '.3gp', 
-            '.mpeg', '.mpg', '.m4v', '.f4v', '.asf', '.vob', '.m2v'
-        }
+        valid_exts = VIDEO_EXTS | AUDIO_EXTS
         
         new_paths = []
         for p in paths:

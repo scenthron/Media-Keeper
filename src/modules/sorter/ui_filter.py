@@ -10,7 +10,7 @@ from PyQt6.QtGui import QColor, QPalette, QIcon
 
 from config import AppContext, APP_DESIGN
 from ui_widgets_base import FlowLayout, SizeFilterWidget
-from .utils_extensions import EXT_CATEGORIES
+from utils_extensions import EXT_CATEGORIES
 
 class SorterFilterDialog(QDialog):
     def __init__(self, unsort_dir, found_extensions, current_selection, current_mode, recursive_state, min_size=0.0, max_size=0.0, parent=None):

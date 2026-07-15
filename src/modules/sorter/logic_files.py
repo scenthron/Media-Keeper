@@ -20,6 +20,7 @@ from .logic_automation import AutomationConfig, TemplateEngine
 from utils_common import format_size, get_unique_filepath
 from logic_cache import DirCache
 from utils_io import smart_move_file, ensure_long_path, strip_long_path_prefix
+from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS
 
 def safe_relpath(path: str, start: str) -> str:
     if not start:
@@ -163,7 +164,6 @@ class FileOpsMixin:
         if hasattr(self, 'lbl_unsort_count'):
             self.lbl_unsort_count.virtual_getter = self._get_virtual_folder_text
             self.lbl_unsort_count.update_info()
-            self.lbl_unsort_count.setStyleSheet("color: #8b5cf6; font-weight: bold;")
             
         if hasattr(self, 'refresh_sidebar_styling'):
             self.refresh_sidebar_styling()
@@ -217,11 +217,7 @@ class FileOpsMixin:
                 norm_p = os.path.normpath(f_path)
                 if norm_p not in loader.cache:
                     ext = os.path.splitext(norm_p)[1].lower()
-                    if ext in [
-                        '.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif',
-                        '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.m4v',
-                        '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma'
-                    ]:
+                    if ext in IMAGE_EXTS | VIDEO_EXTS | AUDIO_EXTS:
                         loader.get_thumbnail(f_path, QSize(256, 256))
             return
 
@@ -320,14 +316,11 @@ class FileOpsMixin:
                 ext = os.path.splitext(rel_path)[1].lower()
                 
                 if sort_type == "type_asc":
-                    video_exts = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.3gp', '.ts', '.m2ts', '.webm', '.mpg', '.mpeg', '.m4v']
-                    audio_exts = ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.wma']
-                    image_exts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.tiff', '.ico']
-                    if ext in video_exts:
+                    if ext in VIDEO_EXTS:
                         cat_order = 0
-                    elif ext in image_exts:
+                    elif ext in IMAGE_EXTS:
                         cat_order = 1
-                    elif ext in audio_exts:
+                    elif ext in AUDIO_EXTS:
                         cat_order = 2
                     else:
                         cat_order = 3
@@ -953,6 +946,11 @@ class FileOpsMixin:
                     
                 self.files_queue = new_queue
                 self.current_index = new_current_index
+                
+                if not self.files_queue and getattr(self, '_raw_dir_files', []):
+                    self.apply_local_filters_and_sorting(trigger_sync=True)
+                    return
+                    
                 logging.info(f"[PROFILER] Шаг 1: optimistic_update и files_queue завершены. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
                 
                 # Refresh Sidebar styling to apply highlighting
@@ -1078,6 +1076,10 @@ class FileOpsMixin:
                 
             self.files_queue = new_queue
             self.current_index = new_current_index
+            
+            if not self.files_queue and getattr(self, '_raw_dir_files', []):
+                self.apply_local_filters_and_sorting(trigger_sync=True)
+                return
             
             # Update top labels for folder count/size
             if hasattr(self, 'lbl_unsort_count'): self.lbl_unsort_count.update_info()
@@ -1520,8 +1522,11 @@ class FileOpsMixin:
             if norm_parent in self.custom_orders: 
                 items = self.custom_orders[norm_parent]
             else:
-                try: items = sorted(os.listdir(parent_path))
-                except: items = []
+                try: 
+                    items = [d for d in os.listdir(parent_path) if os.path.isdir(os.path.join(parent_path, d))]
+                    items = sorted(items)
+                except: 
+                    items = []
             
             if filename in items: items.remove(filename)
             if new_index < 0: new_index = 0

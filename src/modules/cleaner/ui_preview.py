@@ -30,7 +30,7 @@ class CleanerPreviewWidget(QWidget):
         
         # State for Video Settings
         from config import AppContext
-        self.session_video_speed = AppContext.session_video_speed
+        self.session_video_speed = float(AppContext.session_video_speed)
         self.session_loop = AppContext.session_loop
         self.session_apply_all = AppContext.session_all_videos_active
         self.session_segment_view = AppContext.session_segment_view
@@ -176,7 +176,7 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.apply_all_toggled.connect(self._on_apply_all_toggled)
         self.video_controls.segment_view_toggled.connect(self._on_segment_view_toggled)
         
-        self.smart_preview_mgr = SmartPreviewManager(self.player, lambda: self.session_video_speed if self.session_apply_all else 1.0)
+        self.smart_preview_mgr = SmartPreviewManager(self.player, lambda: float(self.session_video_speed) if self.session_apply_all else 1.0)
         self.smart_preview_mgr.set_active(self.session_segment_view)
         
         # Time Overlay
@@ -466,7 +466,7 @@ class CleanerPreviewWidget(QWidget):
         
         # Apply Session Settings
         if self.session_apply_all:
-            speed = self.session_video_speed
+            speed = float(self.session_video_speed)
         else:
             speed = 1.0
             
@@ -569,9 +569,9 @@ class CleanerPreviewWidget(QWidget):
     def _on_speed_changed(self, speed):
         self.player.setPlaybackRate(speed)
         if self.current_media_type == 'video':
-            self.session_video_speed = speed
+            self.session_video_speed = float(speed)
             from config import AppContext
-            AppContext.session_video_speed = speed
+            AppContext.session_video_speed = float(speed)
 
     def _on_loop_toggled(self, enabled):
         self.session_loop = enabled

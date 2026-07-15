@@ -39,8 +39,10 @@ class SmartPreviewManager:
             return 6, 1500
         elif dur_sec <= 300:
             return 10, 2000
+        elif dur_sec <= 600:
+            return 10, 3000
         else:
-            return 20, 2000
+            return 10, 4000
 
     def start_video(self, duration_ms):
         self.total_duration_ms = duration_ms
@@ -88,16 +90,24 @@ class SmartPreviewManager:
         if target_pos == 0 and self.total_duration_ms > 1000:
             target_pos = 500
             
-        self.media_player.setPosition(target_pos)
-        self.last_known_pos = target_pos
-        self.segment_start_real_time = self.media_player.position()
+        try:
+            self.media_player.setPosition(target_pos)
+            self.last_known_pos = target_pos
+            self.segment_start_real_time = self.media_player.position()
+        except RuntimeError:
+            pass
 
     def _check_segment(self):
         if not self.active or self.user_paused or self.num_segments == 0:
             return
             
-        # If user seeked manually, pause mode
-        current_pos = self.media_player.position()
+        try:
+            # If user seeked manually, pause mode
+            current_pos = self.media_player.position()
+        except RuntimeError:
+            self.timer.stop()
+            return
+            
         speed = self.get_speed_func()
         if speed <= 0: speed = 1.0
         

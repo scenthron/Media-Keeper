@@ -593,7 +593,7 @@ class LargePreviewPopup(QDialog):
         speed = 1.0
         loop = False
         apply_all = False
-        segment_view = getattr(self.main_app, 'session_segment_view_active', AppContext.session_segment_view) if self.main_app else False
+        segment_view = AppContext.session_segment_view
         volume_pct = 10
         self._context_menu_active = False
         self._click_start_pos = None
@@ -1285,7 +1285,7 @@ class LargePreviewPopup(QDialog):
                     speed if is_video else 1.0, 
                     getattr(self.main_app, 'session_loop', False), 
                     getattr(self.main_app, 'session_all_videos_active', False), 
-                    getattr(self.main_app, 'session_segment_view', False),
+                    AppContext.session_segment_view,
                     is_video
                 )
 
@@ -1296,8 +1296,8 @@ class LargePreviewPopup(QDialog):
         if self.media_player:
             self.media_player.setLoops(QMediaPlayer.Loops.Infinite if enabled else QMediaPlayer.Loops.Once)
         if self.main_app:
-            self.main_app.session_loop = enabled
             from config import AppContext
+            self.main_app.session_loop = enabled
             AppContext.session_loop = enabled
             AppContext.save_media_settings()
             if hasattr(self.main_app, 'media_player'):
@@ -1308,7 +1308,7 @@ class LargePreviewPopup(QDialog):
                     speed if is_video else 1.0, 
                     enabled, 
                     getattr(self.main_app, 'session_all_videos_active', False), 
-                    getattr(self.main_app, 'session_segment_view', False),
+                    AppContext.session_segment_view,
                     is_video
                 )
 

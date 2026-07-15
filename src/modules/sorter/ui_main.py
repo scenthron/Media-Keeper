@@ -175,7 +175,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.video_controls.hide()
         self.left_layout.addWidget(self.video_controls)
         
-        self.smart_preview_mgr.set_active(getattr(self, 'session_segment_view_active', AppContext.session_segment_view))
+        self.smart_preview_mgr.set_active(AppContext.session_segment_view)
         
         t2 = time.perf_counter()
         logging.info(f"[PROFILER] Viewer and video controls created in {t2 - t1:.4f}s")

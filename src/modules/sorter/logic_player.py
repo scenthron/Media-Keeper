@@ -244,16 +244,16 @@ class PlayerMixin:
             self.video_controls.show()
             self.current_media_is_video = True
             
-            # Apply Session Settings
-            if self.session_all_videos_active:
-                speed = self.session_video_speed
+            from config import AppContext
+            if AppContext.session_all_videos_active:
+                speed = float(AppContext.session_video_speed)
             else:
                 speed = 1.0
                 
                 
-            loop = self.session_loop
-            apply_all = self.session_all_videos_active
-            segment_view = getattr(self, 'session_segment_view_active', AppContext.session_segment_view)
+            loop = AppContext.session_loop
+            apply_all = AppContext.session_all_videos_active
+            segment_view = AppContext.session_segment_view
             
             self.video_controls.set_popup_values(speed, loop, apply_all, segment_view, True)
             
@@ -372,11 +372,11 @@ class PlayerMixin:
     def _on_speed_changed(self, speed):
         self.media_player.setPlaybackRate(speed)
         if self.current_media_is_video:
-            self.session_video_speed = speed
-            AppContext.session_video_speed = speed
+            from config import AppContext
+            AppContext.session_video_speed = float(speed)
 
     def _set_loop_state(self, enabled):
-        self.session_loop = enabled
+        from config import AppContext
         AppContext.session_loop = enabled
         AppContext.save_media_settings()
         if enabled:
@@ -385,12 +385,12 @@ class PlayerMixin:
             self.media_player.setLoops(QMediaPlayer.Loops.Once)
 
     def _on_apply_all_toggled(self, enabled):
-        self.session_all_videos_active = enabled
+        from config import AppContext
         AppContext.session_all_videos_active = enabled
         AppContext.save_media_settings()
 
     def _on_segment_view_toggled(self, enabled):
-        self.session_segment_view_active = enabled
+        from config import AppContext
         AppContext.session_segment_view = enabled
         AppContext.save_media_settings()
         if hasattr(self, 'smart_preview_mgr'):

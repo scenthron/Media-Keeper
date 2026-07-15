@@ -599,8 +599,8 @@ class LargePreviewPopup(QDialog):
         self._click_start_pos = None
         
         if self.main_app:
-            loop = getattr(self.main_app, 'session_loop', False)
-            apply_all = getattr(self.main_app, 'session_all_videos_active', False)
+            loop = AppContext.session_loop
+            apply_all = AppContext.session_all_videos_active
             volume_pct = int(getattr(self.main_app, 'global_volume', 1.0) * 100)
         
         # Проверяем, поддерживает ли файл анимацию (например, GIF или анимированный WebP)
@@ -726,7 +726,7 @@ class LargePreviewPopup(QDialog):
             self.controls.apply_all_toggled.connect(self.on_apply_all_toggled)
             self.controls.segment_view_toggled.connect(self.on_segment_view_toggled)
             
-            self.smart_preview_mgr = SmartPreviewManager(self.media_player, lambda: float(getattr(self.main_app, 'session_video_speed', 1.0)) if apply_all else 1.0)
+            self.smart_preview_mgr = SmartPreviewManager(self.media_player, lambda: float(AppContext.session_video_speed) if apply_all else 1.0)
             self.smart_preview_mgr.set_active(segment_view)
             
             self.layout.addWidget(self.controls)
@@ -737,7 +737,7 @@ class LargePreviewPopup(QDialog):
             self.resizeEvent(None)
             
             if apply_all:
-                speed = float(getattr(self.main_app, 'session_video_speed', 1.0))
+                speed = float(AppContext.session_video_speed)
             else:
                 speed = 1.0
                 
@@ -1277,14 +1277,16 @@ class LargePreviewPopup(QDialog):
             self.media_player.setPlaybackRate(speed)
         if self.main_app:
             if is_video:
-                self.main_app.session_video_speed = speed
+            from config import AppContext
+            if is_video:
+                AppContext.session_video_speed = speed
             if hasattr(self.main_app, 'media_player'):
                 self.main_app.media_player.setPlaybackRate(speed)
             if hasattr(self.main_app, 'video_controls'):
                 self.main_app.video_controls.set_popup_values(
                     speed if is_video else 1.0, 
-                    getattr(self.main_app, 'session_loop', False), 
-                    getattr(self.main_app, 'session_all_videos_active', False), 
+                    AppContext.session_loop, 
+                    AppContext.session_all_videos_active, 
                     AppContext.session_segment_view,
                     is_video
                 )
@@ -1303,11 +1305,11 @@ class LargePreviewPopup(QDialog):
             if hasattr(self.main_app, 'media_player'):
                 self.main_app.media_player.setLoops(QMediaPlayer.Loops.Infinite if enabled else QMediaPlayer.Loops.Once)
             if hasattr(self.main_app, 'video_controls'):
-                speed = float(getattr(self.main_app, 'session_video_speed', 1.0)) if getattr(self.main_app, 'session_all_videos_active', False) else 1.0
+                speed = float(AppContext.session_video_speed) if AppContext.session_all_videos_active else 1.0
                 self.main_app.video_controls.set_popup_values(
                     speed if is_video else 1.0, 
                     enabled, 
-                    getattr(self.main_app, 'session_all_videos_active', False), 
+                    AppContext.session_all_videos_active, 
                     AppContext.session_segment_view,
                     is_video
                 )
@@ -1326,17 +1328,17 @@ class LargePreviewPopup(QDialog):
                 if not enabled:
                     if self.media_player:
                         self.media_player.setPlaybackRate(1.0)
-                    self.controls.set_popup_values(1.0, self.main_app.session_loop, False, segment_view, True)
+                    self.controls.set_popup_values(1.0, AppContext.session_loop, False, segment_view, True)
                 else:
-                    speed = float(getattr(self.main_app, 'session_video_speed', 1.0))
+                    speed = float(AppContext.session_video_speed)
                     if self.media_player:
                         self.media_player.setPlaybackRate(speed)
-                    self.controls.set_popup_values(speed, self.main_app.session_loop, True, segment_view, True)
+                    self.controls.set_popup_values(speed, AppContext.session_loop, True, segment_view, True)
                 
                 if hasattr(self.main_app, 'video_controls'):
                     self.main_app.video_controls.set_popup_values(
-                        float(self.main_app.session_video_speed) if enabled else 1.0, 
-                        self.main_app.session_loop, 
+                        float(AppContext.session_video_speed) if enabled else 1.0, 
+                        AppContext.session_loop, 
                         enabled, 
                         segment_view,
                         True

@@ -16,7 +16,7 @@ from PyQt6.QtMultimediaWidgets import QGraphicsVideoItem
 
 from config import AppContext, VIEWER_DESIGN
 from utils_common import format_size
-from modules.sorter.ui_player import VideoPlayerControls, TimeOverlayWidget
+from modules.sorter.ui_player import VideoPlayerControls, TimeOverlayWidget, SegmentIndicatorWidget
 from modules.cleaner.ui_view import ClickableGraphicsView
 from modules.sorter.logic_player import SmartPreviewManager
 
@@ -100,6 +100,10 @@ class CleanerPreviewWidget(QWidget):
             
         self.btn_seg_prev.clicked.connect(self._on_seg_prev)
         self.btn_seg_next.clicked.connect(self._on_seg_next)
+        
+        self.segment_indicator = SegmentIndicatorWidget(self.media_container)
+        self.segment_indicator.hide()
+        
         self.media_container.setMouseTracking(True)
         self.view.setMouseTracking(True)
         
@@ -237,6 +241,8 @@ class CleanerPreviewWidget(QWidget):
             self.btn_seg_next.move(self.media_container.width() - self.btn_seg_next.width() - 20, y_center)
             self.btn_seg_prev.raise_()
             self.btn_seg_next.raise_()
+        if hasattr(self, 'segment_indicator'):
+            self.segment_indicator.move(20, 20)
 
     def _on_media_duration_changed(self, dur):
         if hasattr(self, 'smart_preview_mgr'):
@@ -249,6 +255,17 @@ class CleanerPreviewWidget(QWidget):
     def _on_seg_next(self):
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.skip_next()
+            
+    def update_segment_indicator(self):
+        if not hasattr(self, 'smart_preview_mgr') or not hasattr(self, 'segment_indicator'):
+            return
+        if self.current_media_type == 'video' and self.smart_preview_mgr.active and self.smart_preview_mgr.num_segments > 0 and not self.smart_preview_mgr.user_paused:
+            if not self.segment_indicator.isVisible():
+                self.segment_indicator.start_blinking()
+        else:
+            self.segment_indicator.stop_blinking()
+            self.btn_seg_prev.hide()
+            self.btn_seg_next.hide()
             
     def _view_mouse_move_event(self, event):
         QGraphicsView.mouseMoveEvent(self.view, event)
@@ -483,6 +500,8 @@ class CleanerPreviewWidget(QWidget):
     def _on_player_state_changed(self, state):
         is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
         self.video_controls.set_playing_state(is_playing)
+        if hasattr(self, 'update_segment_indicator'):
+            self.update_segment_indicator()
 
     def _fit_video_size_changed(self, size):
         self.video_item.setSize(size)
@@ -574,6 +593,8 @@ class CleanerPreviewWidget(QWidget):
         AppContext.save_media_settings()
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.set_active(enabled)
+        if hasattr(self, 'update_segment_indicator'):
+            self.update_segment_indicator()
 
     # --- Mouse Actions ---
     def open_current_file(self):

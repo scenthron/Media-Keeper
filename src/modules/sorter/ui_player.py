@@ -8,6 +8,38 @@ from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QRectF, QPointF, QSizeF, QSize,
 from PyQt6.QtGui import QCursor, QIcon
 from config import AppContext, VIEWER_DESIGN
 
+class SegmentIndicatorWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setToolTip(AppContext.tr("lbl_segment_view") if hasattr(AppContext, 'tr') else "Сегментный просмотр включен")
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+        
+        self.lbl_icon = QLabel("🎞️")
+        self.lbl_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_icon.setStyleSheet("font-size: 20px; color: #fff;")
+        
+        layout.addWidget(self.lbl_icon)
+        self.setStyleSheet("background-color: rgba(0, 0, 0, 0.5); border-radius: 6px;")
+        
+        self.blink_timer = QTimer(self)
+        self.blink_timer.timeout.connect(self._toggle_blink)
+        self.blink_timer.setInterval(1000)
+        
+    def _toggle_blink(self):
+        self.lbl_icon.setVisible(not self.lbl_icon.isVisible())
+        
+    def start_blinking(self):
+        self.show()
+        self.lbl_icon.show()
+        self.blink_timer.start()
+        
+    def stop_blinking(self):
+        self.hide()
+        self.blink_timer.stop()
+
 class TimeOverlayWidget(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)

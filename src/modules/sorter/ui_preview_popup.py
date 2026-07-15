@@ -10,7 +10,7 @@ from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 from typing import Any
 from config import AppContext, VIEWER_DESIGN
-from modules.sorter.ui_player import VideoPlayerControls, ClickableSlider, TimeOverlayWidget
+from modules.sorter.ui_player import VideoPlayerControls, ClickableSlider, TimeOverlayWidget, SegmentIndicatorWidget
 from modules.sorter.logic_player import SmartPreviewManager
 from utils_io import ensure_long_path, strip_long_path_prefix
 from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS
@@ -140,6 +140,9 @@ class PopupVideoViewer(QGraphicsView):
         self.btn_seg_prev.clicked.connect(self._on_seg_prev)
         self.btn_seg_next.clicked.connect(self._on_seg_next)
         
+        self.segment_indicator = SegmentIndicatorWidget(self)
+        self.segment_indicator.hide()
+        
         # We must enable mouse tracking to catch hover
         self.setMouseTracking(True)
 
@@ -152,6 +155,18 @@ class PopupVideoViewer(QGraphicsView):
         win = self.window()
         if hasattr(win, 'smart_preview_mgr'):
             win.smart_preview_mgr.skip_next()
+            
+    def update_segment_indicator(self):
+        win = self.window()
+        if not hasattr(win, 'smart_preview_mgr'): return
+        mgr = win.smart_preview_mgr
+        if mgr.active and mgr.num_segments > 0 and not mgr.user_paused:
+            if not self.segment_indicator.isVisible():
+                self.segment_indicator.start_blinking()
+        else:
+            self.segment_indicator.stop_blinking()
+            self.btn_seg_prev.hide()
+            self.btn_seg_next.hide()
 
     def _on_native_size_changed(self, size):
         if size.isValid():
@@ -181,10 +196,12 @@ class PopupVideoViewer(QGraphicsView):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.reset_view()
-        if self.btn_seg_prev and self.btn_seg_next:
+        if hasattr(self, 'btn_seg_prev'):
             y_center = (self.height() - self.btn_seg_prev.height()) // 2
             self.btn_seg_prev.move(20, y_center)
             self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 20, y_center)
+        if hasattr(self, 'segment_indicator'):
+            self.segment_indicator.move(20, 20)
             self.btn_seg_prev.raise_()
             self.btn_seg_next.raise_()
 
@@ -1176,9 +1193,6 @@ class LargePreviewPopup(QDialog):
     def _on_menu_about_to_hide(self):
         QTimer.singleShot(100, self._clear_menu_flag)
 
-    def _on_menu_about_to_hide(self):
-        QTimer.singleShot(100, self._clear_menu_flag)
-
     def _clear_menu_flag(self):
         self._context_menu_active = False
 
@@ -1240,6 +1254,9 @@ class LargePreviewPopup(QDialog):
         is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
         if hasattr(self, 'controls') and self.controls:
             self.controls.set_playing_state(is_playing)
+            
+        if hasattr(self, 'video_viewer') and self.video_viewer and hasattr(self.video_viewer, 'update_segment_indicator'):
+            self.video_viewer.update_segment_indicator()
                 
     def change_volume(self, value):
         vol = value / 100.0

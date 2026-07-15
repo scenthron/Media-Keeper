@@ -14,7 +14,7 @@ from PyQt6.QtMultimediaWidgets import QVideoWidget
 
 from config import AppContext, VIEWER_DESIGN, APP_DESIGN
 from .thumbnail_loader import ThumbnailLoader
-from .ui_player import VideoPlayerControls
+from .ui_player import VideoPlayerControls, SegmentIndicatorWidget
 
 from .ui_preview_popup import LargePreviewPopup
 from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS
@@ -820,27 +820,6 @@ class ZoomableGraphicsView(QGraphicsView):
         self.video_item.hide()
         self.video_item.nativeSizeChanged.connect(self._on_video_native_size_changed)
 
-        self.text_item = QGraphicsTextItem()
-        self.text_item.setDefaultTextColor(QColor(VIEWER_DESIGN['audio_text_color']))
-        self.text_item.setFont(QFont(VIEWER_DESIGN['audio_font'], VIEWER_DESIGN['audio_font_size']))
-        self.scene.addItem(self.text_item)
-        self.text_item.hide()
-        
-        self.current_movie = None
-        self.double_click_callback = None
-        self.middle_click_callback = None
-        self._click_start_pos = None
-        
-        self.is_fullscreen_mode = False
-        self.floating_controls = None
-        self.time_overlay = None
-        self.current_is_video = False
-        
-        self.hide_timer = QTimer(self)
-        self.hide_timer.setInterval(3000)
-        self.hide_timer.setSingleShot(True)
-        self.hide_timer.timeout.connect(self._hide_overlays)
-        
         self.btn_seg_prev = QPushButton("<", self)
         self.btn_seg_next = QPushButton(">", self)
         
@@ -868,6 +847,32 @@ class ZoomableGraphicsView(QGraphicsView):
         self.btn_seg_prev.clicked.connect(self._on_seg_prev)
         self.btn_seg_next.clicked.connect(self._on_seg_next)
         
+        self.segment_indicator = SegmentIndicatorWidget(self)
+        self.segment_indicator.hide()
+        
+        # Overlay states
+        self.hover_buttons_active = False
+        self.text_item = QGraphicsTextItem()
+        self.text_item.setDefaultTextColor(QColor(VIEWER_DESIGN['audio_text_color']))
+        self.text_item.setFont(QFont(VIEWER_DESIGN['audio_font'], VIEWER_DESIGN['audio_font_size']))
+        self.scene.addItem(self.text_item)
+        self.text_item.hide()
+        
+        self.current_movie = None
+        self.double_click_callback = None
+        self.middle_click_callback = None
+        self._click_start_pos = None
+        
+        self.is_fullscreen_mode = False
+        self.floating_controls = None
+        self.time_overlay = None
+        self.current_is_video = False
+        
+        self.hide_timer = QTimer(self)
+        self.hide_timer.setInterval(3000)
+        self.hide_timer.setSingleShot(True)
+        self.hide_timer.timeout.connect(self._hide_overlays)
+            
     def _on_seg_prev(self):
         from .ui_main import SorterModule
         main_app = self.window()
@@ -875,10 +880,19 @@ class ZoomableGraphicsView(QGraphicsView):
             main_app.smart_preview_mgr.skip_prev()
             
     def _on_seg_next(self):
-        from .ui_main import SorterModule
-        main_app = self.window()
-        if isinstance(main_app, SorterModule) and hasattr(main_app, 'smart_preview_mgr'):
-            main_app.smart_preview_mgr.skip_next()
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.skip_next()
+            
+    def update_segment_indicator(self):
+        if not hasattr(self, 'smart_preview_mgr') or not hasattr(self, 'segment_indicator'):
+            return
+        if self.current_is_video and self.smart_preview_mgr.active and self.smart_preview_mgr.num_segments > 0 and not self.smart_preview_mgr.user_paused:
+            if not self.segment_indicator.isVisible():
+                self.segment_indicator.start_blinking()
+        else:
+            self.segment_indicator.stop_blinking()
+            self.btn_seg_prev.hide()
+            self.btn_seg_next.hide()
 
     def keyPressEvent(self, event: QKeyEvent):
         key = event.key()
@@ -928,29 +942,20 @@ class ZoomableGraphicsView(QGraphicsView):
             self.floating_controls.setGeometry(x, y, w, h)
         if self.time_overlay and self.time_overlay.isVisible():
             padding = 10
-            # If floating controls are visible, we should place the overlay above them. 
-            # But wait, floating controls cover the entire width at the bottom. 
-            # We can place it at the bottom right.
             controls_h = self.floating_controls.height() if (self.floating_controls and self.is_fullscreen_mode) else 0
             
             x = self.width() - self.time_overlay.width() - padding
             y = self.height() - controls_h - self.time_overlay.height() - padding
             
-            # If not in fullscreen, the controls are not floating, they are outside the view.
-            # So controls_h is 0 in that case, which is correct because the view doesn't include the external controls.
             self.time_overlay.move(x, y)
             self.time_overlay.raise_()
             
-        if self.btn_seg_prev and self.btn_seg_next:
+        if hasattr(self, 'btn_seg_prev'):
             y_center = (self.height() - self.btn_seg_prev.height()) // 2
             self.btn_seg_prev.move(20, y_center)
             self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 20, y_center)
-            self.btn_seg_prev.raise_()
-            self.btn_seg_next.raise_()
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self.update_overlay_positions()
+        if hasattr(self, 'segment_indicator'):
+            self.segment_indicator.move(20, 20)
 
     def set_fullscreen_mode(self, enabled, controls_widget=None):
         self.is_fullscreen_mode = enabled
@@ -966,7 +971,7 @@ class ZoomableGraphicsView(QGraphicsView):
         else:
             self.setMouseTracking(False)
             self.hide_timer.stop()
-            self._restore_cursor()
+            self._hide_cursor()
             if self.floating_controls:
                 self.floating_controls.setParent(None)
                 self.floating_controls.setStyleSheet(f"background-color: {VIEWER_DESIGN['player_bg']};")
@@ -990,19 +995,41 @@ class ZoomableGraphicsView(QGraphicsView):
         self.setCursor(Qt.CursorShape.BlankCursor)
         self.viewport().setCursor(Qt.CursorShape.BlankCursor)
 
-    def _restore_cursor(self):
+    def _hide_cursor(self):
         self.setCursor(Qt.CursorShape.ArrowCursor)
         self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
 
     def mouseMoveEvent(self, event):
         if self.is_fullscreen_mode:
             self._reset_hide_timer()
+            
+        segment_active = False
+        if hasattr(self, 'smart_preview_mgr'):
+            segment_active = self.smart_preview_mgr.active and self.smart_preview_mgr.num_segments > 0
+            
+        if segment_active and self.current_is_video:
+            pos = event.pos()
+            if pos.x() < self.width() * 0.3:
+                self.btn_seg_prev.show()
+                self.btn_seg_next.hide()
+            elif pos.x() > self.width() * 0.7:
+                self.btn_seg_next.show()
+                self.btn_seg_prev.hide()
+            else:
+                self.btn_seg_prev.hide()
+                self.btn_seg_next.hide()
+        else:
+            self.btn_seg_prev.hide()
+            self.btn_seg_next.hide()
+            
         super().mouseMoveEvent(event)
 
     def enterEvent(self, event):
         super().enterEvent(event)
 
     def leaveEvent(self, event):
+        if hasattr(self, 'btn_seg_prev'): self.btn_seg_prev.hide()
+        if hasattr(self, 'btn_seg_next'): self.btn_seg_next.hide()
         super().leaveEvent(event)
 
     def wheelEvent(self, event: QWheelEvent):
@@ -1282,6 +1309,10 @@ class SorterBaseListView(QListWidget):
             }
         """)
 
+        # Trigger segment update
+        if hasattr(self.viewer, 'update_segment_indicator'):
+            self.viewer.update_segment_indicator()
+            
         # Hover Player
         self.hover_player = QMediaPlayer()
         self.hover_audio = QAudioOutput()

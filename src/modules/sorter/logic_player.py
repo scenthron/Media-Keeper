@@ -36,11 +36,11 @@ class SmartPreviewManager:
         if dur_sec < 15:
             return 0, 0
         elif dur_sec <= 60:
-            return 3, 3000
+            return 6, 1500
         elif dur_sec <= 300:
-            return 5, 4000
+            return 10, 2000
         else:
-            return 10, 4000
+            return 20, 2000
 
     def start_video(self, duration_ms):
         self.total_duration_ms = duration_ms
@@ -59,9 +59,11 @@ class SmartPreviewManager:
         
     def set_active(self, active):
         self.active = active
-        if active and self.total_duration_ms > 0 and self.num_segments > 0 and not self.user_paused:
-            self._jump_to_segment(self.current_segment_idx)
-            self.timer.start()
+        if active:
+            self.user_paused = False
+            if self.total_duration_ms > 0 and self.num_segments > 0:
+                self._jump_to_segment(self.current_segment_idx)
+                self.timer.start()
         else:
             self.timer.stop()
             

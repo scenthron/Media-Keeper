@@ -246,7 +246,7 @@ class CleanerPreviewWidget(QWidget):
 
     def _on_media_duration_changed(self, dur):
         if hasattr(self, 'smart_preview_mgr'):
-            self.smart_preview_mgr.on_duration_changed(dur)
+            self.smart_preview_mgr.start_video(dur)
             
     def _on_seg_prev(self):
         if hasattr(self, 'smart_preview_mgr'):

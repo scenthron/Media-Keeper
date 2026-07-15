@@ -1386,7 +1386,7 @@ class LargePreviewPopup(QDialog):
             
     def _on_media_duration_changed(self, dur):
         if hasattr(self, 'smart_preview_mgr'):
-            self.smart_preview_mgr.on_duration_changed(dur)
+            self.smart_preview_mgr.start_video(dur)
         if hasattr(self, 'video_viewer') and hasattr(self.video_viewer, 'update_segment_indicator'):
             self.video_viewer.update_segment_indicator()
 

@@ -1373,6 +1373,12 @@ class LargePreviewPopup(QDialog):
             pos = self.media_player.position()
             self.time_overlay.set_time(pos, dur)
             self.resizeEvent(None)
+            
+    def _on_media_duration_changed(self, dur):
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.on_duration_changed(dur)
+        if hasattr(self, 'video_viewer') and hasattr(self.video_viewer, 'update_segment_indicator'):
+            self.video_viewer.update_segment_indicator()
 
     def leaveEvent(self, event):
         super().leaveEvent(event)

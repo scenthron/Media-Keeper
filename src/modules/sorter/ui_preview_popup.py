@@ -1285,6 +1285,7 @@ class LargePreviewPopup(QDialog):
                     speed if is_video else 1.0, 
                     getattr(self.main_app, 'session_loop', False), 
                     getattr(self.main_app, 'session_all_videos_active', False), 
+                    getattr(self.main_app, 'session_segment_view', False),
                     is_video
                 )
 
@@ -1307,6 +1308,7 @@ class LargePreviewPopup(QDialog):
                     speed if is_video else 1.0, 
                     enabled, 
                     getattr(self.main_app, 'session_all_videos_active', False), 
+                    getattr(self.main_app, 'session_segment_view', False),
                     is_video
                 )
 

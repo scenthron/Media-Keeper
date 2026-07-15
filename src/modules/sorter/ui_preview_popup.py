@@ -1276,7 +1276,6 @@ class LargePreviewPopup(QDialog):
         if self.media_player:
             self.media_player.setPlaybackRate(speed)
         if self.main_app:
-            if is_video:
             from config import AppContext
             if is_video:
                 AppContext.session_video_speed = speed

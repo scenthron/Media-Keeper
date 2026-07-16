@@ -19,11 +19,11 @@ class SegmentIndicatorWidget(QWidget):
         
         self.lbl_icon = QLabel("🎞️")
         self.lbl_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_icon.setStyleSheet("font-size: 20px; color: #fff;")
+        self.lbl_icon.setStyleSheet("font-size: 20px; color: #fff; background: transparent;")
         
-        sp = self.lbl_icon.sizePolicy()
-        sp.setRetainSizeWhenHidden(True)
-        self.lbl_icon.setSizePolicy(sp)
+        from PyQt6.QtWidgets import QGraphicsOpacityEffect
+        self.opacity_effect = QGraphicsOpacityEffect(self.lbl_icon)
+        self.lbl_icon.setGraphicsEffect(self.opacity_effect)
         
         layout.addWidget(self.lbl_icon)
         self.setStyleSheet("background-color: rgba(0, 0, 0, 0.5); border-radius: 6px;")
@@ -32,12 +32,15 @@ class SegmentIndicatorWidget(QWidget):
         self.blink_timer.timeout.connect(self._toggle_blink)
         self.blink_timer.setInterval(1000)
         
+        self.setFixedSize(36, 36)
+        
     def _toggle_blink(self):
-        self.lbl_icon.setVisible(not self.lbl_icon.isVisible())
+        current_opacity = self.opacity_effect.opacity()
+        self.opacity_effect.setOpacity(0.0 if current_opacity > 0.5 else 1.0)
         
     def start_blinking(self):
         self.show()
-        self.lbl_icon.show()
+        self.opacity_effect.setOpacity(1.0)
         self.blink_timer.start()
         
     def stop_blinking(self):

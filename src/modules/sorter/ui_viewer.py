@@ -874,14 +874,12 @@ class ZoomableGraphicsView(QGraphicsView):
         self.hide_timer.timeout.connect(self._hide_overlays)
             
     def _on_seg_prev(self):
-        parent_w = self.parent()
-        main_app = parent_w.get_main_app() if hasattr(parent_w, 'get_main_app') else None
+        main_app = find_main_app(self)
         if main_app and hasattr(main_app, 'smart_preview_mgr'):
             main_app.smart_preview_mgr.skip_prev()
             
     def _on_seg_next(self):
-        parent_w = self.parent()
-        main_app = parent_w.get_main_app() if hasattr(parent_w, 'get_main_app') else None
+        main_app = find_main_app(self)
         if main_app and hasattr(main_app, 'smart_preview_mgr'):
             main_app.smart_preview_mgr.skip_next()
             
@@ -889,8 +887,7 @@ class ZoomableGraphicsView(QGraphicsView):
         if not hasattr(self, 'segment_indicator'):
             return
             
-        parent_w = self.parent()
-        main_app = parent_w.get_main_app() if hasattr(parent_w, 'get_main_app') else None
+        main_app = find_main_app(self)
         mgr = getattr(main_app, 'smart_preview_mgr', None)
         
         if self.current_is_video and mgr and mgr.active and mgr.num_segments > 0 and not mgr.user_paused:
@@ -1011,9 +1008,7 @@ class ZoomableGraphicsView(QGraphicsView):
         if self.is_fullscreen_mode:
             self._reset_hide_timer()
             
-        segment_active = False
-        parent_w = self.parent()
-        main_app = parent_w.get_main_app() if hasattr(parent_w, 'get_main_app') else None
+        main_app = find_main_app(self)
         mgr = getattr(main_app, 'smart_preview_mgr', None)
         
         if mgr:
@@ -2428,6 +2423,15 @@ class SorterPlaceholderWidget(QWidget):
             event.ignore()
 
 
+def find_main_app(widget):
+    """Поднимается по дереву родителей до первого объекта с global_volume."""
+    w = widget
+    while w is not None:
+        if hasattr(w, 'global_volume'):
+            return w
+        w = w.parent()
+    return None
+
 class SorterViewerArea(QWidget):
     """Stacked Widget Area controlling Single, Grid and List modes."""
     canvas_clicked = pyqtSignal()
@@ -2439,13 +2443,7 @@ class SorterViewerArea(QWidget):
     send_to_editor_requested = pyqtSignal(str, list)
 
     def get_main_app(self):
-        """Поднимается по дереву родителей до первого объекта с global_volume."""
-        widget = self.parent()
-        while widget is not None:
-            if hasattr(widget, 'global_volume'):
-                return widget
-            widget = widget.parent()
-        return None
+        return find_main_app(self)
 
     def __init__(self, parent=None):
         super().__init__(parent)

@@ -12,17 +12,34 @@ class SegmentIndicatorWidget(QPushButton):
     def __init__(self, parent=None):
         super().__init__("🎞️", parent)
         from config import AppContext
-        tooltip = "Сегментный режим просмотра включен.\nОтключить можно в настройках плеера." if AppContext.LANG == "RU" else "Segmented view mode is on.\nYou can disable it in the player settings."
-        self.setToolTip(tooltip)
+        
+        tooltip_ru = (
+            "<div style='font-size: 14px; color: white; padding: 2px;'>"
+            "<b>Сегментный режим просмотра</b><br><br>"
+            "Видео делится на равные части, из каждой<br>"
+            "показывается фрагмент по 1.5 секунды.<br><br>"
+            "<span style='color: #4ade80;'>• Кликните</span> для включения/выключения<br>"
+            "<span style='color: #60a5fa;'>• Используйте &lt; &gt;</span> для быстрой навигации"
+            "</div>"
+        )
+        tooltip_en = (
+            "<div style='font-size: 14px; color: white; padding: 2px;'>"
+            "<b>Segmented View Mode</b><br><br>"
+            "Video is divided into equal parts, and<br>"
+            "the player shows 1.5s of each part.<br><br>"
+            "<span style='color: #4ade80;'>• Click</span> to toggle on/off<br>"
+            "<span style='color: #60a5fa;'>• Use &lt; &gt;</span> for quick navigation"
+            "</div>"
+        )
+        self.setToolTip(tooltip_ru if AppContext.LANG == "RU" else tooltip_en)
         
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedSize(40, 40)
         
-
-        self.setStyleSheet("""
+        self.base_style = """
             QPushButton { 
                 background-color: rgba(0,0,0,0.5); 
-                color: white; 
+                color: rgba(255, 255, 255, %ICON_OPACITY%); 
                 font-size: 20px; 
                 border: 1px solid rgba(255, 255, 255, 0.3);
                 border-radius: 4px;
@@ -33,11 +50,10 @@ class SegmentIndicatorWidget(QPushButton):
                 background-color: rgba(0,0,0,0.8); 
                 border: 1px solid rgba(255, 255, 255, 0.8);
             }
-        """)
+        """
         
-        from PyQt6.QtWidgets import QGraphicsOpacityEffect
-        self.opacity_effect = QGraphicsOpacityEffect(self)
-        self.setGraphicsEffect(self.opacity_effect)
+        self.icon_opacity = 1.0
+        self.apply_style()
         
         self.blink_timer = QTimer(self)
         self.blink_timer.timeout.connect(self._toggle_blink)
@@ -45,25 +61,28 @@ class SegmentIndicatorWidget(QPushButton):
         
         self.is_active_mode = False
         
+    def apply_style(self):
+        style = self.base_style.replace("%ICON_OPACITY%", str(self.icon_opacity))
+        self.setStyleSheet(style)
+        
     def _toggle_blink(self):
-        current_opacity = self.opacity_effect.opacity()
-        self.opacity_effect.setOpacity(0.01 if current_opacity > 0.5 else 1.0)
+        self.icon_opacity = 0.01 if self.icon_opacity > 0.5 else 1.0
+        self.apply_style()
         
     def start_blinking(self):
         self.is_active_mode = True
         self.show()
-        self.opacity_effect.setOpacity(1.0)
+        self.icon_opacity = 1.0
+        self.apply_style()
         self.blink_timer.start()
         
     def stop_blinking(self, transparent=False):
         self.is_active_mode = False
         self.blink_timer.stop()
-        if transparent:
-            self.show()
-            self.opacity_effect.setOpacity(0.4)
-        else:
+        self.icon_opacity = 0.4 if transparent else 1.0
+        self.apply_style()
+        if not transparent:
             self.hide()
-            self.opacity_effect.setOpacity(1.0)
 
 class TimeOverlayWidget(QLabel):
     def __init__(self, parent=None):

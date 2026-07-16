@@ -98,8 +98,9 @@ class CleanerPreviewWidget(QWidget):
         self.btn_seg_prev.clicked.connect(self._on_seg_prev)
         self.btn_seg_next.clicked.connect(self._on_seg_next)
         
-        self.segment_indicator = SegmentIndicatorWidget(self.media_container)
+        self.segment_indicator = SegmentIndicatorWidget(self.media_container, is_small=True)
         self.segment_indicator.hide()
+        self.segment_indicator.clicked.connect(self._on_segment_indicator_clicked)
         
         self.media_container.setMouseTracking(True)
         self.view.setMouseTracking(True)
@@ -238,7 +239,7 @@ class CleanerPreviewWidget(QWidget):
             self.btn_seg_prev.raise_()
             self.btn_seg_next.raise_()
         if hasattr(self, 'segment_indicator'):
-            self.segment_indicator.move(20, 20)
+            self.segment_indicator.move(10, 10)
 
     def _on_media_duration_changed(self, dur):
         if hasattr(self, 'smart_preview_mgr'):
@@ -252,15 +253,28 @@ class CleanerPreviewWidget(QWidget):
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.skip_next()
             
+    def _on_segment_indicator_clicked(self):
+        from config import AppContext
+        AppContext.session_segment_view = not AppContext.session_segment_view
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.set_active(AppContext.session_segment_view)
+        self.update_segment_indicator()
+            
     def update_segment_indicator(self):
         if not hasattr(self, 'smart_preview_mgr') or not hasattr(self, 'segment_indicator'):
             return
-        if self.current_media_type == 'video' and self.smart_preview_mgr.active and self.smart_preview_mgr.num_segments > 0 and not self.smart_preview_mgr.user_paused:
-            if not self.segment_indicator.isVisible():
-                self.segment_indicator.start_blinking()
+        mgr = self.smart_preview_mgr
+        if self.current_media_type == 'video' and mgr.num_segments > 0:
+            self.segment_indicator.show()
             self.segment_indicator.raise_()
+            if mgr.active and not mgr.user_paused:
+                if not getattr(self.segment_indicator, 'is_active_mode', False):
+                    self.segment_indicator.start_blinking()
+            else:
+                self.segment_indicator.stop_blinking(transparent=True)
         else:
-            self.segment_indicator.stop_blinking()
+            self.segment_indicator.stop_blinking(transparent=False)
+            self.segment_indicator.hide()
             self.btn_seg_prev.hide()
             self.btn_seg_next.hide()
             

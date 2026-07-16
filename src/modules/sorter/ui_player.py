@@ -239,7 +239,6 @@ class PlayerSettingsPopup(QWidget):
     speed_changed = pyqtSignal(float)
     loop_toggled = pyqtSignal(bool)
     apply_all_toggled = pyqtSignal(bool)
-    segment_view_toggled = pyqtSignal(bool)
     closed = pyqtSignal() 
 
     def __init__(self, parent=None):
@@ -293,17 +292,12 @@ class PlayerSettingsPopup(QWidget):
         self.chk_loop.toggled.connect(self.loop_toggled.emit)
         layout.addWidget(self.chk_loop)
 
-        self.chk_segment_view = QCheckBox(AppContext.tr("lbl_segment_view") if hasattr(AppContext, 'tr') else "Сегментный просмотр")
-        self.chk_segment_view.toggled.connect(self.segment_view_toggled.emit)
-        self.chk_segment_view.setToolTip("Разбивает видео на части и показывает по 1.5 сек из каждой (Стрелки влево/вправо для переключения)")
-        layout.addWidget(self.chk_segment_view)
     
     def update_ui_text(self):
         current_speed = self.slider_speed.value() / 100.0
         self.lbl_speed.setText(f"{AppContext.tr('lbl_speed')} {current_speed:.1f}x")
         self.chk_apply_all.setText(AppContext.tr("lbl_all_videos"))
         self.chk_loop.setText(AppContext.tr("lbl_loop_media"))
-        self.chk_segment_view.setText(AppContext.tr("lbl_segment_view"))
     
     def hideEvent(self, event):
         self.closed.emit()
@@ -317,37 +311,30 @@ class PlayerSettingsPopup(QWidget):
         self.lbl_speed.setText(f"{AppContext.tr('lbl_speed')} {speed:.1f}x")
         self.speed_changed.emit(speed)
 
-    def set_values(self, speed_val, is_loop, is_apply_all, is_segment_view):
+    def set_values(self, speed_val, is_loop, is_apply_all):
         self.blockSignals(True)
         self.slider_speed.blockSignals(True)
         self.chk_loop.blockSignals(True)
         self.chk_apply_all.blockSignals(True)
-        self.chk_segment_view.blockSignals(True)
         
-        pct = int(speed_val * 100)
-        self.slider_speed.setValue(pct)
+        self.slider_speed.setValue(int(speed_val * 100))
         self.lbl_speed.setText(f"{AppContext.tr('lbl_speed')} {speed_val:.1f}x")
-        
         self.chk_loop.setChecked(is_loop)
-        
         self.chk_apply_all.setChecked(is_apply_all)
-        self.chk_segment_view.setChecked(is_segment_view)
         
         self.blockSignals(False)
         self.slider_speed.blockSignals(False)
         self.chk_loop.blockSignals(False)
         self.chk_apply_all.blockSignals(False)
-        self.chk_segment_view.blockSignals(False)
 
-    def set_mode(self, is_video):
+    def set_media_type(self, is_video):
+        self.slider_speed.setEnabled(is_video)
+        self.btn_reset_speed.setEnabled(is_video)
         self.chk_apply_all.setEnabled(is_video)
-        self.chk_segment_view.setEnabled(is_video)
         if not is_video:
             self.chk_apply_all.setToolTip(AppContext.tr("tip_video_only"))
-            self.chk_segment_view.setToolTip(AppContext.tr("tip_video_only"))
         else:
             self.chk_apply_all.setToolTip("")
-            self.chk_segment_view.setToolTip("")
 
 
 
@@ -360,7 +347,6 @@ class VideoPlayerControls(QWidget):
     speed_changed = pyqtSignal(float)
     loop_toggled = pyqtSignal(bool)
     apply_all_toggled = pyqtSignal(bool)
-    segment_view_toggled = pyqtSignal(bool)
     volume_changed = pyqtSignal(int) # New Signal 0-100
     
     def __init__(self, parent=None):
@@ -467,7 +453,6 @@ class VideoPlayerControls(QWidget):
         self.popup.speed_changed.connect(self.speed_changed.emit)
         self.popup.loop_toggled.connect(self.loop_toggled.emit)
         self.popup.apply_all_toggled.connect(self.apply_all_toggled.emit)
-        self.popup.segment_view_toggled.connect(self.segment_view_toggled.emit)
         self.popup.closed.connect(self._on_popup_closed)
 
         self.app_reference = None
@@ -507,9 +492,9 @@ class VideoPlayerControls(QWidget):
         if not btn_global_rect.contains(QPointF(cursor_pos)):
              self.btn_settings.setChecked(False)
 
-    def set_popup_values(self, speed, loop, apply_all, segment_view, is_video):
-        self.popup.set_values(speed, loop, apply_all, segment_view)
-        self.popup.set_mode(is_video)
+    def set_popup_values(self, speed, loop, apply_all, is_video):
+        self.popup.set_values(speed, loop, apply_all)
+        self.popup.set_media_type(is_video)
 
     def reset_controls(self):
         if self.popup.isVisible():

@@ -259,7 +259,7 @@ class PlayerMixin:
                 loop = False
                 segment_view = False
             
-            self.video_controls.set_popup_values(speed, loop, apply_all, segment_view, True)
+            self.video_controls.set_popup_values(speed, loop, apply_all, True)
             if hasattr(self, 'smart_preview_mgr'):
                 self.smart_preview_mgr.set_active(segment_view)
             if hasattr(self, 'viewer') and hasattr(self.viewer, 'single_view'):
@@ -289,7 +289,7 @@ class PlayerMixin:
             
             
             # Audio always resets speed by default logic
-            self.video_controls.set_popup_values(1.0, False, False, False, False)
+            self.video_controls.set_popup_values(1.0, False, False, False)
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix

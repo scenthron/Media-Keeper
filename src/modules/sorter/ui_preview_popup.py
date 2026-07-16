@@ -732,7 +732,6 @@ class LargePreviewPopup(QDialog):
             self.controls.speed_changed.connect(self.on_speed_changed)
             self.controls.loop_toggled.connect(self.on_loop_toggled)
             self.controls.apply_all_toggled.connect(self.on_apply_all_toggled)
-            self.controls.segment_view_toggled.connect(self.on_segment_view_toggled)
             
             self.smart_preview_mgr = SmartPreviewManager(self.media_player, lambda: float(AppContext.session_video_speed) if apply_all else 1.0)
             self.smart_preview_mgr.set_active(segment_view)
@@ -749,7 +748,7 @@ class LargePreviewPopup(QDialog):
             else:
                 speed = 1.0
                 
-            self.controls.set_popup_values(speed, loop, apply_all, segment_view, is_video=True)
+            self.controls.set_popup_values(speed, loop, apply_all, is_video=True)
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix
@@ -799,7 +798,6 @@ class LargePreviewPopup(QDialog):
             self.controls.speed_changed.connect(self.on_speed_changed)
             self.controls.loop_toggled.connect(self.on_loop_toggled)
             self.controls.apply_all_toggled.connect(self.on_apply_all_toggled)
-            self.controls.segment_view_toggled.connect(self.on_segment_view_toggled)
             
             self.layout.addWidget(self.controls)
             
@@ -808,7 +806,7 @@ class LargePreviewPopup(QDialog):
             self.time_overlay.adjustSize()
             self.resizeEvent(None)
             
-            self.controls.set_popup_values(1.0, loop, False, False, is_video=False)
+            self.controls.set_popup_values(1.0, loop, False, is_video=False)
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix
@@ -1294,7 +1292,6 @@ class LargePreviewPopup(QDialog):
                     speed if is_video else 1.0, 
                     AppContext.session_loop, 
                     AppContext.session_all_videos_active, 
-                    AppContext.session_segment_view,
                     is_video
                 )
 
@@ -1317,7 +1314,6 @@ class LargePreviewPopup(QDialog):
                     speed if is_video else 1.0, 
                     enabled, 
                     AppContext.session_all_videos_active, 
-                    AppContext.session_segment_view,
                     is_video
                 )
 
@@ -1335,19 +1331,18 @@ class LargePreviewPopup(QDialog):
                 if not enabled:
                     if self.media_player:
                         self.media_player.setPlaybackRate(1.0)
-                    self.controls.set_popup_values(1.0, AppContext.session_loop, False, segment_view, True)
+                    self.controls.set_popup_values(1.0, AppContext.session_loop, False, True)
                 else:
                     speed = float(AppContext.session_video_speed)
                     if self.media_player:
                         self.media_player.setPlaybackRate(speed)
-                    self.controls.set_popup_values(speed, AppContext.session_loop, True, segment_view, True)
+                    self.controls.set_popup_values(speed, AppContext.session_loop, True, True)
                 
                 if hasattr(self.main_app, 'video_controls'):
                     self.main_app.video_controls.set_popup_values(
                         float(AppContext.session_video_speed) if enabled else 1.0, 
                         AppContext.session_loop, 
-                        enabled, 
-                        segment_view,
+                        enabled,
                         True
                     )
                     

@@ -874,29 +874,43 @@ class ZoomableGraphicsView(QGraphicsView):
         self.hide_timer.setSingleShot(True)
         self.hide_timer.timeout.connect(self._hide_overlays)
             
-    def _on_seg_prev(self):
+    def get_smart_preview_mgr(self):
+        parent = self.parent()
+        while parent:
+            if type(parent).__name__ == "PreviewPopup":
+                if hasattr(parent, 'smart_preview_mgr'):
+                    return parent.smart_preview_mgr
+            parent = parent.parent()
         main_app = find_main_app(self)
         if main_app and hasattr(main_app, 'smart_preview_mgr'):
-            main_app.smart_preview_mgr.skip_prev()
+            return main_app.smart_preview_mgr
+        return None
+
+    def _on_seg_prev(self):
+        mgr = self.get_smart_preview_mgr()
+        if mgr:
+            mgr.skip_prev()
             
     def _on_seg_next(self):
-        main_app = find_main_app(self)
-        if main_app and hasattr(main_app, 'smart_preview_mgr'):
-            main_app.smart_preview_mgr.skip_next()
+        mgr = self.get_smart_preview_mgr()
+        if mgr:
+            mgr.skip_next()
             
     def _on_segment_indicator_clicked(self):
-        main_app = find_main_app(self)
-        if main_app and hasattr(main_app, 'video_controls'):
-            cb = main_app.video_controls.chk_segment_view
-            cb.setChecked(not cb.isChecked())
-            self.update_segment_indicator()
+        from config import AppContext
+        AppContext.session_segment_view = not AppContext.session_segment_view
+        
+        mgr = self.get_smart_preview_mgr()
+        if mgr:
+            mgr.set_active(AppContext.session_segment_view)
+            
+        self.update_segment_indicator()
             
     def update_segment_indicator(self):
         if not hasattr(self, 'segment_indicator'):
             return
             
-        main_app = find_main_app(self)
-        mgr = getattr(main_app, 'smart_preview_mgr', None)
+        mgr = self.get_smart_preview_mgr()
         
         if self.current_is_video and mgr and mgr.num_segments > 0:
             self.segment_indicator.show()

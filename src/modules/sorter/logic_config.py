@@ -112,22 +112,10 @@ class ConfigManager:
                     valid.append(p)
             config["temp_roots"] = "|".join(valid)
             
-        if sync_appcontext:
-            from config import AppContext
-            AppContext.session_video_speed = config.get("session_video_speed", 1.0)
-            AppContext.session_loop = config.get("session_loop", False)
-            AppContext.session_all_videos_active = config.get("session_all_videos_active", False)
-            AppContext.session_segment_view = config.get("session_segment_view", False)
-                 
         return config
 
     @staticmethod
     def save(config):
-        from config import AppContext
-        config["session_video_speed"] = AppContext.session_video_speed
-        config["session_loop"] = AppContext.session_loop
-        config["session_all_videos_active"] = AppContext.session_all_videos_active
-        config["session_segment_view"] = AppContext.session_segment_view
         
         path = ConfigManager.get_config_path()
         logging.info(f"Сохранение конфигурации в файл: {path}")

@@ -100,17 +100,10 @@ class AppContext:
     @staticmethod
     def save_media_settings():
         try:
-            from modules.sorter.logic_config import ConfigManager
-            config = ConfigManager.load(sync_appcontext=False)
-            config["session_loop"] = AppContext.session_loop
-            config["session_all_videos_active"] = AppContext.session_all_videos_active
-            config["session_segment_view"] = AppContext.session_segment_view
-            ConfigManager.save(config)
             import logging
-            logging.info(f"Media settings saved: loop={AppContext.session_loop}, all_videos={AppContext.session_all_videos_active}, segment_view={AppContext.session_segment_view}")
+            logging.info(f"Media settings changed: loop={AppContext.session_loop}, all_videos={AppContext.session_all_videos_active}, segment_view={AppContext.session_segment_view}")
         except Exception as e:
-            import logging
-            logging.error(f"Failed to save media settings: {e}")
+            pass
             
     @staticmethod
     def _get_base_path():

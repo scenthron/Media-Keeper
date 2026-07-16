@@ -10,7 +10,7 @@ from config import AppContext, VIEWER_DESIGN
 
 class SegmentIndicatorWidget(QPushButton):
     def __init__(self, parent=None):
-        super().__init__("🎞️", parent)
+        super().__init__("", parent)
         from config import AppContext
         
         tooltip_ru = (
@@ -36,53 +36,85 @@ class SegmentIndicatorWidget(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedSize(40, 40)
         
-        self.base_style = """
-            QPushButton { 
-                background-color: rgba(0,0,0,0.5); 
-                color: rgba(255, 255, 255, %ICON_OPACITY%); 
-                font-size: 20px; 
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 4px;
-                outline: none;
-                padding: 0px;
-            }
-            QPushButton:hover { 
-                background-color: rgba(0,0,0,0.8); 
-                border: 1px solid rgba(255, 255, 255, 0.8);
-            }
-        """
+        # Base style just to ensure transparent background so we can paint it
+        self.setStyleSheet("QPushButton { background: transparent; border: none; outline: none; }")
+        
+        from PyQt6.QtWidgets import QGraphicsOpacityEffect
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.opacity_effect.setOpacity(1.0)
+        self.setGraphicsEffect(self.opacity_effect)
+        
+        from PyQt6.QtCore import QVariantAnimation
+        self.anim = QVariantAnimation(self)
+        self.anim.setDuration(1500)
+        self.anim.valueChanged.connect(self._on_anim_value_changed)
+        self.anim.finished.connect(self._on_anim_finished)
+        self._anim_forward = True
         
         self.icon_opacity = 1.0
-        self.apply_style()
-        
-        self.blink_timer = QTimer(self)
-        self.blink_timer.timeout.connect(self._toggle_blink)
-        self.blink_timer.setInterval(1000)
-        
         self.is_active_mode = False
         
-    def apply_style(self):
-        style = self.base_style.replace("%ICON_OPACITY%", str(self.icon_opacity))
-        self.setStyleSheet(style)
+    def _on_anim_value_changed(self, value):
+        self.icon_opacity = value
+        self.update()
         
-    def _toggle_blink(self):
-        self.icon_opacity = 0.01 if self.icon_opacity > 0.5 else 1.0
-        self.apply_style()
+    def _on_anim_finished(self):
+        if not self.is_active_mode:
+            return
+        # Reverse animation direction
+        self._anim_forward = not self._anim_forward
+        start_val = 0.01 if self._anim_forward else 1.0
+        end_val = 1.0 if self._anim_forward else 0.01
+        self.anim.setStartValue(start_val)
+        self.anim.setEndValue(end_val)
+        self.anim.start()
         
     def start_blinking(self):
         self.is_active_mode = True
         self.show()
-        self.icon_opacity = 1.0
-        self.apply_style()
-        self.blink_timer.start()
+        self.opacity_effect.setOpacity(1.0)
+        self._anim_forward = False
+        self.anim.setStartValue(1.0)
+        self.anim.setEndValue(0.01)
+        self.anim.start()
         
     def stop_blinking(self, transparent=False):
         self.is_active_mode = False
-        self.blink_timer.stop()
-        self.icon_opacity = 0.4 if transparent else 1.0
-        self.apply_style()
-        if not transparent:
+        self.anim.stop()
+        self.icon_opacity = 1.0
+        self.update()
+        if transparent:
+            self.show()
+            self.opacity_effect.setOpacity(0.4)
+        else:
             self.hide()
+            
+    def paintEvent(self, event):
+        from PyQt6.QtGui import QPainter, QColor, QPen
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        is_hover = self.underMouse()
+        
+        # Draw background
+        bg_alpha = 204 if is_hover else 127 # 0.8 * 255 = 204, 0.5 * 255 = 127
+        painter.setBrush(QColor(0, 0, 0, bg_alpha))
+        
+        # Draw border
+        border_alpha = 204 if is_hover else 76 # 0.8 * 255 = 204, 0.3 * 255 = 76
+        painter.setPen(QPen(QColor(255, 255, 255, border_alpha), 1))
+        
+        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 4, 4)
+        
+        # Draw Icon (text)
+        icon_alpha = int(255 * self.icon_opacity)
+        painter.setPen(QColor(255, 255, 255, icon_alpha))
+        
+        font = self.font()
+        font.setPixelSize(20)
+        painter.setFont(font)
+        
+        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "🎞️")
 
 class TimeOverlayWidget(QLabel):
     def __init__(self, parent=None):

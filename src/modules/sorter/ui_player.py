@@ -106,8 +106,8 @@ class SegmentIndicatorWidget(QPushButton):
                 
             painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 4, 4)
             
-            icon_alpha = int(255 * self.icon_opacity)
-            painter.setPen(QColor(255, 255, 255, icon_alpha))
+            painter.setOpacity(self.icon_opacity)
+            painter.setPen(QColor(255, 255, 255))
             font = self.font()
             font.setPixelSize(12)
             painter.setFont(font)
@@ -126,8 +126,8 @@ class SegmentIndicatorWidget(QPushButton):
         painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 4, 4)
         
         # Draw Icon (text)
-        icon_alpha = int(255 * self.icon_opacity)
-        painter.setPen(QColor(255, 255, 255, icon_alpha))
+        painter.setOpacity(self.icon_opacity)
+        painter.setPen(QColor(255, 255, 255))
         
         font = self.font()
         font.setPixelSize(20)

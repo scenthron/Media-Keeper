@@ -11,11 +11,12 @@ from config import AppContext, VIEWER_DESIGN
 class SegmentIndicatorWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self.setToolTip("Сегментный просмотр включен (Стрелки влево/вправо для переключения сегментов)")
+        from config import AppContext
+        tooltip = "Сегментный режим просмотра включен.\nОтключить можно в настройках плеера." if AppContext.LANG == "RU" else "Segmented view mode is on.\nYou can disable it in the player settings."
+        self.setToolTip(tooltip)
         
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setContentsMargins(0, 0, 0, 0)
         
         self.lbl_icon = QLabel("🎞️")
         self.lbl_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -26,17 +27,17 @@ class SegmentIndicatorWidget(QWidget):
         self.lbl_icon.setGraphicsEffect(self.opacity_effect)
         
         layout.addWidget(self.lbl_icon)
-        self.setStyleSheet("background-color: rgba(0, 0, 0, 0.5); border-radius: 6px;")
+        self.setStyleSheet("background-color: rgba(17, 17, 17, 0.8); border-radius: 6px;")
         
         self.blink_timer = QTimer(self)
         self.blink_timer.timeout.connect(self._toggle_blink)
         self.blink_timer.setInterval(1000)
         
-        self.setFixedSize(36, 36)
+        self.setFixedSize(40, 40)
         
     def _toggle_blink(self):
         current_opacity = self.opacity_effect.opacity()
-        self.opacity_effect.setOpacity(0.0 if current_opacity > 0.5 else 1.0)
+        self.opacity_effect.setOpacity(0.01 if current_opacity > 0.5 else 1.0)
         
     def start_blinking(self):
         self.show()

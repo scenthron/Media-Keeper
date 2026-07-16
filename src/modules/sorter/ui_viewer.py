@@ -958,7 +958,7 @@ class ZoomableGraphicsView(QGraphicsView):
         if hasattr(self, 'btn_seg_prev'):
             y_center = (self.height() - self.btn_seg_prev.height()) // 2
             self.btn_seg_prev.move(20, y_center)
-            self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 20, y_center)
+            self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 80, y_center)
         if hasattr(self, 'segment_indicator'):
             self.segment_indicator.move(20, 70)
 

@@ -19,22 +19,20 @@ class SegmentIndicatorWidget(QPushButton):
         self.setFixedSize(40, 40)
         
 
-        self.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {VIEWER_DESIGN['player_bg']};
-                border: 1px solid {VIEWER_DESIGN['border_inactive']};
-                border-radius: 6px;
-                color: #fff;
-                font-size: 22px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{
-                border: 1px solid {VIEWER_DESIGN['border_active']};
-                background-color: #222;
-            }}
-            QPushButton:pressed {{
-                background-color: {VIEWER_DESIGN['accent']};
-            }}
+        self.setStyleSheet("""
+            QPushButton { 
+                background-color: rgba(0,0,0,0.5); 
+                color: white; 
+                font-size: 20px; 
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+                outline: none;
+                padding: 0px;
+            }
+            QPushButton:hover { 
+                background-color: rgba(0,0,0,0.8); 
+                border: 1px solid rgba(255, 255, 255, 0.8);
+            }
         """)
         
         from PyQt6.QtWidgets import QGraphicsOpacityEffect

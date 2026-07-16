@@ -142,6 +142,7 @@ class PopupVideoViewer(QGraphicsView):
         
         self.segment_indicator = SegmentIndicatorWidget(self)
         self.segment_indicator.hide()
+        self.segment_indicator.clicked.connect(self._on_segment_indicator_clicked)
         
         # We must enable mouse tracking to catch hover
         self.setMouseTracking(True)
@@ -156,16 +157,34 @@ class PopupVideoViewer(QGraphicsView):
         if hasattr(win, 'smart_preview_mgr'):
             win.smart_preview_mgr.skip_next()
             
+    def _on_segment_indicator_clicked(self):
+        from config import AppContext
+        AppContext.session_segment_view = not AppContext.session_segment_view
+        win = self.window()
+        if hasattr(win, 'smart_preview_mgr'):
+            win.smart_preview_mgr.set_active(AppContext.session_segment_view)
+        self.update_segment_indicator()
+
     def update_segment_indicator(self):
         win = self.window()
         if not hasattr(win, 'smart_preview_mgr'): return
         mgr = win.smart_preview_mgr
-        if mgr.active and mgr.num_segments > 0 and not mgr.user_paused:
-            if not self.segment_indicator.isVisible():
-                self.segment_indicator.start_blinking()
+        
+        # In VideoViewerContainer, we only play videos, so if we have segments we show the button
+        if mgr and mgr.num_segments > 0:
+            self.segment_indicator.show()
             self.segment_indicator.raise_()
+            
+            if mgr.active and not mgr.user_paused:
+                if not getattr(self.segment_indicator, 'is_active_mode', False):
+                    self.segment_indicator.start_blinking()
+            else:
+                self.segment_indicator.stop_blinking(transparent=True)
+                self.btn_seg_prev.hide()
+                self.btn_seg_next.hide()
         else:
-            self.segment_indicator.stop_blinking()
+            self.segment_indicator.stop_blinking(transparent=False)
+            self.segment_indicator.hide()
             self.btn_seg_prev.hide()
             self.btn_seg_next.hide()
 
@@ -202,7 +221,8 @@ class PopupVideoViewer(QGraphicsView):
             self.btn_seg_prev.move(20, y_center)
             self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 20, y_center)
         if hasattr(self, 'segment_indicator'):
-            self.segment_indicator.move(10, 10)
+            self.segment_indicator.move(10, 50)
+            self.segment_indicator.raise_()
             self.btn_seg_prev.raise_()
             self.btn_seg_next.raise_()
 

@@ -104,7 +104,10 @@ class SmartPreviewManager:
             self.timer.stop()
             return
             
-        speed = self.get_speed_func()
+        try:
+            speed = float(self.get_speed_func())
+        except ValueError:
+            speed = 1.0
         if speed <= 0: speed = 1.0
         
         # Check how much we played in this segment (scaled by speed)
@@ -245,15 +248,16 @@ class PlayerMixin:
             self.current_media_is_video = True
             
             from config import AppContext
-            if AppContext.session_all_videos_active:
+            apply_all = AppContext.session_all_videos_active
+            
+            if apply_all:
                 speed = float(AppContext.session_video_speed)
+                loop = AppContext.session_loop
+                segment_view = AppContext.session_segment_view
             else:
                 speed = 1.0
-                
-                
-            loop = AppContext.session_loop
-            apply_all = AppContext.session_all_videos_active
-            segment_view = AppContext.session_segment_view
+                loop = False
+                segment_view = False
             
             self.video_controls.set_popup_values(speed, loop, apply_all, segment_view, True)
             

@@ -593,14 +593,17 @@ class LargePreviewPopup(QDialog):
         speed = 1.0
         loop = False
         apply_all = False
-        segment_view = AppContext.session_segment_view
+        loop = False
+        segment_view = False
         volume_pct = 10
         self._context_menu_active = False
         self._click_start_pos = None
         
         if self.main_app:
-            loop = AppContext.session_loop
             apply_all = AppContext.session_all_videos_active
+            if apply_all:
+                loop = AppContext.session_loop
+                segment_view = AppContext.session_segment_view
             volume_pct = int(getattr(self.main_app, 'global_volume', 1.0) * 100)
         
         # Проверяем, поддерживает ли файл анимацию (например, GIF или анимированный WebP)

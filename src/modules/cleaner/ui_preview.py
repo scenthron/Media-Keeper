@@ -461,15 +461,16 @@ class CleanerPreviewWidget(QWidget):
         
         self.player.setSource(QUrl.fromLocalFile(path))
         
-        from config import AppContext
-        if AppContext.session_all_videos_active:
+        apply_all = AppContext.session_all_videos_active
+        
+        if apply_all:
             speed = float(AppContext.session_video_speed)
+            loop = AppContext.session_loop
+            segment_view = AppContext.session_segment_view
         else:
             speed = 1.0
-            
-        loop = AppContext.session_loop
-        apply_all = AppContext.session_all_videos_active
-        segment_view = AppContext.session_segment_view
+            loop = False
+            segment_view = False
         
         # Sync UI controls
         self.video_controls.set_popup_values(speed, loop, apply_all, segment_view, is_video=not is_audio)

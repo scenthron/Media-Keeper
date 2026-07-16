@@ -29,7 +29,6 @@ class CleanerPreviewWidget(QWidget):
         self.layout.setSpacing(0)
         
         # State for Video Settings
-        from config import AppContext
         # Use AppContext directly instead of local variables
         self.current_media_type = None
         self.current_path = None
@@ -254,7 +253,6 @@ class CleanerPreviewWidget(QWidget):
             self.smart_preview_mgr.skip_next()
             
     def _on_segment_indicator_clicked(self):
-        from config import AppContext
         AppContext.session_segment_view = not AppContext.session_segment_view
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.set_active(AppContext.session_segment_view)
@@ -583,17 +581,14 @@ class CleanerPreviewWidget(QWidget):
     def _on_speed_changed(self, speed):
         self.player.setPlaybackRate(speed)
         if self.current_media_type == 'video':
-            from config import AppContext
             AppContext.session_video_speed = float(speed)
 
     def _on_loop_toggled(self, enabled):
-        from config import AppContext
         AppContext.session_loop = enabled
         AppContext.save_media_settings()
         self.player.setLoops(QMediaPlayer.Loops.Infinite if enabled else QMediaPlayer.Loops.Once)
 
     def _on_apply_all_toggled(self, enabled):
-        from config import AppContext
         AppContext.session_all_videos_active = enabled
         AppContext.save_media_settings()
 

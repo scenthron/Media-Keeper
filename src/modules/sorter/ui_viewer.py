@@ -897,7 +897,6 @@ class ZoomableGraphicsView(QGraphicsView):
             mgr.skip_next()
             
     def _on_segment_indicator_clicked(self):
-        from config import AppContext
         AppContext.session_segment_view = not AppContext.session_segment_view
         
         mgr = self.get_smart_preview_mgr()

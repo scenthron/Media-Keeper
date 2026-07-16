@@ -12,7 +12,6 @@ class SegmentIndicatorWidget(QPushButton):
     def __init__(self, parent=None, is_small=False):
         super().__init__("", parent)
         self.is_small = is_small
-        from config import AppContext
         
         tooltip_ru = (
             "<div style='font-size: 14px; color: white; padding: 2px;'>"

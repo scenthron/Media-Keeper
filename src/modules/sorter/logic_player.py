@@ -41,7 +41,6 @@ class SmartPreviewManager:
             return 5, 1500
 
     def start_video(self, duration_ms):
-        from config import AppContext
         self.active = AppContext.session_segment_view
         self.total_duration_ms = duration_ms
         self.num_segments, self.segment_play_time_ms = self.calculate_segments(duration_ms)
@@ -249,7 +248,6 @@ class PlayerMixin:
             self.video_controls.show()
             self.current_media_is_video = True
             
-            from config import AppContext
             apply_all = AppContext.session_all_videos_active
             
             if apply_all:
@@ -383,11 +381,9 @@ class PlayerMixin:
     def _on_speed_changed(self, speed):
         self.media_player.setPlaybackRate(speed)
         if self.current_media_is_video:
-            from config import AppContext
             AppContext.session_video_speed = float(speed)
 
     def _set_loop_state(self, enabled):
-        from config import AppContext
         AppContext.session_loop = enabled
         AppContext.save_media_settings()
         if enabled:
@@ -396,12 +392,10 @@ class PlayerMixin:
             self.media_player.setLoops(QMediaPlayer.Loops.Once)
 
     def _on_apply_all_toggled(self, enabled):
-        from config import AppContext
         AppContext.session_all_videos_active = enabled
         AppContext.save_media_settings()
 
     def _on_segment_view_toggled(self, enabled):
-        from config import AppContext
         AppContext.session_segment_view = enabled
         AppContext.save_media_settings()
         if hasattr(self, 'smart_preview_mgr'):

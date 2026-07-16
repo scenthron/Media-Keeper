@@ -1300,7 +1300,6 @@ class LargePreviewPopup(QDialog):
         if self.media_player:
             self.media_player.setPlaybackRate(speed)
         if self.main_app:
-            from config import AppContext
             if is_video:
                 AppContext.session_video_speed = speed
             if hasattr(self.main_app, 'media_player'):
@@ -1320,7 +1319,6 @@ class LargePreviewPopup(QDialog):
         if self.media_player:
             self.media_player.setLoops(QMediaPlayer.Loops.Infinite if enabled else QMediaPlayer.Loops.Once)
         if self.main_app:
-            from config import AppContext
             self.main_app.session_loop = enabled
             AppContext.session_loop = enabled
             AppContext.save_media_settings()
@@ -1353,7 +1351,6 @@ class LargePreviewPopup(QDialog):
             self.segment_indicator.hide()
 
     def _on_segment_indicator_clicked(self):
-        from config import AppContext
         AppContext.session_segment_view = not AppContext.session_segment_view
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.set_active(AppContext.session_segment_view)
@@ -1368,7 +1365,6 @@ class LargePreviewPopup(QDialog):
         
         if self.main_app:
             self.main_app.session_all_videos_active = enabled
-            from config import AppContext
             AppContext.session_all_videos_active = enabled
             AppContext.save_media_settings()
             if is_video:
@@ -1392,7 +1388,6 @@ class LargePreviewPopup(QDialog):
                     )
                     
     def on_segment_view_toggled(self, enabled):
-        from config import AppContext
         AppContext.session_segment_view = enabled
         AppContext.save_media_settings()
         if hasattr(self, 'smart_preview_mgr'):

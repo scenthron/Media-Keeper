@@ -176,7 +176,6 @@ class ScanMixin:
         self.view_filter_exts = None
         self.view_filter_mode = 'include'
             
-        from config import AppContext
         if hasattr(self, 'btn_types_dupes') and self.btn_types_dupes:
             self.btn_types_dupes.setText(AppContext.tr("cln_btn_types"))
         if hasattr(self, 'btn_types_similar') and self.btn_types_similar:

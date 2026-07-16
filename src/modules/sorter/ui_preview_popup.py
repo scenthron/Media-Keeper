@@ -1349,8 +1349,8 @@ class LargePreviewPopup(QDialog):
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.set_active(AppContext.session_segment_view)
         
-        if hasattr(self.viewer, 'update_segment_indicator'):
-            self.viewer.update_segment_indicator()
+        if hasattr(self, 'video_viewer') and hasattr(self.video_viewer, 'update_segment_indicator'):
+            self.video_viewer.update_segment_indicator()
         self.update_segment_indicator()
 
     def on_apply_all_toggled(self, enabled):

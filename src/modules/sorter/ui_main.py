@@ -374,6 +374,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
     def _on_media_duration_changed(self, duration_ms):
         if duration_ms > 0 and self.current_media_is_video:
             self.smart_preview_mgr.start_video(duration_ms)
+            if hasattr(self, 'viewer') and hasattr(self.viewer, 'single_view'):
+                if hasattr(self.viewer.single_view, 'update_segment_indicator'):
+                    self.viewer.single_view.update_segment_indicator()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

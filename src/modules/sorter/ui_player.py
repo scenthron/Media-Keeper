@@ -18,7 +18,7 @@ class SegmentIndicatorWidget(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedSize(40, 40)
         
-        from ui_viewer import VIEWER_DESIGN
+
         self.setStyleSheet(f"""
             QPushButton {{
                 background-color: {VIEWER_DESIGN['player_bg']};

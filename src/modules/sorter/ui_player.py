@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QSlider, QStyle, QStyleOptionSlider, 
     QLabel, QCheckBox
 )
-from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QRectF, QPointF, QSizeF, QSize, QTimer
+from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QRectF, QPointF, QSizeF, QSize, QTimer, QTimeLine
 from PyQt6.QtGui import QCursor, QIcon
 from config import AppContext, VIEWER_DESIGN
 

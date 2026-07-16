@@ -202,7 +202,7 @@ class PopupVideoViewer(QGraphicsView):
             self.btn_seg_prev.move(20, y_center)
             self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 20, y_center)
         if hasattr(self, 'segment_indicator'):
-            self.segment_indicator.move(20, 70)
+            self.segment_indicator.move(10, 10)
             self.btn_seg_prev.raise_()
             self.btn_seg_next.raise_()
 

@@ -975,7 +975,7 @@ class ZoomableGraphicsView(QGraphicsView):
             self.btn_seg_prev.move(80, y_center)
             self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 80, y_center)
         if hasattr(self, 'segment_indicator'):
-            self.segment_indicator.move(20, 70)
+            self.segment_indicator.move(10, 60)
 
     def set_fullscreen_mode(self, enabled, controls_widget=None):
         self.is_fullscreen_mode = enabled

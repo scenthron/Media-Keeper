@@ -487,7 +487,7 @@ class CleanerPreviewWidget(QWidget):
             segment_view = False
         
         # Sync UI controls
-        self.video_controls.set_popup_values(speed, loop, apply_all, segment_view, is_video=not is_audio)
+        self.video_controls.set_popup_values(speed, loop, apply_all, is_video=not is_audio)
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.set_active(segment_view)
         

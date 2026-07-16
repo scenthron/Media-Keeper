@@ -202,7 +202,7 @@ class PopupVideoViewer(QGraphicsView):
             self.btn_seg_prev.move(20, y_center)
             self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 20, y_center)
         if hasattr(self, 'segment_indicator'):
-            self.segment_indicator.move(20, 20)
+            self.segment_indicator.move(20, 70)
             self.btn_seg_prev.raise_()
             self.btn_seg_next.raise_()
 
@@ -246,9 +246,11 @@ class PopupVideoViewer(QGraphicsView):
             self.btn_seg_next.hide()
 
     def leaveEvent(self, event):
+        local_pos = self.mapFromGlobal(QCursor.pos())
+        if not self.rect().contains(local_pos):
+            if hasattr(self, 'btn_seg_prev'): self.btn_seg_prev.hide()
+            if hasattr(self, 'btn_seg_next'): self.btn_seg_next.hide()
         super().leaveEvent(event)
-        if hasattr(self, 'btn_seg_prev'): self.btn_seg_prev.hide()
-        if hasattr(self, 'btn_seg_next'): self.btn_seg_next.hide()
 
 
 class SizeSettingsPopup(QWidget):

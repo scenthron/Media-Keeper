@@ -44,9 +44,9 @@ class SegmentIndicatorWidget(QPushButton):
         self.opacity_effect.setOpacity(1.0)
         self.setGraphicsEffect(self.opacity_effect)
         
-        from PyQt6.QtCore import QTimeLine
+        from PyQt6.QtCore import QTimeLine, QEasingCurve
         self.anim = QTimeLine(1500, self)
-        self.anim.setCurveShape(QTimeLine.CurveShape.SineCurve)
+        self.anim.setEasingCurve(QEasingCurve.Type.InOutSine)
         self.anim.valueChanged.connect(self._on_anim_value_changed)
         self.anim.finished.connect(self._on_anim_finished)
         

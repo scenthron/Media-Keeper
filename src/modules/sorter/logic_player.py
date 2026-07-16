@@ -260,6 +260,8 @@ class PlayerMixin:
                 segment_view = False
             
             self.video_controls.set_popup_values(speed, loop, apply_all, segment_view, True)
+            if hasattr(self, 'smart_preview_mgr'):
+                self.smart_preview_mgr.set_active(segment_view)
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix

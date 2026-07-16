@@ -158,7 +158,7 @@ class PopupVideoViewer(QGraphicsView):
         if not hasattr(win, 'smart_preview_mgr'): return
         mgr = win.smart_preview_mgr
         
-        if mgr and mgr.num_segments > 0:
+        if mgr and mgr.num_segments > 0 and self.underMouse():
             if mgr.active and not mgr.user_paused:
                 self.btn_seg_prev.show()
                 self.btn_seg_next.show()
@@ -171,6 +171,15 @@ class PopupVideoViewer(QGraphicsView):
             
         if hasattr(win, 'update_segment_indicator'):
             win.update_segment_indicator()
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self.update_segment_indicator()
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self.btn_seg_prev.hide()
+        self.btn_seg_next.hide()
 
     def _on_native_size_changed(self, size):
         if size.isValid():

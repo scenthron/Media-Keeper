@@ -94,6 +94,12 @@ def get_ffmpeg_bin_dir():
     os.makedirs(bin_dir, exist_ok=True)
     return bin_dir
 
+def get_models_dir():
+    """Returns path to the LOCAL user data models directory (for downloading/writing AI models)"""
+    models_dir = os.path.join(get_app_data_dir(), "models")
+    os.makedirs(models_dir, exist_ok=True)
+    return models_dir
+
 def get_project_bin_dir():
     """Returns path to the bundled bin directory inside the source code (src/bin)"""
     if getattr(sys, 'frozen', False):

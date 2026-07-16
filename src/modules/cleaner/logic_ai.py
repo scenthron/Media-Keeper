@@ -10,7 +10,7 @@ ort.set_default_logger_severity(3)
 from PIL import Image
 import cv2
 
-from logic_paths import get_app_data_dir
+from logic_paths import get_app_data_dir, get_models_dir
 
 # Ссылки на стабильные версии моделей
 MODEL_URLS = {
@@ -21,8 +21,7 @@ MODEL_URLS = {
 
 class AiEngine:
     def __init__(self):
-        self.models_dir = os.path.join(get_app_data_dir(), "models")
-        os.makedirs(self.models_dir, exist_ok=True)
+        self.models_dir = get_models_dir()
         
         self.mobilenet_path = os.path.join(self.models_dir, "mobilenetv3_large.onnx")
         self.yunet_path = os.path.join(self.models_dir, "face_detection_yunet.onnx")

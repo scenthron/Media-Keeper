@@ -880,13 +880,20 @@ class ZoomableGraphicsView(QGraphicsView):
             main_app.smart_preview_mgr.skip_prev()
             
     def _on_seg_next(self):
-        if hasattr(self, 'smart_preview_mgr'):
-            self.smart_preview_mgr.skip_next()
+        from .ui_main import SorterModule
+        main_app = self.window()
+        if isinstance(main_app, SorterModule) and hasattr(main_app, 'smart_preview_mgr'):
+            main_app.smart_preview_mgr.skip_next()
             
     def update_segment_indicator(self):
-        if not hasattr(self, 'smart_preview_mgr') or not hasattr(self, 'segment_indicator'):
+        if not hasattr(self, 'segment_indicator'):
             return
-        if self.current_is_video and self.smart_preview_mgr.active and self.smart_preview_mgr.num_segments > 0 and not self.smart_preview_mgr.user_paused:
+            
+        from .ui_main import SorterModule
+        main_app = self.window()
+        mgr = getattr(main_app, 'smart_preview_mgr', None) if isinstance(main_app, SorterModule) else None
+        
+        if self.current_is_video and mgr and mgr.active and mgr.num_segments > 0 and not mgr.user_paused:
             if not self.segment_indicator.isVisible():
                 self.segment_indicator.start_blinking()
         else:
@@ -1004,8 +1011,12 @@ class ZoomableGraphicsView(QGraphicsView):
             self._reset_hide_timer()
             
         segment_active = False
-        if hasattr(self, 'smart_preview_mgr'):
-            segment_active = self.smart_preview_mgr.active and self.smart_preview_mgr.num_segments > 0
+        from .ui_main import SorterModule
+        main_app = self.window()
+        mgr = getattr(main_app, 'smart_preview_mgr', None) if isinstance(main_app, SorterModule) else None
+        
+        if mgr:
+            segment_active = mgr.active and mgr.num_segments > 0
             
         if segment_active and self.current_is_video:
             pos = event.pos()

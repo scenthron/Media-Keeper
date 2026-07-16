@@ -262,6 +262,9 @@ class PlayerMixin:
             self.video_controls.set_popup_values(speed, loop, apply_all, segment_view, True)
             if hasattr(self, 'smart_preview_mgr'):
                 self.smart_preview_mgr.set_active(segment_view)
+            if hasattr(self, 'viewer') and hasattr(self.viewer, 'single_view'):
+                if hasattr(self.viewer.single_view, 'update_segment_indicator'):
+                    self.viewer.single_view.update_segment_indicator()
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix
@@ -401,6 +404,10 @@ class PlayerMixin:
         AppContext.save_media_settings()
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.set_active(enabled)
+            
+        if hasattr(self, 'viewer') and hasattr(self.viewer, 'single_view'):
+            if hasattr(self.viewer.single_view, 'update_segment_indicator'):
+                self.viewer.single_view.update_segment_indicator()
 
     def _log_media_error(self, error, errorString):
         logging.error(f"[MediaPlayer] Error: {error}, Description: {errorString}")

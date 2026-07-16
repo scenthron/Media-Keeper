@@ -12,7 +12,7 @@ class SegmentIndicatorWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        self.setToolTip(AppContext.tr("lbl_segment_view") if hasattr(AppContext, 'tr') else "Сегментный просмотр включен")
+        self.setToolTip("Сегментный просмотр включен (Стрелки влево/вправо для переключения сегментов)")
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
@@ -268,8 +268,9 @@ class PlayerSettingsPopup(QWidget):
         self.chk_loop.toggled.connect(self.loop_toggled.emit)
         layout.addWidget(self.chk_loop)
 
-        self.chk_segment_view = QCheckBox(AppContext.tr("lbl_segment_view"))
+        self.chk_segment_view = QCheckBox(AppContext.tr("lbl_segment_view") if hasattr(AppContext, 'tr') else "Сегментный просмотр")
         self.chk_segment_view.toggled.connect(self.segment_view_toggled.emit)
+        self.chk_segment_view.setToolTip("Разбивает видео на части и показывает по 1.5 сек из каждой (Стрелки влево/вправо для переключения)")
         layout.addWidget(self.chk_segment_view)
     
     def update_ui_text(self):

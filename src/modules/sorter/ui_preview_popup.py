@@ -140,10 +140,6 @@ class PopupVideoViewer(QGraphicsView):
         self.btn_seg_prev.clicked.connect(self._on_seg_prev)
         self.btn_seg_next.clicked.connect(self._on_seg_next)
         
-        self.segment_indicator = SegmentIndicatorWidget(self)
-        self.segment_indicator.hide()
-        self.segment_indicator.clicked.connect(self._on_segment_indicator_clicked)
-        
         # We must enable mouse tracking to catch hover
         self.setMouseTracking(True)
 
@@ -157,36 +153,24 @@ class PopupVideoViewer(QGraphicsView):
         if hasattr(win, 'smart_preview_mgr'):
             win.smart_preview_mgr.skip_next()
             
-    def _on_segment_indicator_clicked(self):
-        from config import AppContext
-        AppContext.session_segment_view = not AppContext.session_segment_view
-        win = self.window()
-        if hasattr(win, 'smart_preview_mgr'):
-            win.smart_preview_mgr.set_active(AppContext.session_segment_view)
-        self.update_segment_indicator()
-
     def update_segment_indicator(self):
         win = self.window()
         if not hasattr(win, 'smart_preview_mgr'): return
         mgr = win.smart_preview_mgr
         
-        # In VideoViewerContainer, we only play videos, so if we have segments we show the button
         if mgr and mgr.num_segments > 0:
-            self.segment_indicator.show()
-            self.segment_indicator.raise_()
-            
             if mgr.active and not mgr.user_paused:
-                if not getattr(self.segment_indicator, 'is_active_mode', False):
-                    self.segment_indicator.start_blinking()
+                self.btn_seg_prev.show()
+                self.btn_seg_next.show()
             else:
-                self.segment_indicator.stop_blinking(transparent=True)
                 self.btn_seg_prev.hide()
                 self.btn_seg_next.hide()
         else:
-            self.segment_indicator.stop_blinking(transparent=False)
-            self.segment_indicator.hide()
             self.btn_seg_prev.hide()
             self.btn_seg_next.hide()
+            
+        if hasattr(win, 'update_segment_indicator'):
+            win.update_segment_indicator()
 
     def _on_native_size_changed(self, size):
         if size.isValid():
@@ -217,12 +201,8 @@ class PopupVideoViewer(QGraphicsView):
         super().resizeEvent(event)
         self.reset_view()
         if hasattr(self, 'btn_seg_prev'):
-            y_center = (self.height() - self.btn_seg_prev.height()) // 2
-            self.btn_seg_prev.move(20, y_center)
-            self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 20, y_center)
-        if hasattr(self, 'segment_indicator'):
-            self.segment_indicator.move(10, 50)
-            self.segment_indicator.raise_()
+            self.btn_seg_prev.move(10, event.size().height() // 2 - self.btn_seg_prev.height() // 2)
+            self.btn_seg_next.move(event.size().width() - self.btn_seg_next.width() - 10, event.size().height() // 2 - self.btn_seg_next.height() // 2)
             self.btn_seg_prev.raise_()
             self.btn_seg_next.raise_()
 
@@ -524,10 +504,19 @@ class LargePreviewPopup(QDialog):
             }
         """)
         sp = self.btn_reset_view.sizePolicy()
-        sp.setRetainSizeWhenHidden(True)
+        sp.setRetainSizeWhenHidden(False)
         self.btn_reset_view.setSizePolicy(sp)
         self.btn_reset_view.hide()
         top_layout.addWidget(self.btn_reset_view, alignment=Qt.AlignmentFlag.AlignTop)
+        
+        from modules.sorter.ui_player import SegmentIndicatorWidget
+        self.segment_indicator = SegmentIndicatorWidget(self.top_overlay, is_small=True)
+        sp2 = self.segment_indicator.sizePolicy()
+        sp2.setRetainSizeWhenHidden(False)
+        self.segment_indicator.setSizePolicy(sp2)
+        self.segment_indicator.hide()
+        self.segment_indicator.clicked.connect(self._on_segment_indicator_clicked)
+        top_layout.addWidget(self.segment_indicator, alignment=Qt.AlignmentFlag.AlignTop)
         
         self.lbl_title = QLabel(os.path.basename(filepath), self.top_overlay)
         self.lbl_title.setStyleSheet("color: white; font-weight: bold; font-size: 12px; background: transparent;")
@@ -1336,6 +1325,33 @@ class LargePreviewPopup(QDialog):
                     AppContext.session_all_videos_active, 
                     is_video
                 )
+
+    def update_segment_indicator(self):
+        if not hasattr(self, 'smart_preview_mgr'): return
+        mgr = self.smart_preview_mgr
+        
+        if mgr and mgr.num_segments > 0:
+            self.segment_indicator.show()
+            self.segment_indicator.raise_()
+            
+            if mgr.active and not mgr.user_paused:
+                if not getattr(self.segment_indicator, 'is_active_mode', False):
+                    self.segment_indicator.start_blinking()
+            else:
+                self.segment_indicator.stop_blinking(transparent=True)
+        else:
+            self.segment_indicator.stop_blinking(transparent=False)
+            self.segment_indicator.hide()
+
+    def _on_segment_indicator_clicked(self):
+        from config import AppContext
+        AppContext.session_segment_view = not AppContext.session_segment_view
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.set_active(AppContext.session_segment_view)
+        
+        if hasattr(self.viewer, 'update_segment_indicator'):
+            self.viewer.update_segment_indicator()
+        self.update_segment_indicator()
 
     def on_apply_all_toggled(self, enabled):
         ext = os.path.splitext(self.filepath)[1].lower()

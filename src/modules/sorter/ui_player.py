@@ -9,8 +9,9 @@ from PyQt6.QtGui import QCursor, QIcon
 from config import AppContext, VIEWER_DESIGN
 
 class SegmentIndicatorWidget(QPushButton):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, is_small=False):
         super().__init__("", parent)
+        self.is_small = is_small
         from config import AppContext
         
         tooltip_ru = (
@@ -34,7 +35,10 @@ class SegmentIndicatorWidget(QPushButton):
         self.setToolTip(tooltip_ru if AppContext.LANG == "RU" else tooltip_en)
         
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setFixedSize(40, 40)
+        if self.is_small:
+            self.setFixedSize(22, 22)
+        else:
+            self.setFixedSize(40, 40)
         
         # Base style just to ensure transparent background so we can paint it
         self.setStyleSheet("QPushButton { background: transparent; border: none; outline: none; }")
@@ -92,6 +96,25 @@ class SegmentIndicatorWidget(QPushButton):
         
         is_hover = self.underMouse()
         
+        if self.is_small:
+            if is_hover:
+                painter.setBrush(QColor(59, 130, 246, int(255 * 0.4)))
+                painter.setPen(QPen(QColor("#3b82f6"), 1))
+            else:
+                painter.setBrush(QColor(255, 255, 255, int(255 * 0.12)))
+                painter.setPen(QPen(QColor(255, 255, 255, int(255 * 0.2)), 1))
+                
+            painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 4, 4)
+            
+            icon_alpha = int(255 * self.icon_opacity)
+            painter.setPen(QColor(255, 255, 255, icon_alpha))
+            font = self.font()
+            font.setPixelSize(12)
+            painter.setFont(font)
+            # Offset slightly to center emoji visually
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "🎞️")
+            return
+            
         # Draw background
         bg_alpha = 204 if is_hover else 127 # 0.8 * 255 = 204, 0.5 * 255 = 127
         painter.setBrush(QColor(0, 0, 0, bg_alpha))

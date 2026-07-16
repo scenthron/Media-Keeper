@@ -874,24 +874,24 @@ class ZoomableGraphicsView(QGraphicsView):
         self.hide_timer.timeout.connect(self._hide_overlays)
             
     def _on_seg_prev(self):
-        from .ui_main import SorterModule
-        main_app = self.window()
-        if isinstance(main_app, SorterModule) and hasattr(main_app, 'smart_preview_mgr'):
+        parent_w = self.parent()
+        main_app = parent_w.get_main_app() if hasattr(parent_w, 'get_main_app') else None
+        if main_app and hasattr(main_app, 'smart_preview_mgr'):
             main_app.smart_preview_mgr.skip_prev()
             
     def _on_seg_next(self):
-        from .ui_main import SorterModule
-        main_app = self.window()
-        if isinstance(main_app, SorterModule) and hasattr(main_app, 'smart_preview_mgr'):
+        parent_w = self.parent()
+        main_app = parent_w.get_main_app() if hasattr(parent_w, 'get_main_app') else None
+        if main_app and hasattr(main_app, 'smart_preview_mgr'):
             main_app.smart_preview_mgr.skip_next()
             
     def update_segment_indicator(self):
         if not hasattr(self, 'segment_indicator'):
             return
             
-        from .ui_main import SorterModule
-        main_app = self.window()
-        mgr = getattr(main_app, 'smart_preview_mgr', None) if isinstance(main_app, SorterModule) else None
+        parent_w = self.parent()
+        main_app = parent_w.get_main_app() if hasattr(parent_w, 'get_main_app') else None
+        mgr = getattr(main_app, 'smart_preview_mgr', None)
         
         if self.current_is_video and mgr and mgr.active and mgr.num_segments > 0 and not mgr.user_paused:
             if not self.segment_indicator.isVisible():
@@ -1011,9 +1011,9 @@ class ZoomableGraphicsView(QGraphicsView):
             self._reset_hide_timer()
             
         segment_active = False
-        from .ui_main import SorterModule
-        main_app = self.window()
-        mgr = getattr(main_app, 'smart_preview_mgr', None) if isinstance(main_app, SorterModule) else None
+        parent_w = self.parent()
+        main_app = parent_w.get_main_app() if hasattr(parent_w, 'get_main_app') else None
+        mgr = getattr(main_app, 'smart_preview_mgr', None)
         
         if mgr:
             segment_active = mgr.active and mgr.num_segments > 0

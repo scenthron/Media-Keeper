@@ -839,7 +839,7 @@ class ZoomableGraphicsView(QGraphicsView):
         """
         for btn in (self.btn_seg_prev, self.btn_seg_next):
             btn.setStyleSheet(btn_style)
-            btn.setFixedSize(50, 100)
+            btn.setFixedSize(50, 200)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             btn.hide()
@@ -848,6 +848,7 @@ class ZoomableGraphicsView(QGraphicsView):
         self.btn_seg_next.clicked.connect(self._on_seg_next)
         
         self.segment_indicator = SegmentIndicatorWidget(self)
+        self.segment_indicator.clicked.connect(self._on_segment_indicator_clicked)
         self.segment_indicator.hide()
         
         # Overlay states
@@ -883,6 +884,13 @@ class ZoomableGraphicsView(QGraphicsView):
         if main_app and hasattr(main_app, 'smart_preview_mgr'):
             main_app.smart_preview_mgr.skip_next()
             
+    def _on_segment_indicator_clicked(self):
+        main_app = find_main_app(self)
+        if main_app and hasattr(main_app, 'video_controls'):
+            cb = main_app.video_controls.chk_segment_view
+            cb.setChecked(not cb.isChecked())
+            self.update_segment_indicator()
+            
     def update_segment_indicator(self):
         if not hasattr(self, 'segment_indicator'):
             return
@@ -890,12 +898,19 @@ class ZoomableGraphicsView(QGraphicsView):
         main_app = find_main_app(self)
         mgr = getattr(main_app, 'smart_preview_mgr', None)
         
-        if self.current_is_video and mgr and mgr.active and mgr.num_segments > 0 and not mgr.user_paused:
-            if not self.segment_indicator.isVisible():
-                self.segment_indicator.start_blinking()
+        if self.current_is_video and mgr and mgr.num_segments > 0:
+            self.segment_indicator.show()
             self.segment_indicator.raise_()
+            
+            if mgr.active and not mgr.user_paused:
+                if not getattr(self.segment_indicator, 'is_active_mode', False):
+                    self.segment_indicator.start_blinking()
+            else:
+                self.segment_indicator.stop_blinking(transparent=True)
+                self.btn_seg_prev.hide()
+                self.btn_seg_next.hide()
         else:
-            self.segment_indicator.stop_blinking()
+            self.segment_indicator.stop_blinking(transparent=False)
             self.btn_seg_prev.hide()
             self.btn_seg_next.hide()
 
@@ -957,7 +972,7 @@ class ZoomableGraphicsView(QGraphicsView):
             
         if hasattr(self, 'btn_seg_prev'):
             y_center = (self.height() - self.btn_seg_prev.height()) // 2
-            self.btn_seg_prev.move(20, y_center)
+            self.btn_seg_prev.move(80, y_center)
             self.btn_seg_next.move(self.width() - self.btn_seg_next.width() - 80, y_center)
         if hasattr(self, 'segment_indicator'):
             self.segment_indicator.move(20, 70)

@@ -44,38 +44,34 @@ class SegmentIndicatorWidget(QPushButton):
         self.opacity_effect.setOpacity(1.0)
         self.setGraphicsEffect(self.opacity_effect)
         
-        from PyQt6.QtCore import QVariantAnimation
-        self.anim = QVariantAnimation(self)
-        self.anim.setDuration(1500)
+        from PyQt6.QtCore import QTimeLine
+        self.anim = QTimeLine(1500, self)
+        self.anim.setCurveShape(QTimeLine.CurveShape.SineCurve)
         self.anim.valueChanged.connect(self._on_anim_value_changed)
         self.anim.finished.connect(self._on_anim_finished)
-        self._anim_forward = True
         
         self.icon_opacity = 1.0
         self.is_active_mode = False
         
     def _on_anim_value_changed(self, value):
-        self.icon_opacity = value
+        # value goes from 0.0 to 1.0 (forward) or 1.0 to 0.0 (backward)
+        # We want opacity to go from 1.0 to 0.01 and back.
+        # When value=0.0 -> opacity=1.0
+        # When value=1.0 -> opacity=0.01
+        self.icon_opacity = 1.0 - (0.99 * value)
         self.update()
         
     def _on_anim_finished(self):
         if not self.is_active_mode:
             return
-        # Reverse animation direction
-        self._anim_forward = not self._anim_forward
-        start_val = 0.01 if self._anim_forward else 1.0
-        end_val = 1.0 if self._anim_forward else 0.01
-        self.anim.setStartValue(start_val)
-        self.anim.setEndValue(end_val)
+        self.anim.toggleDirection()
         self.anim.start()
         
     def start_blinking(self):
         self.is_active_mode = True
         self.show()
         self.opacity_effect.setOpacity(1.0)
-        self._anim_forward = False
-        self.anim.setStartValue(1.0)
-        self.anim.setEndValue(0.01)
+        self.anim.setDirection(QTimeLine.Direction.Forward)
         self.anim.start()
         
     def stop_blinking(self, transparent=False):

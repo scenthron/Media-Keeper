@@ -41,6 +41,8 @@ class SmartPreviewManager:
             return 5, 1500
 
     def start_video(self, duration_ms):
+        from config import AppContext
+        self.active = AppContext.session_segment_view
         self.total_duration_ms = duration_ms
         self.num_segments, self.segment_play_time_ms = self.calculate_segments(duration_ms)
         self.current_segment_idx = 0

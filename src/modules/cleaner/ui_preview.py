@@ -171,7 +171,6 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.speed_changed.connect(self._on_speed_changed)
         self.video_controls.loop_toggled.connect(self._on_loop_toggled)
         self.video_controls.apply_all_toggled.connect(self._on_apply_all_toggled)
-        self.video_controls.segment_view_toggled.connect(self._on_segment_view_toggled)
         
         self.smart_preview_mgr = SmartPreviewManager(self.player, lambda: float(AppContext.session_video_speed) if AppContext.session_all_videos_active else 1.0)
         self.smart_preview_mgr.set_active(AppContext.session_segment_view)
@@ -583,15 +582,6 @@ class CleanerPreviewWidget(QWidget):
         from config import AppContext
         AppContext.session_all_videos_active = enabled
         AppContext.save_media_settings()
-
-    def _on_segment_view_toggled(self, enabled):
-        from config import AppContext
-        AppContext.session_segment_view = enabled
-        AppContext.save_media_settings()
-        if hasattr(self, 'smart_preview_mgr'):
-            self.smart_preview_mgr.set_active(enabled)
-        if hasattr(self, 'update_segment_indicator'):
-            self.update_segment_indicator()
 
     # --- Mouse Actions ---
     def open_current_file(self):

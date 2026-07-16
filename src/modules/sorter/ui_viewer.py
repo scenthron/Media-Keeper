@@ -896,6 +896,7 @@ class ZoomableGraphicsView(QGraphicsView):
         if self.current_is_video and mgr and mgr.active and mgr.num_segments > 0 and not mgr.user_paused:
             if not self.segment_indicator.isVisible():
                 self.segment_indicator.start_blinking()
+            self.segment_indicator.raise_()
         else:
             self.segment_indicator.stop_blinking()
             self.btn_seg_prev.hide()
@@ -1022,9 +1023,11 @@ class ZoomableGraphicsView(QGraphicsView):
             pos = event.pos()
             if pos.x() < self.width() * 0.3:
                 self.btn_seg_prev.show()
+                self.btn_seg_prev.raise_()
                 self.btn_seg_next.hide()
             elif pos.x() > self.width() * 0.7:
                 self.btn_seg_next.show()
+                self.btn_seg_next.raise_()
                 self.btn_seg_prev.hide()
             else:
                 self.btn_seg_prev.hide()

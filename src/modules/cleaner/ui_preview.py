@@ -259,6 +259,7 @@ class CleanerPreviewWidget(QWidget):
         if self.current_media_type == 'video' and self.smart_preview_mgr.active and self.smart_preview_mgr.num_segments > 0 and not self.smart_preview_mgr.user_paused:
             if not self.segment_indicator.isVisible():
                 self.segment_indicator.start_blinking()
+            self.segment_indicator.raise_()
         else:
             self.segment_indicator.stop_blinking()
             self.btn_seg_prev.hide()

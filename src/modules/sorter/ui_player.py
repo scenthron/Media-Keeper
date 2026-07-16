@@ -21,6 +21,10 @@ class SegmentIndicatorWidget(QWidget):
         self.lbl_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_icon.setStyleSheet("font-size: 20px; color: #fff;")
         
+        sp = self.lbl_icon.sizePolicy()
+        sp.setRetainSizeWhenHidden(True)
+        self.lbl_icon.setSizePolicy(sp)
+        
         layout.addWidget(self.lbl_icon)
         self.setStyleSheet("background-color: rgba(0, 0, 0, 0.5); border-radius: 6px;")
         

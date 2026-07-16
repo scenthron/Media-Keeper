@@ -153,7 +153,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.video_controls.speed_changed.connect(self._on_speed_changed)
         self.video_controls.loop_toggled.connect(self._set_loop_state)
         self.video_controls.apply_all_toggled.connect(self._on_apply_all_toggled)
-        self.video_controls.segment_view_toggled.connect(self._on_segment_view_toggled)
+
         self.video_controls.volume_changed.connect(self.change_volume)
         
         # Sync initial volume

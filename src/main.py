@@ -21,7 +21,14 @@ os.environ["QT_LOGGING_RULES"] = "*.debug=false;qt.multimedia.*=false"
 os.environ["AV_LOG_LEVEL"] = "quiet"
 
 def qt_message_handler(mode, context, message):
-    if "swscaler" in message or "deprecated pixel format used" in message or "Could not update timestamps for skipped samples" in message:
+    ignore_phrases = [
+        "swscaler", 
+        "deprecated pixel format used", 
+        "Could not update timestamps for skipped samples",
+        "Failed setup for format d3d11",
+        "hwaccel initialisation returned error"
+    ]
+    if any(phrase in message for phrase in ignore_phrases):
         return
     if mode == QtMsgType.QtInfoMsg:
         logging.info(message)

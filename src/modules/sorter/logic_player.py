@@ -371,12 +371,17 @@ class PlayerMixin:
             self.viewer.reset_view()
 
     def _on_scrub_start(self):
+        from PyQt6.QtMultimedia import QMediaPlayer
+        self._was_playing_before_scrub = (self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState)
         self.media_player.pause()
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.set_user_paused(True)
 
     def _on_scrub_stop(self):
-        self.media_player.play()
+        if getattr(self, '_was_playing_before_scrub', False):
+            self.media_player.play()
+            if hasattr(self, 'smart_preview_mgr'):
+                self.smart_preview_mgr.set_user_paused(False)
 
     def _on_speed_changed(self, speed):
         self.media_player.setPlaybackRate(speed)

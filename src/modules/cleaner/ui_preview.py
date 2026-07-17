@@ -163,8 +163,8 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.play_pause_clicked.connect(self.toggle_playback)
         self.video_controls.seek_requested.connect(self.player.setPosition)
         self.video_controls.seek_moved.connect(self.player.setPosition)
-        self.video_controls.seek_drag_start.connect(self.player.pause)
-        self.video_controls.seek_drag_stop.connect(self.player.play)
+        self.video_controls.seek_drag_start.connect(self._on_scrub_start)
+        self.video_controls.seek_drag_stop.connect(self._on_scrub_stop)
         self.video_controls.volume_changed.connect(self.change_volume)
         
         # Settings Signals
@@ -243,6 +243,19 @@ class CleanerPreviewWidget(QWidget):
     def _on_media_duration_changed(self, dur):
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.start_video(dur)
+            
+    def _on_scrub_start(self):
+        from PyQt6.QtMultimedia import QMediaPlayer
+        self._was_playing_before_scrub = (self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState)
+        self.player.pause()
+        if hasattr(self, 'smart_preview_mgr'):
+            self.smart_preview_mgr.set_user_paused(True)
+
+    def _on_scrub_stop(self):
+        if getattr(self, '_was_playing_before_scrub', False):
+            self.player.play()
+            if hasattr(self, 'smart_preview_mgr'):
+                self.smart_preview_mgr.set_user_paused(False)
             
     def _on_seg_prev(self):
         if hasattr(self, 'smart_preview_mgr'):

@@ -425,10 +425,14 @@ class CleanerPreviewWidget(QWidget):
             else: self.player.play()
 
     def _on_media_status_changed(self, status):
+        from PyQt6.QtMultimedia import QMediaPlayer
         if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
-            if self.video_item.isVisible() and self.video_item.nativeSize().isValid():
-                sz = self.video_item.nativeSize()
-                self._fit_video_size_changed(sz)
+            if hasattr(self, 'video_item') and self.video_item:
+                if self.current_media_type == 'video':
+                    self.video_item.show()
+                if self.video_item.isVisible() and self.video_item.nativeSize().isValid():
+                    sz = self.video_item.nativeSize()
+                    self._fit_video_size_changed(sz)
 
     def _on_player_state_changed(self, state):
         is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
@@ -483,7 +487,7 @@ class CleanerPreviewWidget(QWidget):
     def setup_video(self, path):
         self._clear_media()
         self._create_view()
-        self.current_media_type = 'video'
+        
         self.pixmap_item.hide()
         self.text_item.hide()
         
@@ -493,6 +497,7 @@ class CleanerPreviewWidget(QWidget):
         import os
         ext = os.path.splitext(path)[1].lower()
         is_audio = ext in ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma', '.aac']
+        self.current_media_type = 'audio' if is_audio else 'video'
         
         if is_audio:
             self.video_item.hide()
@@ -535,19 +540,20 @@ class CleanerPreviewWidget(QWidget):
         clean_path = strip_long_path_prefix(path)
         self.player.setSource(QUrl.fromLocalFile(clean_path))
         
-        if not is_audio:
-            self.video_item.show()
+
             
         self.view.show()
         self.resizeEvent(None)
         
         if is_audio:
+            from config import AppContext
             AppContext.session_audio_speed_active = False
             is_fast_active = False
             speed = 1.0
             loop = AppContext.session_loop
             segment_view = False
         else:
+            from config import AppContext
             is_fast_active = AppContext.session_video_speed_active
             speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
             loop = AppContext.session_loop
@@ -605,9 +611,12 @@ class CleanerPreviewWidget(QWidget):
     def _on_media_status_changed(self, status):
         from PyQt6.QtMultimedia import QMediaPlayer
         if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
-            if hasattr(self, 'video_item') and self.video_item and self.video_item.isVisible() and self.video_item.nativeSize().isValid():
-                sz = self.video_item.nativeSize()
-                self._fit_video_size_changed(sz)
+            if hasattr(self, 'video_item') and self.video_item:
+                if self.current_media_type == 'video':
+                    self.video_item.show()
+                if self.video_item.isVisible() and self.video_item.nativeSize().isValid():
+                    sz = self.video_item.nativeSize()
+                    self._fit_video_size_changed(sz)
 
     def _on_player_state_changed(self, state):
         from PyQt6.QtMultimedia import QMediaPlayer

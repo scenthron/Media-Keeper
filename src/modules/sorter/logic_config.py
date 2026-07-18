@@ -18,9 +18,7 @@ class ConfigManager:
         "affix_text": "<Work>, <Family>, <Humor>, <%date_%time>",
         "temp_roots": "",
         "sort_type": "type_asc",
-        "session_video_speed": 1.0,
         "session_loop": False,
-        "session_all_videos_active": False,
         "session_segment_view": False,
         "auto_collapse_groups": True,
         "pagination_size": 1000

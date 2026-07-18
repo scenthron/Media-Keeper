@@ -419,8 +419,6 @@ class PlayerMixin:
         else:
             self.media_player.setLoops(QMediaPlayer.Loops.Once)
 
-    def _on_apply_all_toggled(self, enabled):
-        AppContext.session_all_videos_active = enabled
         AppContext.save_media_settings()
 
     def _on_segment_view_toggled(self, enabled):

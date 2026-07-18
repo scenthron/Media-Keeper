@@ -615,7 +615,7 @@ class LargePreviewPopup(QDialog):
         
         speed = 1.0
         loop = False
-        apply_all = False
+        is_fast_active = False
         loop = False
         segment_view = False
         volume_pct = 10
@@ -1293,24 +1293,43 @@ class LargePreviewPopup(QDialog):
             if hasattr(self.main_app, 'video_controls'):
                 self.main_app.video_controls.vol_slider.setValue(value)
                 
-    def on_speed_changed(self, speed):
-        ext = os.path.splitext(self.filepath)[1].lower()
+    def on_speed_toggled(self):
+        ext = os.path.splitext(getattr(self, 'filepath', ''))[1].lower()
         is_video = ext in VIDEO_EXTS
         
+        if is_video:
+            AppContext.session_video_speed_active = not getattr(AppContext, 'session_video_speed_active', False)
+            active = AppContext.session_video_speed_active
+        else:
+            AppContext.session_audio_speed_active = not getattr(AppContext, 'session_audio_speed_active', False)
+            active = AppContext.session_audio_speed_active
+            
+        speed = AppContext.session_fast_speed_val if active else 1.0
         if self.media_player:
             self.media_player.setPlaybackRate(speed)
-        if self.main_app:
-            if is_video:
-                AppContext.session_video_speed = speed
-            if hasattr(self.main_app, 'media_player'):
-                self.main_app.media_player.setPlaybackRate(speed)
-            if hasattr(self.main_app, 'video_controls'):
-                self.main_app.video_controls.set_popup_values(
-                    speed if is_video else 1.0, 
-                    AppContext.session_loop, 
-                    AppContext.session_all_videos_active, 
-                    is_video
-                )
+            
+        self.controls.update_speed_button(AppContext.session_fast_speed_val, active)
+        
+        if self.main_app and hasattr(self.main_app, 'video_controls'):
+            self.main_app.video_controls.update_speed_button(AppContext.session_fast_speed_val, active)
+
+    def on_speed_changed(self, speed_val):
+        ext = os.path.splitext(getattr(self, 'filepath', ''))[1].lower()
+        is_video = ext in VIDEO_EXTS
+        
+        AppContext.session_fast_speed_val = float(speed_val)
+        if is_video:
+            AppContext.session_video_speed_active = True
+        else:
+            AppContext.session_audio_speed_active = True
+            
+        if self.media_player:
+            self.media_player.setPlaybackRate(speed_val)
+            
+        self.controls.update_speed_button(AppContext.session_fast_speed_val, True)
+        
+        if self.main_app and hasattr(self.main_app, 'video_controls'):
+            self.main_app.video_controls.update_speed_button(AppContext.session_fast_speed_val, True)
 
     def on_loop_toggled(self, enabled):
         ext = os.path.splitext(self.filepath)[1].lower()

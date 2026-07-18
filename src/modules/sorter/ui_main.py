@@ -62,9 +62,6 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         
         self.session_inbox_path = None
         self.session_trash_path = None
-        
-        self.session_video_speed = AppContext.session_video_speed
-        self.session_all_videos_active = AppContext.session_all_videos_active 
         self.session_loop = AppContext.session_loop 
         self.current_media_is_video = False
         
@@ -137,7 +134,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         
         self.viewer.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
         
-        self.smart_preview_mgr = SmartPreviewManager(self.media_player, lambda: self.session_video_speed)
+        self.smart_preview_mgr = SmartPreviewManager(self.media_player, lambda: float(AppContext.session_fast_speed_val) if getattr(AppContext, "session_video_speed_active", False) else 1.0)
         
         self.left_layout.addWidget(self.viewer, stretch=1)
 

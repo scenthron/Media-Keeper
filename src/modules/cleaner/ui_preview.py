@@ -440,6 +440,131 @@ class CleanerPreviewWidget(QWidget):
         self.video_item.setSize(size)
         QTimer.singleShot(50, self.reset_view)
 
+    def setup_static_image(self, path):
+        self._clear_media()
+        self._create_view()
+        self.current_media_type = 'image'
+        self.video_controls.hide()
+        self.time_overlay.hide()
+        self.video_item.hide()
+        self.text_item.hide()
+        from PyQt6.QtGui import QPixmap
+        pix = QPixmap(path)
+        if pix.isNull():
+            self.text_item.setPlainText(AppContext.tr("cln_prev_img_err"))
+            self.text_item.show()
+            self.view.show()
+            return
+        self.pixmap_item.setPixmap(pix)
+        self.pixmap_item.show()
+        self.view.show()
+        QTimer.singleShot(50, self.reset_view)
+
+    def setup_animated(self, path):
+        self._clear_media()
+        self._create_view()
+        self.current_media_type = 'movie'
+        self.video_controls.hide()
+        self.time_overlay.hide()
+        self.video_item.hide()
+        self.text_item.hide()
+        from PyQt6.QtGui import QMovie
+        self.movie = QMovie(path)
+        self.movie.setCacheMode(QMovie.CacheMode.CacheAll)
+        self.movie.jumpToFrame(0)
+        self.pixmap_item.setPos(0, 0)
+        self.movie.frameChanged.connect(self._on_movie_frame)
+        self._on_movie_frame() 
+        self.movie.start()
+        self.pixmap_item.show()
+        self.view.show()
+        QTimer.singleShot(50, self.reset_view)
+
+    def setup_video(self, path):
+        self._clear_media()
+        self._create_view()
+        self.current_media_type = 'video'
+        self.pixmap_item.hide()
+        self.text_item.hide()
+        
+        self.time_overlay.show()
+        self.time_overlay.set_time(0, 0)
+        
+        import os
+        ext = os.path.splitext(path)[1].lower()
+        is_audio = ext in ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma', '.aac']
+        
+        if is_audio:
+            self.video_item.hide()
+            track_name = os.path.splitext(os.path.basename(path))[0]
+            html_text = f"<div style='text-align: center; line-height: 1.4; color: #3b82f6;'>🎵<br>{track_name}</div>"
+            self.text_item.setHtml(html_text)
+            from PyQt6.QtGui import QFont
+            self.text_item.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
+            self.text_item.setTextWidth(400)
+            self.text_item.show()
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(50, self.reset_view)
+        else:
+            self.text_item.hide()
+            # Do NOT show video_item yet!
+            
+        self.video_controls.show()
+        self.video_controls.seeker.setEnabled(True)
+        self.video_controls.set_playing_state(False)
+        
+        from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+        self.player = QMediaPlayer()
+        self.audio_output = QAudioOutput()
+        self.player.setAudioOutput(self.audio_output)
+        self.player.setVideoOutput(self.video_item)
+        self.audio_output.setVolume(self.video_controls.vol_slider.value() / 100.0)
+        
+        self.video_controls.seek_requested.connect(self.player.setPosition)
+        self.video_controls.seek_moved.connect(self.player.setPosition)
+        self.player.positionChanged.connect(self.video_controls.update_position)
+        self.player.positionChanged.connect(self._update_overlay_time)
+        self.player.durationChanged.connect(self.video_controls.update_duration)
+        self.player.durationChanged.connect(self._update_overlay_duration)
+        self.player.durationChanged.connect(self._on_media_duration_changed)
+        self.player.playbackStateChanged.connect(self._on_player_state_changed)
+        self.player.mediaStatusChanged.connect(self._on_media_status_changed)
+        
+        from utils_io import strip_long_path_prefix
+        from PyQt6.QtCore import QUrl
+        clean_path = strip_long_path_prefix(path)
+        self.player.setSource(QUrl.fromLocalFile(clean_path))
+        
+        if not is_audio:
+            self.video_item.show()
+            
+        self.view.show()
+        self.resizeEvent(None)
+        
+        if is_audio:
+            AppContext.session_audio_speed_active = False
+            is_fast_active = False
+            speed = 1.0
+            loop = AppContext.session_loop
+            segment_view = False
+        else:
+            is_fast_active = AppContext.session_video_speed_active
+            speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
+            loop = AppContext.session_loop
+            segment_view = AppContext.session_segment_view
+            
+        self.video_controls.set_playing_state(False)
+        self.video_controls.update_speed_button(AppContext.session_fast_speed_val, is_fast_active)
+        self.video_controls.update_loop_button(loop)
+        
+        from modules.sorter.logic_player import SmartPreviewManager
+        self.smart_preview_mgr = SmartPreviewManager(self.player, lambda: float(AppContext.session_fast_speed_val) if getattr(AppContext, "session_video_speed_active", False) else 1.0)
+        self.smart_preview_mgr.set_active(segment_view)
+        
+        self.player.setPlaybackRate(speed)
+        self.player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
+        self.player.play()
+
     def load_file(self, path):
         from utils_io import strip_long_path_prefix
         path = strip_long_path_prefix(path)

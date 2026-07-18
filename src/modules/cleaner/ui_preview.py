@@ -83,6 +83,8 @@ class CleanerPreviewWidget(QWidget):
         self.media_container = QWidget()
         self.media_layout = QVBoxLayout(self.media_container)
         self.media_layout.setContentsMargins(0,0,0,0)
+        self.view = None
+        self._create_view()
         self.media_layout.setSpacing(0)
         
         self.view = None

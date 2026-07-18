@@ -399,6 +399,7 @@ class CleanerPreviewWidget(QWidget):
         self.meta_table.setRowCount(0)
 
     def _clear_media(self):
+        import logging
         import time; t_start = time.perf_counter()
         if hasattr(self, 'player') and self.player:
             try:

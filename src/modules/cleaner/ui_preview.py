@@ -210,9 +210,10 @@ class CleanerPreviewWidget(QWidget):
         if hasattr(self, 'segment_indicator'):
             self.segment_indicator.move(10, 10)
 
-    def _on_media_duration_changed(self, dur):
+    def _on_media_duration_changed(self, duration):
+        import time; logging.info(f" [PERF] _on_media_duration_changed called at {time.perf_counter():.4f} with duration: {duration}")
         if hasattr(self, 'smart_preview_mgr'):
-            self.smart_preview_mgr.start_video(dur)
+            self.smart_preview_mgr.start_video(duration)
             
     def _on_scrub_start(self):
         from PyQt6.QtMultimedia import QMediaPlayer
@@ -621,8 +622,10 @@ class CleanerPreviewWidget(QWidget):
 
     def _on_media_status_changed(self, status):
         from PyQt6.QtMultimedia import QMediaPlayer
+        import time; logging.info(f" [PERF] _on_media_status_changed called at {time.perf_counter():.4f} with status: {status}")
         if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
             if self.media_layout.indexOf(self.view) == -1:
+                logging.info(f" [PERF] inserting view into layout at {time.perf_counter():.4f}")
                 self.media_layout.insertWidget(0, self.view)
                 self.view.show()
             if hasattr(self, 'video_item') and self.video_item:
@@ -633,6 +636,7 @@ class CleanerPreviewWidget(QWidget):
                     self._fit_video_size_changed(sz)
 
     def _on_player_state_changed(self, state):
+        import time; logging.info(f" [PERF] _on_player_state_changed called at {time.perf_counter():.4f} with state: {state}")
         from PyQt6.QtMultimedia import QMediaPlayer
         is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
         self.video_controls.set_playing_state(is_playing)

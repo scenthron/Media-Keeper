@@ -390,13 +390,11 @@ class CleanerPreviewWidget(QWidget):
     def _create_view(self):
         self.scene = QGraphicsScene(self)
         self.view = ClickableGraphicsView(self.scene)
+        self.view.setAttribute(Qt.WidgetAttribute.WA_NativeWindow)
         self.view.clicked.connect(self.toggle_playback)
         self.view.double_clicked.connect(self.open_current_file)
         self.view.middle_clicked.connect(self.open_containing_folder)
         self.view.right_clicked.connect(self.reset_view)
-        
-        
-        
         
         from PyQt6.QtMultimediaWidgets import QGraphicsVideoItem
         self.video_item = QGraphicsVideoItem()

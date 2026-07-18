@@ -591,15 +591,32 @@ class CleanerPreviewWidget(QWidget):
         self.audio_output.setVolume(val / 100.0)
 
     # --- Settings Slots ---
-    def _on_speed_changed(self, speed):
-        self.player.setPlaybackRate(speed)
+    def _on_speed_toggled(self):
         if self.current_media_type == 'video':
-            AppContext.session_video_speed = float(speed)
+            AppContext.session_video_speed_active = not getattr(AppContext, "session_video_speed_active", False)
+            active = AppContext.session_video_speed_active
+        else:
+            AppContext.session_audio_speed_active = not getattr(AppContext, "session_audio_speed_active", False)
+            active = AppContext.session_audio_speed_active
+            
+        speed = AppContext.session_fast_speed_val if active else 1.0
+        self.player.setPlaybackRate(speed)
+        self.video_controls.update_speed_button(AppContext.session_fast_speed_val, active)
 
-    def _on_loop_toggled(self, enabled):
-        AppContext.session_loop = enabled
-        AppContext.save_media_settings()
-        self.player.setLoops(QMediaPlayer.Loops.Infinite if enabled else QMediaPlayer.Loops.Once)
+    def _on_speed_changed(self, speed_val):
+        AppContext.session_fast_speed_val = float(speed_val)
+        if self.current_media_type == 'video':
+            AppContext.session_video_speed_active = True
+        else:
+            AppContext.session_audio_speed_active = True
+            
+        self.player.setPlaybackRate(speed_val)
+        self.video_controls.update_speed_button(AppContext.session_fast_speed_val, True)
+
+    def _on_loop_toggled(self, is_loop):
+        self.player.setLoops(QMediaPlayer.Loops.Infinite if is_loop else QMediaPlayer.Loops.Once)
+        AppContext.session_loop = is_loop
+
 
     def open_current_file(self):
         if self.current_path and os.path.exists(self.current_path):

@@ -159,8 +159,6 @@ class CleanerPreviewWidget(QWidget):
         
         
         self.movie = None
-        self._create_view()
-        self.media_layout.insertWidget(0, self.view)
         self.show_empty("...")
 
     def update_ui_text(self):
@@ -358,26 +356,56 @@ class CleanerPreviewWidget(QWidget):
 
     def _clear_media(self):
         if hasattr(self, 'player') and self.player:
+            try:
+                self.player.positionChanged.disconnect()
+                self.player.durationChanged.disconnect()
+                self.player.playbackStateChanged.disconnect()
+                self.player.mediaStatusChanged.disconnect()
+                self.video_controls.seek_requested.disconnect()
+                self.video_controls.seek_moved.disconnect()
+            except Exception: pass
+            
             self.player.stop()
             from PyQt6.QtCore import QUrl
             self.player.setSource(QUrl())
+            
+            try:
+                import time
+                from PyQt6.QtMultimedia import QMediaPlayer
+                from PyQt6.QtCore import QCoreApplication
+                start_t = time.time()
+                while self.player.mediaStatus() != QMediaPlayer.MediaStatus.NoMedia and (time.time() - start_t) < 0.3:
+                    QCoreApplication.processEvents()
+                    time.sleep(0.01)
+            except Exception as e:
+                logging.error(f"Error waiting for cleaner media player release: {e}")
+                
+            self.player.deleteLater()
+            self.player = None
+            
+        if hasattr(self, 'audio_output') and self.audio_output:
+            self.audio_output.deleteLater()
+            self.audio_output = None
             
         if hasattr(self, 'movie') and self.movie:
             self.movie.stop()
             self.movie = None
             
-        if hasattr(self, 'video_item') and self.video_item:
-            self.video_item.hide()
-        if hasattr(self, 'pixmap_item') and self.pixmap_item:
-            self.pixmap_item.hide()
-        if hasattr(self, 'text_item') and self.text_item:
-            self.text_item.hide()
+        if hasattr(self, 'view') and self.view:
+            self.media_layout.removeWidget(self.view)
+            self.view.deleteLater()
+            self.view = None
+            self.scene = None
+            self.video_item = None
+            self.pixmap_item = None
+            self.text_item = None
             
         self.smart_preview_mgr = None
 
     def _create_view(self):
         self.scene = QGraphicsScene(self)
         self.view = ClickableGraphicsView(self.scene)
+        self.view.setAttribute(Qt.WidgetAttribute.WA_NativeWindow)
         self.view.clicked.connect(self.toggle_playback)
         self.view.double_clicked.connect(self.open_current_file)
         self.view.middle_clicked.connect(self.open_containing_folder)
@@ -595,6 +623,8 @@ class CleanerPreviewWidget(QWidget):
         elif ext in VIDEO_EXTS: self.setup_video(path)
         else:
             self._clear_media()
+            self._create_view()
+            self.media_layout.insertWidget(0, self.view)
             self.current_media_type = None
             self.video_item.hide()
             self.pixmap_item.hide()

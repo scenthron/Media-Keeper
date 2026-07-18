@@ -248,6 +248,7 @@ class PlayerMixin:
             self.video_controls.show()
             self.current_media_is_video = True
             loop = AppContext.session_loop
+            segment_view = AppContext.session_segment_view
             is_fast_active = AppContext.session_video_speed_active
             speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
             

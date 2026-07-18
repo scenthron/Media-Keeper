@@ -759,12 +759,10 @@ class LargePreviewPopup(QDialog):
             self.time_overlay.adjustSize()
             self.resizeEvent(None)
             
-            if apply_all:
-                speed = float(AppContext.session_fast_speed_val) if getattr(AppContext, "session_video_speed_active", False) else 1.0
-            else:
-                speed = 1.0
-                
-            self.controls.set_popup_values(speed, loop, apply_all, is_video=True)
+            is_fast_active = getattr(AppContext, "session_video_speed_active", False)
+            speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
+            self.controls.update_speed_button(AppContext.session_fast_speed_val, is_fast_active)
+            self.controls.update_loop_button(loop)
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix
@@ -822,7 +820,8 @@ class LargePreviewPopup(QDialog):
             self.time_overlay.adjustSize()
             self.resizeEvent(None)
             
-            self.controls.set_popup_values(1.0, loop, False, is_video=False)
+            self.controls.update_speed_button(AppContext.session_fast_speed_val, False)
+            self.controls.update_loop_button(loop)
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix

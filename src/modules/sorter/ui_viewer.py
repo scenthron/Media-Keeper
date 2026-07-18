@@ -1014,6 +1014,15 @@ class ZoomableGraphicsView(QGraphicsView):
         if not self.is_fullscreen_mode: return
         if self.floating_controls: self.floating_controls.show()
         if self.time_overlay and getattr(self, 'current_is_video', False): self.time_overlay.show()
+        
+        main_app = find_main_app(self)
+        if hasattr(main_app, 'media_player') and main_app.media_player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
+            if hasattr(self, 'play_icon_lbl') and getattr(self, 'current_is_video', False):
+                self.play_icon_lbl.show()
+                
+        if hasattr(self, 'update_segment_indicator'):
+            self.update_segment_indicator()
+
         self.setCursor(Qt.CursorShape.ArrowCursor)
         self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
         self.hide_timer.start()
@@ -1025,6 +1034,12 @@ class ZoomableGraphicsView(QGraphicsView):
             return
         if self.floating_controls: self.floating_controls.hide()
         if self.time_overlay: self.time_overlay.hide()
+        
+        if hasattr(self, 'play_icon_lbl'): self.play_icon_lbl.hide()
+        if hasattr(self, 'segment_indicator'): self.segment_indicator.hide()
+        if hasattr(self, 'btn_seg_prev'): self.btn_seg_prev.hide()
+        if hasattr(self, 'btn_seg_next'): self.btn_seg_next.hide()
+        
         self.setCursor(Qt.CursorShape.BlankCursor)
         self.viewport().setCursor(Qt.CursorShape.BlankCursor)
 

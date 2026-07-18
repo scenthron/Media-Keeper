@@ -623,10 +623,8 @@ class LargePreviewPopup(QDialog):
         self._click_start_pos = None
         
         if self.main_app:
-            apply_all = AppContext.session_all_videos_active
-            if apply_all:
-                loop = AppContext.session_loop
-                segment_view = AppContext.session_segment_view
+            loop = AppContext.session_loop
+            segment_view = AppContext.session_segment_view
             volume_pct = int(getattr(self.main_app, 'global_volume', 1.0) * 100)
         
         # Проверяем, поддерживает ли файл анимацию (например, GIF или анимированный WebP)
@@ -762,7 +760,7 @@ class LargePreviewPopup(QDialog):
             self.resizeEvent(None)
             
             if apply_all:
-                speed = float(AppContext.session_video_speed)
+                speed = float(AppContext.session_fast_speed_val) if getattr(AppContext, "session_video_speed_active", False) else 1.0
             else:
                 speed = 1.0
                 
@@ -1344,12 +1342,11 @@ class LargePreviewPopup(QDialog):
             if hasattr(self.main_app, 'media_player'):
                 self.main_app.media_player.setLoops(QMediaPlayer.Loops.Infinite if enabled else QMediaPlayer.Loops.Once)
             if hasattr(self.main_app, 'video_controls'):
-                speed = float(AppContext.session_video_speed) if AppContext.session_all_videos_active else 1.0
+                speed = float(AppContext.session_fast_speed_val) if getattr(AppContext, "session_video_speed_active", False) else 1.0 if AppContext.session_all_videos_active else 1.0
                 self.main_app.video_controls.set_popup_values(
                     speed if is_video else 1.0, 
                     enabled, 
-                    AppContext.session_all_videos_active, 
-                    is_video
+                                        is_video
                 )
 
     def update_segment_indicator(self):

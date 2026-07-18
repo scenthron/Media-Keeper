@@ -2,7 +2,8 @@
 from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS, get_filtered_exts
 import datetime
 import subprocess
-import logging\n
+import logging
+
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 class MediaPlayerPool:

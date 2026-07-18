@@ -159,7 +159,7 @@ class PopupVideoViewer(QGraphicsView):
         mgr = win.smart_preview_mgr
         
         if mgr and mgr.num_segments > 0 and self.underMouse():
-            if mgr.active and not mgr.user_paused and mgr.num_segments > 0:
+            if mgr.active and not mgr.user_paused:
                 self.btn_seg_prev.show()
                 self.btn_seg_next.show()
             else:
@@ -1341,7 +1341,7 @@ class LargePreviewPopup(QDialog):
             self.segment_indicator.show()
             self.segment_indicator.raise_()
             
-            if mgr.active and not mgr.user_paused and mgr.num_segments > 0:
+            if mgr.active and not mgr.user_paused:
                 if not getattr(self.segment_indicator, 'is_active_mode', False):
                     self.segment_indicator.start_blinking()
             else:

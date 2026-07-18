@@ -278,7 +278,7 @@ class CleanerPreviewWidget(QWidget):
         if self.current_media_type == 'video' and mgr:
             self.segment_indicator.show()
             self.segment_indicator.raise_()
-            if mgr.active and not mgr.user_paused and mgr.num_segments > 0:
+            if mgr.active and not mgr.user_paused:
                 if not getattr(self.segment_indicator, 'is_active_mode', False):
                     self.segment_indicator.start_blinking()
             else:

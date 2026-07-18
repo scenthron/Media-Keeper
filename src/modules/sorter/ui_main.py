@@ -148,6 +148,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.video_controls.seek_drag_stop.connect(self._on_scrub_stop)
         
         self.video_controls.speed_changed.connect(self._on_speed_changed)
+        self.video_controls.speed_toggled.connect(self._on_speed_toggled)
         self.video_controls.loop_toggled.connect(self._set_loop_state)
 
         self.video_controls.volume_changed.connect(self.change_volume)

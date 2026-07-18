@@ -601,11 +601,6 @@ class CleanerPreviewWidget(QWidget):
         AppContext.save_media_settings()
         self.player.setLoops(QMediaPlayer.Loops.Infinite if enabled else QMediaPlayer.Loops.Once)
 
-    def _on_apply_all_toggled(self, enabled):
-        AppContext.session_all_videos_active = enabled
-        AppContext.save_media_settings()
-
-    # --- Mouse Actions ---
     def open_current_file(self):
         if self.current_path and os.path.exists(self.current_path):
             QDesktopServices.openUrl(QUrl.fromLocalFile(self.current_path))

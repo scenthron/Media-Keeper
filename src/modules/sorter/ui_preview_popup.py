@@ -1378,34 +1378,6 @@ class LargePreviewPopup(QDialog):
             self.video_viewer.update_segment_indicator()
         self.update_segment_indicator()
 
-    def on_apply_all_toggled(self, enabled):
-        ext = os.path.splitext(self.filepath)[1].lower()
-        is_video = ext in VIDEO_EXTS
-        
-        if self.main_app:
-            self.main_app.session_all_videos_active = enabled
-            AppContext.session_all_videos_active = enabled
-            AppContext.save_media_settings()
-            if is_video:
-                segment_view = AppContext.session_segment_view
-                if not enabled:
-                    if self.media_player:
-                        self.media_player.setPlaybackRate(1.0)
-                    self.controls.set_popup_values(1.0, AppContext.session_loop, False, True)
-                else:
-                    speed = float(AppContext.session_video_speed)
-                    if self.media_player:
-                        self.media_player.setPlaybackRate(speed)
-                    self.controls.set_popup_values(speed, AppContext.session_loop, True, True)
-                
-                if hasattr(self.main_app, 'video_controls'):
-                    self.main_app.video_controls.set_popup_values(
-                        float(AppContext.session_video_speed) if enabled else 1.0, 
-                        AppContext.session_loop, 
-                        enabled,
-                        True
-                    )
-                    
     def on_segment_view_toggled(self, enabled):
         AppContext.session_segment_view = enabled
         AppContext.save_media_settings()

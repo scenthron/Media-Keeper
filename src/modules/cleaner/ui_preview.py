@@ -368,13 +368,12 @@ class CleanerPreviewWidget(QWidget):
 
     def show_empty(self, msg):
         self.stop_playback(True)
-        self._create_view()
-        self.media_layout.insertWidget(0, self.view)
+        if hasattr(self, 'stacked_widget'): self.stacked_widget.setCurrentWidget(self.view)
         self.current_media_type = None
         self.current_path = None
         self.view.resetTransform()
         self.pixmap_item.hide()
-        self.video_item.hide()
+        
         self.video_controls.hide()
         self.time_overlay.hide()
         
@@ -417,6 +416,7 @@ class CleanerPreviewWidget(QWidget):
             logging.info(f'    [CLEAR] After stop(): {time.perf_counter() - t_start:.4f}s')
             from PyQt6.QtCore import QUrl
             logging.info(f'    [CLEAR] Before setSource(): {time.perf_counter() - t_start:.4f}s')
+            self.player.setVideoOutput(None)
             self.player.setSource(QUrl())
             logging.info(f'    [CLEAR] After setSource(): {time.perf_counter() - t_start:.4f}s')
             
@@ -445,35 +445,36 @@ class CleanerPreviewWidget(QWidget):
             self.movie = None
             
         if hasattr(self, 'view') and self.view:
-            logging.info(f'    [CLEAR] Before view deleteLater(): {time.perf_counter() - t_start:.4f}s')
-            self.media_layout.removeWidget(self.view)
-            self.view.deleteLater()
-            self.view = None
-            self.scene = None
-            self.video_item = None
-            self.pixmap_item = None
-            self.text_item = None
+            pass # Do not delete views to reuse them
             logging.info(f'    [CLEAR] After view deleteLater(): {time.perf_counter() - t_start:.4f}s')
             
         self.smart_preview_mgr = None
         logging.info(f'    [CLEAR] Total time: {time.perf_counter() - t_start:.4f}s')
 
     def _create_view(self):
+        from PyQt6.QtWidgets import QStackedWidget
+        self.stacked_widget = QStackedWidget(self.media_container)
+        self.media_layout.insertWidget(0, self.stacked_widget)
+        
         self.scene = QGraphicsScene(self)
         self.view = ClickableGraphicsView(self.scene)
-        self.view.setAttribute(Qt.WidgetAttribute.WA_NativeWindow)
         self.view.clicked.connect(self.toggle_playback)
         self.view.double_clicked.connect(self.open_current_file)
         self.view.middle_clicked.connect(self.open_containing_folder)
         self.view.right_clicked.connect(self.reset_view)
         
-        from PyQt6.QtMultimediaWidgets import QGraphicsVideoItem
-        self.video_item = QGraphicsVideoItem()
-        self.scene.addItem(self.video_item)
-        self.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
-        self.video_item.hide()
+        from modules.cleaner.ui_view import ClickableVideoWidget
+        self.video_widget = ClickableVideoWidget()
+        self.video_widget.clicked.connect(self.toggle_playback)
+        self.video_widget.double_clicked.connect(self.open_current_file)
+        self.video_widget.middle_clicked.connect(self.open_containing_folder)
+        self.video_widget.right_clicked.connect(self.reset_view)
+        
+        self.stacked_widget.addWidget(self.view)
+        self.stacked_widget.addWidget(self.video_widget)
         
         from PyQt6.QtGui import QPixmap, QColor, QFont
+        from PyQt6.QtWidgets import QGraphicsTextItem
         self.pixmap_item = self.scene.addPixmap(QPixmap())
         self.pixmap_item.hide()
         
@@ -499,17 +500,11 @@ class CleanerPreviewWidget(QWidget):
             else: self.player.play()
 
     def _on_media_status_changed(self, status):
+        import logging; import time; logging.info(f"  [PERF] _on_media_status_changed called at {time.time()} with status: {status}")
         from PyQt6.QtMultimedia import QMediaPlayer
         if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
-            if self.media_layout.indexOf(self.view) == -1:
-                self.media_layout.insertWidget(0, self.view)
-                self.view.show()
-            if hasattr(self, 'video_item') and self.video_item:
-                if self.current_media_type == 'video':
-                    self.video_item.show()
-                if self.video_item.isVisible() and self.video_item.nativeSize().isValid():
-                    sz = self.video_item.nativeSize()
-                    self._fit_video_size_changed(sz)
+            if hasattr(self, 'stacked_widget') and self.stacked_widget and self.current_media_type == 'video':
+                self.stacked_widget.setCurrentWidget(self.video_widget)
 
     def _on_player_state_changed(self, state):
         is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
@@ -523,12 +518,11 @@ class CleanerPreviewWidget(QWidget):
 
     def setup_static_image(self, path):
         self._clear_media()
-        self._create_view()
-        self.media_layout.insertWidget(0, self.view)
+        if hasattr(self, 'stacked_widget'): self.stacked_widget.setCurrentWidget(self.view)
         self.current_media_type = 'image'
         self.video_controls.hide()
         self.time_overlay.hide()
-        self.video_item.hide()
+        
         self.text_item.hide()
         from PyQt6.QtGui import QPixmap
         pix = QPixmap(path)
@@ -542,12 +536,11 @@ class CleanerPreviewWidget(QWidget):
 
     def setup_animated(self, path):
         self._clear_media()
-        self._create_view()
-        self.media_layout.insertWidget(0, self.view)
+        if hasattr(self, 'stacked_widget'): self.stacked_widget.setCurrentWidget(self.view)
         self.current_media_type = 'movie'
         self.video_controls.hide()
         self.time_overlay.hide()
-        self.video_item.hide()
+        
         self.text_item.hide()
         from PyQt6.QtGui import QMovie
         self.movie = QMovie(path)
@@ -563,8 +556,7 @@ class CleanerPreviewWidget(QWidget):
     def setup_video(self, path):
         import time; t0 = time.perf_counter(); logging.info(f"  [PERF] setup_video started")
         self._clear_media()
-        self._create_view()
-        
+                
         self.pixmap_item.hide()
         self.text_item.hide()
         
@@ -577,9 +569,9 @@ class CleanerPreviewWidget(QWidget):
         self.current_media_type = 'audio' if is_audio else 'video'
         
         if is_audio:
-            self.media_layout.insertWidget(0, self.view)
+            self.stacked_widget.setCurrentWidget(self.view)
             self.view.show()
-            self.video_item.hide()
+            
             track_name = os.path.splitext(os.path.basename(path))[0]
             html_text = f"<div style='text-align: center; line-height: 1.4; color: #3b82f6;'>🎵<br>{track_name}</div>"
             self.text_item.setHtml(html_text)
@@ -599,7 +591,7 @@ class CleanerPreviewWidget(QWidget):
         
         pool = MediaPlayerPool.get_instance()
         self.player, self.audio_output = pool.acquire()
-        self.player.setVideoOutput(self.video_item)
+        self.player.setVideoOutput(self.video_widget)
         self.audio_output.setVolume(self.video_controls.vol_slider.value() / 100.0)
         
         self.video_controls.seek_requested.connect(self.player.setPosition)
@@ -677,10 +669,9 @@ class CleanerPreviewWidget(QWidget):
         elif ext in VIDEO_EXTS: self.setup_video(path)
         else:
             self._clear_media()
-            self._create_view()
-            self.media_layout.insertWidget(0, self.view)
+            if hasattr(self, 'stacked_widget'): self.stacked_widget.setCurrentWidget(self.view)
             self.current_media_type = None
-            self.video_item.hide()
+            
             self.pixmap_item.hide()
             self.video_controls.hide()
             self.time_overlay.hide()
@@ -700,19 +691,11 @@ class CleanerPreviewWidget(QWidget):
             else: self.player.play()
 
     def _on_media_status_changed(self, status):
+        import logging; import time; logging.info(f"  [PERF] _on_media_status_changed called at {time.time()} with status: {status}")
         from PyQt6.QtMultimedia import QMediaPlayer
-        import time; logging.info(f" [PERF] _on_media_status_changed called at {time.perf_counter():.4f} with status: {status}")
         if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
-            if self.media_layout.indexOf(self.view) == -1:
-                logging.info(f" [PERF] inserting view into layout at {time.perf_counter():.4f}")
-                self.media_layout.insertWidget(0, self.view)
-                self.view.show()
-            if hasattr(self, 'video_item') and self.video_item:
-                if self.current_media_type == 'video':
-                    self.video_item.show()
-                if self.video_item.isVisible() and self.video_item.nativeSize().isValid():
-                    sz = self.video_item.nativeSize()
-                    self._fit_video_size_changed(sz)
+            if hasattr(self, 'stacked_widget') and self.stacked_widget and self.current_media_type == 'video':
+                self.stacked_widget.setCurrentWidget(self.video_widget)
 
     def _on_player_state_changed(self, state):
         import time; logging.info(f" [PERF] _on_player_state_changed called at {time.perf_counter():.4f} with state: {state}")

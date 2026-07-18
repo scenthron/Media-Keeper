@@ -789,6 +789,7 @@ class ZoomableGraphicsView(QGraphicsView):
     fullscreen_toggled = pyqtSignal()
     folder_dropped = pyqtSignal(str, bool)
     browse_requested = pyqtSignal()
+    controls_visibility_changed = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1014,6 +1015,7 @@ class ZoomableGraphicsView(QGraphicsView):
         if not self.is_fullscreen_mode: return
         if self.floating_controls: self.floating_controls.show()
         if self.time_overlay and getattr(self, 'current_is_video', False): self.time_overlay.show()
+        self.controls_visibility_changed.emit(True)
         
         main_app = find_main_app(self)
         if hasattr(main_app, 'media_player') and main_app.media_player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
@@ -1034,6 +1036,7 @@ class ZoomableGraphicsView(QGraphicsView):
             return
         if self.floating_controls: self.floating_controls.hide()
         if self.time_overlay: self.time_overlay.hide()
+        self.controls_visibility_changed.emit(False)
         
         if hasattr(self, 'play_icon_lbl'): self.play_icon_lbl.hide()
         if hasattr(self, 'segment_indicator'): self.segment_indicator.hide()
@@ -2505,6 +2508,7 @@ class SorterViewerArea(QWidget):
         self.single_view.fullscreen_toggled.connect(self.fullscreen_toggled.emit)
         self.single_view.folder_dropped.connect(self.folder_dropped.emit)
         self.single_view.browse_requested.connect(self.browse_requested.emit)
+        self.single_view.controls_visibility_changed.connect(self._on_controls_visibility_changed)
         self.stack.addWidget(self.single_view)
         
         # Expose video_item and pixmap_item for play/fit compatibility
@@ -2843,7 +2847,6 @@ class SorterViewerArea(QWidget):
         container_right_w = w
         container_right_h = 400
         self.overlay_container_right.setGeometry(self.width() - container_right_w - m_right, m, container_right_w, container_right_h)
-        self.overlay_container_right.show()
         self.overlay_container_right.raise_()
         
         # Left container (fullscreen toggle)
@@ -2852,12 +2855,14 @@ class SorterViewerArea(QWidget):
         container_left_h = w
         self.overlay_container_left.setGeometry(m, m, container_left_w, container_left_h)
         
-        # Only show left container if we are in Single View mode (idx 0)
-        if self.current_view_mode == 0:
-            self.overlay_container_left.show()
-            self.overlay_container_left.raise_()
-        else:
-            self.overlay_container_left.hide()
+        is_fs = getattr(self.single_view, 'is_fullscreen_mode', False)
+        if not is_fs:
+            self.overlay_container_right.show()
+            if self.current_view_mode == 0:
+                self.overlay_container_left.show()
+                self.overlay_container_left.raise_()
+            else:
+                self.overlay_container_left.hide()
         
         if not self.loading_overlay.isHidden():
             self._center_loading_overlay()
@@ -2945,6 +2950,17 @@ class SorterViewerArea(QWidget):
             self.disable_hover_preview = True
             
         self.apply_hover_preview_state()
+
+    def _on_controls_visibility_changed(self, visible: bool):
+        is_fs = getattr(self.single_view, 'is_fullscreen_mode', False)
+        if not is_fs: return
+        if visible:
+            self.overlay_container_right.show()
+            if self.current_view_mode == 0:
+                self.overlay_container_left.show()
+        else:
+            self.overlay_container_right.hide()
+            self.overlay_container_left.hide()
 
     def on_toggle_preview_clicked(self, checked: bool) -> None:
         """Обработчик клика кнопки 👁 — делегирует в toggle_hover_preview()."""
@@ -3077,13 +3093,12 @@ class SorterViewerArea(QWidget):
     def set_background_color(self, color): self.single_view.set_background_color(color)
     def set_fullscreen_mode(self, enabled, controls_widget=None):
         self.single_view.set_fullscreen_mode(enabled, controls_widget)
-        if enabled:
-            self.overlay_container_right.hide()
-            self.overlay_container_left.hide()
-        else:
+        if not enabled:
             self.overlay_container_right.show()
             if self.current_view_mode == 0:
                 self.overlay_container_left.show()
+            else:
+                self.overlay_container_left.hide()
         self.update_fullscreen_tooltip(enabled)
 
     def update_fullscreen_tooltip(self, is_fullscreen: bool):

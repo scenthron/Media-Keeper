@@ -853,10 +853,12 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
     # --- Item interaction ---
 
     def on_item_clicked(self, index: QModelIndex) -> None:
+        import time; self._click_time = time.perf_counter(); logging.info(f"\n=== CLICKED VIDEO AT {self._click_time:.4f} ===")
         item = index.data(Qt.ItemDataRole.UserRole)
         if item and item['type'] == 'file':
             self.preview_widget.load_file(item['path'])
             self.update_file_info(item['path'])
+            import time; logging.info(f"[PERF] on_item_clicked finished. Elapsed: {time.perf_counter() - self._click_time:.4f}s")
         elif item and item['type'] == 'empty_folder':
             self.preview_widget.show_empty(item['path'])
             self.update_file_info(item['path'])

@@ -487,9 +487,9 @@ class CleanerPreviewWidget(QWidget):
         QTimer.singleShot(50, self.reset_view)
 
     def setup_video(self, path):
+        import time; t0 = time.perf_counter(); logging.info(f"  [PERF] setup_video started")
         self._clear_media()
         self._create_view()
-        self.media_layout.insertWidget(0, self.view)
         
         self.pixmap_item.hide()
         self.text_item.hide()
@@ -543,10 +543,10 @@ class CleanerPreviewWidget(QWidget):
         from utils_io import strip_long_path_prefix
         from PyQt6.QtCore import QUrl
         clean_path = strip_long_path_prefix(path)
+        logging.info(f"  [PERF] Calling setSource at {time.perf_counter() - t0:.4f}s")
         self.player.setSource(QUrl.fromLocalFile(clean_path))
+        logging.info(f"  [PERF] Finished setSource at {time.perf_counter() - t0:.4f}s")
         
-
-            
         self.resizeEvent(None)
         
         if is_audio:
@@ -573,9 +573,12 @@ class CleanerPreviewWidget(QWidget):
         
         self.player.setPlaybackRate(speed)
         self.player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
+        logging.info(f"  [PERF] Calling player.play() at {time.perf_counter() - t0:.4f}s")
         self.player.play()
+        logging.info(f"  [PERF] setup_video fully completed. Total setup_video time: {time.perf_counter() - t0:.4f}s")
 
     def load_file(self, path):
+        import time; t0 = time.perf_counter(); logging.info(f" [PERF] load_file started for {path}")
         from utils_io import strip_long_path_prefix
         path = strip_long_path_prefix(path)
         self.stop_playback(True)
@@ -585,7 +588,9 @@ class CleanerPreviewWidget(QWidget):
             return
         self.current_path = path
         ext = os.path.splitext(path)[1].lower()
+        logging.info(f" [PERF] update_meta calling at {time.perf_counter() - t0:.4f}s")
         self.update_meta(path)
+        logging.info(f" [PERF] update_meta finished at {time.perf_counter() - t0:.4f}s")
         
         if ext in ['.jpg', '.jpeg', '.png', '.bmp']: self.setup_static_image(path)
         elif ext in ['.gif', '.webp']: self.setup_animated(path)
@@ -602,6 +607,7 @@ class CleanerPreviewWidget(QWidget):
             self.text_item.setPlainText(AppContext.tr("cln_prev_no_preview"))
             self.text_item.show()
             self.reset_view()
+        logging.info(f" [PERF] load_file completely finished. Elapsed: {time.perf_counter() - t0:.4f}s")
 
     def toggle_playback(self):
         from PyQt6.QtGui import QMovie

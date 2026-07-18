@@ -603,9 +603,12 @@ class VideoPlayerControls(QWidget):
         self.btn_speed.blockSignals(True)
         self.btn_speed.setChecked(is_active)
         if is_active:
-            self.btn_speed.setText("x1.0")
+            if float(speed_val).is_integer():
+                self.btn_speed.setText(f"x{int(speed_val)}")
+            else:
+                self.btn_speed.setText(f"x{speed_val:.1f}")
         else:
-            self.btn_speed.setText(f"x{speed_val:.1f}")
+            self.btn_speed.setText("x1")
         self.btn_speed.blockSignals(False)
         self.popup.set_value(speed_val)
         

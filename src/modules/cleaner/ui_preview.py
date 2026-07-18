@@ -446,14 +446,12 @@ class CleanerPreviewWidget(QWidget):
         self.stop_playback(True)
         import os
         if not os.path.exists(path):
-            from app_context import AppContext
             self.show_empty(AppContext.tr("msg_error_file"))
             return
         self.current_path = path
         ext = os.path.splitext(path)[1].lower()
         self.update_meta(path)
         
-        from app_context import AppContext
         from modules.cleaner.logic_meta import VIDEO_EXTS
         if ext in ['.jpg', '.jpeg', '.png', '.bmp']: self.setup_static_image(path)
         elif ext in ['.gif', '.webp']: self.setup_animated(path)

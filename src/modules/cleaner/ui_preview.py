@@ -140,8 +140,8 @@ class CleanerPreviewWidget(QWidget):
         
         # Connect Controls Signals
         self.video_controls.play_pause_clicked.connect(self.toggle_playback)
-        self.video_controls.seek_requested.connect(self.player.setPosition)
-        self.video_controls.seek_moved.connect(self.player.setPosition)
+        
+        
         self.video_controls.seek_drag_start.connect(self._on_scrub_start)
         self.video_controls.seek_drag_stop.connect(self._on_scrub_stop)
         self.video_controls.volume_changed.connect(self.change_volume)

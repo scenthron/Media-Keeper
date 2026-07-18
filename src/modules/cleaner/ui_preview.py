@@ -452,7 +452,6 @@ class CleanerPreviewWidget(QWidget):
         ext = os.path.splitext(path)[1].lower()
         self.update_meta(path)
         
-        from modules.cleaner.logic_meta import VIDEO_EXTS
         if ext in ['.jpg', '.jpeg', '.png', '.bmp']: self.setup_static_image(path)
         elif ext in ['.gif', '.webp']: self.setup_animated(path)
         elif ext in VIDEO_EXTS: self.setup_video(path)

@@ -441,6 +441,77 @@ class CleanerPreviewWidget(QWidget):
         self.video_item.setSize(size)
         QTimer.singleShot(50, self.reset_view)
 
+    def load_file(self, path):
+        from utils_io import strip_long_path_prefix
+        path = strip_long_path_prefix(path)
+        self.stop_playback(True)
+        import os
+        if not os.path.exists(path):
+            from context import AppContext
+            self.show_empty(AppContext.tr("msg_error_file"))
+            return
+        self.current_path = path
+        ext = os.path.splitext(path)[1].lower()
+        self.update_meta(path)
+        
+        from context import AppContext
+        from modules.cleaner.logic_meta import VIDEO_EXTS
+        if ext in ['.jpg', '.jpeg', '.png', '.bmp']: self.setup_static_image(path)
+        elif ext in ['.gif', '.webp']: self.setup_animated(path)
+        elif ext in VIDEO_EXTS: self.setup_video(path)
+        else:
+            self._clear_media()
+            self._create_view()
+            self.current_media_type = None
+            self.video_item.hide()
+            self.pixmap_item.hide()
+            self.video_controls.hide()
+            self.time_overlay.hide()
+            self.text_item.setPlainText(AppContext.tr("cln_prev_no_preview"))
+            self.text_item.show()
+            self.reset_view()
+
+    def toggle_playback(self):
+        from PyQt6.QtGui import QMovie
+        from PyQt6.QtMultimedia import QMediaPlayer
+        if self.current_media_type == 'movie' and hasattr(self, 'movie') and self.movie:
+            if self.movie.state() == QMovie.MovieState.Running: self.movie.setPaused(True)
+            else: self.movie.start()
+        elif self.current_media_type == 'video' and hasattr(self, 'player') and self.player:
+            if self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState: self.player.pause()
+            else: self.player.play()
+
+    def _on_media_status_changed(self, status):
+        from PyQt6.QtMultimedia import QMediaPlayer
+        if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
+            if hasattr(self, 'video_item') and self.video_item and self.video_item.isVisible() and self.video_item.nativeSize().isValid():
+                sz = self.video_item.nativeSize()
+                self._fit_video_size_changed(sz)
+
+    def _on_player_state_changed(self, state):
+        from PyQt6.QtMultimedia import QMediaPlayer
+        is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
+        self.video_controls.set_playing_state(is_playing)
+        if hasattr(self, 'update_segment_indicator'):
+            self.update_segment_indicator()
+
+    def _fit_video_size_changed(self, size):
+        if hasattr(self, 'video_item') and self.video_item:
+            self.video_item.setSize(size)
+            from PyQt6.QtCore import QTimer
+            QTimer.singleShot(50, self.reset_view)
+            
+    def _on_movie_frame(self):
+        if not hasattr(self, 'movie') or not self.movie: return
+        pix = self.movie.currentPixmap()
+        if not pix.isNull():
+             if hasattr(self, 'pixmap_item') and self.pixmap_item:
+                 self.pixmap_item.setPixmap(pix)
+             # Center on first frame load
+             if self.movie.frameCount() > 0 and self.movie.currentFrameNumber() == 0:
+                 from PyQt6.QtCore import QTimer
+                 QTimer.singleShot(10, self.reset_view)
+
     def reset_view(self):
         """
         Resets zoom and pans to center content within the viewport.

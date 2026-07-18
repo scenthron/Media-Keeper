@@ -170,9 +170,9 @@ class CleanerPreviewWidget(QWidget):
         # Settings Signals
         self.video_controls.speed_changed.connect(self._on_speed_changed)
         self.video_controls.loop_toggled.connect(self._on_loop_toggled)
-        self.video_controls.apply_all_toggled.connect(self._on_apply_all_toggled)
+        self.video_controls.speed_toggled.connect(self._on_speed_toggled)
         
-        self.smart_preview_mgr = SmartPreviewManager(self.player, lambda: float(AppContext.session_video_speed) if AppContext.session_all_videos_active else 1.0)
+        self.smart_preview_mgr = SmartPreviewManager(self.player, lambda: float(AppContext.session_fast_speed_val) if getattr(AppContext, "session_video_speed_active", False) else 1.0)
         self.smart_preview_mgr.set_active(AppContext.session_segment_view)
         
         # Time Overlay

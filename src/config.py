@@ -72,10 +72,11 @@ class AppContext:
     
     # Global media playback session variables shared across all modules
     global_volume = 0.1
-    session_video_speed = 1.0
+    session_fast_speed_val = 2.0
+    session_video_speed_active = False
+    session_audio_speed_active = False
     session_loop = False
-    session_all_videos_active = False
-    session_segment_view = False
+        session_segment_view = False
     
     # Global Icon Cache to prevent thousands of disk reads and SVG parses
     _icon_cache = {}
@@ -101,7 +102,7 @@ class AppContext:
     def save_media_settings():
         try:
             import logging
-            logging.info(f"Media settings changed: loop={AppContext.session_loop}, all_videos={AppContext.session_all_videos_active}, segment_view={AppContext.session_segment_view}")
+            logging.info(f"Media settings changed: loop={AppContext.session_loop}, segment_view={AppContext.session_segment_view}")
         except Exception as e:
             pass
             

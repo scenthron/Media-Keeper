@@ -749,9 +749,9 @@ class LargePreviewPopup(QDialog):
             
             self.controls.speed_changed.connect(self.on_speed_changed)
             self.controls.loop_toggled.connect(self.on_loop_toggled)
-            self.controls.apply_all_toggled.connect(self.on_apply_all_toggled)
+            self.controls.speed_toggled.connect(self.on_speed_toggled)
             
-            self.smart_preview_mgr = SmartPreviewManager(self.media_player, lambda: float(AppContext.session_video_speed) if apply_all else 1.0)
+            self.smart_preview_mgr = SmartPreviewManager(self.media_player, lambda: float(AppContext.session_fast_speed_val) if getattr(AppContext, "session_video_speed_active", False) else 1.0)
             self.smart_preview_mgr.set_active(segment_view)
             
             self.layout.addWidget(self.controls)
@@ -815,7 +815,7 @@ class LargePreviewPopup(QDialog):
             
             self.controls.speed_changed.connect(self.on_speed_changed)
             self.controls.loop_toggled.connect(self.on_loop_toggled)
-            self.controls.apply_all_toggled.connect(self.on_apply_all_toggled)
+            self.controls.speed_toggled.connect(self.on_speed_toggled)
             
             self.layout.addWidget(self.controls)
             

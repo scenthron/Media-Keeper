@@ -247,19 +247,14 @@ class PlayerMixin:
         elif ext in get_filtered_exts(VIDEO_EXTS, "logic_player_video"):
             self.video_controls.show()
             self.current_media_is_video = True
+            loop = AppContext.session_loop
+            is_fast_active = AppContext.session_video_speed_active
+            speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
             
-            apply_all = AppContext.session_all_videos_active
-            
-            if apply_all:
-                speed = float(AppContext.session_video_speed)
-                loop = AppContext.session_loop
-                segment_view = AppContext.session_segment_view
-            else:
-                speed = 1.0
-                loop = False
-                segment_view = False
-            
-            self.video_controls.set_popup_values(speed, loop, apply_all, True)
+            self.media_player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
+            self.video_controls.set_playing_state(False)
+            self.video_controls.update_speed_button(AppContext.session_fast_speed_val, is_fast_active)
+            self.video_controls.update_loop_button(loop)
             if hasattr(self, 'smart_preview_mgr'):
                 self.smart_preview_mgr.set_active(segment_view)
             if hasattr(self, 'viewer') and hasattr(self.viewer, 'single_view'):
@@ -289,7 +284,13 @@ class PlayerMixin:
             
             
             # Audio always resets speed by default logic
-            self.video_controls.set_popup_values(1.0, False, False, False)
+            AppContext.session_audio_speed_active = False
+            is_fast_active = False
+            speed = 1.0
+            loop = AppContext.session_loop
+            self.media_player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
+            self.video_controls.update_speed_button(AppContext.session_fast_speed_val, is_fast_active)
+            self.video_controls.update_loop_button(loop)
             
             self.media_player.stop()
             from utils_io import strip_long_path_prefix
@@ -383,10 +384,32 @@ class PlayerMixin:
             if hasattr(self, 'smart_preview_mgr'):
                 self.smart_preview_mgr.set_user_paused(False)
 
-    def _on_speed_changed(self, speed):
+    def _on_speed_toggled(self):
+        if getattr(self, 'current_media_is_video', False):
+            AppContext.session_video_speed_active = not AppContext.session_video_speed_active
+            active = AppContext.session_video_speed_active
+        else:
+            AppContext.session_audio_speed_active = not AppContext.session_audio_speed_active
+            active = AppContext.session_audio_speed_active
+            
+        speed = AppContext.session_fast_speed_val if active else 1.0
         self.media_player.setPlaybackRate(speed)
-        if self.current_media_is_video:
-            AppContext.session_video_speed = float(speed)
+        self.video_controls.update_speed_button(AppContext.session_fast_speed_val, active)
+
+    def _on_speed_changed(self, speed_val):
+        AppContext.session_fast_speed_val = float(speed_val)
+        if getattr(self, 'current_media_is_video', False):
+            AppContext.session_video_speed_active = True
+        else:
+            AppContext.session_audio_speed_active = True
+            
+        self.media_player.setPlaybackRate(speed_val)
+        self.video_controls.update_speed_button(AppContext.session_fast_speed_val, True)
+
+    def _on_loop_toggled(self, is_loop):
+        self.media_player.setLoops(QMediaPlayer.Loops.Infinite if is_loop else QMediaPlayer.Loops.Once)
+        AppContext.session_loop = is_loop
+
 
     def _set_loop_state(self, enabled):
         AppContext.session_loop = enabled

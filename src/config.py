@@ -76,7 +76,7 @@ class AppContext:
     session_video_speed_active = False
     session_audio_speed_active = False
     session_loop = False
-        session_segment_view = False
+    session_segment_view = False
     
     # Global Icon Cache to prevent thousands of disk reads and SVG parses
     _icon_cache = {}

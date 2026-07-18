@@ -212,6 +212,10 @@ class CleanerPreviewWidget(QWidget):
 
     def _on_media_duration_changed(self, duration):
         import time; logging.info(f" [PERF] _on_media_duration_changed called at {time.perf_counter():.4f} with duration: {duration}")
+        if self.current_media_type == "video" and duration > 1000:
+            try:
+                self.player.setPosition(100)
+            except Exception: pass
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.start_video(duration)
             
@@ -580,6 +584,14 @@ class CleanerPreviewWidget(QWidget):
 
     def load_file(self, path):
         import time; t0 = time.perf_counter(); logging.info(f" [PERF] load_file started for {path}")
+        
+        # Start heartbeat
+        if not hasattr(self, '_heartbeat_timer'):
+            from PyQt6.QtCore import QTimer
+            self._heartbeat_timer = QTimer(self)
+            self._heartbeat_timer.timeout.connect(lambda: logging.info(f"   [HEARTBEAT] UI Thread is ALIVE at {time.perf_counter():.4f}"))
+        self._heartbeat_timer.start(100)
+        
         from utils_io import strip_long_path_prefix
         path = strip_long_path_prefix(path)
         self.stop_playback(True)
@@ -639,6 +651,8 @@ class CleanerPreviewWidget(QWidget):
         import time; logging.info(f" [PERF] _on_player_state_changed called at {time.perf_counter():.4f} with state: {state}")
         from PyQt6.QtMultimedia import QMediaPlayer
         is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
+        if is_playing and hasattr(self, '_heartbeat_timer'):
+            self._heartbeat_timer.stop()
         self.video_controls.set_playing_state(is_playing)
         if hasattr(self, 'update_segment_indicator'):
             self.update_segment_indicator()

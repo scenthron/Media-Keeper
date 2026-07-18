@@ -2,7 +2,50 @@
 from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS, get_filtered_exts
 import datetime
 import subprocess
-import logging
+import logging\n
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+
+class MediaPlayerPool:
+    _instance = None
+    
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = MediaPlayerPool()
+        return cls._instance
+        
+    def __init__(self):
+        self.pool = []
+        
+    def acquire(self):
+        safe_states = (QMediaPlayer.MediaStatus.LoadedMedia, QMediaPlayer.MediaStatus.BufferedMedia, 
+                       QMediaPlayer.MediaStatus.EndOfMedia, QMediaPlayer.MediaStatus.InvalidMedia, 
+                       QMediaPlayer.MediaStatus.NoMedia)
+                       
+        for item in self.pool:
+            p = item['player']
+            if p.mediaStatus() in safe_states:
+                self.pool.remove(item)
+                return p, item['audio']
+                
+        p = QMediaPlayer()
+        a = QAudioOutput()
+        p.setAudioOutput(a)
+        return p, a
+        
+    def release(self, player, audio):
+        player.pause()
+        player.setVideoOutput(None)
+        
+        try:
+            player.positionChanged.disconnect()
+            player.durationChanged.disconnect()
+            player.playbackStateChanged.disconnect()
+            player.mediaStatusChanged.disconnect()
+        except Exception: pass
+        
+        self.pool.append({'player': player, 'audio': audio})
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame, QSplitter, 
     QTableWidget, QTableWidgetItem, QHeaderView, QGraphicsView, QGraphicsScene,
@@ -355,6 +398,7 @@ class CleanerPreviewWidget(QWidget):
         self.meta_table.setRowCount(0)
 
     def _clear_media(self):
+        import time; t_start = time.perf_counter()
         if hasattr(self, 'player') and self.player:
             try:
                 self.player.positionChanged.disconnect()
@@ -365,9 +409,14 @@ class CleanerPreviewWidget(QWidget):
                 self.video_controls.seek_moved.disconnect()
             except Exception: pass
             
+            import logging
+            logging.info(f'    [CLEAR] Before stop(): {time.perf_counter() - t_start:.4f}s')
             self.player.stop()
+            logging.info(f'    [CLEAR] After stop(): {time.perf_counter() - t_start:.4f}s')
             from PyQt6.QtCore import QUrl
+            logging.info(f'    [CLEAR] Before setSource(): {time.perf_counter() - t_start:.4f}s')
             self.player.setSource(QUrl())
+            logging.info(f'    [CLEAR] After setSource(): {time.perf_counter() - t_start:.4f}s')
             
             try:
                 import time
@@ -378,10 +427,12 @@ class CleanerPreviewWidget(QWidget):
                     QCoreApplication.processEvents()
                     time.sleep(0.01)
             except Exception as e:
-                logging.error(f"Error waiting for cleaner media player release: {e}")
+                pass
                 
+            logging.info(f'    [CLEAR] Before deleteLater(): {time.perf_counter() - t_start:.4f}s')
             self.player.deleteLater()
             self.player = None
+            logging.info(f'    [CLEAR] After deleteLater(): {time.perf_counter() - t_start:.4f}s')
             
         if hasattr(self, 'audio_output') and self.audio_output:
             self.audio_output.deleteLater()
@@ -392,6 +443,7 @@ class CleanerPreviewWidget(QWidget):
             self.movie = None
             
         if hasattr(self, 'view') and self.view:
+            logging.info(f'    [CLEAR] Before view deleteLater(): {time.perf_counter() - t_start:.4f}s')
             self.media_layout.removeWidget(self.view)
             self.view.deleteLater()
             self.view = None
@@ -399,8 +451,10 @@ class CleanerPreviewWidget(QWidget):
             self.video_item = None
             self.pixmap_item = None
             self.text_item = None
+            logging.info(f'    [CLEAR] After view deleteLater(): {time.perf_counter() - t_start:.4f}s')
             
         self.smart_preview_mgr = None
+        logging.info(f'    [CLEAR] Total time: {time.perf_counter() - t_start:.4f}s')
 
     def _create_view(self):
         self.scene = QGraphicsScene(self)
@@ -541,10 +595,8 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.seeker.setEnabled(True)
         self.video_controls.set_playing_state(False)
         
-        from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
-        self.player = QMediaPlayer()
-        self.audio_output = QAudioOutput()
-        self.player.setAudioOutput(self.audio_output)
+        pool = MediaPlayerPool.get_instance()
+        self.player, self.audio_output = pool.acquire()
         self.player.setVideoOutput(self.video_item)
         self.audio_output.setVolume(self.video_controls.vol_slider.value() / 100.0)
         

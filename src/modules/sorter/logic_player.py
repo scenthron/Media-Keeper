@@ -111,23 +111,25 @@ class SmartPreviewManager:
             speed = 1.0
         if speed <= 0: speed = 1.0
         
-        # Check how much we played in this segment (scaled by speed)
+        # Check how much we played in this segment
         chunk_len = self.total_duration_ms / self.num_segments
         segment_start_pos = int(self.current_segment_idx * chunk_len)
         
         time_played_ms = (current_pos - segment_start_pos)
         
         # if user seeked manually far away, disable segment view
-        if abs(current_pos - self.last_known_pos) > 2000:
+        # timer interval is 200ms. expected max advancement is around 200 * speed.
+        # we add a generous margin of 1500ms to allow for timer inaccuracies or minor skips
+        expected_advancement = (200 * speed) + 1500
+        if abs(current_pos - self.last_known_pos) > expected_advancement:
             self.set_user_paused(True)
             return
             
         self.last_known_pos = current_pos
         
-        # time_played scaled by speed to check actual watch time
-        real_time_watched_ms = time_played_ms / speed
-        
-        if real_time_watched_ms >= self.segment_play_time_ms:
+        # In segment view, we play a fixed amount of media time (segment_play_time_ms)
+        # We also ensure we don't play past the chunk length.
+        if time_played_ms >= self.segment_play_time_ms or time_played_ms >= chunk_len or time_played_ms < 0:
             # jump to next
             next_idx = self.current_segment_idx + 1
             if next_idx >= self.num_segments:

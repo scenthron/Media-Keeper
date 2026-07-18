@@ -42,28 +42,11 @@ class CleanerPreviewWidget(QWidget):
         self.media_layout.setContentsMargins(0,0,0,0)
         self.media_layout.setSpacing(0)
         
-        self.scene = QGraphicsScene(self)
-        self.view = ClickableGraphicsView(self.scene)
-        
-        # Connect Signals
-        self.view.clicked.connect(self.toggle_playback)
-        self.view.double_clicked.connect(self.open_current_file)
-        self.view.middle_clicked.connect(self.open_containing_folder)
-        self.view.right_clicked.connect(self.reset_view)
-        
-        self.video_item = QGraphicsVideoItem()
-        self.scene.addItem(self.video_item)
-        self.video_item.hide() 
-        self.pixmap_item = self.scene.addPixmap(QPixmap())
-        self.pixmap_item.hide() 
-        self.text_item = QGraphicsTextItem()
-        self.text_item.setDefaultTextColor(QColor("#555555"))
-        # Using a slightly smaller font for hints
-        self.text_item.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        self.scene.addItem(self.text_item)
-        self.text_item.hide()
-        
-        self.media_layout.addWidget(self.view)
+        self.view = None
+        self.scene = None
+        self.video_item = None
+        self.pixmap_item = None
+        self.text_item = None
         
         # Controls
         self.video_controls = VideoPlayerControls()
@@ -152,12 +135,8 @@ class CleanerPreviewWidget(QWidget):
         self.layout.addWidget(self.splitter)
         self.splitter.setSizes([800, 26]) # Show only header initially
         
-        # Player Setup
-        self.player = QMediaPlayer()
-        self.audio_output = QAudioOutput()
-        self.player.setAudioOutput(self.audio_output)
-        self.player.setVideoOutput(self.video_item)
-        self.audio_output.setVolume(0.05)
+        self.player = None
+        self.audio_output = None
         
         # Connect Controls Signals
         self.video_controls.play_pause_clicked.connect(self.toggle_playback)
@@ -172,21 +151,13 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.loop_toggled.connect(self._on_loop_toggled)
         self.video_controls.speed_toggled.connect(self._on_speed_toggled)
         
-        self.smart_preview_mgr = SmartPreviewManager(self.player, lambda: float(AppContext.session_fast_speed_val) if getattr(AppContext, "session_video_speed_active", False) else 1.0)
-        self.smart_preview_mgr.set_active(AppContext.session_segment_view)
+        self.smart_preview_mgr = None
         
         # Time Overlay
         self.time_overlay = TimeOverlayWidget(self.media_container)
         self.time_overlay.hide()
 
-        self.player.positionChanged.connect(self.video_controls.update_position)
-        self.player.positionChanged.connect(self._update_overlay_time)
-        self.player.durationChanged.connect(self.video_controls.update_duration)
-        self.player.durationChanged.connect(self._update_overlay_duration)
-        self.player.durationChanged.connect(self._on_media_duration_changed)
-        self.player.playbackStateChanged.connect(self._on_player_state_changed)
-        self.player.mediaStatusChanged.connect(self._on_media_status_changed)
-        self.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
+        
         
         self.movie = None
         self.show_empty("...")
@@ -377,138 +348,73 @@ class CleanerPreviewWidget(QWidget):
         self.meta_table.clear()
         self.meta_table.setRowCount(0)
 
-    def stop_playback(self, full_reset=False):
-        self.player.stop()
-        self.player.setSource(QUrl())
-        if self.movie:
+    def _clear_media(self):
+        if hasattr(self, 'player') and self.player:
+            try:
+                self.player.stop()
+                self.player.positionChanged.disconnect()
+                self.player.durationChanged.disconnect()
+                self.player.playbackStateChanged.disconnect()
+                self.player.mediaStatusChanged.disconnect()
+                self.video_controls.seek_requested.disconnect()
+                self.video_controls.seek_moved.disconnect()
+            except Exception: pass
+            self.player.deleteLater()
+            self.player = None
+            
+        if hasattr(self, 'audio_output') and self.audio_output:
+            self.audio_output.deleteLater()
+            self.audio_output = None
+            
+        if hasattr(self, 'movie') and self.movie:
             self.movie.stop()
             self.movie = None
-        self.video_controls.set_playing_state(False)
+            
+        if hasattr(self, 'view') and self.view:
+            self.media_layout.removeWidget(self.view)
+            self.view.deleteLater()
+            self.view = None
+            self.scene = None
+            self.video_item = None
+            self.pixmap_item = None
+            self.text_item = None
+            
+        self.smart_preview_mgr = None
 
-    def pause_playback(self):
-        logging.info(f"CleanerPreviewWidget: Пауза воспроизведения. Файл: {self.current_path}, тип: {self.current_media_type}")
-        if self.current_media_type == 'movie' and self.movie:
-            self.movie.setPaused(True)
-        elif self.current_media_type == 'video':
-            self.player.pause()
-
-    def load_file(self, path):
-        self.stop_playback()
-        if not os.path.exists(path):
-            self.show_empty(AppContext.tr("msg_error_file"))
-            return
-        self.current_path = path
-        ext = os.path.splitext(path)[1].lower()
-        self.update_meta(path)
-        if ext in ['.jpg', '.jpeg', '.png', '.bmp']: self.setup_static_image(path)
-        elif ext in ['.gif', '.webp']: self.setup_animated(path)
-        elif ext in VIDEO_EXTS: self.setup_video(path)
-        else:
-            self.current_media_type = None
-            self.video_item.hide()
-            self.pixmap_item.hide()
-            self.video_controls.hide()
-            self.time_overlay.hide()
-            self.text_item.setPlainText(AppContext.tr("cln_prev_no_preview"))
-            self.text_item.show()
-            self.reset_view()
-
-    def setup_static_image(self, path):
-        self.current_media_type = 'image'
-        self.video_controls.hide()
-        self.time_overlay.hide()
+    def _create_view(self):
+        self.scene = QGraphicsScene(self)
+        self.view = ClickableGraphicsView(self.scene)
+        self.view.clicked.connect(self.toggle_playback)
+        self.view.double_clicked.connect(self.open_current_file)
+        self.view.middle_clicked.connect(self.open_containing_folder)
+        self.view.right_clicked.connect(self.reset_view)
+        self.view.mouseMoveEvent = self._view_mouse_move_event
+        self.view.leaveEvent = self._view_leave_event
+        self.view.setMouseTracking(True)
+        
+        from PyQt6.QtMultimediaWidgets import QGraphicsVideoItem
+        self.video_item = QGraphicsVideoItem()
+        self.scene.addItem(self.video_item)
+        self.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
         self.video_item.hide()
-        self.text_item.hide()
-        pix = QPixmap(path)
-        if pix.isNull():
-            self.text_item.setPlainText(AppContext.tr("cln_prev_img_err"))
-            self.text_item.show()
-            return
-        self.pixmap_item.setPixmap(pix)
-        self.pixmap_item.show()
-        # Delay to ensure fit happens after layout update
-        QTimer.singleShot(50, self.reset_view)
-
-    def setup_animated(self, path):
-        self.current_media_type = 'movie'
-        self.video_controls.hide()
-        self.time_overlay.hide()
-        self.video_item.hide()
-        self.text_item.hide()
-        self.movie = QMovie(path)
-        self.movie.setCacheMode(QMovie.CacheMode.CacheAll)
-        self.movie.jumpToFrame(0)
-        self.pixmap_item.setPos(0, 0)
-        self.movie.frameChanged.connect(self._on_movie_frame)
-        self._on_movie_frame() 
-        self.movie.start()
-        self.pixmap_item.show()
-        QTimer.singleShot(50, self.reset_view)
-
-    def _on_movie_frame(self):
-        if not self.movie: return
-        pix = self.movie.currentPixmap()
-        if not pix.isNull():
-             self.pixmap_item.setPixmap(pix)
-             # Center on first frame load
-             if self.movie.frameCount() > 0 and self.movie.currentFrameNumber() == 0:
-                 QTimer.singleShot(10, self.reset_view)
-
-    def setup_video(self, path):
-        self.current_media_type = 'video'
+        
+        from PyQt6.QtGui import QPixmap, QColor, QFont
+        self.pixmap_item = self.scene.addPixmap(QPixmap())
         self.pixmap_item.hide()
+        
+        self.text_item = QGraphicsTextItem()
+        self.text_item.setDefaultTextColor(QColor("#555555"))
+        self.text_item.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        self.scene.addItem(self.text_item)
         self.text_item.hide()
         
-        self.time_overlay.show()
-        self.time_overlay.set_time(0, 0)
-        self.resizeEvent(None)
-        
-        ext = os.path.splitext(path)[1].lower()
-        is_audio = ext in ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma', '.aac']
-        
-        if is_audio:
-            self.video_item.hide()
-            track_name = os.path.splitext(os.path.basename(path))[0]
-            # Styled text for audio files matching Sorter popup
-            html_text = f"<div style='text-align: center; line-height: 1.4; color: #3b82f6;'>🎵<br>{track_name}</div>"
-            self.text_item.setHtml(html_text)
-            self.text_item.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-            self.text_item.setTextWidth(400) # Give width for HTML alignment to work
-            self.text_item.show()
-            QTimer.singleShot(50, self.reset_view)
-        else:
-            self.text_item.hide()
-            self.video_item.show()
-            
-        self.video_controls.show()
-        self.video_controls.seeker.setEnabled(True)
+        self.media_layout.insertWidget(0, self.view)
+
+    def stop_playback(self, full_reset=False):
+        if hasattr(self, 'player') and self.player: self.player.pause()
+        if hasattr(self, 'movie') and self.movie: self.movie.stop()
         self.video_controls.set_playing_state(False)
-        
-        self.player.setSource(QUrl.fromLocalFile(path))
-        
-        if is_audio:
-            AppContext.session_audio_speed_active = False
-            is_fast_active = False
-            speed = 1.0
-            loop = AppContext.session_loop
-            segment_view = False
-        else:
-            is_fast_active = AppContext.session_video_speed_active
-            speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
-            loop = AppContext.session_loop
-            segment_view = AppContext.session_segment_view
-            
-        self.video_controls.set_playing_state(False)
-        self.video_controls.update_speed_button(AppContext.session_fast_speed_val, is_fast_active)
-        self.video_controls.update_loop_button(loop)
-        if hasattr(self, 'smart_preview_mgr'):
-            self.smart_preview_mgr.set_active(segment_view)
-        
-        # Apply to Player
-        self.player.setPlaybackRate(speed)
-        self.player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
-        
-        self.player.play() 
+        if full_reset: self._clear_media()
 
     def toggle_playback(self):
         if self.current_media_type == 'movie' and self.movie:

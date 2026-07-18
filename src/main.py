@@ -54,7 +54,7 @@ def silence_c_stderr():
         def stderr_reader():
             with os.fdopen(r_fd, 'r', errors='ignore') as pipe_reader:
                 for line in pipe_reader:
-                    if "d3d11" in line or "hwaccel" in line or "h264 @" in line or "hevc @" in line:
+                    if any(x in line for x in ("d3d11", "hwaccel", "h264 @", "hevc @", "aac @", "swscaler")):
                         continue
                     os.write(original_stderr_fd, line.encode('utf-8', errors='ignore'))
         t = threading.Thread(target=stderr_reader, daemon=True)

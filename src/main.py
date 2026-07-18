@@ -43,6 +43,27 @@ def qt_message_handler(mode, context, message):
 
 qInstallMessageHandler(qt_message_handler)
 
+def silence_c_stderr():
+    import os
+    import sys
+    import threading
+    try:
+        r_fd, w_fd = os.pipe()
+        original_stderr_fd = os.dup(sys.stderr.fileno())
+        os.dup2(w_fd, sys.stderr.fileno())
+        def stderr_reader():
+            with os.fdopen(r_fd, 'r', errors='ignore') as pipe_reader:
+                for line in pipe_reader:
+                    if "d3d11" in line or "hwaccel" in line or "h264 @" in line or "hevc @" in line:
+                        continue
+                    os.write(original_stderr_fd, line.encode('utf-8', errors='ignore'))
+        t = threading.Thread(target=stderr_reader, daemon=True)
+        t.start()
+    except Exception:
+        pass
+
+silence_c_stderr()
+
 # --- Safe QFileDialog Monkey Patch for Windows native dialog stability ---
 from PyQt6.QtWidgets import QFileDialog
 

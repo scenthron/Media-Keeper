@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QLabel, QCheckBox
 )
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal, QRectF, QPointF, QSizeF, QSize, QTimer, QTimeLine
-from PyQt6.QtGui import QCursor, QIcon
+from PyQt6.QtGui import QCursor, QIcon, QPainter, QPixmap, QColor
 from config import AppContext, VIEWER_DESIGN
 
 class SegmentIndicatorWidget(QPushButton):
@@ -89,7 +89,7 @@ class SegmentIndicatorWidget(QPushButton):
             self.hide()
             
     def paintEvent(self, event):
-        from PyQt6.QtGui import QPainter, QColor, QPen
+        from PyQt6.QtGui import QCursor, QIcon, QPainter, QPixmap, QColor
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         

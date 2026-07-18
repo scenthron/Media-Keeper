@@ -486,19 +486,21 @@ class CleanerPreviewWidget(QWidget):
         
         self.player.setSource(QUrl.fromLocalFile(path))
         
-        apply_all = AppContext.session_all_videos_active
-        
-        if apply_all:
-            speed = float(AppContext.session_video_speed)
+        if is_audio:
+            AppContext.session_audio_speed_active = False
+            is_fast_active = False
+            speed = 1.0
+            loop = AppContext.session_loop
+            segment_view = False
+        else:
+            is_fast_active = AppContext.session_video_speed_active
+            speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
             loop = AppContext.session_loop
             segment_view = AppContext.session_segment_view
-        else:
-            speed = 1.0
-            loop = False
-            segment_view = False
-        
-        # Sync UI controls
-        self.video_controls.set_popup_values(speed, loop, apply_all, is_video=not is_audio)
+            
+        self.video_controls.set_playing_state(False)
+        self.video_controls.update_speed_button(AppContext.session_fast_speed_val, is_fast_active)
+        self.video_controls.update_loop_button(loop)
         if hasattr(self, 'smart_preview_mgr'):
             self.smart_preview_mgr.set_active(segment_view)
         

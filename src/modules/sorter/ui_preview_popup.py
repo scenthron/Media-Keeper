@@ -1341,12 +1341,7 @@ class LargePreviewPopup(QDialog):
             if hasattr(self.main_app, 'media_player'):
                 self.main_app.media_player.setLoops(QMediaPlayer.Loops.Infinite if enabled else QMediaPlayer.Loops.Once)
             if hasattr(self.main_app, 'video_controls'):
-                speed = float(AppContext.session_fast_speed_val) if getattr(AppContext, "session_video_speed_active", False) else 1.0 if AppContext.session_all_videos_active else 1.0
-                self.main_app.video_controls.set_popup_values(
-                    speed if is_video else 1.0, 
-                    enabled, 
-                                        is_video
-                )
+                self.main_app.video_controls.update_loop_button(enabled)
 
     def update_segment_indicator(self):
         if not hasattr(self, 'smart_preview_mgr'): return

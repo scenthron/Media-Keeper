@@ -85,11 +85,11 @@ class CleanerPreviewWidget(QWidget):
         self.segment_indicator.clicked.connect(self._on_segment_indicator_clicked)
         
         self.media_container.setMouseTracking(True)
-        self.view.setMouseTracking(True)
+        
         
         # Override mouse move for hover
-        self.view.mouseMoveEvent = self._view_mouse_move_event
-        self.view.leaveEvent = self._view_leave_event
+        
+        
         
         self.splitter.addWidget(self.media_container)
         
@@ -388,9 +388,9 @@ class CleanerPreviewWidget(QWidget):
         self.view.double_clicked.connect(self.open_current_file)
         self.view.middle_clicked.connect(self.open_containing_folder)
         self.view.right_clicked.connect(self.reset_view)
-        self.view.mouseMoveEvent = self._view_mouse_move_event
-        self.view.leaveEvent = self._view_leave_event
-        self.view.setMouseTracking(True)
+        
+        
+        
         
         from PyQt6.QtMultimediaWidgets import QGraphicsVideoItem
         self.video_item = QGraphicsVideoItem()

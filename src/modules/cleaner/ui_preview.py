@@ -320,6 +320,7 @@ class CleanerPreviewWidget(QWidget):
     def show_empty(self, msg):
         self.stop_playback(True)
         self._create_view()
+        self.media_layout.insertWidget(0, self.view)
         self.current_media_type = None
         self.current_path = None
         self.view.resetTransform()
@@ -408,7 +409,6 @@ class CleanerPreviewWidget(QWidget):
         self.scene.addItem(self.text_item)
         self.text_item.hide()
         
-        self.media_layout.insertWidget(0, self.view)
 
     def stop_playback(self, full_reset=False):
         if hasattr(self, 'player') and self.player: self.player.pause()
@@ -427,6 +427,9 @@ class CleanerPreviewWidget(QWidget):
     def _on_media_status_changed(self, status):
         from PyQt6.QtMultimedia import QMediaPlayer
         if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
+            if self.media_layout.indexOf(self.view) == -1:
+                self.media_layout.insertWidget(0, self.view)
+                self.view.show()
             if hasattr(self, 'video_item') and self.video_item:
                 if self.current_media_type == 'video':
                     self.video_item.show()
@@ -447,6 +450,7 @@ class CleanerPreviewWidget(QWidget):
     def setup_static_image(self, path):
         self._clear_media()
         self._create_view()
+        self.media_layout.insertWidget(0, self.view)
         self.current_media_type = 'image'
         self.video_controls.hide()
         self.time_overlay.hide()
@@ -457,16 +461,15 @@ class CleanerPreviewWidget(QWidget):
         if pix.isNull():
             self.text_item.setPlainText(AppContext.tr("cln_prev_img_err"))
             self.text_item.show()
-            self.view.show()
             return
         self.pixmap_item.setPixmap(pix)
         self.pixmap_item.show()
-        self.view.show()
         QTimer.singleShot(50, self.reset_view)
 
     def setup_animated(self, path):
         self._clear_media()
         self._create_view()
+        self.media_layout.insertWidget(0, self.view)
         self.current_media_type = 'movie'
         self.video_controls.hide()
         self.time_overlay.hide()
@@ -481,12 +484,12 @@ class CleanerPreviewWidget(QWidget):
         self._on_movie_frame() 
         self.movie.start()
         self.pixmap_item.show()
-        self.view.show()
         QTimer.singleShot(50, self.reset_view)
 
     def setup_video(self, path):
         self._clear_media()
         self._create_view()
+        self.media_layout.insertWidget(0, self.view)
         
         self.pixmap_item.hide()
         self.text_item.hide()
@@ -500,6 +503,8 @@ class CleanerPreviewWidget(QWidget):
         self.current_media_type = 'audio' if is_audio else 'video'
         
         if is_audio:
+            self.media_layout.insertWidget(0, self.view)
+            self.view.show()
             self.video_item.hide()
             track_name = os.path.splitext(os.path.basename(path))[0]
             html_text = f"<div style='text-align: center; line-height: 1.4; color: #3b82f6;'>🎵<br>{track_name}</div>"
@@ -542,7 +547,6 @@ class CleanerPreviewWidget(QWidget):
         
 
             
-        self.view.show()
         self.resizeEvent(None)
         
         if is_audio:
@@ -589,6 +593,7 @@ class CleanerPreviewWidget(QWidget):
         else:
             self._clear_media()
             self._create_view()
+            self.media_layout.insertWidget(0, self.view)
             self.current_media_type = None
             self.video_item.hide()
             self.pixmap_item.hide()
@@ -611,6 +616,9 @@ class CleanerPreviewWidget(QWidget):
     def _on_media_status_changed(self, status):
         from PyQt6.QtMultimedia import QMediaPlayer
         if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
+            if self.media_layout.indexOf(self.view) == -1:
+                self.media_layout.insertWidget(0, self.view)
+                self.view.show()
             if hasattr(self, 'video_item') and self.video_item:
                 if self.current_media_type == 'video':
                     self.video_item.show()

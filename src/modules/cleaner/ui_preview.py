@@ -399,8 +399,7 @@ class CleanerPreviewWidget(QWidget):
         
         if hasattr(self, 'stacked_widget') and hasattr(self, 'view'):
             self.stacked_widget.setCurrentWidget(self.view)
-        if hasattr(self, 'video_widget') and self.video_widget:
-            self.video_widget.hide()
+
             
         if hasattr(self, 'player') and self.player:
             try:

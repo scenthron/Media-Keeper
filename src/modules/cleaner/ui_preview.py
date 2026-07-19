@@ -425,9 +425,6 @@ class CleanerPreviewWidget(QWidget):
             self.player.deleteLater()
             self.player = None
             
-        if hasattr(self, 'audio_output') and self.audio_output:
-            self.audio_output.deleteLater()
-            self.audio_output = None
             
         if hasattr(self, 'movie') and self.movie:
             self.movie.stop()
@@ -566,7 +563,8 @@ class CleanerPreviewWidget(QWidget):
             self.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
             
         self.player = QMediaPlayer()
-        self.audio_output = QAudioOutput()
+        if not hasattr(self, 'audio_output') or not self.audio_output:
+            self.audio_output = QAudioOutput()
         self.player.setAudioOutput(self.audio_output)
         self.player.setVideoOutput(self.video_item)
         self.audio_output.setVolume(self.video_controls.vol_slider.value() / 100.0)

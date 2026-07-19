@@ -367,6 +367,7 @@ class CleanerPreviewWidget(QWidget):
         if hasattr(self, 'stacked_widget'): self.stacked_widget.setCurrentWidget(self.view)
         self.current_media_type = None
         self.current_path = None
+        self._ensure_view_exists()
         self.view.resetTransform()
         self.pixmap_item.hide()
         

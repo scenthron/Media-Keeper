@@ -86,17 +86,9 @@ class CleanerPreviewWidget(QWidget):
         self.media_layout.setContentsMargins(0,0,0,0)
         self.media_layout.setSpacing(0)
         
-        self.stacked_media = QStackedWidget(self.media_container)
-        self.media_layout.addWidget(self.stacked_media)
-        
-        self.dummy_widget = QWidget()
-        self.dummy_widget.setStyleSheet("background-color: black;")
-        self.stacked_media.addWidget(self.dummy_widget)
-        
         self._create_view()
-        self.video_widget = ClickableVideoWidget(self.stacked_media)
-        self.stacked_media.addWidget(self.view)
-        self.stacked_media.addWidget(self.video_widget)
+        self.video_widget = ClickableVideoWidget(self.stacked_widget)
+        self.stacked_widget.addWidget(self.video_widget)
         
         self.video_widget.clicked.connect(self.toggle_playback)
         self.video_widget.double_clicked.connect(self.open_current_file)
@@ -433,16 +425,16 @@ class CleanerPreviewWidget(QWidget):
 
     def _clear_media(self):
         if hasattr(self, 'stacked_media') and hasattr(self, 'dummy_widget'):
-            self.stacked_media.setCurrentWidget(self.dummy_widget)
+            self.stacked_widget.setCurrentWidget(self.dummy_widget)
             
         if hasattr(self, 'player') and self.player:
             self.player.stop()
             # Do NOT setVideoOutput(None), Do NOT setSource(QUrl())
             
-        if hasattr(self, 'scene') and self.scene:
-            self.scene.clear()
-            self.pixmap_item = None
-            self.text_item = None
+        if hasattr(self, 'pixmap_item') and self.pixmap_item:
+            self.pixmap_item.hide()
+        if hasattr(self, 'text_item') and self.text_item:
+            self.text_item.hide()
             
         if hasattr(self, 'movie') and self.movie:
             self.movie.stop()
@@ -569,7 +561,7 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.seeker.setEnabled(True)
         self.video_controls.set_playing_state(False)
         
-        self.stacked_media.setCurrentWidget(self.video_widget)
+        self.stacked_widget.setCurrentWidget(self.video_widget)
         
         # Parent overlays to video_widget to show them on top
         self.btn_seg_prev.setParent(self.video_widget)

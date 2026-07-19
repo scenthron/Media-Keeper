@@ -411,6 +411,11 @@ class CleanerPreviewWidget(QWidget):
             
         if hasattr(self, 'player') and self.player:
             try:
+                self.player.setAudioOutput(None)
+                self.player.setVideoOutput(None)
+            except Exception: pass
+            
+            try:
                 self.player.positionChanged.disconnect()
                 self.player.durationChanged.disconnect()
                 self.player.playbackStateChanged.disconnect()

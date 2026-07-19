@@ -77,7 +77,7 @@ class ClickableVideoWidget(QVideoWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMouseTracking(True)
-        self.setStyleSheet("background-color: transparent; border: none;")
+        self.setStyleSheet("background-color: black; border: none;")
         
     def mousePressEvent(self, event):
         from PyQt6.QtCore import Qt

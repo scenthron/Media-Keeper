@@ -4,7 +4,7 @@ import sys
 from languages.manager import LanguageManager
 from logic_paths import find_resource_dir as _find_res_dir, get_base_path as _get_base, get_app_data_dir as _get_app_data
 
-APP_VERSION = "v1.0.9"
+APP_VERSION = "v1.0.8"
 
 import sys
 DEBUG_MODE = not getattr(sys, 'frozen', False)

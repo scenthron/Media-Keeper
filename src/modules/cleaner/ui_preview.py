@@ -423,11 +423,12 @@ class CleanerPreviewWidget(QWidget):
             self.player.deleteLater()
             self.player = None
             
-        if hasattr(self, 'video_widget') and self.video_widget:
-            self.video_widget.hide()
-            self.stacked_widget.removeWidget(self.video_widget)
-            self.video_widget.deleteLater()
-            self.video_widget = None
+        if hasattr(self, 'video_item') and self.video_item:
+            try:
+                self.scene.removeItem(self.video_item)
+            except Exception: pass
+            self.video_item.deleteLater()
+            self.video_item = None
             logging.info(f'    [CLEAR] After deleteLater(): {time.perf_counter() - t_start:.4f}s')
             
         if hasattr(self, 'audio_output') and self.audio_output:
@@ -576,20 +577,18 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.set_playing_state(False)
         
         from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
-        from modules.cleaner.ui_view import ClickableVideoWidget
+        from PyQt6.QtMultimediaWidgets import QGraphicsVideoItem
         
-        if not hasattr(self, 'video_widget') or not self.video_widget:
-            self.video_widget = ClickableVideoWidget()
-            self.video_widget.clicked.connect(self.toggle_playback)
-            self.video_widget.double_clicked.connect(self.open_current_file)
-            self.video_widget.middle_clicked.connect(self.open_containing_folder)
-            self.video_widget.right_clicked.connect(self.reset_view)
-            self.stacked_widget.addWidget(self.video_widget)
+        self.video_item = QGraphicsVideoItem()
+        self.scene.addItem(self.video_item)
         
+        if hasattr(self, '_fit_video_size_changed'):
+            self.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
+            
         self.player = QMediaPlayer()
         self.audio_output = QAudioOutput()
         self.player.setAudioOutput(self.audio_output)
-        self.player.setVideoOutput(self.video_widget)
+        self.player.setVideoOutput(self.video_item)
         self.audio_output.setVolume(self.video_controls.vol_slider.value() / 100.0)
         
         self.video_controls.seek_requested.connect(self.player.setPosition)
@@ -706,6 +705,8 @@ class CleanerPreviewWidget(QWidget):
             self.update_segment_indicator()
 
     def _fit_video_size_changed(self, size):
+        if hasattr(self, 'video_item') and self.video_item:
+            self.video_item.setSize(size)
         from PyQt6.QtCore import QTimer
         QTimer.singleShot(50, self.reset_view)
             
@@ -730,7 +731,9 @@ class CleanerPreviewWidget(QWidget):
         self.view.verticalScrollBar().setValue(0)
         
         active_item = None
-        if self.pixmap_item.isVisible() and not self.pixmap_item.pixmap().isNull(): 
+        if hasattr(self, 'video_item') and self.video_item and self.video_item.isVisible():
+            active_item = self.video_item
+        elif self.pixmap_item.isVisible() and not self.pixmap_item.pixmap().isNull(): 
             active_item = self.pixmap_item
         elif self.text_item.isVisible():
             active_item = self.text_item
@@ -756,6 +759,11 @@ class CleanerPreviewWidget(QWidget):
         if viewport_rect.width() <= 10 or viewport_rect.height() <= 10:
              QTimer.singleShot(100, self.reset_view)
              return
+        if hasattr(self, 'video_item') and active_item == self.video_item:
+            self.view.fitInView(active_item, Qt.AspectRatioMode.KeepAspectRatio)
+            self.view.centerOn(active_item)
+            return
+
         # If Image/Text -> Fit only if larger than viewport
         width_diff = item_rect.width() - viewport_rect.width()
         height_diff = item_rect.height() - viewport_rect.height()

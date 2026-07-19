@@ -959,7 +959,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
     def stop_playback(self) -> None:
         if hasattr(self, 'preview_widget') and self.preview_widget:
-            self.preview_widget.stop_playback()
+            self.preview_widget.stop_playback(True)
 
     def resizeEvent(self, event: Any) -> None:
         super().resizeEvent(event)

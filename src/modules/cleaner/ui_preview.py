@@ -394,83 +394,63 @@ class CleanerPreviewWidget(QWidget):
         self.meta_table.setRowCount(0)
 
     def _clear_media(self):
-        import logging
-        import time; t_start = time.perf_counter()
         if hasattr(self, 'stacked_widget') and hasattr(self, 'dummy_widget'):
             self.stacked_widget.setCurrentWidget(self.dummy_widget)
-
-            
-        if hasattr(self, 'video_item') and self.video_item:
-            try:
-                self.video_item.hide()
-                self.scene.removeItem(self.video_item)
-            except Exception: pass
-            self.video_item.deleteLater()
-            self.video_item = None
-            logging.info(f'    [CLEAR] After deleteLater(): {time.perf_counter() - t_start:.4f}s')
             
         if hasattr(self, 'player') and self.player:
-            try:
-                self.player.setAudioOutput(None)
-                self.player.setVideoOutput(None)
-            except Exception: pass
+            self.player.stop()
+            self.player.setVideoOutput(None)
+            from PyQt6.QtCore import QUrl
+            self.player.setSource(QUrl())
             
-            try:
-                self.player.positionChanged.disconnect()
-                self.player.durationChanged.disconnect()
-                self.player.playbackStateChanged.disconnect()
-                self.player.mediaStatusChanged.disconnect()
-                self.video_controls.seek_requested.disconnect()
-                self.video_controls.seek_moved.disconnect()
-            except Exception: pass
-            
-            # Removed stop() and setSource() entirely!
-            # Let deleteLater() tear down the player in the background without forcing a blocking sync.
-            logging.info(f"    [CLEAR] Before player deleteLater(): {time.perf_counter() - t_start:.4f}s")
-            self.player.deleteLater()
-            self.player = None
-            
+        if hasattr(self, 'view') and self.view:
+            self.stacked_widget.removeWidget(self.view)
+            self.view.deleteLater()
+            self.view = None
+            self.scene = None
+            self.video_item = None
+            self.pixmap_item = None
+            self.text_item = None
             
         if hasattr(self, 'movie') and self.movie:
             self.movie.stop()
             self.movie = None
             
-        if hasattr(self, 'view') and self.view:
-            pass # Do not delete views to reuse them
-            logging.info(f'    [CLEAR] After view deleteLater(): {time.perf_counter() - t_start:.4f}s')
-            
         self.smart_preview_mgr = None
-        logging.info(f'    [CLEAR] Total time: {time.perf_counter() - t_start:.4f}s')
+
+    def _ensure_view_exists(self):
+        if not hasattr(self, 'view') or not self.view:
+            from modules.cleaner.ui_view import ClickableGraphicsView
+            from PyQt6.QtWidgets import QGraphicsScene
+            self.scene = QGraphicsScene()
+            self.view = ClickableGraphicsView(self.scene)
+            self.scene.setParent(self.view)
+            self.view.clicked.connect(self.toggle_playback)
+            self.view.double_clicked.connect(self.open_current_file)
+            self.view.middle_clicked.connect(self.open_containing_folder)
+            self.view.right_clicked.connect(self.reset_view)
+            
+            self.stacked_widget.insertWidget(0, self.view)
+            
+            from PyQt6.QtGui import QPixmap, QColor, QFont
+            from PyQt6.QtWidgets import QGraphicsTextItem
+            self.pixmap_item = self.scene.addPixmap(QPixmap())
+            self.pixmap_item.hide()
+            
+            self.text_item = QGraphicsTextItem()
+            self.text_item.setDefaultTextColor(QColor("#555555"))
+            self.text_item.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+            self.scene.addItem(self.text_item)
+            self.text_item.hide()
 
     def _create_view(self):
-        from PyQt6.QtWidgets import QStackedWidget
+        from PyQt6.QtWidgets import QStackedWidget, QWidget
         self.stacked_widget = QStackedWidget(self.media_container)
         self.media_layout.insertWidget(0, self.stacked_widget)
         
-        self.scene = QGraphicsScene(self)
-        self.view = ClickableGraphicsView(self.scene)
-        self.view.clicked.connect(self.toggle_playback)
-        self.view.double_clicked.connect(self.open_current_file)
-        self.view.middle_clicked.connect(self.open_containing_folder)
-        self.view.right_clicked.connect(self.reset_view)
-        
-        self.stacked_widget.addWidget(self.view)
-        from PyQt6.QtWidgets import QWidget
         self.dummy_widget = QWidget()
         self.stacked_widget.addWidget(self.dummy_widget)
-        
-        from PyQt6.QtGui import QPixmap, QColor, QFont
-        from PyQt6.QtWidgets import QGraphicsTextItem
-        self.pixmap_item = self.scene.addPixmap(QPixmap())
-        self.pixmap_item.hide()
-        
-        self.text_item = QGraphicsTextItem()
-        self.text_item.setDefaultTextColor(QColor("#555555"))
-        self.text_item.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        self.scene.addItem(self.text_item)
-        self.text_item.hide()
-        
-
+        self._ensure_view_exists()
     def stop_playback(self, full_reset=False):
         if hasattr(self, 'player') and self.player: self.player.pause()
         if hasattr(self, 'movie') and self.movie: self.movie.stop()
@@ -487,6 +467,7 @@ class CleanerPreviewWidget(QWidget):
 
     def setup_static_image(self, path):
         self._clear_media()
+        self._ensure_view_exists()
         if hasattr(self, 'stacked_widget'): self.stacked_widget.setCurrentWidget(self.view)
         self.current_media_type = 'image'
         self.video_controls.hide()
@@ -505,6 +486,7 @@ class CleanerPreviewWidget(QWidget):
 
     def setup_animated(self, path):
         self._clear_media()
+        self._ensure_view_exists()
         if hasattr(self, 'stacked_widget'): self.stacked_widget.setCurrentWidget(self.view)
         self.current_media_type = 'movie'
         self.video_controls.hide()
@@ -523,12 +505,11 @@ class CleanerPreviewWidget(QWidget):
         QTimer.singleShot(50, self.reset_view)
 
     def setup_video(self, path):
-        import time; t0 = time.perf_counter(); logging.info(f"  [PERF] setup_video started")
         self._clear_media()
-                
+        self._ensure_view_exists()
+        
         self.pixmap_item.hide()
         self.text_item.hide()
-        
         self.time_overlay.show()
         self.time_overlay.set_time(0, 0)
         
@@ -540,7 +521,6 @@ class CleanerPreviewWidget(QWidget):
         if is_audio:
             self.stacked_widget.setCurrentWidget(self.view)
             self.view.show()
-            
             track_name = os.path.splitext(os.path.basename(path))[0]
             html_text = f"<div style='text-align: center; line-height: 1.4; color: #3b82f6;'>🎵<br>{track_name}</div>"
             self.text_item.setHtml(html_text)
@@ -552,44 +532,24 @@ class CleanerPreviewWidget(QWidget):
             QTimer.singleShot(50, self.reset_view)
         else:
             self.text_item.hide()
-            # Do NOT show video_item yet!
             
         self.video_controls.show()
         self.video_controls.seeker.setEnabled(True)
         self.video_controls.set_playing_state(False)
         
-        from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
         from PyQt6.QtMultimediaWidgets import QGraphicsVideoItem
-        
         self.video_item = QGraphicsVideoItem()
         self.scene.addItem(self.video_item)
-        
         if hasattr(self, '_fit_video_size_changed'):
             self.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
             
-        self.player = QMediaPlayer()
-        if not hasattr(self, 'audio_output') or not self.audio_output:
-            self.audio_output = QAudioOutput()
-        self.player.setAudioOutput(self.audio_output)
         self.player.setVideoOutput(self.video_item)
         self.audio_output.setVolume(self.video_controls.vol_slider.value() / 100.0)
-        
-        self.video_controls.seek_requested.connect(self.player.setPosition)
-        self.video_controls.seek_moved.connect(self.player.setPosition)
-        self.player.positionChanged.connect(self.video_controls.update_position)
-        self.player.positionChanged.connect(self._update_overlay_time)
-        self.player.durationChanged.connect(self.video_controls.update_duration)
-        self.player.durationChanged.connect(self._update_overlay_duration)
-        self.player.durationChanged.connect(self._on_media_duration_changed)
-        self.player.playbackStateChanged.connect(self._on_player_state_changed)
-        self.player.mediaStatusChanged.connect(self._on_media_status_changed)
         
         from utils_io import strip_long_path_prefix
         from PyQt6.QtCore import QUrl
         clean_path = strip_long_path_prefix(path)
-        logging.info(f"  [PERF] Calling setSource at {time.perf_counter() - t0:.4f}s")
         self.player.setSource(QUrl.fromLocalFile(clean_path))
-        logging.info(f"  [PERF] Finished setSource at {time.perf_counter() - t0:.4f}s")
         
         self.resizeEvent(None)
         
@@ -612,14 +572,13 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.update_loop_button(loop)
         
         from modules.sorter.logic_player import SmartPreviewManager
+        from PyQt6.QtMultimedia import QMediaPlayer
         self.smart_preview_mgr = SmartPreviewManager(self.player, lambda: float(AppContext.session_fast_speed_val) if getattr(AppContext, "session_video_speed_active", False) else 1.0)
         self.smart_preview_mgr.set_active(segment_view)
         
         self.player.setPlaybackRate(speed)
         self.player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
-        logging.info(f"  [PERF] Calling player.play() at {time.perf_counter() - t0:.4f}s")
         self.player.play()
-        logging.info(f"  [PERF] setup_video fully completed. Total setup_video time: {time.perf_counter() - t0:.4f}s")
 
     def load_file(self, path):
         import time; t0 = time.perf_counter(); logging.info(f" [PERF] load_file started for {path}")

@@ -392,8 +392,20 @@ class FileOpsMixin:
             
         if new_page != getattr(self, 'page_index', -1):
             self.page_index = new_page
-            # Trigger full re-sync of UI
-            self.apply_local_filters_and_sorting(trigger_sync=True)
+            
+            # Мгновенно обновляем текст счетчика страниц
+            if hasattr(self, 'viewer') and self.viewer and hasattr(self.viewer, 'update_pagination_ui'):
+                self.viewer.update_pagination_ui(self.page_index, total_pages)
+                
+            # Запускаем таймер с дебаунсом в 1 секунду перед загрузкой контента
+            if not hasattr(self, '_pagination_timer'):
+                from PyQt6.QtCore import QTimer
+                self._pagination_timer = QTimer(self)
+                self._pagination_timer.setSingleShot(True)
+                self._pagination_timer.setInterval(1000)
+                self._pagination_timer.timeout.connect(lambda: self.apply_local_filters_and_sorting(trigger_sync=True))
+            
+            self._pagination_timer.start()
 
     def refresh_pagination(self):
         # Clears disk thumbnail cache and triggers full refresh to reset state

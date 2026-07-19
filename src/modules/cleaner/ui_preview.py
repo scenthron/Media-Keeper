@@ -792,6 +792,7 @@ class CleanerPreviewWidget(QWidget):
 
 
     def open_current_file(self):
+        import os
         if self.current_path and os.path.exists(self.current_path):
             QDesktopServices.openUrl(QUrl.fromLocalFile(self.current_path))
 

@@ -621,13 +621,21 @@ class CleanerPreviewWidget(QWidget):
     def load_file(self, path):
         import time; t0 = time.perf_counter(); logging.info(f" [PERF] load_file started for {path}")
         
-        # Start heartbeat
-        if not hasattr(self, '_heartbeat_timer'):
-            self._heartbeat_timer = QTimer(self)
-            self._heartbeat_timer.start(100)
-        
         from utils_io import strip_long_path_prefix
         path = strip_long_path_prefix(path)
+        
+        if hasattr(self, 'current_path') and getattr(self, 'current_path', None) == path:
+            logging.info(f" [PERF] Ignored duplicate load for {path}")
+            if hasattr(self, 'player') and self.player:
+                self.player.setPosition(0)
+                self.player.play()
+            return
+            
+        # Start heartbeat
+        if not hasattr(self, '_heartbeat_timer'):
+            from PyQt6.QtCore import QTimer
+            self._heartbeat_timer = QTimer(self)
+            self._heartbeat_timer.start(100)
         self.stop_playback(True)
         import os
         if not os.path.exists(path):

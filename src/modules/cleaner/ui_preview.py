@@ -458,7 +458,7 @@ class CleanerPreviewWidget(QWidget):
         self.view.middle_clicked.connect(self.open_containing_folder)
         self.view.right_clicked.connect(self.reset_view)
         
-
+        self.stacked_widget.addWidget(self.view)
         
         from PyQt6.QtGui import QPixmap, QColor, QFont
         from PyQt6.QtWidgets import QGraphicsTextItem

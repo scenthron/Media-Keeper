@@ -419,18 +419,9 @@ class CleanerPreviewWidget(QWidget):
                 self.video_controls.seek_moved.disconnect()
             except Exception: pass
             
-            logging.info(f"    [CLEAR] Before player stop(): {time.perf_counter() - t_start:.4f}s")
-            self.player.stop()
-            self.player.setVideoOutput(None)
-            
-            # Process events to let the hide/removeItem take effect before setSource
-            from PyQt6.QtCore import QCoreApplication
-            QCoreApplication.processEvents()
-            
-            logging.info(f"    [CLEAR] Before setSource(): {time.perf_counter() - t_start:.4f}s")
-            self.player.setSource(QUrl())
-            logging.info(f"    [CLEAR] After setSource(): {time.perf_counter() - t_start:.4f}s")
-            
+            # Removed stop() and setSource() entirely!
+            # Let deleteLater() tear down the player in the background without forcing a blocking sync.
+            logging.info(f"    [CLEAR] Before player deleteLater(): {time.perf_counter() - t_start:.4f}s")
             self.player.deleteLater()
             self.player = None
             

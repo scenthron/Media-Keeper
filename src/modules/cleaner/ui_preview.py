@@ -441,9 +441,6 @@ class CleanerPreviewWidget(QWidget):
         path = strip_long_path_prefix(path)
         
         if self.current_path == path:
-            if self.player:
-                self.player.setPosition(0)
-                self._play_timer.start(50)
             return
             
         if not hasattr(self, '_heartbeat_timer'):

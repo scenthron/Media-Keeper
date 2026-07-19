@@ -175,7 +175,8 @@ class CleanerPreviewWidget(QWidget):
         self.splitter.setSizes([800, 26]) # Show only header initially
         
         self.player = None
-        self.audio_output = None
+        from PyQt6.QtMultimedia import QAudioOutput
+        self.audio_output = QAudioOutput()
         
         # Connect Controls Signals
         self.video_controls.play_pause_clicked.connect(self.toggle_playback)
@@ -415,10 +416,6 @@ class CleanerPreviewWidget(QWidget):
             self.player.deleteLater()
             self.player = None
             
-        if hasattr(self, 'audio_output') and self.audio_output:
-            self.audio_output.deleteLater()
-            self.audio_output = None
-            
         if hasattr(self, 'view') and self.view:
             self.stacked_widget.removeWidget(self.view)
             self.view.deleteLater()
@@ -553,9 +550,8 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.seeker.setEnabled(True)
         self.video_controls.set_playing_state(False)
         
-        from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+        from PyQt6.QtMultimedia import QMediaPlayer
         self.player = QMediaPlayer()
-        self.audio_output = QAudioOutput()
         self.player.setAudioOutput(self.audio_output)
         
         self.player.positionChanged.connect(self.video_controls.update_position)

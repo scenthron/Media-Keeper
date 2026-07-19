@@ -399,10 +399,25 @@ class CleanerPreviewWidget(QWidget):
             self.stacked_widget.setCurrentWidget(self.dummy_widget)
             
         if hasattr(self, 'player') and self.player:
+            try:
+                self.player.positionChanged.disconnect()
+                self.player.durationChanged.disconnect()
+                self.player.playbackStateChanged.disconnect()
+                self.player.mediaStatusChanged.disconnect()
+                self.video_controls.seek_requested.disconnect()
+                self.video_controls.seek_moved.disconnect()
+            except Exception:
+                pass
             self.player.stop()
             self.player.setVideoOutput(None)
             from PyQt6.QtCore import QUrl
             self.player.setSource(QUrl())
+            self.player.deleteLater()
+            self.player = None
+            
+        if hasattr(self, 'audio_output') and self.audio_output:
+            self.audio_output.deleteLater()
+            self.audio_output = None
             
         if hasattr(self, 'view') and self.view:
             self.stacked_widget.removeWidget(self.view)
@@ -537,6 +552,21 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.show()
         self.video_controls.seeker.setEnabled(True)
         self.video_controls.set_playing_state(False)
+        
+        from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+        self.player = QMediaPlayer()
+        self.audio_output = QAudioOutput()
+        self.player.setAudioOutput(self.audio_output)
+        
+        self.player.positionChanged.connect(self.video_controls.update_position)
+        self.player.positionChanged.connect(self._update_overlay_time)
+        self.player.durationChanged.connect(self.video_controls.update_duration)
+        self.player.durationChanged.connect(self._update_overlay_duration)
+        self.player.durationChanged.connect(self._on_media_duration_changed)
+        self.player.playbackStateChanged.connect(self._on_player_state_changed)
+        self.player.mediaStatusChanged.connect(self._on_media_status_changed)
+        self.video_controls.seek_requested.connect(self.player.setPosition)
+        self.video_controls.seek_moved.connect(self.player.setPosition)
         
         from PyQt6.QtMultimediaWidgets import QGraphicsVideoItem
         self.video_item = QGraphicsVideoItem()

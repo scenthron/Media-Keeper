@@ -427,11 +427,15 @@ class SpeedButton(QPushButton):
     def mouseReleaseEvent(self, e):
         if e.button() == Qt.MouseButton.RightButton:
             self.rightClicked.emit()
+            e.accept()
         else:
             super().mouseReleaseEvent(e)
 
 
 class VideoPlayerControls(QWidget):
+    def contextMenuEvent(self, event):
+        event.accept()
+
     play_pause_clicked = pyqtSignal()
     seek_requested = pyqtSignal(int)
     seek_moved = pyqtSignal(int)

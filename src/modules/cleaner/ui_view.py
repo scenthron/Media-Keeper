@@ -61,3 +61,34 @@ class ClickableGraphicsView(QGraphicsView):
         if event.button() == Qt.MouseButton.LeftButton:
             self.double_clicked.emit()
         super().mouseDoubleClickEvent(event)
+
+
+from PyQt6.QtMultimediaWidgets import QVideoWidget
+from PyQt6.QtCore import pyqtSignal
+
+class ClickableVideoWidget(QVideoWidget):
+    clicked = pyqtSignal()
+    double_clicked = pyqtSignal()
+    middle_clicked = pyqtSignal()
+    right_clicked = pyqtSignal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMouseTracking(True)
+        self.setStyleSheet("background-color: transparent; border: none;")
+        
+    def mousePressEvent(self, event):
+        from PyQt6.QtCore import Qt
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        elif event.button() == Qt.MouseButton.MiddleButton:
+            self.middle_clicked.emit()
+        elif event.button() == Qt.MouseButton.RightButton:
+            self.right_clicked.emit()
+        super().mousePressEvent(event)
+        
+    def mouseDoubleClickEvent(self, event):
+        from PyQt6.QtCore import Qt
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.double_clicked.emit()
+        super().mouseDoubleClickEvent(event)

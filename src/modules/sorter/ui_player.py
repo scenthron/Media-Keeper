@@ -220,13 +220,15 @@ class ClickableSlider(QSlider):
         """)
 
     def mousePressEvent(self, event):
-        self.seek_drag_start.emit()
-        super().mousePressEvent(event)
         if event.button() == Qt.MouseButton.LeftButton:
+            self.seek_drag_start.emit()
             val = self.pixelPosToRangeValue(event.position().x())
             self.setValue(val)
+            super().mousePressEvent(event)
             self.seek_requested.emit(val) 
             self.seek_moved.emit(val)
+        else:
+            super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)

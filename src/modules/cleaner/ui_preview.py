@@ -484,23 +484,6 @@ class CleanerPreviewWidget(QWidget):
             if self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState: self.player.pause()
             else: self.player.play()
 
-    def _on_media_status_changed(self, status):
-        import logging; import time; logging.info(f"  [PERF] _on_media_status_changed called at {time.time()} with status: {status}")
-        from PyQt6.QtMultimedia import QMediaPlayer
-        if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
-            if hasattr(self, 'stacked_widget') and self.stacked_widget and self.current_media_type == 'video':
-                self.stacked_widget.setCurrentWidget(self.video_widget)
-
-    def _on_player_state_changed(self, state):
-        is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
-        self.video_controls.set_playing_state(is_playing)
-        if hasattr(self, 'update_segment_indicator'):
-            self.update_segment_indicator()
-
-    def _fit_video_size_changed(self, size):
-
-        QTimer.singleShot(50, self.reset_view)
-
     def setup_static_image(self, path):
         self._clear_media()
         if hasattr(self, 'stacked_widget'): self.stacked_widget.setCurrentWidget(self.view)
@@ -687,8 +670,8 @@ class CleanerPreviewWidget(QWidget):
         import logging; import time; logging.info(f"  [PERF] _on_media_status_changed called at {time.time()} with status: {status}")
         from PyQt6.QtMultimedia import QMediaPlayer
         if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
-            if hasattr(self, 'stacked_widget') and self.stacked_widget and self.current_media_type == 'video':
-                self.stacked_widget.setCurrentWidget(self.video_widget)
+            if hasattr(self, 'stacked_widget') and self.stacked_widget and hasattr(self, 'view') and self.current_media_type == 'video':
+                self.stacked_widget.setCurrentWidget(self.view)
 
     def _on_player_state_changed(self, state):
         import time; logging.info(f" [PERF] _on_player_state_changed called at {time.perf_counter():.4f} with state: {state}")

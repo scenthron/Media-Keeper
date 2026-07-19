@@ -84,7 +84,7 @@ class SegmentIndicatorWidget(QPushButton):
         self.update()
         if transparent:
             self.show()
-            self.opacity_effect.setOpacity(0.4)
+            self.opacity_effect.setOpacity(1.0)
         else:
             self.hide()
             

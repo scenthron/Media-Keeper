@@ -787,7 +787,7 @@ class SorterListGroupSeparatorWidget(QWidget):
 class ZoomableGraphicsView(QGraphicsView):
     canvas_clicked = pyqtSignal()
     fullscreen_toggled = pyqtSignal()
-    folder_dropped = pyqtSignal(str, bool)
+    items_dropped = pyqtSignal(list, bool)
     browse_requested = pyqtSignal()
     controls_visibility_changed = pyqtSignal(bool)
 
@@ -949,15 +949,15 @@ class ZoomableGraphicsView(QGraphicsView):
 
     def dropEvent(self, event):
         md = event.mimeData()
-        path = ""
+        paths = []
         is_external = False
         if md.hasUrls():
             urls = md.urls()
             if urls:
-                path = urls[0].toLocalFile()
+                paths = [u.toLocalFile() for u in urls]
                 is_external = True
-        if path:
-            self.folder_dropped.emit(path, is_external)
+        if paths:
+            self.items_dropped.emit(paths, is_external)
             event.acceptProposedAction()
         else:
             event.ignore()
@@ -1329,7 +1329,7 @@ class ZoomableGraphicsView(QGraphicsView):
 
 class SorterBaseListView(QListWidget):
     """Base class for Grid and List views with shared keyboard and drag & drop logic."""
-    folder_dropped = pyqtSignal(str, bool)
+    items_dropped = pyqtSignal(list, bool)
     item_double_clicked = pyqtSignal(str) # Emits absolute path to switch to Single view
     send_to_editor_requested = pyqtSignal(str, list)
 
@@ -2142,15 +2142,15 @@ class SorterBaseListView(QListWidget):
 
     def dropEvent(self, event):
         md = event.mimeData()
-        path = ""
+        paths = []
         is_external = False
         if md.hasUrls():
             urls = md.urls()
             if urls:
-                path = urls[0].toLocalFile()
+                paths = [u.toLocalFile() for u in urls]
                 is_external = True
-        if path:
-            self.folder_dropped.emit(path, is_external)
+        if paths:
+            self.items_dropped.emit(paths, is_external)
             event.acceptProposedAction()
         else:
             event.ignore()
@@ -2400,7 +2400,7 @@ class SorterListView(SorterBaseListView):
 
 
 class SorterPlaceholderWidget(QWidget):
-    folder_dropped = pyqtSignal(str, bool)
+    items_dropped = pyqtSignal(list, bool)
     browse_requested = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -2457,15 +2457,15 @@ class SorterPlaceholderWidget(QWidget):
 
     def dropEvent(self, event):
         md = event.mimeData()
-        path = ""
+        paths = []
         is_external = False
         if md.hasUrls():
             urls = md.urls()
             if urls:
-                path = urls[0].toLocalFile()
+                paths = [u.toLocalFile() for u in urls]
                 is_external = True
-        if path:
-            self.folder_dropped.emit(path, is_external)
+        if paths:
+            self.items_dropped.emit(paths, is_external)
             event.acceptProposedAction()
         else:
             event.ignore()
@@ -2484,7 +2484,7 @@ class SorterViewerArea(QWidget):
     """Stacked Widget Area controlling Single, Grid and List modes."""
     canvas_clicked = pyqtSignal()
     fullscreen_toggled = pyqtSignal()
-    folder_dropped = pyqtSignal(str, bool)
+    items_dropped = pyqtSignal(list, bool)
     browse_requested = pyqtSignal()
     mode_changed = pyqtSignal(int)      # Emits index: 0=Single, 1=Grid, 2=List
     selection_changed = pyqtSignal()    # Emits when selected items in Grid/List change
@@ -2506,7 +2506,7 @@ class SorterViewerArea(QWidget):
         self.single_view = ZoomableGraphicsView(self)
         self.single_view.canvas_clicked.connect(self.canvas_clicked.emit)
         self.single_view.fullscreen_toggled.connect(self.fullscreen_toggled.emit)
-        self.single_view.folder_dropped.connect(self.folder_dropped.emit)
+        self.single_view.items_dropped.connect(self.items_dropped.emit)
         self.single_view.browse_requested.connect(self.browse_requested.emit)
         self.single_view.controls_visibility_changed.connect(self._on_controls_visibility_changed)
         self.stack.addWidget(self.single_view)
@@ -2517,21 +2517,21 @@ class SorterViewerArea(QWidget):
         
         # 1. Grid Viewer
         self.grid_view = SorterGridView(self)
-        self.grid_view.folder_dropped.connect(self.folder_dropped.emit)
+        self.grid_view.items_dropped.connect(self.items_dropped.emit)
         self.grid_view.itemSelectionChanged.connect(self.selection_changed.emit)
         self.grid_view.send_to_editor_requested.connect(self.send_to_editor_requested.emit)
         self.stack.addWidget(self.grid_view)
         
         # 2. List Viewer
         self.list_view = SorterListView(self)
-        self.list_view.folder_dropped.connect(self.folder_dropped.emit)
+        self.list_view.items_dropped.connect(self.items_dropped.emit)
         self.list_view.itemSelectionChanged.connect(self.selection_changed.emit)
         self.list_view.send_to_editor_requested.connect(self.send_to_editor_requested.emit)
         self.stack.addWidget(self.list_view)
         
         # 3. Empty Placeholder View
         self.empty_placeholder_widget = SorterPlaceholderWidget(self)
-        self.empty_placeholder_widget.folder_dropped.connect(self.folder_dropped.emit)
+        self.empty_placeholder_widget.items_dropped.connect(self.items_dropped.emit)
         self.empty_placeholder_widget.browse_requested.connect(self.browse_requested.emit)
         self.stack.addWidget(self.empty_placeholder_widget)
         

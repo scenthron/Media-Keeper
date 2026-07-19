@@ -112,7 +112,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.viewer.single_view.middle_click_callback = self.reveal_current_file_in_explorer
         self.viewer.canvas_clicked.connect(self._on_click_canvas)
         self.viewer.fullscreen_toggled.connect(self.toggle_app_fullscreen)
-        self.viewer.folder_dropped.connect(self.on_viewer_drop) 
+        self.viewer.items_dropped.connect(self.on_viewer_items_drop)
         self.viewer.browse_requested.connect(self.browse_for_inbox)
         self.viewer.btn_fullscreen.setToolTip(AppContext.tr("tooltip_fullscreen"))
         
@@ -528,35 +528,51 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         if path:
              self.set_session_inbox(path)
 
-    def on_viewer_drop(self, path, is_external):
-        if not os.path.isdir(path): return
+    def on_viewer_items_drop(self, paths, is_external):
+        if not paths: return
         
-        norm_path = os.path.normpath(path)
-        
-        current_trash = getattr(self, 'session_trash_path', None) or self.config.get("path_todel")
-        if current_trash and os.path.normpath(current_trash) == norm_path:
-            self.set_session_trash(None)
-
-        if is_external:
-            old_unsort = self.config.get("path_unsort", "")
-            if os.path.normpath(old_unsort) != path:
-                self.config["filter_min_size"] = 0.0
-                self.config["filter_max_size"] = 0.0
+        # If exactly one directory is dropped, handle it as traditional inbox drop
+        if len(paths) == 1 and os.path.isdir(paths[0]):
+            path = paths[0]
+            norm_path = os.path.normpath(path)
+            
+            current_trash = getattr(self, 'session_trash_path', None) or self.config.get("path_todel")
+            if current_trash and os.path.normpath(current_trash) == norm_path:
+                self.set_session_trash(None)
+    
+            if is_external:
+                old_unsort = self.config.get("path_unsort", "")
+                if os.path.normpath(old_unsort) != path:
+                    self.config["filter_min_size"] = 0.0
+                    self.config["filter_max_size"] = 0.0
+                    
+                self.config["path_unsort"] = path
                 
-            self.config["path_unsort"] = path
-            
-            # Reset filter on new inbox (external drop)
-            self.config["filter_extensions"] = ""
-            
-            ConfigManager.save(self.config)
-            self.session_inbox_path = None 
-            self.update_filter_ui()
+                # Reset filter on new inbox (external drop)
+                self.config["filter_extensions"] = ""
+                
+                ConfigManager.save(self.config)
+                self.session_inbox_path = None 
+                self.update_filter_ui()
+            else:
+                self.session_inbox_path = path
+    
+            self.update_paths_from_config()
+            self.manual_full_refresh(reset_position=True)
+            self.refresh_sidebar_styling()
         else:
-            self.session_inbox_path = path
-
-        self.update_paths_from_config()
-        self.manual_full_refresh(reset_position=True)
-        self.refresh_sidebar_styling()
+            # Handle as multiple files / mixed files and folders drop
+            all_files = []
+            for p in paths:
+                if os.path.isfile(p):
+                    all_files.append(p)
+                elif os.path.isdir(p):
+                    for root, _, files in os.walk(p):
+                        for f in files:
+                            all_files.append(os.path.join(root, f))
+            
+            if all_files:
+                self.load_virtual_files(all_files, source_name="Dropped Files" if AppContext.LANG != "RU" else "Сборка из перетащенных файлов")
 
     def update_paths_from_config(self):
         if self.session_inbox_path and os.path.exists(self.session_inbox_path):

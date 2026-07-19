@@ -308,6 +308,30 @@ class MagneticSlider(QSlider):
             }}
         """)
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            opt = QStyleOptionSlider()
+            self.initStyleOption(opt)
+            gr = self.style().subControlRect(QStyle.ComplexControl.CC_Slider, opt, QStyle.SubControl.SC_SliderGroove, self)
+            sr = self.style().subControlRect(QStyle.ComplexControl.CC_Slider, opt, QStyle.SubControl.SC_SliderHandle, self)
+
+            if self.orientation() == Qt.Orientation.Horizontal:
+                sliderLength = sr.width()
+                sliderMin = gr.x()
+                sliderMax = gr.right() - sliderLength + 1
+            else:
+                sliderLength = sr.height()
+                sliderMin = gr.y()
+                sliderMax = gr.bottom() - sliderLength + 1
+            
+            val = QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), int(event.position().x()) - sliderMin, sliderMax - sliderMin, opt.upsideDown)
+            
+            self.setValue(val)
+            self.valueChanged.emit(val)
+            super().mousePressEvent(event)
+        else:
+            super().mousePressEvent(event)
+
     def mouseReleaseEvent(self, event):
         val = self.value()
         nearest = min(self.snap_values, key=lambda x: abs(x - val))

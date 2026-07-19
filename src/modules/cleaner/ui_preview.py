@@ -396,7 +396,6 @@ class CleanerPreviewWidget(QWidget):
     def _clear_media(self):
         import logging
         import time; t_start = time.perf_counter()
-        
         if hasattr(self, 'stacked_widget') and hasattr(self, 'view'):
             self.stacked_widget.setCurrentWidget(self.view)
 
@@ -642,10 +641,8 @@ class CleanerPreviewWidget(QWidget):
         
         # Start heartbeat
         if not hasattr(self, '_heartbeat_timer'):
-            from PyQt6.QtCore import QTimer
             self._heartbeat_timer = QTimer(self)
-            self._heartbeat_timer.timeout.connect(lambda: logging.info(f"   [HEARTBEAT] UI Thread is ALIVE at {time.perf_counter():.4f}"))
-        self._heartbeat_timer.start(100)
+            self._heartbeat_timer.start(100)
         
         from utils_io import strip_long_path_prefix
         path = strip_long_path_prefix(path)

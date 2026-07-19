@@ -316,7 +316,10 @@ class CleanerPreviewWidget(QWidget):
     def _clear_media(self):
         if hasattr(self, '_play_timer'):
             self._play_timer.stop()
-        if self.player: self.player.stop()
+        if self.player:
+            self.player.stop()
+            from PyQt6.QtCore import QUrl
+            self.player.setSource(QUrl())
         if self.movie:
             self.movie.stop()
             self.movie = None

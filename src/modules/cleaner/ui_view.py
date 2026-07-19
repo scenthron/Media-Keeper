@@ -8,6 +8,7 @@ class ClickableGraphicsView(QGraphicsView):
     double_clicked = pyqtSignal()
     middle_clicked = pyqtSignal()
     right_clicked = pyqtSignal()
+    mouse_moved = pyqtSignal(object)
 
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
@@ -71,6 +72,7 @@ class ClickableVideoWidget(QVideoWidget):
     double_clicked = pyqtSignal()
     middle_clicked = pyqtSignal()
     right_clicked = pyqtSignal()
+    mouse_moved = pyqtSignal(object)
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -86,6 +88,10 @@ class ClickableVideoWidget(QVideoWidget):
         elif event.button() == Qt.MouseButton.RightButton:
             self.right_clicked.emit()
         super().mousePressEvent(event)
+        
+    def mouseMoveEvent(self, event):
+        self.mouse_moved.emit(event)
+        super().mouseMoveEvent(event)
         
     def mouseDoubleClickEvent(self, event):
         from PyQt6.QtCore import Qt

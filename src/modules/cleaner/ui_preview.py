@@ -50,8 +50,9 @@ class MediaPlayerPool:
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame, QSplitter, 
     QTableWidget, QTableWidgetItem, QHeaderView, QGraphicsView, QGraphicsScene,
-    QGraphicsTextItem
+    QGraphicsTextItem, QStackedWidget
 )
+from modules.cleaner.ui_view import ClickableGraphicsView, ClickableVideoWidget
 from PyQt6.QtCore import Qt, QUrl, QRectF, QPointF, pyqtSignal, QTimer
 from PyQt6.QtGui import QPixmap, QImageReader, QMovie, QColor, QPainter, QMouseEvent, QFont, QDesktopServices, QWheelEvent, QKeyEvent
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
@@ -83,8 +84,26 @@ class CleanerPreviewWidget(QWidget):
         self.media_container = QWidget()
         self.media_layout = QVBoxLayout(self.media_container)
         self.media_layout.setContentsMargins(0,0,0,0)
-        self._create_view()
         self.media_layout.setSpacing(0)
+        
+        self.stacked_media = QStackedWidget(self.media_container)
+        self.media_layout.addWidget(self.stacked_media)
+        
+        self.dummy_widget = QWidget()
+        self.dummy_widget.setStyleSheet("background-color: black;")
+        self.stacked_media.addWidget(self.dummy_widget)
+        
+        self._create_view()
+        self.video_widget = ClickableVideoWidget(self.stacked_media)
+        self.stacked_media.addWidget(self.view)
+        self.stacked_media.addWidget(self.video_widget)
+        
+        self.video_widget.clicked.connect(self._on_view_clicked)
+        self.video_widget.double_clicked.connect(self._on_view_double_clicked)
+        self.video_widget.middle_clicked.connect(self._on_view_middle_clicked)
+        self.video_widget.right_clicked.connect(self._on_view_right_clicked)
+        self.video_widget.mouse_moved.connect(self._view_mouse_move_event)
+
         
         
         # Controls
@@ -174,9 +193,21 @@ class CleanerPreviewWidget(QWidget):
         self.layout.addWidget(self.splitter)
         self.splitter.setSizes([800, 26]) # Show only header initially
         
-        self.player = None
-        from PyQt6.QtMultimedia import QAudioOutput
+        from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+        self.player = QMediaPlayer()
         self.audio_output = QAudioOutput()
+        self.player.setAudioOutput(self.audio_output)
+        self.player.setVideoOutput(self.video_widget)
+        
+        self.player.positionChanged.connect(self.video_controls.update_position)
+        self.player.positionChanged.connect(self._update_overlay_time)
+        self.player.durationChanged.connect(self.video_controls.update_duration)
+        self.player.durationChanged.connect(self._update_overlay_duration)
+        self.player.durationChanged.connect(self._on_media_duration_changed)
+        self.player.playbackStateChanged.connect(self._on_player_state_changed)
+        self.player.mediaStatusChanged.connect(self._on_media_status_changed)
+        self.video_controls.seek_requested.connect(self.player.setPosition)
+        self.video_controls.seek_moved.connect(self.player.setPosition)
         
         # Connect Controls Signals
         self.video_controls.play_pause_clicked.connect(self.toggle_playback)
@@ -306,19 +337,24 @@ class CleanerPreviewWidget(QWidget):
             self.btn_seg_next.hide()
             
     def _view_mouse_move_event(self, event):
-        QGraphicsView.mouseMoveEvent(self.view, event)
+        if self.current_media_type == 'video':
+            pass # QVideoWidget receives normal mouse move events
+        else:
+            from PyQt6.QtWidgets import QGraphicsView
+            QGraphicsView.mouseMoveEvent(self.view, event)
+            
         segment_active = False
         if hasattr(self, 'smart_preview_mgr'):
             segment_active = self.smart_preview_mgr.active and self.smart_preview_mgr.num_segments > 0
             
         if segment_active and self.current_media_type == 'video':
             pos = event.pos()
-            if pos.x() < self.view.width() * 0.3:
+            view_width = self.video_widget.width()
+            if pos.x() < view_width * 0.3:
                 self.btn_seg_prev.show()
                 self.btn_seg_next.hide()
-            elif pos.x() > self.view.width() * 0.7:
+            elif pos.x() > view_width * 0.7:
                 self.btn_seg_next.show()
-                self.btn_seg_prev.hide()
             else:
                 self.btn_seg_prev.hide()
                 self.btn_seg_next.hide()
@@ -396,32 +432,15 @@ class CleanerPreviewWidget(QWidget):
         self.meta_table.setRowCount(0)
 
     def _clear_media(self):
-        if hasattr(self, 'stacked_widget') and hasattr(self, 'dummy_widget'):
-            self.stacked_widget.setCurrentWidget(self.dummy_widget)
+        if hasattr(self, 'stacked_media') and hasattr(self, 'dummy_widget'):
+            self.stacked_media.setCurrentWidget(self.dummy_widget)
             
         if hasattr(self, 'player') and self.player:
-            try:
-                self.player.positionChanged.disconnect()
-                self.player.durationChanged.disconnect()
-                self.player.playbackStateChanged.disconnect()
-                self.player.mediaStatusChanged.disconnect()
-                self.video_controls.seek_requested.disconnect()
-                self.video_controls.seek_moved.disconnect()
-            except Exception:
-                pass
             self.player.stop()
-            self.player.setVideoOutput(None)
-            from PyQt6.QtCore import QUrl
-            self.player.setSource(QUrl())
-            self.player.deleteLater()
-            self.player = None
+            # Do NOT setVideoOutput(None), Do NOT setSource(QUrl())
             
-        if hasattr(self, 'view') and self.view:
-            self.stacked_widget.removeWidget(self.view)
-            self.view.deleteLater()
-            self.view = None
-            self.scene = None
-            self.video_item = None
+        if hasattr(self, 'scene') and self.scene:
+            self.scene.clear()
             self.pixmap_item = None
             self.text_item = None
             
@@ -550,27 +569,17 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.seeker.setEnabled(True)
         self.video_controls.set_playing_state(False)
         
-        from PyQt6.QtMultimedia import QMediaPlayer
-        self.player = QMediaPlayer()
-        self.player.setAudioOutput(self.audio_output)
+        self.stacked_media.setCurrentWidget(self.video_widget)
         
-        self.player.positionChanged.connect(self.video_controls.update_position)
-        self.player.positionChanged.connect(self._update_overlay_time)
-        self.player.durationChanged.connect(self.video_controls.update_duration)
-        self.player.durationChanged.connect(self._update_overlay_duration)
-        self.player.durationChanged.connect(self._on_media_duration_changed)
-        self.player.playbackStateChanged.connect(self._on_player_state_changed)
-        self.player.mediaStatusChanged.connect(self._on_media_status_changed)
-        self.video_controls.seek_requested.connect(self.player.setPosition)
-        self.video_controls.seek_moved.connect(self.player.setPosition)
+        # Parent overlays to video_widget to show them on top
+        self.btn_seg_prev.setParent(self.video_widget)
+        self.btn_seg_next.setParent(self.video_widget)
+        self.segment_indicator.setParent(self.video_widget)
+        self.time_overlay.setParent(self.video_widget)
         
-        from PyQt6.QtMultimediaWidgets import QGraphicsVideoItem
-        self.video_item = QGraphicsVideoItem()
-        self.scene.addItem(self.video_item)
-        if hasattr(self, '_fit_video_size_changed'):
-            self.video_item.nativeSizeChanged.connect(self._fit_video_size_changed)
-            
-        self.player.setVideoOutput(self.video_item)
+        # Ensure they are visible if they should be
+        self.time_overlay.show()
+        
         self.audio_output.setVolume(self.video_controls.vol_slider.value() / 100.0)
         
         from utils_io import strip_long_path_prefix

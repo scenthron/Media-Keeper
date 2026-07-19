@@ -162,6 +162,9 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.speed_toggled.connect(self._on_speed_toggled)
         
         self.smart_preview_mgr = None
+        self._play_timer = QTimer(self)
+        self._play_timer.setSingleShot(True)
+        self._play_timer.timeout.connect(self._do_play)
         self.time_overlay = TimeOverlayWidget(self.media_container)
         self.time_overlay.hide()
         
@@ -306,7 +309,13 @@ class CleanerPreviewWidget(QWidget):
     def change_volume(self, val):
         self.audio_output.setVolume(val / 100.0)
 
+    def _do_play(self):
+        if self.current_media_type in ['video', 'audio'] and hasattr(self, 'player') and self.player:
+            self.player.play()
+
     def _clear_media(self):
+        if hasattr(self, '_play_timer'):
+            self._play_timer.stop()
         if self.player: self.player.stop()
         if self.movie:
             self.movie.stop()
@@ -422,7 +431,7 @@ class CleanerPreviewWidget(QWidget):
         
         self.player.setPlaybackRate(speed)
         self.player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
-        self.player.play()
+        self._play_timer.start(100)
 
     def load_file(self, path):
         from utils_io import strip_long_path_prefix
@@ -431,7 +440,7 @@ class CleanerPreviewWidget(QWidget):
         if self.current_path == path:
             if self.player:
                 self.player.setPosition(0)
-                self.player.play()
+                self._play_timer.start(50)
             return
             
         if not hasattr(self, '_heartbeat_timer'):

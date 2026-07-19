@@ -274,6 +274,8 @@ class ClickableSlider(QSlider):
                                               sliderMax - sliderMin, opt.upsideDown)
 
 class MagneticSlider(QSlider):
+    custom_released = pyqtSignal()
+    
     def __init__(self, orientation=Qt.Orientation.Horizontal, parent=None):
         super().__init__(orientation, parent)
         self.setObjectName("MagneticSlider")
@@ -315,6 +317,7 @@ class MagneticSlider(QSlider):
             self.valueChanged.emit(nearest)
         
         super().mouseReleaseEvent(event)
+        self.custom_released.emit()
 
 class SpeedSettingsPopup(QWidget):
     speed_changed = pyqtSignal(float)
@@ -367,6 +370,7 @@ class SpeedSettingsPopup(QWidget):
         self.slider_speed.setRange(1, 60)
         self.slider_speed.setValue(20)
         self.slider_speed.valueChanged.connect(self.on_slider_change)
+        self.slider_speed.custom_released.connect(self.hide)
         self.slider_speed.setFixedHeight(16)
         layout.addWidget(self.slider_speed)
         
@@ -379,6 +383,7 @@ class SpeedSettingsPopup(QWidget):
         
     def reset_speed(self):
         self.slider_speed.setValue(20)
+        self.hide()
         
     def on_slider_change(self, val):
         if val == 10:

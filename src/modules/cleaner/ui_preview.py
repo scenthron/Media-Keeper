@@ -400,6 +400,15 @@ class CleanerPreviewWidget(QWidget):
             self.stacked_widget.setCurrentWidget(self.view)
 
             
+        if hasattr(self, 'video_item') and self.video_item:
+            try:
+                self.video_item.hide()
+                self.scene.removeItem(self.video_item)
+            except Exception: pass
+            self.video_item.deleteLater()
+            self.video_item = None
+            logging.info(f'    [CLEAR] After deleteLater(): {time.perf_counter() - t_start:.4f}s')
+            
         if hasattr(self, 'player') and self.player:
             try:
                 self.player.positionChanged.disconnect()
@@ -414,20 +423,16 @@ class CleanerPreviewWidget(QWidget):
             self.player.stop()
             self.player.setVideoOutput(None)
             
+            # Process events to let the hide/removeItem take effect before setSource
+            from PyQt6.QtCore import QCoreApplication
+            QCoreApplication.processEvents()
+            
             logging.info(f"    [CLEAR] Before setSource(): {time.perf_counter() - t_start:.4f}s")
             self.player.setSource(QUrl())
             logging.info(f"    [CLEAR] After setSource(): {time.perf_counter() - t_start:.4f}s")
             
             self.player.deleteLater()
             self.player = None
-            
-        if hasattr(self, 'video_item') and self.video_item:
-            try:
-                self.scene.removeItem(self.video_item)
-            except Exception: pass
-            self.video_item.deleteLater()
-            self.video_item = None
-            logging.info(f'    [CLEAR] After deleteLater(): {time.perf_counter() - t_start:.4f}s')
             
         if hasattr(self, 'audio_output') and self.audio_output:
             self.audio_output.deleteLater()

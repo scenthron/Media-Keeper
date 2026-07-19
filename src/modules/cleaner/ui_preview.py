@@ -575,8 +575,20 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.seeker.setEnabled(True)
         self.video_controls.set_playing_state(False)
         
-        pool = MediaPlayerPool.get_instance()
-        self.player, self.audio_output = pool.acquire()
+        from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+        from modules.cleaner.ui_view import ClickableVideoWidget
+        
+        if not hasattr(self, 'video_widget') or not self.video_widget:
+            self.video_widget = ClickableVideoWidget()
+            self.video_widget.clicked.connect(self.toggle_playback)
+            self.video_widget.double_clicked.connect(self.open_current_file)
+            self.video_widget.middle_clicked.connect(self.open_containing_folder)
+            self.video_widget.right_clicked.connect(self.reset_view)
+            self.stacked_widget.addWidget(self.video_widget)
+        
+        self.player = QMediaPlayer()
+        self.audio_output = QAudioOutput()
+        self.player.setAudioOutput(self.audio_output)
         self.player.setVideoOutput(self.video_widget)
         self.audio_output.setVolume(self.video_controls.vol_slider.value() / 100.0)
         

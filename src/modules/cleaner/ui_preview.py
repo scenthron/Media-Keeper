@@ -509,7 +509,7 @@ class CleanerPreviewWidget(QWidget):
             self.update_segment_indicator()
 
     def _fit_video_size_changed(self, size):
-        self.video_item.setSize(size)
+
         QTimer.singleShot(50, self.reset_view)
 
     def setup_static_image(self, path):
@@ -704,10 +704,8 @@ class CleanerPreviewWidget(QWidget):
             self.update_segment_indicator()
 
     def _fit_video_size_changed(self, size):
-        if hasattr(self, 'video_item') and self.video_item:
-            self.video_item.setSize(size)
-            from PyQt6.QtCore import QTimer
-            QTimer.singleShot(50, self.reset_view)
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(50, self.reset_view)
             
     def _on_movie_frame(self):
         if not hasattr(self, 'movie') or not self.movie: return
@@ -730,9 +728,7 @@ class CleanerPreviewWidget(QWidget):
         self.view.verticalScrollBar().setValue(0)
         
         active_item = None
-        if self.video_item.isVisible(): 
-            active_item = self.video_item
-        elif self.pixmap_item.isVisible() and not self.pixmap_item.pixmap().isNull(): 
+        if self.pixmap_item.isVisible() and not self.pixmap_item.pixmap().isNull(): 
             active_item = self.pixmap_item
         elif self.text_item.isVisible():
             active_item = self.text_item
@@ -758,13 +754,6 @@ class CleanerPreviewWidget(QWidget):
         if viewport_rect.width() <= 10 or viewport_rect.height() <= 10:
              QTimer.singleShot(100, self.reset_view)
              return
-        
-        # If content is video -> Always Fit
-        if active_item == self.video_item:
-            self.view.fitInView(active_item, Qt.AspectRatioMode.KeepAspectRatio)
-            self.view.centerOn(active_item)
-            return
-
         # If Image/Text -> Fit only if larger than viewport
         width_diff = item_rect.width() - viewport_rect.width()
         height_diff = item_rect.height() - viewport_rect.height()

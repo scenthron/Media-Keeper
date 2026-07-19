@@ -1449,19 +1449,23 @@ class LargePreviewPopup(QDialog):
         super().closeEvent(event)
         
     def cleanup(self):
+        import logging; import time; t0 = time.time()
         if hasattr(self, 'size_settings_popup') and self.size_settings_popup:
             self.size_settings_popup.hide()
             self.size_settings_popup.deleteLater()
             self.size_settings_popup = None
 
         if self.media_player:
+            logging.info(f"    [SORTER CLEAR] Before cleanup: {time.time()-t0:.4f}s")
             try:
                 self.media_player.positionChanged.disconnect()
                 self.media_player.durationChanged.disconnect()
             except Exception:
                 pass
             self.media_player.stop()
+            logging.info(f"    [SORTER CLEAR] Before setSource: {time.time()-t0:.4f}s")
             self.media_player.setSource(QUrl())
+            logging.info(f"    [SORTER CLEAR] After setSource: {time.time()-t0:.4f}s")
             
             try:
                 import time

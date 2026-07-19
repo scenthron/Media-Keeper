@@ -396,6 +396,12 @@ class CleanerPreviewWidget(QWidget):
     def _clear_media(self):
         import logging
         import time; t_start = time.perf_counter()
+        
+        if hasattr(self, 'stacked_widget') and hasattr(self, 'view'):
+            self.stacked_widget.setCurrentWidget(self.view)
+        if hasattr(self, 'video_widget') and self.video_widget:
+            self.video_widget.hide()
+            
         if hasattr(self, 'player') and self.player:
             try:
                 self.player.positionChanged.disconnect()
@@ -406,30 +412,22 @@ class CleanerPreviewWidget(QWidget):
                 self.video_controls.seek_moved.disconnect()
             except Exception: pass
             
-            import logging
-            logging.info(f'    [CLEAR] Before stop(): {time.perf_counter() - t_start:.4f}s')
+            logging.info(f"    [CLEAR] Before player stop(): {time.perf_counter() - t_start:.4f}s")
             self.player.stop()
-            logging.info(f'    [CLEAR] After stop(): {time.perf_counter() - t_start:.4f}s')
-            from PyQt6.QtCore import QUrl
-            logging.info(f'    [CLEAR] Before setSource(): {time.perf_counter() - t_start:.4f}s')
             self.player.setVideoOutput(None)
-            self.player.setSource(QUrl())
-            logging.info(f'    [CLEAR] After setSource(): {time.perf_counter() - t_start:.4f}s')
             
-            try:
-                import time
-                from PyQt6.QtMultimedia import QMediaPlayer
-                from PyQt6.QtCore import QCoreApplication
-                start_t = time.time()
-                while self.player.mediaStatus() != QMediaPlayer.MediaStatus.NoMedia and (time.time() - start_t) < 0.3:
-                    QCoreApplication.processEvents()
-                    time.sleep(0.01)
-            except Exception as e:
-                pass
-                
-            logging.info(f'    [CLEAR] Before deleteLater(): {time.perf_counter() - t_start:.4f}s')
+            logging.info(f"    [CLEAR] Before setSource(): {time.perf_counter() - t_start:.4f}s")
+            self.player.setSource(QUrl())
+            logging.info(f"    [CLEAR] After setSource(): {time.perf_counter() - t_start:.4f}s")
+            
             self.player.deleteLater()
             self.player = None
+            
+        if hasattr(self, 'video_widget') and self.video_widget:
+            self.video_widget.hide()
+            self.stacked_widget.removeWidget(self.video_widget)
+            self.video_widget.deleteLater()
+            self.video_widget = None
             logging.info(f'    [CLEAR] After deleteLater(): {time.perf_counter() - t_start:.4f}s')
             
         if hasattr(self, 'audio_output') and self.audio_output:
@@ -459,15 +457,7 @@ class CleanerPreviewWidget(QWidget):
         self.view.middle_clicked.connect(self.open_containing_folder)
         self.view.right_clicked.connect(self.reset_view)
         
-        from modules.cleaner.ui_view import ClickableVideoWidget
-        self.video_widget = ClickableVideoWidget()
-        self.video_widget.clicked.connect(self.toggle_playback)
-        self.video_widget.double_clicked.connect(self.open_current_file)
-        self.video_widget.middle_clicked.connect(self.open_containing_folder)
-        self.video_widget.right_clicked.connect(self.reset_view)
-        
-        self.stacked_widget.addWidget(self.view)
-        self.stacked_widget.addWidget(self.video_widget)
+
         
         from PyQt6.QtGui import QPixmap, QColor, QFont
         from PyQt6.QtWidgets import QGraphicsTextItem

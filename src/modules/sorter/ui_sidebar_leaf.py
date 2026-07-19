@@ -43,7 +43,7 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
         self.btn_action.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_action.installEventFilter(self)
 
-        self.lbl_count = QLabel("(0)")
+        self.lbl_count = QLabel("0")
         self.lbl_count.setStyleSheet("""
             background-color: rgba(0,0,0,0.3); 
             color: #aaa; 
@@ -239,7 +239,7 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
 
     def update_count_visual(self):
         count, _ = DirCache.inst().get_data(self.path)
-        new_text = f"({count})"
+        new_text = f"{count}"
         if self.lbl_count.text() != new_text:
             self.lbl_count.setText(new_text)
 

@@ -112,7 +112,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         self.btn_name.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_name.installEventFilter(self)
         
-        self.lbl_count = QLabel("(0)")
+        self.lbl_count = QLabel("0")
         self.lbl_count.setStyleSheet("color: #ddd; font-size: 12px; margin-right: 5px; background: transparent; padding-right: 6px;")
 
         icons_dir = AppContext.find_resource_dir("icons")
@@ -292,7 +292,7 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         if not os.path.exists(self.path): return
         # Non-blocking Cache call
         count, _ = DirCache.inst().get_data(self.path)
-        new_text = f"({count})"
+        new_text = f"{count}"
         if self.lbl_count.text() != new_text:
             self.lbl_count.setText(new_text)
 

@@ -396,8 +396,8 @@ class CleanerPreviewWidget(QWidget):
     def _clear_media(self):
         import logging
         import time; t_start = time.perf_counter()
-        if hasattr(self, 'stacked_widget') and hasattr(self, 'view'):
-            self.stacked_widget.setCurrentWidget(self.view)
+        if hasattr(self, 'stacked_widget') and hasattr(self, 'dummy_widget'):
+            self.stacked_widget.setCurrentWidget(self.dummy_widget)
 
             
         if hasattr(self, 'video_item') and self.video_item:
@@ -462,6 +462,9 @@ class CleanerPreviewWidget(QWidget):
         self.view.right_clicked.connect(self.reset_view)
         
         self.stacked_widget.addWidget(self.view)
+        from PyQt6.QtWidgets import QWidget
+        self.dummy_widget = QWidget()
+        self.stacked_widget.addWidget(self.dummy_widget)
         
         from PyQt6.QtGui import QPixmap, QColor, QFont
         from PyQt6.QtWidgets import QGraphicsTextItem

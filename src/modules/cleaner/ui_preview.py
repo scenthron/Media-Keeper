@@ -98,10 +98,10 @@ class CleanerPreviewWidget(QWidget):
         self.stacked_media.addWidget(self.view)
         self.stacked_media.addWidget(self.video_widget)
         
-        self.video_widget.clicked.connect(self._on_view_clicked)
-        self.video_widget.double_clicked.connect(self._on_view_double_clicked)
-        self.video_widget.middle_clicked.connect(self._on_view_middle_clicked)
-        self.video_widget.right_clicked.connect(self._on_view_right_clicked)
+        self.video_widget.clicked.connect(self.toggle_playback)
+        self.video_widget.double_clicked.connect(self.open_current_file)
+        self.video_widget.middle_clicked.connect(self.open_containing_folder)
+        self.video_widget.right_clicked.connect(self.reset_view)
         self.video_widget.mouse_moved.connect(self._view_mouse_move_event)
 
         

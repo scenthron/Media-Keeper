@@ -341,7 +341,7 @@ class SpeedSettingsPopup(QWidget):
             QPushButton#btnOk { background-color: #3b82f6; border-color: #2563eb; }
             QPushButton#btnOk:hover { background-color: #2563eb; }
         """)
-        self.setFixedSize(160, 90)
+        self.setFixedSize(160, 60)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
@@ -368,13 +368,6 @@ class SpeedSettingsPopup(QWidget):
         self.slider_speed.setFixedHeight(16)
         layout.addWidget(self.slider_speed)
         
-        self.btn_ok = QPushButton("Сохранить")
-        self.btn_ok.setObjectName("btnOk")
-        self.btn_ok.setFixedHeight(22)
-        self.btn_ok.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_ok.clicked.connect(self.accept_speed)
-        layout.addWidget(self.btn_ok)
-        
         self.current_speed_val = 2.0
         self.last_val = 20
         
@@ -395,6 +388,7 @@ class SpeedSettingsPopup(QWidget):
         self.last_val = val
         self.current_speed_val = val / 10.0
         self.lbl_speed.setText(f"Скорость: {self.current_speed_val:.1f}x")
+        self.speed_changed.emit(self.current_speed_val)
 
     def set_value(self, val):
         self.slider_speed.blockSignals(True)
@@ -405,10 +399,6 @@ class SpeedSettingsPopup(QWidget):
         self.current_speed_val = val
         self.lbl_speed.setText(f"Скорость: {self.current_speed_val:.1f}x")
         self.slider_speed.blockSignals(False)
-        
-    def accept_speed(self):
-        self.speed_changed.emit(self.current_speed_val)
-        self.hide()
 
 
 class SpeedButton(QPushButton):

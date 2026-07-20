@@ -649,8 +649,11 @@ class FileOpsMixin:
         # так как изображения не блокируются QMediaPlayer-ом на диске.
         if is_only_images:
             try:
-                self.media_player.stop()
-                self.media_player.setSource(QUrl())
+                if hasattr(self, '_recreate_main_player'):
+                    self._recreate_main_player()
+                else:
+                    self.media_player.stop()
+                    self.media_player.setSource(QUrl())
             except Exception:
                 pass
             try:
@@ -694,11 +697,14 @@ class FileOpsMixin:
         players_to_wait = []
 
         try:
-            self.media_player.stop()
-            self.media_player.setSource(QUrl())
-            players_to_wait.append(self.media_player)
+            if hasattr(self, '_recreate_main_player'):
+                self._recreate_main_player()
+            else:
+                self.media_player.stop()
+                self.media_player.setSource(QUrl())
+                players_to_wait.append(self.media_player)
         except Exception as e:
-            logging.error(f"Error stopping main player: {e}")
+            logging.error(f"Error recreating main player: {e}")
             
         try:
             if hasattr(self, 'viewer') and self.viewer:

@@ -3238,6 +3238,16 @@ class SorterViewerArea(QWidget):
         self.loading_current_idx = 0
         self.loading_target_select_idx = current_index
         
+        # Если мы в одиночном режиме, нам не нужно генерировать плитки и списки для тысяч файлов
+        if getattr(self, 'current_view_mode', 0) == 0:
+            self.loading_overlay.hide()
+            self.selection_changed.emit()
+            if self.stack.currentIndex() == 0:
+                main_window = self.window()
+                if main_window and hasattr(main_window, 'show_current_file'):
+                    main_window.show_current_file()
+            return
+            
         # Сбор элементов для рендеринга с учетом группировки
         main_app = self.get_main_app()
         group_enabled = main_app.config.get("group_by_sort", False) if main_app and hasattr(main_app, 'config') else False

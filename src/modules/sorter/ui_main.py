@@ -976,6 +976,12 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         if hasattr(self, 'update_hotkeys_context'):
             self.update_hotkeys_context(mode_idx)
             
+        # Recalculate pagination size and queues
+        if hasattr(self, 'apply_local_filters_and_sorting'):
+            self.apply_local_filters_and_sorting(trigger_sync=False)
+            if hasattr(self, 'viewer') and hasattr(self, 'files_queue'):
+                self.viewer.sync_files_queue(self.UNSORT_DIR, self.files_queue, self.current_index)
+            
         if mode_idx == 0:
             # Switched to Single view mode. Show current file.
             if hasattr(self, 'btn_rot_l') and self.btn_rot_l:

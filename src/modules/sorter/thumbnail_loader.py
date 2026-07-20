@@ -22,18 +22,6 @@ class ThumbnailWorker(QRunnable):
             image = QImage()
             loaded = False
             
-            # Check Disk Cache first in the background thread
-            from logic_paths import get_app_data_dir
-            disk_cache_dir = os.path.join(get_app_data_dir(), "thumbnails")
-            import hashlib
-            hash_obj = hashlib.md5(os.path.normpath(self.filepath).encode('utf-8'))
-            disk_path = os.path.join(disk_cache_dir, f"{hash_obj.hexdigest()}")
-            
-            if os.path.exists(disk_path):
-                if image.load(disk_path, "JPG"):
-                    self.signals.finished.emit(self.filepath, image)
-                    return
-            
             long_path = ensure_long_path(self.filepath)
             ext = os.path.splitext(long_path)[1].lower()
             from utils_extensions import VIDEO_EXTS
@@ -91,12 +79,6 @@ class ThumbnailWorker(QRunnable):
                 Qt.TransformationMode.SmoothTransformation
             )
             
-            # Save to Disk cache after generating
-            try:
-                scaled.save(disk_path, "JPG", quality=85)
-            except Exception as e:
-                logging.debug(f"Failed to save thumbnail to disk cache: {e}")
-                
             self.signals.finished.emit(self.filepath, scaled)
         except Exception as e:
             logging.error(f"Error loading thumbnail for {self.filepath}: {e}", exc_info=True)
@@ -123,17 +105,6 @@ class ThumbnailLoader(QObject):
         self.active_processes = {} # filepath -> Popen
         # Cache for loaded images (QImage)
         self.cache = {}
-        
-        from logic_paths import get_app_data_dir
-        self.disk_cache_dir = os.path.join(get_app_data_dir(), "thumbnails")
-        if not os.path.exists(self.disk_cache_dir):
-            try: os.makedirs(self.disk_cache_dir)
-            except: pass
-
-    def _get_cache_filename(self, filepath: str) -> str:
-        import hashlib
-        hash_obj = hashlib.md5(filepath.encode('utf-8'))
-        return os.path.join(self.disk_cache_dir, f"{hash_obj.hexdigest()}")
 
     def get_thumbnail(self, filepath: str, target_size: QSize):
         norm_path = os.path.normpath(filepath)
@@ -204,18 +175,6 @@ class ThumbnailLoader(QObject):
     def clear_cache(self):
         self.cache.clear()
         self.active_requests.clear()
-
-    def clear_disk_cache(self):
-        import shutil
-        self.clear_cache()
-        if os.path.exists(self.disk_cache_dir):
-            try:
-                for filename in os.listdir(self.disk_cache_dir):
-                    file_path = os.path.join(self.disk_cache_dir, filename)
-                    if os.path.isfile(file_path):
-                        os.remove(file_path)
-            except Exception as e:
-                logging.error(f"Failed to clear disk cache: {e}")
 
     def rename_cache_key(self, old_path: str, new_path: str) -> None:
         """Переименовывает ключ в кэше миниатюр при переименовании файла, сохраняя миниатюру в RAM."""

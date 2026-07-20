@@ -208,17 +208,18 @@ class FileOpsMixin:
                 self.scan_thread.deleteLater()
             self.scan_thread = None
             
-            # Запускаем генерацию превью для файлов, у которых их нет в кэше
-            from PyQt6.QtCore import QSize
-            from modules.sorter.thumbnail_loader import ThumbnailLoader
-            loader = ThumbnailLoader.inst()
-            for f in files:
-                f_path = os.path.join(self.UNSORT_DIR, f['rel_path'])
-                norm_p = os.path.normpath(f_path)
-                if norm_p not in loader.cache:
-                    ext = os.path.splitext(norm_p)[1].lower()
-                    if ext in IMAGE_EXTS | VIDEO_EXTS | AUDIO_EXTS:
-                        loader.get_thumbnail(f_path, QSize(256, 256))
+            # Запускаем генерацию превью для файлов, у которых их нет в кэше, только если не в одиночном режиме
+            if self.viewer.current_view_mode != 0:
+                from PyQt6.QtCore import QSize
+                from modules.sorter.thumbnail_loader import ThumbnailLoader
+                loader = ThumbnailLoader.inst()
+                for f in files:
+                    f_path = os.path.join(self.UNSORT_DIR, f['rel_path'])
+                    norm_p = os.path.normpath(f_path)
+                    if norm_p not in loader.cache:
+                        ext = os.path.splitext(norm_p)[1].lower()
+                        if ext in IMAGE_EXTS | VIDEO_EXTS | AUDIO_EXTS:
+                            loader.get_thumbnail(f_path, QSize(256, 256))
             return
 
         logging.info(f"Scan finished. Found {len(files)} files.")
@@ -343,8 +344,12 @@ class FileOpsMixin:
         if not hasattr(self, 'page_index'):
             self.page_index = 0
             
-        page_size = self.config.get("pagination_size", 1000)
-        total_items = len(self._all_filtered_files_queue)
+        if hasattr(self, 'viewer') and self.viewer and self.viewer.current_view_mode == 0:
+            total_items = len(self._all_filtered_files_queue)
+            page_size = total_items if total_items > 0 else 1
+        else:
+            page_size = self.config.get("pagination_size", 1000)
+            total_items = len(self._all_filtered_files_queue)
         
         total_pages = max(1, (total_items + page_size - 1) // page_size)
         if self.page_index >= total_pages:
@@ -380,8 +385,11 @@ class FileOpsMixin:
     def change_page(self, delta):
         if not hasattr(self, '_all_filtered_files_queue'): return
         
-        page_size = self.config.get("pagination_size", 1000)
         total_items = len(self._all_filtered_files_queue)
+        if hasattr(self, 'viewer') and self.viewer and self.viewer.current_view_mode == 0:
+            page_size = total_items if total_items > 0 else 1
+        else:
+            page_size = self.config.get("pagination_size", 1000)
         total_pages = max(1, (total_items + page_size - 1) // page_size)
         
         new_page = getattr(self, 'page_index', 0) + delta

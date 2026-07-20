@@ -1309,7 +1309,7 @@ class FileOpsMixin:
                 self.apply_local_filters_and_sorting(trigger_sync=False)
                 
                 # Обновляем структуру дерева в сайдбаре, чтобы счетчики категорий были точными
-                self.reload_categories_ui()
+                # self.reload_categories_ui() - отключено, чтобы дерево не моргало и не перерисовывалось полностью
                 self.refresh_sidebar_styling()
                 
                 # Синхронизируем UI с учетом группировки

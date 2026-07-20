@@ -78,7 +78,7 @@ class FileOpsMixin:
                 except: pass
                 
             from modules.sorter.thumbnail_loader import ThumbnailLoader
-            ThumbnailLoader.inst().clear_disk_cache()
+            ThumbnailLoader.inst().clear_cache()
             
             if was_virtual and hasattr(self, 'refresh_sidebar_styling'):
                 self.refresh_sidebar_styling()
@@ -122,7 +122,7 @@ class FileOpsMixin:
             
         # Clean thumbnail cache for new virtual session
         from modules.sorter.thumbnail_loader import ThumbnailLoader
-        ThumbnailLoader.inst().clear_disk_cache()
+        ThumbnailLoader.inst().clear_cache()
         
         self.UNSORT_DIR = ""  # Empty string trick for absolute rel_paths
         self._raw_dir_files = []
@@ -418,7 +418,7 @@ class FileOpsMixin:
     def refresh_pagination(self):
         # Clears disk thumbnail cache and triggers full refresh to reset state
         from modules.sorter.thumbnail_loader import ThumbnailLoader
-        ThumbnailLoader.inst().clear_disk_cache()
+        ThumbnailLoader.inst().clear_cache()
         self.manual_full_refresh(reset_position=False, silent=False)
 
     def apply_sorting_to_queue(self, sort_type, trigger_sync=True):

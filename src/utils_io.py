@@ -53,7 +53,7 @@ def smart_move_file(src, dst, progress_callback=None, stop_event=None):
             dst = dst_abs
 
     CHUNK_SIZE = 1024 * 1024 # 1 MB
-    MAX_RETRIES = 5
+    MAX_RETRIES = 30
     RETRY_DELAY = 0.15 # 150 ms
     
     for attempt in range(MAX_RETRIES):

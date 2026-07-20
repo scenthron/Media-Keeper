@@ -7,6 +7,8 @@ from PyQt6.QtGui import QImage
 class ThumbnailSignals(QObject):
     finished = pyqtSignal(str, QImage)  # Emits (filepath, scaled_image)
     error = pyqtSignal(str, str)        # Emits (filepath, error_message)
+    process_started = pyqtSignal(str, object) # Emits (filepath, Popen)
+    process_finished = pyqtSignal(str) # Emits (filepath)
 
 class ThumbnailWorker(QRunnable):
     def __init__(self, filepath: str, target_size: QSize):
@@ -57,16 +59,24 @@ class ThumbnailWorker(QRunnable):
                         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                     
                     try:
-                        proc = subprocess.run(
+                        proc = subprocess.Popen(
                             cmd,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
-                            startupinfo=startupinfo,
-                            timeout=5
+                            startupinfo=startupinfo
                         )
-                        if proc.returncode == 0 and proc.stdout:
-                            if image.loadFromData(proc.stdout):
-                                loaded = True
+                        self.signals.process_started.emit(self.filepath, proc)
+                        try:
+                            stdout, stderr = proc.communicate(timeout=5)
+                            if proc.returncode == 0 and stdout:
+                                if image.loadFromData(stdout):
+                                    loaded = True
+                        except subprocess.TimeoutExpired:
+                            proc.kill()
+                            proc.communicate()
+                            logging.debug(f"FFmpeg extraction timeout for {self.filepath}")
+                        finally:
+                            self.signals.process_finished.emit(self.filepath)
                     except Exception as ex:
                         logging.debug(f"FFmpeg extraction failed for {self.filepath}: {ex}")
             
@@ -110,6 +120,7 @@ class ThumbnailLoader(QObject):
         self.pool = QThreadPool.globalInstance()
         # Keep track of active requests to prevent duplicate loading
         self.active_requests = set()
+        self.active_processes = {} # filepath -> Popen
         # Cache for loaded images (QImage)
         self.cache = {}
         
@@ -141,7 +152,31 @@ class ThumbnailLoader(QObject):
         worker = ThumbnailWorker(norm_path, target_size)
         worker.signals.finished.connect(self._on_finished)
         worker.signals.error.connect(self._on_error)
+        worker.signals.process_started.connect(self._on_process_started)
+        worker.signals.process_finished.connect(self._on_process_finished)
         self.pool.start(worker)
+
+    def _on_process_started(self, filepath: str, proc: object):
+        norm_path = os.path.normpath(filepath)
+        self.active_processes[norm_path] = proc
+
+    def _on_process_finished(self, filepath: str):
+        norm_path = os.path.normpath(filepath)
+        if norm_path in self.active_processes:
+            del self.active_processes[norm_path]
+
+    def cancel_for_file(self, filepath: str):
+        norm_path = os.path.normpath(filepath)
+        if norm_path in self.active_processes:
+            try:
+                proc = self.active_processes[norm_path]
+                proc.kill()
+                logging.info(f"Killed active ffmpeg process for {filepath}")
+            except Exception as e:
+                logging.debug(f"Failed to kill ffmpeg for {filepath}: {e}")
+            del self.active_processes[norm_path]
+        if norm_path in self.active_requests:
+            self.active_requests.remove(norm_path)
 
     def _on_finished(self, filepath: str, image: QImage):
         norm_path = os.path.normpath(filepath)

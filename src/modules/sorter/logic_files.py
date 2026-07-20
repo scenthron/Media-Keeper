@@ -788,6 +788,15 @@ class FileOpsMixin:
 
         is_single_file = (len(selected_paths) == 1)
 
+        # Отменяем фоновую генерацию миниатюр, чтобы освободить блокировку файлов ffmpeg
+        try:
+            from thumbnail_loader import ThumbnailLoader
+            loader = ThumbnailLoader.inst()
+            for p in selected_paths:
+                loader.cancel_for_file(p)
+        except Exception as e:
+            logging.debug(f"Failed to cancel thumbnail generation: {e}")
+
         self._stop_all_media_players(is_only_images=is_only_images, is_single_file=is_single_file)
 
         pairs = []

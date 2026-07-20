@@ -161,8 +161,11 @@ class PlayerMixin:
             self.current_file_path = None
             self.lbl_filename.setText(AppContext.tr("msg_empty") if hasattr(AppContext, 'tr') else "Папка пуста")
             self.viewer.show_empty_state(AppContext.tr("viewer_empty_msg") if hasattr(AppContext, 'tr') else "Нет файлов для отображения")
-            self.media_player.stop()
-            self.media_player.setSource(QUrl())
+            if hasattr(self, '_recreate_main_player'):
+                self._recreate_main_player()
+            else:
+                self.media_player.stop()
+                self.media_player.setSource(QUrl())
             return
 
         if self.current_index >= len(self.files_queue):
@@ -177,8 +180,11 @@ class PlayerMixin:
         if hasattr(self, 'locked_files') and norm_path in self.locked_files:
             self.lbl_filename.setText(f"{filename} (Перемещение...)")
             self.viewer.show_empty_state("Файл перемещается, предпросмотр недоступен...")
-            self.media_player.stop()
-            self.media_player.setSource(QUrl())
+            if hasattr(self, '_recreate_main_player'):
+                self._recreate_main_player()
+            else:
+                self.media_player.stop()
+                self.media_player.setSource(QUrl())
             if hasattr(self, 'video_controls'):
                 self.video_controls.hide()
             return
@@ -201,10 +207,12 @@ class PlayerMixin:
         
         self.update_window_title()
 
-        # Если активен режим плиток или списка, не инициализируем проигрывание
         if hasattr(self, 'viewer') and self.viewer.current_view_mode != 0:
-            self.media_player.stop()
-            self.media_player.setSource(QUrl())
+            if hasattr(self, '_recreate_main_player'):
+                self._recreate_main_player()
+            else:
+                self.media_player.stop()
+                self.media_player.setSource(QUrl())
             if hasattr(self, 'video_controls'):
                 self.video_controls.hide()
             logging.info(f"[PlayerMixin] Synced active index in Grid/List mode: {self.current_index}")
@@ -212,7 +220,10 @@ class PlayerMixin:
             return
         
         # Reset Player State
-        self.media_player.stop()
+        if hasattr(self, '_recreate_main_player'):
+            self._recreate_main_player()
+        else:
+            self.media_player.stop()
         self.video_controls.reset_controls()
         
         # Determine Type

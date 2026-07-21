@@ -60,6 +60,7 @@ class ImageDropZone(QFrame):
 class AILabResultTile(QFrame):
     def __init__(self, file_path, score):
         super().__init__()
+        self.file_path = file_path
         from PyQt6.QtWidgets import QVBoxLayout, QLabel
         from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont
         from PyQt6.QtCore import Qt, QRect
@@ -99,6 +100,14 @@ class AILabResultTile(QFrame):
         elidedText = fontMetrics.elidedText(self.lbl_name.text(), Qt.TextElideMode.ElideRight, 132)
         self.lbl_name.setText(elidedText)
         layout.addWidget(self.lbl_name)
+
+    def mousePressEvent(self, event):
+        from PyQt6.QtCore import Qt
+        import os, subprocess
+        if event.button() == Qt.MouseButton.MiddleButton:
+            path = os.path.normpath(self.file_path)
+            subprocess.run(['explorer', '/select,', path])
+        super().mousePressEvent(event)
 
 
 class FolderDropButton(QPushButton):
@@ -272,8 +281,11 @@ class AILabTab(QWidget):
     def select_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Выберите папку для сканирования")
         if folder:
-            self.selected_folder = folder
-            self.lbl_selected_folder.setText(folder)
+            self.set_selected_folder(folder)
+
+    def set_selected_folder(self, folder):
+        self.selected_folder = folder
+        self.lbl_selected_folder.setText(folder)
 
     def on_item_double_clicked(self, item):
         path = item.data(Qt.ItemDataRole.UserRole)

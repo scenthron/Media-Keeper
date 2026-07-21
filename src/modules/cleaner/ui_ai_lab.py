@@ -103,10 +103,11 @@ class AILabResultTile(QFrame):
 
     def mousePressEvent(self, event):
         from PyQt6.QtCore import Qt
-        import os, subprocess
+        import os
+        from utils_common import reveal_in_explorer
         if event.button() == Qt.MouseButton.MiddleButton:
             path = os.path.normpath(self.file_path)
-            subprocess.run(['explorer', '/select,', path])
+            reveal_in_explorer(path)
         super().mousePressEvent(event)
 
 

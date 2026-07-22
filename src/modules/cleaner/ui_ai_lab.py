@@ -301,9 +301,9 @@ class AILabTab(QWidget):
         lbl_thresh.setStyleSheet("color: white; font-weight: bold;")
         self.slider_thresh = QSlider(Qt.Orientation.Horizontal)
         self.slider_thresh.setRange(0, 100)
-        self.slider_thresh.setValue(20) # Default 20%
+        self.slider_thresh.setValue(50) # Default 50%
         self.slider_thresh.setFixedWidth(200)
-        self.lbl_thresh_val = QLabel("20%")
+        self.lbl_thresh_val = QLabel("50%")
         self.lbl_thresh_val.setStyleSheet("color: #3b82f6; font-weight: bold; width: 40px;")
         
         threshold_layout.addWidget(lbl_thresh)

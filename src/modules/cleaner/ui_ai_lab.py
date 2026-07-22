@@ -198,7 +198,18 @@ class AILabTab(QWidget):
         self.input_text.setPlaceholderText("Например: кот на диване" if self.is_ru else "e.g., cat on sofa")
         self.input_text.setFixedHeight(35)
         self.input_text.setStyleSheet("background-color: #1e1e1e; color: white; border: 1px solid #444; border-radius: 4px; padding: 0 10px;")
-        sem_layout.addWidget(self.input_text)
+        
+        self.btn_search_text = QPushButton("Найти" if self.is_ru else "Search")
+        self.btn_search_text.setFixedHeight(35)
+        self.btn_search_text.setStyleSheet("background-color: #3b82f6; color: white; border-radius: 4px; font-weight: bold;")
+        self.btn_search_text.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        text_input_layout = QHBoxLayout()
+        text_input_layout.setContentsMargins(0, 0, 0, 0)
+        text_input_layout.addWidget(self.input_text)
+        text_input_layout.addWidget(self.btn_search_text)
+        
+        sem_layout.addLayout(text_input_layout)
         left_layout.addWidget(self.semantic_widget)
 
         # ----------------- FACE UI -----------------
@@ -222,6 +233,12 @@ class AILabTab(QWidget):
         self.neg_face_drop_zone = ImageDropZone("Перетащите фото (Исключение)" if self.is_ru else "Drop negative photo here")
         self.neg_face_drop_zone.setFixedHeight(120)
         face_layout.addWidget(self.neg_face_drop_zone)
+        
+        self.btn_search_face = QPushButton("Найти (По Лицу)" if self.is_ru else "Search (Face)")
+        self.btn_search_face.setFixedHeight(35)
+        self.btn_search_face.setStyleSheet("background-color: #3b82f6; color: white; border-radius: 4px; font-weight: bold; margin-top: 10px;")
+        self.btn_search_face.setCursor(Qt.CursorShape.PointingHandCursor)
+        face_layout.addWidget(self.btn_search_face)
         
         left_layout.addWidget(self.face_widget)
 
@@ -263,7 +280,7 @@ class AILabTab(QWidget):
         self.lbl_selected_folder.setWordWrap(True)
         left_layout.addWidget(self.lbl_selected_folder)
 
-        self.btn_search = QPushButton("Начать Поиск (In-Memory)" if self.is_ru else "Start Search (In-Memory)")
+        self.btn_search = QPushButton("Сканировать директорию" if self.is_ru else "Scan Directory")
         self.btn_search.setFixedHeight(45)
         self.btn_search.setStyleSheet("background-color: #10b981; color: black; border-radius: 4px; font-weight: bold; font-size: 14px;")
         self.btn_search.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -314,16 +331,19 @@ class AILabTab(QWidget):
 
         # Connect signals
         self.btn_select_folder.clicked.connect(self.select_folder)
-        self.btn_search.clicked.connect(self.on_btn_search_clicked)
+        self.btn_search.clicked.connect(lambda: self.on_btn_search_clicked(action='scan'))
         self.slider_thresh.valueChanged.connect(self.update_results_filter)
         self.combo_mode.currentIndexChanged.connect(self.on_mode_changed)
-        self.btn_clear_cache.clicked.connect(self.on_clear_cache)
+        self.btn_search_text.clicked.connect(lambda: self.on_btn_search_clicked(action='search'))
+        self.btn_search_face.clicked.connect(lambda: self.on_btn_search_clicked(action='search'))
+        self.input_text.returnPressed.connect(self.btn_search_text.click)
         
         self.selected_folder = ""
         self.results = []
         self.worker = None
         self.feature_cache = {'face': {}, 'text': {}} # Cache instance tied to this tab
         self.models_cache = {} # Cache for loaded ONNX models (to prevent reloading)
+        self.scanned_folders = {'face': set(), 'text': set()}
         
         # Init UI state
         self.on_mode_changed()
@@ -342,11 +362,11 @@ class AILabTab(QWidget):
         if path and os.path.exists(path):
             os.startfile(path)
 
-    def on_btn_search_clicked(self):
+    def on_btn_search_clicked(self, action='scan'):
         if self.worker and not self.worker.is_cancelled:
             self.stop_search()
         else:
-            self.start_search()
+            self.start_search(action)
 
     def on_mode_changed(self):
         mode = self.combo_mode.currentData()
@@ -359,6 +379,7 @@ class AILabTab(QWidget):
             
     def on_clear_cache(self):
         self.feature_cache = {'face': {}, 'text': {}}
+        self.scanned_folders = {'face': set(), 'text': set()}
         self.update_cache_label()
         
     def update_cache_label(self):
@@ -394,21 +415,36 @@ class AILabTab(QWidget):
             QMessageBox.warning(self, "Ошибка", "Сначала выберите папку для поиска!")
             return
 
-        self.btn_search.setText("Стоп (Остановить поиск)" if self.is_ru else "Stop Search")
-        self.btn_search.setStyleSheet("background-color: #ef4444; color: white; border-radius: 4px; font-weight: bold; font-size: 14px;")
-        self.btn_select_folder.setEnabled(False)
-        self.combo_mode.setEnabled(False)
-        self.btn_clear_cache.setEnabled(False)
+        is_scanned = self.selected_folder in self.scanned_folders[mode]
+        if action == 'search' and is_scanned:
+            worker_action = 'search_only'
+        elif action == 'search' and not is_scanned:
+            worker_action = 'scan_and_search'
+        else:
+            worker_action = 'scan_only'
+
+        if worker_action in ['scan_only', 'scan_and_search']:
+            self.btn_search.setText("Стоп (Остановить поиск)" if self.is_ru else "Stop Search")
+            self.btn_search.setStyleSheet("background-color: #ef4444; color: white; border-radius: 4px; font-weight: bold; font-size: 14px;")
+            self.btn_select_folder.setEnabled(False)
+            self.combo_mode.setEnabled(False)
+            self.btn_clear_cache.setEnabled(False)
+            self.btn_search_text.setEnabled(False)
+            self.btn_search_face.setEnabled(False)
+            self.progress_bar.setValue(0)
+            self.progress_bar.show()
+
         self.results_list.clear()
         self.results = []
-        self.progress_bar.setValue(0)
-        self.progress_bar.show()
+        
+        self.current_worker_action = worker_action
 
         cache_obj = self.feature_cache if self.chk_cache.isChecked() else {'face': {}, 'text': {}}
 
         self.worker = AILabWorker(
             folder_path=self.selected_folder, 
             search_mode=mode,
+            action=worker_action,
             ref_image_path=ref_paths,
             neg_image_path=neg_paths,
             text_query=text_query,
@@ -430,9 +466,11 @@ class AILabTab(QWidget):
 
     def reset_search_button(self):
         self.btn_search.setEnabled(True)
-        self.btn_search.setText("Начать Поиск (In-Memory)" if self.is_ru else "Start Search (In-Memory)")
+        self.btn_search.setText("Сканировать директорию" if self.is_ru else "Scan Directory")
         self.btn_search.setStyleSheet("background-color: #10b981; color: black; border-radius: 4px; font-weight: bold; font-size: 14px;")
         self.btn_select_folder.setEnabled(True)
+        self.btn_search_text.setEnabled(True)
+        self.btn_search_face.setEnabled(True)
 
     def update_progress(self, current, total):
         self.progress_bar.setMaximum(total)
@@ -474,13 +512,19 @@ class AILabTab(QWidget):
             self.results_list.setItemWidget(item, tile)
 
     def on_search_finished(self):
+        if self.current_worker_action in ['scan_only', 'scan_and_search']:
+            mode = self.combo_mode.currentData()
+            self.scanned_folders[mode].add(self.selected_folder)
+            
         self.worker = None
         self.progress_bar.hide()
         self.update_cache_label()
         self.reset_search_button()
         self.combo_mode.setEnabled(True)
         self.btn_clear_cache.setEnabled(True)
-        self.render_results()
+        
+        if self.current_worker_action != 'scan_only':
+            self.render_results()
 
     def on_search_error(self, err_msg):
         self.worker = None
@@ -489,7 +533,7 @@ class AILabTab(QWidget):
         self.reset_search_button()
         self.combo_mode.setEnabled(True)
         self.btn_clear_cache.setEnabled(True)
-        QMessageBox.critical(self, "Ошибка сканирования", err_msg)
+        QMessageBox.critical(self, "Ошибка", err_msg)
 
     def update_folders_label(self, folders):
         pass

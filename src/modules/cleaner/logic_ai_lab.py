@@ -11,10 +11,11 @@ class AILabWorker(QRunnable):
         finished = pyqtSignal()
         error = pyqtSignal(str)
 
-    def __init__(self, folder_path, search_mode, ref_image_path=None, neg_image_path=None, text_query=None, cache=None, models_cache=None):
+    def __init__(self, folder_path, search_mode, action='scan_and_search', ref_image_path=None, neg_image_path=None, text_query=None, cache=None, models_cache=None):
         super().__init__()
         self.folder_path = folder_path
         self.search_mode = search_mode # 'face' or 'text'
+        self.action = action # 'scan_only', 'scan_and_search', 'search_only'
         self.ref_image_path = ref_image_path
         self.neg_image_path = neg_image_path
         self.text_query = text_query
@@ -32,50 +33,70 @@ class AILabWorker(QRunnable):
 
     def run(self):
         try:
-            if self.search_mode == 'face':
-                if 'detector' not in self.models_cache:
-                    if not os.path.exists(self.arcface_path) or not os.path.exists(self.scrfd_path):
-                        self.signals.error.emit("Модели InsightFace (w600k_r50.onnx или det_10g.onnx) не найдены!")
+            if self.action in ['scan_and_search', 'search_only']:
+                if self.search_mode == 'face':
+                    if 'detector' not in self.models_cache:
+                        if not os.path.exists(self.arcface_path) or not os.path.exists(self.scrfd_path):
+                            self.signals.error.emit("Модели InsightFace (w600k_r50.onnx или det_10g.onnx) не найдены!")
+                            return
+                        from .logic_scrfd import SCRFD
+                        self.models_cache['detector'] = SCRFD(self.scrfd_path)
+                        self.models_cache['arcface'] = ort.InferenceSession(self.arcface_path, providers=['CPUExecutionProvider'])
+                    
+                    detector = self.models_cache['detector']
+                    arcface_session = self.models_cache['arcface']
+                    
+                    ref_feature = self._get_face_feature(self.ref_image_path, detector, arcface_session)
+                    if ref_feature is None:
+                        self.signals.error.emit("Не удалось найти лицо на эталонном фото!")
                         return
-                    from .logic_scrfd import SCRFD
-                    self.models_cache['detector'] = SCRFD(self.scrfd_path)
-                    self.models_cache['arcface'] = ort.InferenceSession(self.arcface_path, providers=['CPUExecutionProvider'])
-                
-                detector = self.models_cache['detector']
-                arcface_session = self.models_cache['arcface']
-                
-                ref_feature = self._get_face_feature(self.ref_image_path, detector, arcface_session)
-                if ref_feature is None:
-                    self.signals.error.emit("Не удалось найти лицо на эталонном фото!")
-                    return
+                        
+                    neg_feature = None
+                    if self.neg_image_path and os.path.exists(self.neg_image_path):
+                        neg_feature = self._get_face_feature(self.neg_image_path, detector, arcface_session)
+    
+                elif self.search_mode == 'text':
+                    if 'clip' not in self.models_cache:
+                        from .logic_clip import CLIPSearcher
+                        self.models_cache['clip'] = CLIPSearcher()
+                        
+                    self.clip_searcher = self.models_cache['clip']
                     
+                    if not self.clip_searcher.is_loaded:
+                        self.signals.error.emit("Не удалось загрузить модели CLIP!")
+                        return
+                    
+                    ref_feature = self.clip_searcher.encode_text(self.text_query)
+                    if ref_feature is None:
+                        self.signals.error.emit("Ошибка обработки текста CLIP!")
+                        return
+            else:
+                # If scan_only, we still need to load models to compute features
+                ref_feature = None
                 neg_feature = None
-                if self.neg_image_path and os.path.exists(self.neg_image_path):
-                    neg_feature = self._get_face_feature(self.neg_image_path, detector, arcface_session)
-
-            elif self.search_mode == 'text':
-                if 'clip' not in self.models_cache:
-                    from .logic_clip import CLIPSearcher
-                    self.models_cache['clip'] = CLIPSearcher()
-                    
-                self.clip_searcher = self.models_cache['clip']
-                
-                if not self.clip_searcher.is_loaded:
-                    self.signals.error.emit("Не удалось загрузить модели CLIP!")
-                    return
-                
-                ref_feature = self.clip_searcher.encode_text(self.text_query)
-                if ref_feature is None:
-                    self.signals.error.emit("Ошибка обработки текста CLIP!")
-                    return
+                if self.search_mode == 'face':
+                    if 'detector' not in self.models_cache:
+                        from .logic_scrfd import SCRFD
+                        self.models_cache['detector'] = SCRFD(self.scrfd_path)
+                        self.models_cache['arcface'] = ort.InferenceSession(self.arcface_path, providers=['CPUExecutionProvider'])
+                    detector = self.models_cache['detector']
+                    arcface_session = self.models_cache['arcface']
+                elif self.search_mode == 'text':
+                    if 'clip' not in self.models_cache:
+                        from .logic_clip import CLIPSearcher
+                        self.models_cache['clip'] = CLIPSearcher()
+                    self.clip_searcher = self.models_cache['clip']
 
             # Gather files
-            valid_exts = {'.jpg', '.jpeg', '.png', '.bmp'}
-            files_to_scan = []
-            for root, _, files in os.walk(self.folder_path):
-                for f in files:
-                    if os.path.splitext(f)[1].lower() in valid_exts:
-                        files_to_scan.append(os.path.join(root, f))
+            if self.action == 'search_only':
+                files_to_scan = [p for p in self.cache[self.search_mode].keys() if p.startswith(self.folder_path)]
+            else:
+                valid_exts = {'.jpg', '.jpeg', '.png', '.bmp'}
+                files_to_scan = []
+                for root, _, files in os.walk(self.folder_path):
+                    for f in files:
+                        if os.path.splitext(f)[1].lower() in valid_exts:
+                            files_to_scan.append(os.path.join(root, f))
 
             total = len(files_to_scan)
             for i, file_path in enumerate(files_to_scan):
@@ -98,7 +119,7 @@ class AILabWorker(QRunnable):
                         # Save to cache even if None (to avoid rescanning broken images)
                         self.cache[self.search_mode][file_path] = feature
 
-                    if feature is not None:
+                    if feature is not None and self.action != 'scan_only':
                         if self.search_mode == 'face':
                             score_raw = np.dot(ref_feature, feature) / (np.linalg.norm(ref_feature) * np.linalg.norm(feature))
                             mapped_score = (score_raw - 0.35) / (0.85 - 0.35) * 100

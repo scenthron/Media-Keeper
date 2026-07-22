@@ -11,7 +11,7 @@ class AILabWorker(QRunnable):
         finished = pyqtSignal()
         error = pyqtSignal(str)
 
-    def __init__(self, folder_path, search_mode, ref_image_path=None, neg_image_path=None, text_query=None, cache=None):
+    def __init__(self, folder_path, search_mode, ref_image_path=None, neg_image_path=None, text_query=None, cache=None, models_cache=None):
         super().__init__()
         self.folder_path = folder_path
         self.search_mode = search_mode # 'face' or 'text'
@@ -19,6 +19,7 @@ class AILabWorker(QRunnable):
         self.neg_image_path = neg_image_path
         self.text_query = text_query
         self.cache = cache if cache is not None else {'face': {}, 'text': {}} # { mode: { filepath: feature_vector } }
+        self.models_cache = models_cache if models_cache is not None else {}
         
         self.signals = self.Signals()
         self.is_cancelled = False
@@ -32,12 +33,16 @@ class AILabWorker(QRunnable):
     def run(self):
         try:
             if self.search_mode == 'face':
-                if not os.path.exists(self.arcface_path) or not os.path.exists(self.scrfd_path):
-                    self.signals.error.emit("Модели InsightFace (w600k_r50.onnx или det_10g.onnx) не найдены!")
-                    return
-                from .logic_scrfd import SCRFD
-                detector = SCRFD(self.scrfd_path)
-                arcface_session = ort.InferenceSession(self.arcface_path, providers=['CPUExecutionProvider'])
+                if 'detector' not in self.models_cache:
+                    if not os.path.exists(self.arcface_path) or not os.path.exists(self.scrfd_path):
+                        self.signals.error.emit("Модели InsightFace (w600k_r50.onnx или det_10g.onnx) не найдены!")
+                        return
+                    from .logic_scrfd import SCRFD
+                    self.models_cache['detector'] = SCRFD(self.scrfd_path)
+                    self.models_cache['arcface'] = ort.InferenceSession(self.arcface_path, providers=['CPUExecutionProvider'])
+                
+                detector = self.models_cache['detector']
+                arcface_session = self.models_cache['arcface']
                 
                 ref_feature = self._get_face_feature(self.ref_image_path, detector, arcface_session)
                 if ref_feature is None:
@@ -49,8 +54,12 @@ class AILabWorker(QRunnable):
                     neg_feature = self._get_face_feature(self.neg_image_path, detector, arcface_session)
 
             elif self.search_mode == 'text':
-                from .logic_clip import CLIPSearcher
-                self.clip_searcher = CLIPSearcher()
+                if 'clip' not in self.models_cache:
+                    from .logic_clip import CLIPSearcher
+                    self.models_cache['clip'] = CLIPSearcher()
+                    
+                self.clip_searcher = self.models_cache['clip']
+                
                 if not self.clip_searcher.is_loaded:
                     self.signals.error.emit("Не удалось загрузить модели CLIP!")
                     return

@@ -26,7 +26,8 @@ def qt_message_handler(mode, context, message):
         "deprecated pixel format used", 
         "Could not update timestamps for skipped samples",
         "Failed setup for format d3d11",
-        "hwaccel initialisation returned error"
+        "hwaccel initialisation returned error",
+        "Invalid SOS parameters for sequential JPEG"
     ]
     if any(phrase in message for phrase in ignore_phrases):
         return

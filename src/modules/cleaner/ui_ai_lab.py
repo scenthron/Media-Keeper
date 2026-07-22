@@ -323,6 +323,7 @@ class AILabTab(QWidget):
         self.results = []
         self.worker = None
         self.feature_cache = {'face': {}, 'text': {}} # Cache instance tied to this tab
+        self.models_cache = {} # Cache for loaded ONNX models (to prevent reloading)
         
         # Init UI state
         self.on_mode_changed()
@@ -411,7 +412,8 @@ class AILabTab(QWidget):
             ref_image_path=ref_paths,
             neg_image_path=neg_paths,
             text_query=text_query,
-            cache=cache_obj
+            cache=cache_obj,
+            models_cache=self.models_cache
         )
         self.worker.signals.progress.connect(self.update_progress)
         self.worker.signals.result_found.connect(self.on_result_found)

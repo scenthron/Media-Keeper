@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QLineEdit, QSplitter, QFrame, QScrollArea, QProgressBar, QCheckBox,
     QFileDialog, QMessageBox, QComboBox
 )
-from PyQt6.QtCore import Qt, QSize, QThreadPool
+from PyQt6.QtCore import Qt, QSize, QThreadPool, QTimer
 from PyQt6.QtGui import QFont, QColor
 from config import AppContext
 from .logic_ai_lab import AILabWorker
@@ -345,6 +345,10 @@ class AILabTab(QWidget):
         self.models_cache = {} # Cache for loaded ONNX models (to prevent reloading)
         self.scanned_folders = {'face': set(), 'text': set()}
         
+        self.slider_timer = QTimer()
+        self.slider_timer.setSingleShot(True)
+        self.slider_timer.timeout.connect(self.apply_results_filter)
+        
         # Init UI state
         self.on_mode_changed()
 
@@ -391,7 +395,7 @@ class AILabTab(QWidget):
         else:
             self.lbl_cache_info.setText(f"В кэше CLIP: {text_len}" if self.is_ru else f"CLIP Cache: {text_len}")
 
-    def start_search(self):
+    def start_search(self, action='scan'):
         mode = self.combo_mode.currentData()
         
         ref_paths = None
@@ -478,6 +482,9 @@ class AILabTab(QWidget):
 
     def update_results_filter(self):
         self.lbl_thresh_val.setText(f"{self.slider_thresh.value()}%")
+        self.slider_timer.start(2000)
+
+    def apply_results_filter(self):
         if not self.worker or not self.worker.isRunning():
             self.render_results()
 

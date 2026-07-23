@@ -54,9 +54,8 @@ class AiEngine:
         scrfd_ok = os.path.exists(self.scrfd_path) and os.path.getsize(self.scrfd_path) > 1000
         clip_vis_ok = os.path.exists(os.path.join(self.clip_dir, "vision", "model.onnx")) and os.path.getsize(os.path.join(self.clip_dir, "vision", "model.onnx")) > 1000
         clip_txt_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "model.onnx")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "model.onnx")) > 1000
-        dense_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "dense.safetensors")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "dense.safetensors")) > 100
         tok_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) > 100
-        return arcface_ok and scrfd_ok and clip_vis_ok and clip_txt_ok and dense_ok and tok_ok
+        return arcface_ok and scrfd_ok and clip_vis_ok and clip_txt_ok and tok_ok
 
     def download_models(self, progress_callback=None) -> bool:
         """Скачивает реальные ИИ-модели по прямым интернет-ссылкам."""
@@ -73,44 +72,35 @@ class AiEngine:
                 "name": "SCRFD Face Detector (det_10g.onnx)",
                 "dest": self.scrfd_path,
                 "urls": [
-                    "https://huggingface.co/onnx-community/scrfd-det-10g/resolve/main/onnx/model.onnx",
-                    "https://github.com/deepinsight/insightface/releases/download/v0.7/det_10g.onnx"
+                    "https://huggingface.co/artemonlysuno/det_10g/resolve/main/det_10g.onnx"
                 ]
             },
             {
                 "name": "ArcFace Model (w600k_r50.onnx)",
                 "dest": self.arcface_path,
                 "urls": [
-                    "https://huggingface.co/onnx-community/arcface-w600k-r50/resolve/main/onnx/model.onnx",
-                    "https://github.com/deepinsight/insightface/releases/download/v0.7/w600k_r50.onnx"
+                    "https://huggingface.co/richarrrddd/w600k_r50_v1/resolve/main/w600k_r50.onnx"
                 ]
             },
             {
                 "name": "CLIP Vision Model (vision/model.onnx)",
                 "dest": os.path.join(self.clip_dir, "vision", "model.onnx"),
                 "urls": [
-                    "https://huggingface.co/onnx-community/clip-vit-base-patch32/resolve/main/onnx/model.onnx"
+                    "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/vision_model.onnx"
                 ]
             },
             {
                 "name": "CLIP Text Model (text_multi/model.onnx)",
                 "dest": os.path.join(self.clip_dir, "text_multi", "model.onnx"),
                 "urls": [
-                    "https://huggingface.co/onnx-community/clip-vit-base-patch32/resolve/main/onnx/model.onnx"
-                ]
-            },
-            {
-                "name": "CLIP Dense Weights (text_multi/dense.safetensors)",
-                "dest": os.path.join(self.clip_dir, "text_multi", "dense.safetensors"),
-                "urls": [
-                    "https://huggingface.co/M-CLIP/XLM-Roberta-Large-Vit-B-32/resolve/main/dense.safetensors"
+                    "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/text_model.onnx"
                 ]
             },
             {
                 "name": "CLIP Tokenizer (text_multi/tokenizer.json)",
                 "dest": os.path.join(self.clip_dir, "text_multi", "tokenizer.json"),
                 "urls": [
-                    "https://huggingface.co/M-CLIP/XLM-Roberta-Large-Vit-B-32/resolve/main/tokenizer.json"
+                    "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/tokenizer.json"
                 ]
             }
         ]

@@ -47,10 +47,6 @@ class CLIPSearcher:
             if not os.path.exists(text_model_path):
                 logger.error(f"Модель CLIP Text не найдена: {text_model_path}")
                 return
-            if not os.path.exists(dense_path):
-                logger.error(f"Веса CLIP Dense не найдены: {dense_path}")
-                return
-                
             logger.info("Загрузка CLIP Tokenizer...")
             from tokenizers import Tokenizer
             tokenizer_path = os.path.join(text_model_dir, "tokenizer.json")
@@ -65,9 +61,12 @@ class CLIPSearcher:
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
             self.vision_sess = ort.InferenceSession(vision_model_path, sess_options=opts, providers=['CPUExecutionProvider'])
             self.text_sess = ort.InferenceSession(text_model_path, sess_options=opts, providers=['CPUExecutionProvider'])
-            
-            logger.info("Загрузка CLIP Dense слоя...")
-            self.dense_weights = load_file(dense_path)['linear.weight']
+
+            if os.path.exists(dense_path):
+                logger.info("Загрузка CLIP Dense слоя...")
+                self.dense_weights = load_file(dense_path)['linear.weight']
+            else:
+                self.dense_weights = None
             
             # Загрузка словаря
             self.ru_en_dict = {}
@@ -126,11 +125,16 @@ class CLIPSearcher:
                 "attention_mask": attention_mask
             })[0]
             
-            # Пулинг (mean pooling)
-            text_emb_768 = self._mean_pooling(text_out, attention_mask)
-            
-            # Проекция из 768 в 512
-            text_emb_512 = np.dot(text_emb_768, self.dense_weights.T)
+            # Пулинг или прямое извлечение 512D вектора
+            if text_out.ndim == 3:
+                text_emb = self._mean_pooling(text_out, attention_mask)
+            else:
+                text_emb = text_out
+                
+            if self.dense_weights is not None and text_emb.shape[-1] == self.dense_weights.shape[1]:
+                text_emb_512 = np.dot(text_emb, self.dense_weights.T)
+            else:
+                text_emb_512 = text_emb
             
             # L2 нормализация
             norm = np.linalg.norm(text_emb_512, axis=-1, keepdims=True)

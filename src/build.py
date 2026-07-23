@@ -82,8 +82,22 @@ def build():
         "numpy",
         "cv2",
         "onnxruntime",
+        "backports",
+        "backports.tarfile",
+        "jaraco",
+        "jaraco.text",
+        "jaraco.functools",
+        "jaraco.context",
+        "pkg_resources",
+        "setuptools",
         "modules.cleaner.vhash",
-        "modules.cleaner.ahash_audio"
+        "modules.cleaner.ahash_audio",
+        "modules.cleaner.ui_ai_results_tree",
+        "modules.cleaner.ui_ai_references_panel",
+        "modules.cleaner.logic_ai_classifier",
+        "modules.cleaner.logic_ai_cache",
+        "modules.cleaner.logic_ai",
+        "modules.cleaner.ai_facade"
     ]
     for imp in hidden_imports:
         pyinstaller_cmd.extend(["--hidden-import", imp])

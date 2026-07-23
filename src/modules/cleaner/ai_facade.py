@@ -19,6 +19,7 @@ class AiTaskType(Enum):
 class AiTarget(Enum):
     FACES = 1
     IMAGES = 2
+    BOTH = 3
 
 @dataclass
 class Rect:
@@ -83,7 +84,7 @@ class AiCoreWorker(QRunnable):
 
     def run(self):
         try:
-            from utils_common import ensure_win_path
+            from .workers import ensure_win_path
             import re
             
             # 1. Gather valid files
@@ -152,6 +153,10 @@ class AiCoreWorker(QRunnable):
             file_features = []
             processed = 0
             
+            import logging
+            logging.info(f"[AiCoreWorker] Входные параметры: {self.request.task_type}, Цель: {self.request.analysis_target}, "
+                         f"Файлов для анализа: {total_files}, Порог: {self.request.threshold}")
+
             for fp in valid_files:
                 if self.is_cancelled: return
                 
@@ -159,24 +164,42 @@ class AiCoreWorker(QRunnable):
                 if processed % 10 == 0:
                     self.signals.progress.emit(STAGE_ANALYSIS, percent, f"Извлечение признаков... {processed}/{total_files}", scanned_files, 0, 0, scanned_bytes, 0, 0)
                 
-                if self.request.analysis_target == AiTarget.FACES:
-                    if self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier:
-                        # For FIND_BY_REFERENCES, classifier logic will handle extraction + matching
-                        # So we don't extract here unless we need to.
-                        # Wait, we can just pass fp to classifier.classify_file(fp) later.
-                        pass
-                    else:
+                try:
+                    stat = os.stat(fp)
+                    size = stat.st_size
+                    mtime = stat.st_mtime
+                except Exception:
+                    processed += 1
+                    continue
+                
+                if self.request.analysis_target in (AiTarget.FACES, AiTarget.BOTH):
+                    faces = None
+                    if self.request.use_cache and self.cache:
+                        faces = self.cache.get_file_faces(fp, mtime, size)
+                    if faces is None:
                         faces = self.engine.extract_faces(fp)
-                        if faces:
-                            file_features.append((fp, faces))
-                elif self.request.analysis_target == AiTarget.IMAGES:
-                    if self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier:
-                        pass
-                    else:
-                        emb = self.engine.extract_clip_embedding(fp)
-                        if emb is not None:
-                            file_features.append((fp, emb))
+                        if self.request.use_cache and self.cache and faces is not None:
+                            self.cache.save_file_faces(fp, mtime, size, faces)
+                    
+                    if faces and self.request.analysis_target == AiTarget.FACES:
+                        file_features.append((fp, faces))
                         
+                if self.request.analysis_target in (AiTarget.IMAGES, AiTarget.BOTH):
+                    emb = None
+                    if self.request.use_cache and self.cache:
+                        emb = self.cache.get_image_embedding(fp, mtime, size)
+                    if emb is None:
+                        emb = self.engine.extract_clip_embedding(fp)
+                        if self.request.use_cache and self.cache and emb is not None:
+                            self.cache.save_image_embedding(fp, mtime, size, emb)
+                            
+                    if emb is not None and self.request.analysis_target == AiTarget.IMAGES:
+                        file_features.append((fp, emb))
+                        
+                # If BOTH, file_features won't be used by auto-cluster, but FIND_BY_REFERENCES uses the cache directly
+                if self.request.analysis_target == AiTarget.BOTH:
+                    pass
+                
                 processed += 1
 
             # 4. Search and Cluster logic
@@ -286,18 +309,27 @@ class AiCoreWorker(QRunnable):
 
             # 5. Format Output
             response_groups = []
+            total_matches = 0
             for g_name, files in groups_dict.items():
                 if len(files) > 0:
                     files.sort(key=lambda x: x.score, reverse=True)
                     response_groups.append(AiGroup(group_name=g_name, files=files))
+                    total_matches += len(files)
+            
+            logging.info(f"[AiCoreWorker] Выходные данные: найдено {len(response_groups)} групп, всего {total_matches} файлов-совпадений.")
             
             response = AiSearchResponse(groups=response_groups)
             
-            self.signals.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, len(response_groups), 0, scanned_bytes, sum(len(g.files) for g in response_groups), 0)
+            self.signals.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, len(response_groups), 0, scanned_bytes, total_matches, 0)
             self.signals.result_found.emit(response)
             self.signals.finished.emit()
 
         except Exception as e:
+            import traceback
+            import logging
+            tb_str = traceback.format_exc()
+            logging.error(f"AiCoreWorker Unhandled Exception:\n{tb_str}")
+            print(f"AiCoreWorker Error:\n{tb_str}")
             self.signals.error.emit(str(e))
 
 

@@ -1497,7 +1497,10 @@ class AiClassificationTab(QWidget):
         cluster_type = self.combo_auto_type.currentData() if hasattr(self, 'combo_auto_type') else 'face'
         
         task_type = AiTaskType.TEXT_TO_IMAGE if text_query else (AiTaskType.AUTO_CLUSTER if is_cluster else AiTaskType.FIND_BY_REFERENCES)
-        analysis_target = AiTarget.FACES if cluster_type == 'face' else AiTarget.IMAGES
+        if task_type == AiTaskType.FIND_BY_REFERENCES:
+            analysis_target = AiTarget.BOTH
+        else:
+            analysis_target = AiTarget.FACES if cluster_type == 'face' else AiTarget.IMAGES
         
         text_queries_dict = {}
         if text_query:

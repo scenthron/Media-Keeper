@@ -1107,10 +1107,6 @@ class AiScanWorker(QThread):
                                     "members": [{"path": fp, "size": size, "confidence": 100.0, "type": "face"}]
                                 })
                 else:
-                    best_group = None
-                    best_confidence = 0.0
-                    details = {}
-                    
                     if getattr(self, "text_query", None):
                         import numpy as np
                         text_emb = self.classifier.ai.extract_text_embedding(self.text_query)
@@ -1118,25 +1114,36 @@ class AiScanWorker(QThread):
                         if text_emb is not None and clip_emb is not None:
                             score_raw = np.dot(text_emb, clip_emb)
                             mapped_score = (score_raw - 0.20) / (0.32 - 0.20)
-                            best_confidence = max(0.0, min(1.0, float(mapped_score)))
-                            best_group = f"[Текст] {self.text_query}"
-                    else:
-                        best_group, best_confidence, details = self.classifier.match_image(fp, mtime, size, match_mode=self.match_mode, threshold=self.threshold, use_cache=self.use_cache)
-                        best_confidence /= 100.0
-                                
-                    if best_group and (best_confidence * 100.0) >= self.threshold:
-                        if best_group not in results:
-                            results[best_group] = []
-                            groups_found += 1
+                            conf = max(0.0, min(100.0, float(mapped_score) * 100.0))
                             
-                        results[best_group].append({
-                            "path": fp,
-                            "size": size,
-                            "confidence": best_confidence * 100.0,
-                            "type": details.get("type", "AI")
-                        })
-                        wasted_bytes += size
-                        files_found += 1
+                            if conf >= self.threshold:
+                                g_name = f"[Текст] {self.text_query}"
+                                if g_name not in results:
+                                    results[g_name] = []
+                                    groups_found += 1
+                                results[g_name].append({
+                                    "path": fp,
+                                    "size": size,
+                                    "confidence": conf,
+                                    "type": "Текст"
+                                })
+                                wasted_bytes += size
+                                files_found += 1
+                    else:
+                        results_dict = self.classifier.classify_file(fp)
+                        for g_name, conf in results_dict.items():
+                            if conf >= self.threshold:
+                                if g_name not in results:
+                                    results[g_name] = []
+                                    groups_found += 1
+                                results[g_name].append({
+                                    "path": fp,
+                                    "size": size,
+                                    "confidence": conf,
+                                    "type": "AI"
+                                })
+                                wasted_bytes += size
+                                files_found += 1
             except Exception as e:
                 logging.error(f"Ошибка сопоставления {fp}: {e}")
                 

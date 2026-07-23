@@ -1155,12 +1155,7 @@ class AiScanWorker(QThread):
                 self.progress.emit(STAGE_ANALYSIS, percent, f"Поиск совпадений 2/2 [{processed_files} / {total_files}]", scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, 0)
         
         if getattr(self, "is_cluster", False):
-            try:
-                from ui_translations import AppContext
-                is_ru = AppContext.is_ru()
-            except:
-                is_ru = True
-            msg = "Формирование групп результатов..." if is_ru else "Forming result groups..."
+            msg = "Формирование групп результатов..." if AppContext.is_ru() else "Forming result groups..."
             self.progress.emit(STAGE_ANALYSIS, 100.0, msg, scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, 0)
             import numpy as np
             if getattr(self, "cluster_type", "face") == "face":

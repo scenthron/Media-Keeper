@@ -87,12 +87,20 @@ class AiModelDownloaderThread(QThread):
     def __init__(self, ai_engine, parent=None):
         super().__init__(parent)
         self.ai_engine = ai_engine
+        self._is_stopped = False
+
+    def stop(self):
+        self._is_stopped = True
 
     def run(self):
         def on_progress(filename, downloaded, total_size):
-            self.progress_signal.emit(filename, downloaded, total_size)
+            if not self._is_stopped:
+                self.progress_signal.emit(filename, downloaded, total_size)
 
-        success = self.ai_engine.download_models(progress_callback=on_progress)
+        success = self.ai_engine.download_models(
+            progress_callback=on_progress,
+            stop_checker=lambda: self._is_stopped
+        )
         self.finished_signal.emit(success)
 
 # -----------------------------------------------------------------------------
@@ -190,9 +198,33 @@ class AiClassificationTab(QWidget):
         """)
         self.btn_download_models.clicked.connect(self.start_placeholder_download)
         
+        self.btn_stop_download = QPushButton("⏹ Отмена" if AppContext.is_ru() else "⏹ Cancel")
+        self.btn_stop_download.setFixedSize(120, 36)
+        self.btn_stop_download.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_stop_download.setStyleSheet("""
+            QPushButton {
+                background-color: #ef4444; 
+                color: white; 
+                border: none; 
+                border-radius: 4px; 
+                font-weight: bold; 
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #dc2626;
+            }
+            QPushButton:disabled {
+                background-color: #333;
+                color: #666;
+            }
+        """)
+        self.btn_stop_download.hide()
+        self.btn_stop_download.clicked.connect(self.stop_placeholder_download)
+        
         btn_layout = QHBoxLayout()
         btn_layout.addStretch(1)
         btn_layout.addWidget(self.btn_download_models)
+        btn_layout.addWidget(self.btn_stop_download)
         btn_layout.addStretch(1)
         ph_layout.addLayout(btn_layout)
         
@@ -954,7 +986,9 @@ class AiClassificationTab(QWidget):
             self.main_content_widget.hide()
 
     def start_placeholder_download(self):
-        self.btn_download_models.setEnabled(False)
+        self.btn_download_models.hide()
+        self.btn_stop_download.show()
+        self.btn_stop_download.setEnabled(True)
         self.placeholder_progress.show()
         self.placeholder_progress.setValue(0)
         self.placeholder_status.setStyleSheet("color: #93c5fd;")
@@ -973,6 +1007,15 @@ class AiClassificationTab(QWidget):
                 self.placeholder_status.setText(f"Загрузка {filename}: {downloaded // 1024} KB")
                 
         def on_finished(success):
+            self.btn_stop_download.hide()
+            self.btn_download_models.show()
+            self.btn_download_models.setEnabled(True)
+
+            if hasattr(self, 'dl_thread') and self.dl_thread and self.dl_thread._is_stopped:
+                self.placeholder_status.setStyleSheet("color: #f59e0b;")
+                self.placeholder_status.setText("Загрузка остановлена пользователем." if is_ru else "Download stopped by user.")
+                return
+
             if success:
                 self.placeholder_status.setStyleSheet("color: #4ade80;")
                 self.placeholder_status.setText("Инициализация..." if is_ru else "Initializing...")
@@ -982,17 +1025,22 @@ class AiClassificationTab(QWidget):
                     self.download_placeholder.hide()
                     self.main_content_widget.show()
                 else:
-                    self.btn_download_models.setEnabled(True)
                     self.placeholder_status.setStyleSheet("color: #ef4444;")
                     self.placeholder_status.setText("Ошибка инициализации!" if is_ru else "Initialization failed!")
             else:
-                self.btn_download_models.setEnabled(True)
                 self.placeholder_status.setStyleSheet("color: #ef4444;")
                 self.placeholder_status.setText("Ошибка при скачивании моделей!" if is_ru else "Failed to download models!")
 
         self.dl_thread.progress_signal.connect(on_progress)
         self.dl_thread.finished_signal.connect(on_finished)
         self.dl_thread.start()
+
+    def stop_placeholder_download(self):
+        if hasattr(self, 'dl_thread') and self.dl_thread and self.dl_thread.isRunning():
+            self.btn_stop_download.setEnabled(False)
+            self.placeholder_status.setStyleSheet("color: #f59e0b;")
+            self.placeholder_status.setText("Отмена загрузки..." if AppContext.is_ru() else "Cancelling download...")
+            self.dl_thread.stop()
 
     def reload_groups(self):
         self.chips_map.clear()

@@ -57,7 +57,7 @@ class AiEngine:
         tok_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) > 100
         return arcface_ok and scrfd_ok and clip_vis_ok and clip_txt_ok and tok_ok
 
-    def download_models(self, progress_callback=None) -> bool:
+    def download_models(self, progress_callback=None, stop_checker=None) -> bool:
         """Скачивает реальные ИИ-модели по прямым интернет-ссылкам."""
         import requests
         import urllib3
@@ -107,6 +107,10 @@ class AiEngine:
 
         try:
             for item in models_to_download:
+                if stop_checker and stop_checker():
+                    logging.info("Загрузка ИИ-моделей остановлена пользователем.")
+                    return False
+
                 dest = item["dest"]
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
 
@@ -117,6 +121,10 @@ class AiEngine:
 
                 download_success = False
                 for url in item["urls"]:
+                    if stop_checker and stop_checker():
+                        logging.info("Загрузка ИИ-моделей остановлена пользователем.")
+                        return False
+
                     logging.info(f"Попытка скачивания {item['name']} с {url}...")
                     try:
                         resp = requests.get(url, stream=True, headers=headers, allow_redirects=True, verify=False, timeout=30)
@@ -125,13 +133,24 @@ class AiEngine:
                             downloaded = 0
                             tmp_dest = dest + ".tmp"
                             
+                            stopped_early = False
                             with open(tmp_dest, "wb") as f:
                                 for chunk in resp.iter_content(chunk_size=65536):
+                                    if stop_checker and stop_checker():
+                                        logging.info(f"Загрузка файла {item['name']} отменена пользователем.")
+                                        stopped_early = True
+                                        break
                                     if chunk:
                                         f.write(chunk)
                                         downloaded += len(chunk)
                                         if progress_callback:
                                             progress_callback(item["name"], downloaded, total_size)
+
+                            if stopped_early:
+                                if os.path.exists(tmp_dest):
+                                    try: os.remove(tmp_dest)
+                                    except: pass
+                                return False
 
                             if os.path.exists(tmp_dest) and os.path.getsize(tmp_dest) > 100:
                                 if os.path.exists(dest):

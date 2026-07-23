@@ -28,6 +28,9 @@ jobs:
         pip install pyinstaller
 
     - name: Run build script
+      working-directory: src
+      env:
+        PYTHONUTF8: "1"
       run: |
         python build.py
 

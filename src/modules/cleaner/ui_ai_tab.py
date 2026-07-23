@@ -1490,12 +1490,14 @@ class AiClassificationTab(QWidget):
         use_cache = self.chk_use_cache.isChecked()
         use_gpu = self.chk_use_gpu.isChecked()
         is_cluster = self.chk_auto_cluster.isChecked()
+        cluster_type = self.combo_auto_type.currentData() if hasattr(self, 'combo_auto_type') else 'face'
         
         self.active_worker = AiScanWorker(
             folders, self.classifier, 
             threshold=threshold, filter_config=filter_cfg, 
             match_mode=match_mode, use_cache=use_cache,
-            use_gpu=use_gpu, is_cluster=is_cluster
+            use_gpu=use_gpu, is_cluster=is_cluster,
+            cluster_type=cluster_type
         )
         self.active_worker.text_query = text_query
         self.active_worker.progress.connect(self.on_scan_progress)

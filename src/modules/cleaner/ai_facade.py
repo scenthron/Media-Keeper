@@ -264,37 +264,50 @@ class AiCoreWorker(QRunnable):
             if self.request.task_type == AiTaskType.TEXT_TO_IMAGE and self.request.analysis_target == AiTarget.IMAGES:
                 # Text Multi-tag Search (Vectorized Matrix Multiplication)
                 if file_features and text_embeddings:
-                    filepaths = [item[0] for item in file_features]
-                    img_mat = np.array([item[1] for item in file_features])  # Shape: (N, 512)
+                    filepaths = []
+                    img_embs = []
+                    for item in file_features:
+                        if item[1] is not None:
+                            arr = np.asarray(item[1], dtype=np.float32).flatten()
+                            if arr.size > 0:
+                                img_embs.append(arr)
+                                filepaths.append(item[0])
 
-                    for group_name, text_embs in text_embeddings.items():
-                        if not text_embs:
-                            continue
-                        txt_mat = np.array(text_embs)  # Shape: (M, 512)
-                        
-                        # Fast matrix dot product: (N, 512) x (512, M) -> (N, M)
-                        sim_matrix = np.dot(img_mat, txt_mat.T)
-                        
-                        # Highest similarity score across queries for each image
-                        max_sims = np.max(sim_matrix, axis=1)  # Shape: (N,)
-                        
-                        # Scale to percentage 0..100
-                        mapped_scores = (max_sims - 0.14) / (0.28 - 0.14) * 100.0
-                        mapped_scores = np.clip(mapped_scores, 0, 100).astype(int)
-                        
-                        # Filter indices exceeding similarity threshold
-                        match_indices = np.where(mapped_scores >= self.request.threshold)[0]
-                        
-                        if len(match_indices) > 0:
-                            if group_name not in groups_dict:
-                                groups_dict[group_name] = []
-                            for idx in match_indices:
-                                match_file = AiMatchFile(
-                                    path=filepaths[idx], 
-                                    score=int(mapped_scores[idx]), 
-                                    matched_reference_id=group_name
-                                )
-                                groups_dict[group_name].append(match_file)
+                    if img_embs:
+                        img_mat = np.array(img_embs, dtype=np.float32)  # Shape: (N, 512)
+
+                        for group_name, text_embs in text_embeddings.items():
+                            if not text_embs:
+                                continue
+                            txt_cleaned = [np.asarray(t, dtype=np.float32).flatten() for t in text_embs if t is not None]
+                            txt_cleaned = [t for t in txt_cleaned if t.size > 0]
+                            if not txt_cleaned:
+                                continue
+                            txt_mat = np.array(txt_cleaned, dtype=np.float32)  # Shape: (M, 512)
+                            
+                            # Fast matrix dot product: (N, 512) x (512, M) -> (N, M)
+                            sim_matrix = np.dot(img_mat, txt_mat.T)
+                            
+                            # Highest similarity score across queries for each image
+                            max_sims = np.max(sim_matrix, axis=1)  # Shape: (N,)
+                            
+                            # Scale to percentage 0..100
+                            mapped_scores = (max_sims - 0.14) / (0.28 - 0.14) * 100.0
+                            mapped_scores = np.clip(mapped_scores, 0, 100).astype(int)
+                            
+                            # Filter indices exceeding similarity threshold
+                            match_indices = np.where(mapped_scores >= self.request.threshold)[0]
+                            
+                            if len(match_indices) > 0:
+                                if group_name not in groups_dict:
+                                    groups_dict[group_name] = []
+                                for idx in match_indices:
+                                    match_file = AiMatchFile(
+                                        path=filepaths[idx], 
+                                        score=int(mapped_scores[idx]), 
+                                        matched_reference_id=group_name
+                                    )
+                                    groups_dict[group_name].append(match_file)
 
             elif self.request.task_type == AiTaskType.AUTO_CLUSTER and self.request.analysis_target == AiTarget.FACES:
                 all_embs = []
@@ -302,11 +315,15 @@ class AiCoreWorker(QRunnable):
                 
                 for fp, faces in file_features:
                     for face in faces:
-                        all_embs.append(face["descriptor"])
-                        file_face_map.append((fp, face))
+                        desc = face.get("descriptor")
+                        if desc is not None:
+                            arr = np.asarray(desc, dtype=np.float32).flatten()
+                            if arr.size > 0:
+                                all_embs.append(arr)
+                                file_face_map.append((fp, face))
                         
                 if all_embs:
-                    X = np.array(all_embs)
+                    X = np.array(all_embs, dtype=np.float32)
                     eps = 1.0 - (self.request.threshold / 100.0)
                     labels = _dbscan_numpy(X, eps=eps, min_samples=2)
                     
@@ -329,11 +346,14 @@ class AiCoreWorker(QRunnable):
                 file_map = []
                 
                 for fp, emb in file_features:
-                    all_embs.append(emb)
-                    file_map.append(fp)
+                    if emb is not None:
+                        arr = np.asarray(emb, dtype=np.float32).flatten()
+                        if arr.size > 0:
+                            all_embs.append(arr)
+                            file_map.append(fp)
                     
                 if all_embs:
-                    X = np.array(all_embs)
+                    X = np.array(all_embs, dtype=np.float32)
                     eps = 1.0 - (self.request.threshold / 100.0)
                     labels = _dbscan_numpy(X, eps=eps, min_samples=2)
                     

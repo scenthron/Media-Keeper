@@ -163,6 +163,7 @@ class AiCoreWorker(QRunnable):
             logging.info(f"[AiCoreWorker] Входные параметры: {self.request.task_type}, Цель: {self.request.analysis_target}, "
                          f"Файлов для анализа: {total_files}, Порог: {self.request.threshold}")
 
+            cache_batch = []
             for fp in valid_files:
                 if self.is_cancelled: return
                 
@@ -197,7 +198,10 @@ class AiCoreWorker(QRunnable):
                     if emb is None:
                         emb = self.engine.extract_clip_embedding(fp)
                         if self.request.use_cache and self.cache and emb is not None:
-                            self.cache.save_image_embedding(fp, mtime, size, emb)
+                            cache_batch.append((fp, mtime, size, emb))
+                            if len(cache_batch) >= 50:
+                                self.cache.save_image_embeddings_batch(cache_batch)
+                                cache_batch = []
                             
                     if emb is not None and self.request.analysis_target == AiTarget.IMAGES:
                         file_features.append((fp, emb))
@@ -208,28 +212,49 @@ class AiCoreWorker(QRunnable):
                 
                 processed += 1
 
+            if cache_batch and self.request.use_cache and self.cache:
+                self.cache.save_image_embeddings_batch(cache_batch)
+                cache_batch = []
+
             # 4. Search and Cluster logic
             self.signals.progress.emit(STAGE_ANALYSIS, 95.0, "Группировка результатов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
             
             groups_dict = {}
             
             if self.request.task_type == AiTaskType.TEXT_TO_IMAGE and self.request.analysis_target == AiTarget.IMAGES:
-                # Text Multi-tag Search
-                for fp, img_emb in file_features:
+                # Text Multi-tag Search (Vectorized Matrix Multiplication)
+                if file_features and text_embeddings:
+                    filepaths = [item[0] for item in file_features]
+                    img_mat = np.array([item[1] for item in file_features])  # Shape: (N, 512)
+
                     for group_name, text_embs in text_embeddings.items():
-                        best_score = 0
-                        for text_emb in text_embs:
-                            score_raw = np.dot(text_emb, img_emb)
-                            mapped = (score_raw - 0.14) / (0.28 - 0.14) * 100
-                            mapped = max(0, min(100, int(mapped)))
-                            if mapped > best_score:
-                                best_score = mapped
+                        if not text_embs:
+                            continue
+                        txt_mat = np.array(text_embs)  # Shape: (M, 512)
                         
-                        if best_score >= self.request.threshold:
+                        # Fast matrix dot product: (N, 512) x (512, M) -> (N, M)
+                        sim_matrix = np.dot(img_mat, txt_mat.T)
+                        
+                        # Highest similarity score across queries for each image
+                        max_sims = np.max(sim_matrix, axis=1)  # Shape: (N,)
+                        
+                        # Scale to percentage 0..100
+                        mapped_scores = (max_sims - 0.14) / (0.28 - 0.14) * 100.0
+                        mapped_scores = np.clip(mapped_scores, 0, 100).astype(int)
+                        
+                        # Filter indices exceeding similarity threshold
+                        match_indices = np.where(mapped_scores >= self.request.threshold)[0]
+                        
+                        if len(match_indices) > 0:
                             if group_name not in groups_dict:
                                 groups_dict[group_name] = []
-                            match_file = AiMatchFile(path=fp, score=best_score, matched_reference_id=group_name)
-                            groups_dict[group_name].append(match_file)
+                            for idx in match_indices:
+                                match_file = AiMatchFile(
+                                    path=filepaths[idx], 
+                                    score=int(mapped_scores[idx]), 
+                                    matched_reference_id=group_name
+                                )
+                                groups_dict[group_name].append(match_file)
 
             elif self.request.task_type == AiTaskType.AUTO_CLUSTER and self.request.analysis_target == AiTarget.FACES:
                 # Simple O(N^2) naive clustering for testing (can be replaced by DBSCAN later inside this facade)

@@ -118,6 +118,30 @@ class AiCacheManager:
         except Exception as e:
             logging.error(f"Ошибка сохранения эмбеддинга в кэш для {filepath}: {e}")
 
+    def save_image_embeddings_batch(self, items: list[tuple[str, float, int, np.ndarray]]):
+        """Сохраняет пакет векторов изображений (CLIP) в кэш единой транзакцией."""
+        if not items:
+            return
+        try:
+            prepared = []
+            for filepath, mtime, size, embedding in items:
+                norm_path = os.path.normcase(os.path.abspath(filepath))
+                emb_blob = embedding.astype(np.float32).tobytes()
+                prepared.append((norm_path, mtime, size, emb_blob))
+
+            with self._conn() as conn:
+                cursor = conn.cursor()
+                cursor.executemany(
+                    """
+                    INSERT OR REPLACE INTO image_embeddings (filepath, mtime, size, embedding)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    prepared
+                )
+                conn.commit()
+        except Exception as e:
+            logging.error(f"Ошибка пакетного сохранения эмбеддингов в кэш: {e}")
+
     def get_file_faces(self, filepath: str, current_mtime: float, current_size: int) -> list[dict] | None:
         """
         Возвращает список лиц для файла из кэша.

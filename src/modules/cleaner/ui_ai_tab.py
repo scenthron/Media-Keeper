@@ -1350,10 +1350,17 @@ class AiClassificationTab(QWidget):
             from utils_common import format_size
             if os.path.exists(db_path):
                 size = os.path.getsize(db_path)
+                wal_path = db_path + "-wal"
+                shm_path = db_path + "-shm"
+                if os.path.exists(wal_path):
+                    size += os.path.getsize(wal_path)
+                if os.path.exists(shm_path):
+                    size += os.path.getsize(shm_path)
                 self.lbl_cache_info_ai.setText(f"{format_size(size)}")
             else:
                 self.lbl_cache_info_ai.setText("0 B")
         except Exception as e:
+            import logging
             logging.error(f"Ошибка получения размера ИИ-кэша: {e}")
             self.lbl_cache_info_ai.setText("0 B")
 

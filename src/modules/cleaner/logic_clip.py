@@ -33,10 +33,6 @@ class CLIPSearcher:
         
     def load_models(self):
         try:
-            if not HAS_TRANSFORMERS:
-                logger.error("Для работы CLIP требуется пакет transformers. Установите: pip install transformers tokenizers")
-                return
-                
             from logic_paths import get_models_dir
             clip_dir = os.path.join(get_models_dir(), "clip")
             vision_model_path = os.path.join(clip_dir, "vision", "model.onnx")
@@ -61,7 +57,7 @@ class CLIPSearcher:
             
             logger.info("Загрузка CLIP ONNX сессий...")
             opts = ort.SessionOptions()
-            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
             self.vision_sess = ort.InferenceSession(vision_model_path, sess_options=opts, providers=['CPUExecutionProvider'])
             self.text_sess = ort.InferenceSession(text_model_path, sess_options=opts, providers=['CPUExecutionProvider'])
 

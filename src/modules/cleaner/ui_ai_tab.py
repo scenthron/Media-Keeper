@@ -1561,6 +1561,14 @@ class AiClassificationTab(QWidget):
     def toggle_scan(self, text_query=None):
         if hasattr(self, 'facade') and self.facade.active_worker:
             self.facade.cancel_search()
+            self.progress_bar.hide()
+            self.btn_start_scan.setText(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
+            self.btn_start_scan.setStyleSheet("""
+                QPushButton { background-color: #15803d; color: white; font-weight: 900; font-size: 14px; border: 1px solid #16a34a; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
+                QPushButton:hover { background-color: #16a34a; }
+                QPushButton:disabled { background-color: #222; color: #555; font-weight: 900; font-size: 14px; border: 1px solid #333; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
+            """)
+            self.scan_finished.emit()
             return
             
         folders = self.cleaner.get_active_source_folders()

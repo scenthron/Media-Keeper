@@ -1521,7 +1521,7 @@ class AiClassificationTab(QWidget):
 
     def on_scan_finished(self, results):
         from PyQt6.QtWidgets import QApplication
-        self.lbl_progress.setText("Формирование таблицы..." if AppContext.is_ru() else "Building table...")
+        self.progress_bar.setFormat("Формирование таблицы... (100%)" if AppContext.is_ru() else "Building table... (100%)")
         QApplication.processEvents()
         
         self.populate_results(results)

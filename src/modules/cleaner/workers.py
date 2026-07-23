@@ -1005,7 +1005,7 @@ class AiScanWorker(QThread):
             if processed_files % 10 == 0 or processed_files == total_files:
                 self.progress.emit(STAGE_SCANNING, percent, f"Сканирование каталога 1/2 [{processed_files} / {total_files}]", scanned_files, 0, 0, scanned_bytes, 0, 0)
         
-if not self.is_running:
+        if not self.is_running:
             self.finished.emit({})
             return
 

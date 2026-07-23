@@ -1005,7 +1005,7 @@ class AiScanWorker(QThread):
             if processed_files % 10 == 0 or processed_files == total_files:
                 self.progress.emit(STAGE_SCANNING, percent, f"Сканирование каталога 1/2 [{processed_files} / {total_files}]", scanned_files, 0, 0, scanned_bytes, 0, 0)
         
-        if not self.is_running:
+if not self.is_running:
             self.finished.emit({})
             return
 
@@ -1016,6 +1016,10 @@ class AiScanWorker(QThread):
         files_found = 0
         wasted_bytes = 0
         cluster_data = []
+        
+        text_emb_cached = None
+        if getattr(self, "text_query", None):
+            text_emb_cached = self.classifier.ai.extract_text_embedding(self.text_query)
         
         self.progress.emit(STAGE_ANALYSIS, 0.0, f"Поиск совпадений 2/2 [0 / {total_files}]", scanned_files, 0, 0, scanned_bytes, 0, 0)
         
@@ -1107,12 +1111,11 @@ class AiScanWorker(QThread):
                                     "members": [{"path": fp, "size": size, "confidence": 100.0, "type": "face"}]
                                 })
                 else:
-                    if getattr(self, "text_query", None):
+                    if getattr(self, "text_query", None) and text_emb_cached is not None:
                         import numpy as np
-                        text_emb = self.classifier.ai.extract_text_embedding(self.text_query)
                         clip_emb = self.classifier.cache.get_image_embedding(fp, mtime, size) if self.use_cache else self.classifier.ai.extract_clip_embedding(fp)
-                        if text_emb is not None and clip_emb is not None:
-                            score_raw = np.dot(text_emb, clip_emb)
+                        if clip_emb is not None:
+                            score_raw = np.dot(text_emb_cached, clip_emb)
                             mapped_score = (score_raw - 0.20) / (0.32 - 0.20)
                             conf = max(0.0, min(100.0, float(mapped_score) * 100.0))
                             

@@ -1497,6 +1497,7 @@ class AiClassificationTab(QWidget):
             match_mode=match_mode, use_cache=use_cache,
             use_gpu=use_gpu, is_cluster=is_cluster
         )
+        self.active_worker.text_query = text_query
         self.active_worker.progress.connect(self.on_scan_progress)
         self.active_worker.finished.connect(self.on_scan_finished)
         self.active_worker.start()

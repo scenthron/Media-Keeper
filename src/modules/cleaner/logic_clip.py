@@ -8,9 +8,7 @@ import logging
 try:
     import os
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
-    os.environ["TRANSFORMERS_VERBOSITY"] = "error"
-    from transformers import AutoTokenizer
-    HAS_TRANSFORMERS = True
+    HAS_TRANSFORMERS = True # We keep the flag True to avoid breaking other logic, but use tokenizers directly
 except ImportError:
     HAS_TRANSFORMERS = False
 
@@ -54,7 +52,13 @@ class CLIPSearcher:
                 return
                 
             logger.info("Загрузка CLIP Tokenizer...")
-            self.tokenizer = AutoTokenizer.from_pretrained(text_model_dir)
+            from tokenizers import Tokenizer
+            tokenizer_path = os.path.join(text_model_dir, "tokenizer.json")
+            if os.path.exists(tokenizer_path):
+                self.tokenizer = Tokenizer.from_file(tokenizer_path)
+            else:
+                logger.error(f"Файл токенизатора не найден: {tokenizer_path}")
+                return
             
             logger.info("Загрузка CLIP ONNX сессий...")
             opts = ort.SessionOptions()
@@ -113,9 +117,13 @@ class CLIPSearcher:
             text = " ".join(translated_words)
             
         try:
-            inputs = self.tokenizer([text], padding=True, truncation=True, return_tensors="np")
-            input_ids = inputs["input_ids"].astype(np.int64)
-            attention_mask = inputs["attention_mask"].astype(np.int64)
+            # Tokenize using tokenizers library directly
+            self.tokenizer.enable_truncation(max_length=77)
+            self.tokenizer.enable_padding(length=77)
+            encoded = self.tokenizer.encode(text)
+            
+            input_ids = np.array([encoded.ids], dtype=np.int64)
+            attention_mask = np.array([encoded.attention_mask], dtype=np.int64)
             
             text_out = self.text_sess.run(None, {
                 "input_ids": input_ids,

@@ -117,7 +117,7 @@ class AiClassifier:
                     new_pos_features, new_pos_faces = [], []
                     for p in pos_paths:
                         # Extract CLIP
-                        emb = self.ai.extract_image_embedding(p)
+                        emb = self.ai.extract_clip_embedding(p)
                         if emb is not None: new_pos_features.append(emb)
                         # Extract Face
                         faces = self.ai.extract_faces(p)
@@ -126,7 +126,7 @@ class AiClassifier:
                             
                     new_neg_features, new_neg_faces = [], []
                     for p in neg_paths:
-                        emb = self.ai.extract_image_embedding(p)
+                        emb = self.ai.extract_clip_embedding(p)
                         if emb is not None: new_neg_features.append(emb)
                         faces = self.ai.extract_faces(p)
                         if faces is not None:

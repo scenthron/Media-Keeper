@@ -249,13 +249,17 @@ class AiCacheManager:
         return has_general, has_faces
 
     def clear_cache(self):
-        """Полностью очищает кэш."""
+        """Полностью очищает кэш и физически сжимает файл базы данных до нуля."""
         try:
             with self._conn() as conn:
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM image_embeddings")
                 cursor.execute("DELETE FROM face_embeddings")
                 conn.commit()
-                logging.info("SQLite ИИ-кэш успешно очищен.")
+                # Физически сжимаем БД и усекаем WAL-журнал до 0 байт
+                cursor.execute("VACUUM;")
+                cursor.execute("PRAGMA wal_checkpoint(TRUNCATE);")
+                conn.commit()
+                logging.info("SQLite ИИ-кэш успешно очищен и сжат (VACUUM).")
         except Exception as e:
             logging.error(f"Ошибка очистки ИИ-кэша: {e}")

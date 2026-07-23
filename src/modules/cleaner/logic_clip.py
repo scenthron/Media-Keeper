@@ -94,6 +94,32 @@ class CLIPSearcher:
         sum_embeddings = np.sum(model_output * input_mask_expanded, axis=1)
         sum_mask = np.clip(np.sum(input_mask_expanded, axis=1), a_min=1e-9, a_max=None)
         return sum_embeddings / sum_mask
+    def _translate_ru_to_en(self, text: str) -> str:
+        """Переводит русский текст на английский (сначала онлайн через Google API, при отсутствии сети — офлайн по 50k словарю ru_en_dict)."""
+        import urllib.request
+        import urllib.parse
+        import json
+        import re
+        
+        # 1. Попытка быстрых онлайн-запросов
+        try:
+            q = urllib.parse.quote(text.strip())
+            url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q={q}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            res = json.loads(urllib.request.urlopen(req, timeout=3).read().decode('utf-8'))
+            if res and res[0] and res[0][0] and res[0][0][0]:
+                return res[0][0][0]
+        except Exception:
+            pass
+
+        # 2. Пословно через встроенный 50,000-словарный офлайн словарь ru_en_dict.json
+        if hasattr(self, 'ru_en_dict') and self.ru_en_dict:
+            def replace_word(match):
+                word_lower = match.group(0).lower()
+                return self.ru_en_dict.get(word_lower, match.group(0))
+            return re.sub(r'[а-яА-ЯёЁ]+', replace_word, text)
+
+        return text
 
     def encode_text(self, text: str) -> np.ndarray:
         """
@@ -103,13 +129,13 @@ class CLIPSearcher:
         if not self.is_loaded:
             return None
             
-        # Автоматический перевод через статический словарь
-        if hasattr(self, 'ru_en_dict') and self.ru_en_dict:
-            import re
-            def replace_word(match):
-                word_lower = match.group(0).lower()
-                return self.ru_en_dict.get(word_lower, match.group(0))
-            text = re.sub(r'[а-яА-ЯёЁ]+', replace_word, text)
+        # Автоматический перевод кириллицы на английский для CLIP
+        import re
+        if re.search(r'[а-яА-ЯёЁ]', text):
+            translated_text = self._translate_ru_to_en(text)
+            if translated_text:
+                logger.info(f"Запрос '{text}' переведен для CLIP: '{translated_text}'")
+                text = translated_text
             
         try:
             # Tokenize using tokenizers library directly

@@ -58,7 +58,7 @@ def build():
     ]
 
     # Добавляем папки ресурсов динамически, если они существуют
-    data_dirs = ["icons", "launcher", "languages"]
+    data_dirs = ["icons", "launcher", "languages", "assets"]
     for d in data_dirs:
         if os.path.exists(d):
             # Используем os.pathsep (; для Windows, : для Unix)
@@ -82,6 +82,12 @@ def build():
         "numpy",
         "cv2",
         "onnxruntime",
+        "scipy",
+        "scipy.spatial",
+        "scipy.optimize",
+        "scipy.ndimage",
+        "skimage",
+        "skimage.transform",
         "requests",
         "certifi",
         "urllib3",
@@ -111,7 +117,7 @@ def build():
         pyinstaller_cmd.extend(["--hidden-import", imp])
 
     # Исключаем тяжелые библиотеки для уменьшения размера EXE
-    excludes = ["tkinter", "matplotlib", "scipy"]
+    excludes = ["tkinter", "matplotlib"]
     for exc in excludes:
         pyinstaller_cmd.extend(["--exclude-module", exc])
 

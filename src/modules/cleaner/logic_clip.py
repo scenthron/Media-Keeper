@@ -127,7 +127,7 @@ class CLIPSearcher:
             return None
             
         if self.tokenizer is None or self.text_sess is None:
-            logger.error("Токенизатор или ONNX-сессия текста не инициализирована")
+            logger.error("[CLIP] Токенизатор или ONNX-сессия текста не инициализирована")
             return None
 
         # Автоматический перевод кириллицы на английский для CLIP
@@ -135,21 +135,31 @@ class CLIPSearcher:
         if re.search(r'[а-яА-ЯёЁ]', text):
             translated_text = self._translate_ru_to_en(text)
             if translated_text:
-                logger.info(f"Запрос '{text}' переведен для CLIP: '{translated_text}'")
+                logger.info(f"[CLIP] Запрос '{text}' переведен для CLIP: '{translated_text}'")
                 text = translated_text
             
         try:
             # Безопасная токенизация
             try:
-                self.tokenizer.enable_truncation(max_length=77)
-                self.tokenizer.enable_padding(length=77)
                 encoded = self.tokenizer.encode(text)
+                raw_ids = list(encoded.ids)
+                raw_mask = list(encoded.attention_mask)
             except Exception as te:
-                logger.error(f"Ошибка токенизации текста '{text}': {te}")
+                logger.error(f"[CLIP] Ошибка токенизации текста '{text}': {te}")
                 return None
             
-            input_ids = np.array([encoded.ids], dtype=np.int64)
-            attention_mask = np.array([encoded.attention_mask], dtype=np.int64)
+            # Ручное безопасное приведение длины строго к 77 токенам
+            pad_len = 77
+            if len(raw_ids) > pad_len:
+                raw_ids = raw_ids[:pad_len]
+                raw_mask = raw_mask[:pad_len]
+            else:
+                pad_count = pad_len - len(raw_ids)
+                raw_ids = raw_ids + [0] * pad_count
+                raw_mask = raw_mask + [0] * pad_count
+
+            input_ids = np.array([raw_ids], dtype=np.int64)
+            attention_mask = np.array([raw_mask], dtype=np.int64)
             
             # Динамически формируем входы ONNX модели на основе её метаданных
             inputs = {}
@@ -159,8 +169,9 @@ class CLIPSearcher:
                 elif input_meta.name == "attention_mask":
                     inputs["attention_mask"] = attention_mask
                 elif input_meta.name == "position_ids":
-                    inputs["position_ids"] = np.arange(len(encoded.ids), dtype=np.int64)[None, :]
+                    inputs["position_ids"] = np.arange(pad_len, dtype=np.int64)[None, :]
 
+            logger.info(f"[CLIP] Запуск ONNX инференса текста для '{text}'...")
             text_out = self.text_sess.run(None, inputs)[0]
             
             # Пулинг или прямое извлечение 512D вектора
@@ -178,10 +189,11 @@ class CLIPSearcher:
             norm = np.linalg.norm(text_emb_512, axis=-1, keepdims=True)
             text_emb_norm = text_emb_512 / np.clip(norm, 1e-9, None)
             
+            logger.info(f"[CLIP] Успешно получен вектор текста '{text}' размерности {text_emb_norm[0].shape}")
             return text_emb_norm[0] # Возвращаем 1D вектор
             
         except Exception as e:
-            logger.error(f"Ошибка при кодировании текста '{text}': {e}", exc_info=True)
+            logger.error(f"[CLIP] Ошибка при кодировании текста '{text}': {e}", exc_info=True)
             return None
 
     def encode_image(self, img_path: str) -> np.ndarray:

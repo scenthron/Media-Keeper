@@ -99,7 +99,9 @@ class AiGroupChipWidget(QFrame):
         self.update_status_dot(status_color)
         layout.addWidget(self.status_dot)
         
+        is_ru = AppContext.is_ru()
         self.btn_gear = QPushButton("⚙️")
+        self.btn_gear.setToolTip("Настройка Образца" if is_ru else "Reference Settings")
         self.btn_gear.setFixedSize(18, 18)
         self.btn_gear.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_gear.setStyleSheet("""
@@ -117,7 +119,7 @@ class AiGroupChipWidget(QFrame):
         layout.addWidget(self.btn_gear)
         
         self.btn_remove = QPushButton("✕")
-        self.btn_remove.setToolTip("Убрать Образец из списка (файл не удалится)")
+        self.btn_remove.setToolTip("Убрать Образец из списка (файл не удалится)" if is_ru else "Remove reference from list (file won't be deleted)")
         self.btn_remove.setFixedSize(18, 18)
         self.btn_remove.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_remove.setStyleSheet("""

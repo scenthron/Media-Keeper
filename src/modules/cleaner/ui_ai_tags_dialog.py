@@ -32,6 +32,7 @@ class AiTagChipWidget(QFrame):
 
         # Edit button (pencil)
         self.btn_edit = QPushButton("✏️")
+        self.btn_edit.setToolTip("Редактировать тег" if AppContext.is_ru() else "Edit Tag")
         self.btn_edit.setFixedSize(18, 18)
         self.btn_edit.setStyleSheet("""
             QPushButton { background: transparent; border: none; font-size: 12px; }
@@ -145,6 +146,7 @@ class AiTagManagerDialog(QDialog):
         create_panel.addWidget(self.btn_create)
 
         self.btn_toggle_delete = QPushButton("❌")
+        self.btn_toggle_delete.setToolTip("Режим удаления тегов" if AppContext.is_ru() else "Tag Deletion Mode")
         self.btn_toggle_delete.setFixedSize(26, 26)
         self.btn_toggle_delete.setCheckable(True)
         self.btn_toggle_delete.toggled.connect(self.on_delete_toggled)

@@ -362,7 +362,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.tab_bar = QTabBar()
         self.tab_bar.addTab("Поиск дубликатов" if is_ru else "Duplicates Search")
         self.tab_bar.addTab("Поиск похожих" if is_ru else "Find Similar")
-        self.tab_bar.addTab("ИИ Поиск" if is_ru else "AI Search")
+        self.tab_bar.addTab("ИИ поиск изображений" if is_ru else "AI Image Search")
         self.tab_bar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.tab_bar.setCursor(Qt.CursorShape.PointingHandCursor)
         self.tab_bar.setStyleSheet("""

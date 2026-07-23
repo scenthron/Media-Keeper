@@ -685,20 +685,70 @@ class AiClassificationTab(QWidget):
             QSlider::handle:horizontal { background: #3b82f6; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
         """)
         
+        UP_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtMTggMTUtNi02LTYgNiIvPjwvc3ZnPg=='
+        DOWN_BASE64 = b'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtNiA5IDYgNiA2LTYiLz48L3N2Zz4='
+        import base64
+        from PyQt6.QtGui import QPixmap, QIcon
+        def get_svg_icon(svg_b64):
+            pix = QPixmap()
+            pix.loadFromData(base64.b64decode(svg_b64))
+            return QIcon(pix)
+            
+        spin_container = QFrame()
+        spin_container.setFixedHeight(26)
+        spin_container.setFixedWidth(84)
+        spin_container.setStyleSheet("QFrame { background-color: #333; border: 1px solid #555; border-radius: 4px; }")
+        sc_layout = QHBoxLayout(spin_container)
+        sc_layout.setContentsMargins(0, 0, 0, 0)
+        sc_layout.setSpacing(0)
+        
+        arrows_w = QWidget()
+        arrows_w.setFixedWidth(20)
+        arrows_w.setFixedHeight(24)
+        al = QVBoxLayout(arrows_w)
+        al.setContentsMargins(0, 0, 0, 0)
+        al.setSpacing(0)
+        
+        self.btn_up_sim = QPushButton()
+        self.btn_up_sim.setFixedHeight(12)
+        self.btn_up_sim.setIcon(get_svg_icon(UP_BASE64))
+        self.btn_up_sim.setIconSize(QSize(8, 8))
+        self.btn_up_sim.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_up_sim.setAutoRepeat(True)
+        self.btn_up_sim.setStyleSheet("QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-top-left-radius: 4px; border-bottom: 1px solid #444; } QPushButton:hover { background: rgba(255, 255, 255, 0.1); }")
+        
+        self.btn_down_sim = QPushButton()
+        self.btn_down_sim.setFixedHeight(12)
+        self.btn_down_sim.setIcon(get_svg_icon(DOWN_BASE64))
+        self.btn_down_sim.setIconSize(QSize(8, 8))
+        self.btn_down_sim.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_down_sim.setAutoRepeat(True)
+        self.btn_down_sim.setStyleSheet("QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-bottom-left-radius: 4px; } QPushButton:hover { background: rgba(255, 255, 255, 0.1); }")
+        
+        al.addWidget(self.btn_up_sim)
+        al.addWidget(self.btn_down_sim)
+        sc_layout.addWidget(arrows_w)
+
         self.spin_threshold = QDoubleSpinBox()
+        self.spin_threshold.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
         self.spin_threshold.setRange(0.0, 100.0)
         self.spin_threshold.setDecimals(1)
         self.spin_threshold.setSingleStep(0.1)
         self.spin_threshold.setValue(50.0)
         self.spin_threshold.setSuffix("%")
-        self.spin_threshold.setFixedWidth(65)
-        self.spin_threshold.setStyleSheet("border: none; background: transparent; color: #f0f0f0; font-weight: bold; font-size: 12px; padding: 0 4px;")
+        self.spin_threshold.setFixedWidth(64)
+        self.spin_threshold.setFixedHeight(24)
+        self.spin_threshold.setStyleSheet("border: none; background: transparent; color: white; font-weight: bold; font-size: 13px; padding-left: 2px;")
+        sc_layout.addWidget(self.spin_threshold)
+        
+        self.btn_up_sim.clicked.connect(self.spin_threshold.stepUp)
+        self.btn_down_sim.clicked.connect(self.spin_threshold.stepDown)
         
         self.slider_threshold.valueChanged.connect(lambda v: self.spin_threshold.setValue(v / 100.0))
         self.spin_threshold.valueChanged.connect(lambda v: self.slider_threshold.setValue(int(v * 100)))
         
         slider_layout.addWidget(self.slider_threshold)
-        slider_layout.addWidget(self.spin_threshold)
+        slider_layout.addWidget(spin_container)
         params_sub_layout.addLayout(slider_layout)
         
         self.chk_auto_cluster = QCheckBox("Умный поиск" if AppContext.is_ru() else "Smart Search")

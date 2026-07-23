@@ -2,67 +2,71 @@ import os
 import re
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
-    QLineEdit, QSplitter, QFrame, QProgressBar, QCheckBox,
-    QFileDialog, QMessageBox, QComboBox, QTreeWidget, QTreeWidgetItem,
+    QSplitter, QFrame, QProgressBar, QCheckBox,
+    QFileDialog, QMessageBox, QTreeWidget, QTreeWidgetItem,
     QTextEdit, QListWidget, QAbstractItemView, QSizePolicy
 )
-from PyQt6.QtCore import Qt, QSize, QThreadPool, QTimer
-from PyQt6.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat, QCursor
+from PyQt6.QtCore import Qt, QSize, QTimer
+from PyQt6.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat
 from config import AppContext
-from .logic_ai_lab import AILabWorker
 from utils_common import format_size, reveal_in_explorer
 from .ui_preview import CleanerPreviewWidget
+from .ai_facade import AiServiceFacade, AiSearchRequest, AiTaskType, AiTarget
+
+def parse_multi_tags(text: str) -> dict:
+    result = {}
+    pattern_multi = r'\(([^:]+):([^\)]+)\)'
+    for match in re.finditer(pattern_multi, text):
+        group_name = match.group(1).strip()
+        components = [c.strip() for c in match.group(2).split(',') if c.strip()]
+        if components:
+            result[group_name] = components
+            
+    text_clean = re.sub(pattern_multi, '', text)
+    regular_tags = [t.strip() for t in text_clean.split(',') if t.strip()]
+    for tag in regular_tags:
+        result[tag] = [tag]
+        
+    return result
 
 class MultiTagHighlighter(QSyntaxHighlighter):
     def __init__(self, document):
         super().__init__(document)
         self.rules = []
 
-        # White for components inside parentheses after colon
         format_components = QTextCharFormat()
         format_components.setForeground(QColor("#ffffff"))
 
-        # Orange for group name inside parentheses before colon
         format_group = QTextCharFormat()
         format_group.setForeground(QColor("#f59e0b"))
         format_group.setFontWeight(QFont.Weight.Bold)
 
-        # Green for normal tags outside parentheses
         format_normal = QTextCharFormat()
         format_normal.setForeground(QColor("#10b981"))
         
-        # Gray for punctuation
         format_punct = QTextCharFormat()
         format_punct.setForeground(QColor("#888888"))
 
         self.rules.append((re.compile(r'[\(\):,]'), format_punct))
 
     def highlightBlock(self, text):
-        # 1. Base color (Normal tags are green)
         self.setFormat(0, len(text), QColor("#10b981"))
-        
-        # 2. Find parentheses blocks
         pattern = re.compile(r'\((.*?)\)')
         for match in pattern.finditer(text):
             start = match.start()
             length = match.end() - start
             inner_text = match.group(1)
             
-            # Color everything inside parentheses as white by default
             self.setFormat(start + 1, length - 2, QColor("#ffffff"))
             
-            # If there's a colon, color the left part as orange
             colon_idx = inner_text.find(':')
             if colon_idx != -1:
                 self.setFormat(start + 1, colon_idx, QColor("#f59e0b"))
-                
-                # Make group name bold
                 fmt = QTextCharFormat()
                 fmt.setForeground(QColor("#f59e0b"))
                 fmt.setFontWeight(QFont.Weight.Bold)
                 self.setFormat(start + 1, colon_idx, fmt)
 
-        # 3. Punctuation colors
         punct_pattern = re.compile(r'[\(\):,]')
         for match in punct_pattern.finditer(text):
             self.setFormat(match.start(), 1, QColor("#888888"))
@@ -99,7 +103,6 @@ class FolderDropListWidget(QListWidget):
             if url.isLocalFile():
                 path = url.toLocalFile()
                 if os.path.isdir(path):
-                    # check if already exists
                     exists = False
                     for i in range(self.count()):
                         if self.item(i).text() == path:
@@ -201,6 +204,11 @@ class AILabTab(QWidget):
         self.btn_search.setCursor(Qt.CursorShape.PointingHandCursor)
         settings_col.addWidget(self.btn_search)
         
+        # Progress label
+        self.lbl_progress = QLabel()
+        self.lbl_progress.setStyleSheet("color: #aaa; font-size: 11px;")
+        settings_col.addWidget(self.lbl_progress)
+        
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedHeight(4)
         self.progress_bar.setTextVisible(False)
@@ -251,31 +259,21 @@ class AILabTab(QWidget):
         bot_layout.addWidget(self.right_splitter)
         
         self.main_splitter.addWidget(self.bottom_panel)
-        
         self.main_layout.addWidget(self.main_splitter)
-
-        # Sizes
         self.main_splitter.setSizes([200, 600])
 
-        # Connect signals
         self.btn_search.clicked.connect(self.on_btn_search_clicked)
         self.slider_thresh.valueChanged.connect(self.update_results_filter)
         self.tree_results.itemSelectionChanged.connect(self.on_tree_selection_changed)
         self.tree_results.itemDoubleClicked.connect(self.on_item_double_clicked)
         
-        self.results = []
-        self.worker = None
-        self.feature_cache = {'face': {}, 'text': {}} 
-        self.models_cache = {} 
-        
-        self.slider_timer = QTimer()
-        self.slider_timer.setSingleShot(True)
-        self.slider_timer.timeout.connect(self.apply_results_filter)
+        self.facade = AiServiceFacade()
+        self.current_response = None
+        self.is_searching = False
 
     def select_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Выберите папку для сканирования")
         if folder:
-            # check if exists
             exists = False
             for i in range(self.list_folders.count()):
                 if self.list_folders.item(i).text() == folder:
@@ -291,7 +289,7 @@ class AILabTab(QWidget):
         item = selected[0]
         file_path = item.data(0, Qt.ItemDataRole.UserRole)
         if file_path and os.path.exists(file_path):
-            self.preview_widget.preview_file(file_path)
+            self.preview_widget.load_file(file_path)
 
     def on_item_double_clicked(self, item):
         path = item.data(0, Qt.ItemDataRole.UserRole)
@@ -299,7 +297,7 @@ class AILabTab(QWidget):
             reveal_in_explorer(os.path.normpath(path))
 
     def on_btn_search_clicked(self):
-        if self.worker and not self.worker.is_cancelled:
+        if self.is_searching:
             self.stop_search()
         else:
             self.start_search()
@@ -315,9 +313,7 @@ class AILabTab(QWidget):
             return
             
         folders = [self.list_folders.item(i).text() for i in range(self.list_folders.count())]
-        # Для прототипа берем первую папку (worker_ai_lab пока принимает одну)
-        # Если хотим несколько, нужно было бы переписать AILabWorker, но пока скармливаем первую
-        selected_folder = folders[0]
+        queries_dict = parse_multi_tags(text_query)
 
         self.btn_search.setText("Стоп (Остановить поиск)" if self.is_ru else "Stop Search")
         self.btn_search.setStyleSheet("background-color: #ef4444; color: white; border-radius: 4px; font-weight: bold; font-size: 14px;")
@@ -325,30 +321,31 @@ class AILabTab(QWidget):
         self.list_folders.setEnabled(False)
         self.progress_bar.setValue(0)
         self.progress_bar.show()
+        self.lbl_progress.setText("")
 
         self.tree_results.clear()
-        self.results = []
+        self.current_response = None
+        self.is_searching = True
 
-        self.worker = AILabWorker(
-            folder_path=selected_folder, 
-            search_mode='text',
-            action='scan_and_search',
-            text_query=text_query,
-            cache=self.feature_cache,
-            models_cache=self.models_cache
+        request = AiSearchRequest(
+            target_paths=folders,
+            task_type=AiTaskType.TEXT_TO_IMAGE,
+            analysis_target=AiTarget.IMAGES,
+            threshold=self.slider_thresh.value(),
+            text_queries=queries_dict
         )
-        self.worker.signals.progress.connect(self.update_progress)
-        self.worker.signals.result_found.connect(self.on_result_found)
-        self.worker.signals.finished.connect(self.on_search_finished)
-        self.worker.signals.error.connect(self.on_search_error)
 
-        QThreadPool.globalInstance().start(self.worker)
+        self.facade.search(
+            request,
+            progress_callback=self.update_progress,
+            result_callback=self.on_result_found,
+            error_callback=self.on_search_error
+        )
 
     def stop_search(self):
-        if self.worker:
-            self.worker.is_cancelled = True
-        self.btn_search.setEnabled(False)
-        self.btn_search.setText("Останавливаем..." if self.is_ru else "Stopping...")
+        self.facade.cancel_search()
+        self.is_searching = False
+        self.reset_search_button()
 
     def reset_search_button(self):
         self.btn_search.setEnabled(True)
@@ -357,65 +354,60 @@ class AILabTab(QWidget):
         self.input_text.setEnabled(True)
         self.list_folders.setEnabled(True)
 
-    def update_progress(self, current, total):
-        self.progress_bar.setMaximum(total)
-        self.progress_bar.setValue(current)
+    def update_progress(self, stage, percent, text, scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, dummy):
+        self.progress_bar.setMaximum(100)
+        self.progress_bar.setValue(int(percent))
+        self.lbl_progress.setText(text)
 
     def update_results_filter(self):
         self.lbl_thresh_val.setText(f"{self.slider_thresh.value()}%")
-        self.slider_timer.start(500)
+        self.render_results()
 
-    def apply_results_filter(self):
-        if not self.worker or not self.worker.isRunning():
-            self.render_results()
+    def on_result_found(self, response):
+        self.current_response = response
+        self.is_searching = False
+        self.progress_bar.hide()
+        self.lbl_progress.setText("Готово" if self.is_ru else "Done")
+        self.reset_search_button()
+        self.render_results()
 
     def render_results(self):
         self.tree_results.clear()
+        if not self.current_response:
+            return
+            
         threshold = self.slider_thresh.value()
         
-        # Group by matched_group_name
-        groups = {}
-        for file_path, score, group_name in self.results:
-            if score >= threshold:
-                if group_name not in groups:
-                    groups[group_name] = []
-                groups[group_name].append((file_path, score))
+        for group in self.current_response.groups:
+            # Filter by threshold
+            valid_files = [f for f in group.files if f.score >= threshold]
+            if not valid_files:
+                continue
                 
-        # Build tree
-        for group_name, items in groups.items():
-            # Sort items by score descending
-            items.sort(key=lambda x: x[1], reverse=True)
-            
             group_item = QTreeWidgetItem(self.tree_results)
-            group_item.setText(0, f"Группа: {group_name} ({len(items)} файлов)")
+            group_item.setText(0, f"Группа: {group.group_name} ({len(valid_files)} файлов)")
             group_item.setForeground(0, QColor("#10b981"))
             group_item.setFont(0, QFont("Segoe UI", 10, QFont.Weight.Bold))
             
-            for file_path, score in items:
+            for file_match in valid_files:
                 file_item = QTreeWidgetItem(group_item)
-                file_item.setText(0, os.path.basename(file_path))
-                file_item.setText(1, f"{int(score)}%")
+                file_item.setText(0, os.path.basename(file_match.path))
+                file_item.setText(1, f"{int(file_match.score)}%")
                 try:
-                    size = os.path.getsize(file_path)
+                    size = os.path.getsize(file_match.path)
                     file_item.setText(2, format_size(size))
                 except:
                     file_item.setText(2, "")
                     
-                file_item.setData(0, Qt.ItemDataRole.UserRole, file_path)
+                file_item.setData(0, Qt.ItemDataRole.UserRole, file_match.path)
                 
         self.tree_results.expandAll()
 
-    def on_result_found(self, file_path, score, group_name):
-        self.results.append((file_path, score, group_name))
-
-    def on_search_finished(self):
-        self.worker = None
-        self.progress_bar.hide()
-        self.reset_search_button()
-        self.render_results()
-
     def on_search_error(self, err_msg):
-        self.worker = None
+        self.is_searching = False
         self.progress_bar.hide()
         self.reset_search_button()
         QMessageBox.critical(self, "Ошибка", err_msg)
+
+    def update_folders_label(self, folders):
+        pass

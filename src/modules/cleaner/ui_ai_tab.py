@@ -1483,7 +1483,7 @@ class AiClassificationTab(QWidget):
         
         if not combined_query:
             from PyQt6.QtWidgets import QMessageBox
-            from utils_env import AppContext
+            from config import AppContext
             QMessageBox.warning(self, "Внимание" if AppContext.is_ru() else "Warning", "Введите текстовый запрос или выберите тег." if AppContext.is_ru() else "Please enter a query or select a tag.")
             return
         

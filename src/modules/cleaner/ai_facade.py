@@ -124,9 +124,15 @@ class AiCoreWorker(QRunnable):
 
             total_files = len(valid_files)
             if total_files == 0:
-                self.signals.result_found.emit(AiSearchResponse())
+                self.signals.progress.emit(STAGE_ANALYSIS, 100.0, "Нет файлов для обработки", 0, 0, 0, 0, 0, 0)
+                self.signals.result_found.emit(AiSearchResponse(groups=[]))
                 self.signals.finished.emit()
                 return
+
+            if self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier:
+                import logging
+                if not self.classifier.load_active_references():
+                    logging.warning("Нет активных эталонов для ИИ-поиска")
 
             self.signals.progress.emit(STAGE_ANALYSIS, 0.0, f"Анализ {total_files} файлов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
 

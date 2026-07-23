@@ -4,7 +4,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QEvent
 from PyQt6.QtGui import QIcon
 
 from ui_widgets_base import FlowLayout
-from utils_env import AppContext
+from config import AppContext
 from .logic_ai_tags import AiTextTagsManager
 
 class AiTagChipWidget(QFrame):

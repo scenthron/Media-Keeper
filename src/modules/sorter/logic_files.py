@@ -61,7 +61,7 @@ class FileOpsMixin:
 
         if not self.UNSORT_DIR or not os.path.exists(self.UNSORT_DIR):
             if not getattr(self, 'virtual_folder_name', None):
-                logging.warning(f"Scan path invalid: {self.UNSORT_DIR}")
+                logging.info("Папка входящих в Сортировщике не задана (не выбрана пользователем)")
                 self.files_queue = []
                 self._raw_dir_files = []
                 if self.isVisible(): self.show_current_file()

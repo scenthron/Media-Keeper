@@ -282,22 +282,30 @@ class AiCoreWorker(QRunnable):
                                 filepaths.append(item[0])
 
                     if img_embs:
-                        img_mat = np.array(img_embs, dtype=np.float32)  # Shape: (N, 512)
+                        if len(img_embs) == 0:
+                            logging.info("[AiCoreWorker] Не удалось извлечь векторы из изображений.")
+                        else:
+                            img_mat = np.array(img_embs, dtype=np.float32)  # Shape: (N, 512)
 
-                        for group_name, text_embs in text_embeddings.items():
-                            if not text_embs:
-                                continue
-                            txt_cleaned = [np.asarray(t, dtype=np.float32).flatten() for t in text_embs if t is not None]
-                            txt_cleaned = [t for t in txt_cleaned if t.size > 0]
-                            if not txt_cleaned:
-                                continue
-                            txt_mat = np.array(txt_cleaned, dtype=np.float32)  # Shape: (M, 512)
-                            
-                            # Fast matrix dot product: (N, 512) x (512, M) -> (N, M)
-                            sim_matrix = np.dot(img_mat, txt_mat.T)
-                            
-                            # Highest similarity score across queries for each image
-                            max_sims = np.max(sim_matrix, axis=1)  # Shape: (N,)
+                            for group_name, text_embs in text_embeddings.items():
+                                if not text_embs:
+                                    continue
+                                txt_cleaned = [np.asarray(t, dtype=np.float32).flatten() for t in text_embs if t is not None]
+                                txt_cleaned = [t for t in txt_cleaned if t.size > 0]
+                                if not txt_cleaned:
+                                    continue
+                                txt_mat = np.array(txt_cleaned, dtype=np.float32)  # Shape: (M, 512)
+                                
+                                if img_mat.size == 0 or txt_mat.size == 0 or img_mat.ndim != 2 or txt_mat.ndim != 2:
+                                    continue
+
+                                # Fast matrix dot product: (N, 512) x (512, M) -> (N, M)
+                                sim_matrix = np.dot(img_mat, txt_mat.T)
+                                if sim_matrix.size == 0:
+                                    continue
+                                
+                                # Highest similarity score across queries for each image
+                                max_sims = np.max(sim_matrix, axis=1)  # Shape: (N,)
                             
                             # Scale to percentage 0..100
                             mapped_scores = (max_sims - 0.14) / (0.28 - 0.14) * 100.0

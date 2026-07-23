@@ -1516,10 +1516,19 @@ class AiClassificationTab(QWidget):
             
         folders = self.cleaner.get_active_source_folders()
         if not folders:
+            from PyQt6.QtWidgets import QMessageBox
+            from config import AppContext
+            QMessageBox.warning(self, "Внимание" if AppContext.is_ru() else "Warning", "Выберите хотя бы одну папку с медиафайлами для сканирования!" if AppContext.is_ru() else "Select at least one media folder to scan!")
             return
             
         for widget in self.chips_map.values():
             widget.set_error_highlight(False)
+            
+        # Проверяем и предлагаем скачать ИИ-модели, если их нет
+        if not self.check_and_download_models_ui():
+            import logging
+            logging.info("[UI] Отмена сканирования: ИИ-модели не загружены на компьютер.")
+            return
             
         is_cluster = self.chk_auto_cluster.isChecked()
         if not is_cluster and not text_query:

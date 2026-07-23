@@ -38,6 +38,9 @@ class QCheckBoxCustom(QFrame):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.update_style()
 
+    def isChecked(self) -> bool:
+        return self.is_checked
+
     def setChecked(self, checked: bool):
         self.is_checked = checked
         self.update_style()

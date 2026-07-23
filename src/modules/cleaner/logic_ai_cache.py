@@ -82,12 +82,13 @@ class AiCacheManager:
         """
         Возвращает сохраненный вектор изображения (CLIP) из кэша.
         """
+        norm_path = os.path.normcase(os.path.abspath(filepath))
         try:
             with self._conn() as conn:
                 cursor = conn.cursor()
                 cursor.execute(
                     "SELECT mtime, size, embedding FROM image_embeddings WHERE filepath = ?", 
-                    (filepath,)
+                    (norm_path,)
                 )
                 row = cursor.fetchone()
                 
@@ -101,6 +102,7 @@ class AiCacheManager:
 
     def save_image_embedding(self, filepath: str, mtime: float, size: int, embedding: np.ndarray):
         """Сохраняет вектор изображения (CLIP) в кэш."""
+        norm_path = os.path.normcase(os.path.abspath(filepath))
         try:
             emb_blob = embedding.astype(np.float32).tobytes()
             with self._conn() as conn:
@@ -110,81 +112,76 @@ class AiCacheManager:
                     INSERT OR REPLACE INTO image_embeddings (filepath, mtime, size, embedding)
                     VALUES (?, ?, ?, ?)
                     """,
-                    (filepath, mtime, size, emb_blob)
+                    (norm_path, mtime, size, emb_blob)
                 )
                 conn.commit()
         except Exception as e:
             logging.error(f"Ошибка сохранения эмбеддинга в кэш для {filepath}: {e}")
 
-    def get_file_faces(self, filepath: str, current_mtime: float, current_size: int) -> list | None:
+    def get_file_faces(self, filepath: str, current_mtime: float, current_size: int) -> list[dict] | None:
         """
-        Возвращает список лиц (InsightFace) из кэша.
+        Возвращает список лиц для файла из кэша.
         """
+        norm_path = os.path.normcase(os.path.abspath(filepath))
         try:
             with self._conn() as conn:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "SELECT face_index, mtime, size, bbox, descriptor FROM face_embeddings WHERE filepath = ?",
-                    (filepath,)
+                    "SELECT face_index, mtime, size, bbox, descriptor FROM face_embeddings WHERE filepath = ? ORDER BY face_index",
+                    (norm_path,)
                 )
                 rows = cursor.fetchall()
                 
                 if not rows:
                     return None
                     
-                first_face = rows[0]
-                mtime, size = first_face[1], first_face[2]
-                if abs(mtime - current_mtime) > 0.01 or size != current_size:
-                    return None
-                    
                 faces = []
                 for row in rows:
-                    face_idx, _, _, bbox_str, desc_blob = row
-                    if face_idx == -1:
-                        continue
-                    
-                    bbox = []
-                    if bbox_str:
-                        bbox = [int(x) for x in bbox_str.split(',')]
+                    idx, mtime, size, bbox_str, desc_blob = row
+                    if abs(mtime - current_mtime) >= 0.01 or size != current_size:
+                        return None # Кэш устарел, нужно пересканировать весь файл
                         
+                    bbox = tuple(map(int, bbox_str.split(','))) if bbox_str else ()
                     descriptor = np.frombuffer(desc_blob, dtype=np.float32)
                     faces.append({
-                        "bbox": bbox,
-                        "descriptor": descriptor
+                        'bbox': bbox,
+                        'descriptor': descriptor
                     })
                 return faces
         except Exception as e:
             logging.error(f"Ошибка чтения лиц из кэша для {filepath}: {e}")
         return None
 
-    def save_file_faces(self, filepath: str, mtime: float, size: int, faces: list):
-        """Сохраняет список найденных лиц (InsightFace) в кэш."""
+    def save_file_faces(self, filepath: str, mtime: float, size: int, faces: list[dict]):
+        """Сохраняет список лиц файла в кэш."""
+        norm_path = os.path.normcase(os.path.abspath(filepath))
         try:
             with self._conn() as conn:
                 cursor = conn.cursor()
-                cursor.execute("DELETE FROM face_embeddings WHERE filepath = ?", (filepath,))
+                cursor.execute("DELETE FROM face_embeddings WHERE filepath = ?", (norm_path,))
                 
                 if not faces:
                     cursor.execute(
                         """
-                        INSERT OR REPLACE INTO face_embeddings (filepath, face_index, mtime, size, bbox, descriptor)
+                        INSERT INTO face_embeddings (filepath, face_index, mtime, size, bbox, descriptor)
                         VALUES (?, ?, ?, ?, ?, ?)
                         """,
-                        (filepath, -1, mtime, size, "", b"")
+                        (norm_path, -1, mtime, size, "", b"")
                     )
                 else:
                     for idx, face in enumerate(faces):
-                        bbox_str = ",".join(str(int(x)) for x in face["bbox"])
-                        desc_blob = face["descriptor"].astype(np.float32).tobytes()
+                        bbox_str = ",".join(map(str, face['bbox']))
+                        desc_blob = face['descriptor'].astype(np.float32).tobytes()
                         cursor.execute(
                             """
-                            INSERT OR REPLACE INTO face_embeddings (filepath, face_index, mtime, size, bbox, descriptor)
+                            INSERT INTO face_embeddings (filepath, face_index, mtime, size, bbox, descriptor)
                             VALUES (?, ?, ?, ?, ?, ?)
                             """,
-                            (filepath, idx, mtime, size, bbox_str, desc_blob)
+                            (norm_path, idx, mtime, size, bbox_str, desc_blob)
                         )
                 conn.commit()
         except Exception as e:
+            import logging
             logging.error(f"Ошибка сохранения лиц в кэш для {filepath}: {e}")
 
     def has_cached_files_for_folder(self, folder_path: str) -> tuple[bool, bool]:

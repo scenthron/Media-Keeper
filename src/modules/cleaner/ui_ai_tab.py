@@ -1651,7 +1651,6 @@ class AiClassificationTab(QWidget):
                     
                 self.file_selected.emit(path)
         else:
-            from ui_translations import AppContext
             msg = "Файл не выбран" if AppContext.is_ru() else "No file selected"
             self.preview_widget.show_empty(msg)
 

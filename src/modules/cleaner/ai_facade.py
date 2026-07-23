@@ -1,0 +1,343 @@
+import os
+import time
+import sqlite3
+import numpy as np
+from enum import Enum
+from dataclasses import dataclass, field
+from PyQt6.QtCore import QObject, pyqtSignal, QRunnable, QThreadPool
+
+# -----------------------------------------------------------------------------
+# DTO (Data Transfer Objects)
+# -----------------------------------------------------------------------------
+
+class AiTaskType(Enum):
+    AUTO_CLUSTER = 1
+    FIND_BY_REFERENCES = 2
+    TEXT_TO_IMAGE = 3
+    GENERATE_TAGS = 4
+
+class AiTarget(Enum):
+    FACES = 1
+    IMAGES = 2
+
+@dataclass
+class Rect:
+    x1: float
+    y1: float
+    x2: float
+    y2: float
+
+@dataclass
+class AiMatchFile:
+    path: str
+    score: float
+    bboxes: list[Rect] = field(default_factory=list)
+    matched_bbox: Rect = None
+    matched_reference_id: str = None
+    auto_tags: list[str] = field(default_factory=list)
+
+@dataclass
+class AiGroup:
+    group_name: str
+    files: list[AiMatchFile] = field(default_factory=list)
+    
+@dataclass
+class AiSearchRequest:
+    target_paths: list[str]
+    task_type: AiTaskType
+    analysis_target: AiTarget
+    threshold: float
+    file_filter_config: dict = field(default_factory=dict)
+    reference_embeddings: list[list[float]] = field(default_factory=list)
+    text_queries: dict[str, list[str]] = field(default_factory=dict)
+    use_cache: bool = True
+    use_gpu: bool = True
+
+@dataclass
+class AiSearchResponse:
+    groups: list[AiGroup] = field(default_factory=list)
+
+# -----------------------------------------------------------------------------
+# Core Worker
+# -----------------------------------------------------------------------------
+
+STAGE_SCANNING = 1
+STAGE_ANALYSIS = 2
+
+class AiCoreWorker(QRunnable):
+    class Signals(QObject):
+        # stage, percent, text, scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, dummy
+        progress = pyqtSignal(int, float, str, int, int, object, object, int, int)
+        result_found = pyqtSignal(object) # AiSearchResponse
+        finished = pyqtSignal()
+        error = pyqtSignal(str)
+
+    def __init__(self, request: AiSearchRequest, engine=None, cache=None, classifier=None):
+        super().__init__()
+        self.request = request
+        self.engine = engine
+        self.cache = cache
+        self.classifier = classifier
+        self.signals = self.Signals()
+        self.is_cancelled = False
+
+    def run(self):
+        try:
+            from utils_common import ensure_win_path
+            import re
+            
+            # 1. Gather valid files
+            self.signals.progress.emit(STAGE_SCANNING, 0.0, "Поиск медиафайлов...", 0, 0, 0, 0, 0, 0)
+            valid_exts = {'.jpg', '.jpeg', '.png', '.bmp'}
+            valid_files = []
+            scanned_files = 0
+            scanned_bytes = 0
+            
+            for folder in self.request.target_paths:
+                if self.is_cancelled: return
+                norm_folder = os.path.normpath(folder)
+                scan_path = ensure_win_path(norm_folder)
+                if not os.path.exists(scan_path): continue
+                
+                if os.path.isfile(scan_path):
+                    ext = os.path.splitext(scan_path)[1].lower()
+                    if ext in valid_exts:
+                        size = os.path.getsize(scan_path)
+                        valid_files.append(scan_path)
+                        scanned_files += 1
+                        scanned_bytes += size
+                else:
+                    for root, _, files in os.walk(scan_path):
+                        if self.is_cancelled: return
+                        for f in files:
+                            ext = os.path.splitext(f)[1].lower()
+                            if ext in valid_exts:
+                                fp = os.path.join(root, f)
+                                try:
+                                    size = os.path.getsize(fp)
+                                    valid_files.append(fp)
+                                    scanned_files += 1
+                                    scanned_bytes += size
+                                except:
+                                    pass
+
+            total_files = len(valid_files)
+            if total_files == 0:
+                self.signals.result_found.emit(AiSearchResponse())
+                self.signals.finished.emit()
+                return
+
+            self.signals.progress.emit(STAGE_ANALYSIS, 0.0, f"Анализ {total_files} файлов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
+
+            # 2. Extract Features
+            if self.engine is None:
+                from .logic_ai import AiEngine
+                self.engine = AiEngine()
+            
+            if not self.engine.initialize_sessions(use_gpu=self.request.use_gpu):
+                self.signals.error.emit("Не удалось инициализировать нейросети.")
+                return
+
+            # Initialize text embeddings if TEXT_TO_IMAGE
+            text_embeddings = {}
+            if self.request.task_type == AiTaskType.TEXT_TO_IMAGE:
+                for group_name, comps in self.request.text_queries.items():
+                    text_embeddings[group_name] = []
+                    for comp in comps:
+                        emb = self.engine.extract_text_embedding(comp)
+                        if emb is not None:
+                            text_embeddings[group_name].append(emb)
+
+            # 3. Process each file
+            file_features = []
+            processed = 0
+            
+            for fp in valid_files:
+                if self.is_cancelled: return
+                
+                percent = (processed / total_files) * 50.0  # First 50% is extracting
+                if processed % 10 == 0:
+                    self.signals.progress.emit(STAGE_ANALYSIS, percent, f"Извлечение признаков... {processed}/{total_files}", scanned_files, 0, 0, scanned_bytes, 0, 0)
+                
+                if self.request.analysis_target == AiTarget.FACES:
+                    if self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier:
+                        # For FIND_BY_REFERENCES, classifier logic will handle extraction + matching
+                        # So we don't extract here unless we need to.
+                        # Wait, we can just pass fp to classifier.classify_file(fp) later.
+                        pass
+                    else:
+                        faces = self.engine.extract_faces(fp)
+                        if faces:
+                            file_features.append((fp, faces))
+                elif self.request.analysis_target == AiTarget.IMAGES:
+                    if self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier:
+                        pass
+                    else:
+                        emb = self.engine.extract_clip_embedding(fp)
+                        if emb is not None:
+                            file_features.append((fp, emb))
+                        
+                processed += 1
+
+            # 4. Search and Cluster logic
+            self.signals.progress.emit(STAGE_ANALYSIS, 50.0, "Группировка результатов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
+            
+            groups_dict = {}
+            
+            if self.request.task_type == AiTaskType.TEXT_TO_IMAGE and self.request.analysis_target == AiTarget.IMAGES:
+                # Text Multi-tag Search
+                for fp, img_emb in file_features:
+                    for group_name, text_embs in text_embeddings.items():
+                        best_score = 0
+                        for text_emb in text_embs:
+                            score_raw = np.dot(text_emb, img_emb)
+                            mapped = (score_raw - 0.20) / (0.32 - 0.20) * 100
+                            mapped = max(0, min(100, int(mapped)))
+                            if mapped > best_score:
+                                best_score = mapped
+                        
+                        if best_score >= self.request.threshold:
+                            if group_name not in groups_dict:
+                                groups_dict[group_name] = []
+                            match_file = AiMatchFile(path=fp, score=best_score, matched_reference_id=group_name)
+                            groups_dict[group_name].append(match_file)
+
+            elif self.request.task_type == AiTaskType.AUTO_CLUSTER and self.request.analysis_target == AiTarget.FACES:
+                # Simple O(N^2) naive clustering for testing (can be replaced by DBSCAN later inside this facade)
+                # To keep it simple without scikit-learn for now, just group by first match
+                from sklearn.cluster import DBSCAN
+                all_embs = []
+                file_face_map = []
+                
+                for fp, faces in file_features:
+                    for face in faces:
+                        all_embs.append(face["descriptor"])
+                        file_face_map.append((fp, face))
+                        
+                if all_embs:
+                    X = np.array(all_embs)
+                    eps = 1.0 - (self.request.threshold / 100.0)
+                    dbscan = DBSCAN(eps=eps, min_samples=2, metric='cosine')
+                    labels = dbscan.fit_predict(X)
+                    
+                    for i, label in enumerate(labels):
+                        if label == -1: continue # noise
+                        group_name = f"Группа Лиц {label+1}"
+                        if group_name not in groups_dict:
+                            groups_dict[group_name] = []
+                            
+                        fp, face = file_face_map[i]
+                        # Avoid duplicates in same group
+                        if not any(f.path == fp for f in groups_dict[group_name]):
+                            rect = Rect(face["bbox"][0], face["bbox"][1], face["bbox"][2], face["bbox"][3])
+                            match_file = AiMatchFile(path=fp, score=100.0, matched_bbox=rect)
+                            groups_dict[group_name].append(match_file)
+
+            elif self.request.task_type == AiTaskType.AUTO_CLUSTER and self.request.analysis_target == AiTarget.IMAGES:
+                # Vibe auto clustering
+                all_embs = []
+                file_map = []
+                
+                for fp, emb in file_features:
+                    all_embs.append(emb)
+                    file_map.append(fp)
+                    
+                if all_embs:
+                    from sklearn.cluster import DBSCAN
+                    X = np.array(all_embs)
+                    # For CLIP, threshold map: 0.85 cosine sim is ~85%
+                    eps = 1.0 - (self.request.threshold / 100.0)
+                    dbscan = DBSCAN(eps=eps, min_samples=2, metric='cosine')
+                    labels = dbscan.fit_predict(X)
+                    
+                    for i, label in enumerate(labels):
+                        if label == -1: continue 
+                        group_name = f"Группа Объектов {label+1}"
+                        if group_name not in groups_dict:
+                            groups_dict[group_name] = []
+                            
+                        fp = file_map[i]
+                        match_file = AiMatchFile(path=fp, score=100.0)
+                        groups_dict[group_name].append(match_file)
+
+            elif self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier is not None:
+                # Use classifier logic natively
+                for fp in valid_files:
+                    if self.is_cancelled: return
+                    results_dict = self.classifier.classify_file(fp)
+                    for g_name, conf_data in results_dict.items():
+                        if isinstance(conf_data, dict):
+                            conf = conf_data["score"]
+                            bbox_tuple = conf_data.get("bbox")
+                        else:
+                            conf = conf_data
+                            bbox_tuple = None
+                            
+                        conf_pct = conf * 100.0
+                        if conf_pct >= self.request.threshold:
+                            if g_name not in groups_dict:
+                                groups_dict[g_name] = []
+                            rect = Rect(bbox_tuple[0], bbox_tuple[1], bbox_tuple[2], bbox_tuple[3]) if bbox_tuple else None
+                            # Default to FACE if bbox, else GENERAL
+                            typ = "face" if bbox_tuple else "general"
+                            match_file = AiMatchFile(path=fp, score=conf_pct, matched_bbox=rect, matched_reference_id=g_name)
+                            # Adding type to match_file indirectly (we don't have type in struct but UI relies on matched_bbox)
+                            groups_dict[g_name].append(match_file)
+
+            # 5. Format Output
+            response_groups = []
+            for g_name, files in groups_dict.items():
+                if len(files) > 0:
+                    files.sort(key=lambda x: x.score, reverse=True)
+                    response_groups.append(AiGroup(group_name=g_name, files=files))
+            
+            response = AiSearchResponse(groups=response_groups)
+            
+            self.signals.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, len(response_groups), 0, scanned_bytes, sum(len(g.files) for g in response_groups), 0)
+            self.signals.result_found.emit(response)
+            self.signals.finished.emit()
+
+        except Exception as e:
+            self.signals.error.emit(str(e))
+
+
+# -----------------------------------------------------------------------------
+# Ai Service Facade
+# -----------------------------------------------------------------------------
+
+class AiServiceFacade(QObject):
+    def __init__(self):
+        super().__init__()
+        self.engine = None
+        self.cache = None
+        self.active_worker = None
+        
+    def get_engine(self):
+        if self.engine is None:
+            from .logic_ai import AiEngine
+            self.engine = AiEngine()
+        return self.engine
+
+    def search(self, request: AiSearchRequest, 
+               progress_callback=None, 
+               result_callback=None, 
+               error_callback=None,
+               classifier=None):
+        
+        self.cancel_search()
+        
+        self.active_worker = AiCoreWorker(request, self.get_engine(), self.cache, classifier)
+        
+        if progress_callback:
+            self.active_worker.signals.progress.connect(progress_callback)
+        if result_callback:
+            self.active_worker.signals.result_found.connect(result_callback)
+        if error_callback:
+            self.active_worker.signals.error.connect(error_callback)
+            
+        QThreadPool.globalInstance().start(self.active_worker)
+        
+    def cancel_search(self):
+        if self.active_worker:
+            self.active_worker.is_cancelled = True
+            self.active_worker = None

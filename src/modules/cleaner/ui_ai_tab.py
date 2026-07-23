@@ -16,7 +16,8 @@ from ui_widgets_base import DropZoneWidget
 from .logic_ai import AiEngine
 from .logic_ai_cache import AiCacheManager
 from .logic_ai_classifier import AiClassifier, load_ai_settings, save_ai_settings, get_ai_assets_dir
-from .workers import AiScanWorker, STAGE_SCANNING, STAGE_ANALYSIS
+from .workers import STAGE_SCANNING, STAGE_ANALYSIS
+from .ai_facade import AiServiceFacade, AiSearchRequest, AiTaskType, AiTarget, AiSearchResponse, AiMatchFile, AiGroup
 
 from .ui_widgets import ImageHoverToolTip, RefImagesListWidget
 
@@ -1399,8 +1400,8 @@ class AiClassificationTab(QWidget):
             self.toggle_scan()
 
     def toggle_scan(self, text_query=None):
-        if self.active_worker and self.active_worker.isRunning():
-            self.active_worker.stop()
+        if hasattr(self, 'facade') and self.facade.active_worker:
+            self.facade.cancel_search()
             return
             
         folders = self.cleaner.get_active_source_folders()
@@ -1495,17 +1496,47 @@ class AiClassificationTab(QWidget):
         is_cluster = self.chk_auto_cluster.isChecked()
         cluster_type = self.combo_auto_type.currentData() if hasattr(self, 'combo_auto_type') else 'face'
         
-        self.active_worker = AiScanWorker(
-            folders, self.classifier, 
-            threshold=threshold, filter_config=filter_cfg, 
-            match_mode=match_mode, use_cache=use_cache,
-            use_gpu=use_gpu, is_cluster=is_cluster,
-            cluster_type=cluster_type
+        task_type = AiTaskType.TEXT_TO_IMAGE if text_query else (AiTaskType.AUTO_CLUSTER if is_cluster else AiTaskType.FIND_BY_REFERENCES)
+        analysis_target = AiTarget.FACES if cluster_type == 'face' else AiTarget.IMAGES
+        
+        text_queries_dict = {}
+        if text_query:
+            text_queries_dict["Текст"] = [text_query]
+            
+        request = AiSearchRequest(
+            target_paths=folders,
+            task_type=task_type,
+            analysis_target=analysis_target,
+            threshold=threshold,
+            file_filter_config=filter_cfg,
+            text_queries=text_queries_dict,
+            use_cache=use_cache,
+            use_gpu=use_gpu
         )
-        self.active_worker.text_query = text_query
-        self.active_worker.progress.connect(self.on_scan_progress)
-        self.active_worker.finished.connect(self.on_scan_finished)
-        self.active_worker.start()
+        
+        if not hasattr(self, 'facade'):
+            self.facade = AiServiceFacade()
+            self.facade.cache = self.cache
+            
+        self.facade.search(
+            request,
+            progress_callback=self.on_scan_progress,
+            result_callback=self.on_scan_finished,
+            error_callback=self.on_scan_error,
+            classifier=self.classifier
+        )
+
+    def on_scan_error(self, error_msg):
+        from PyQt6.QtWidgets import QMessageBox
+        QMessageBox.critical(self, "Ошибка ИИ" if AppContext.is_ru() else "AI Error", error_msg)
+        self.progress_bar.hide()
+        self.btn_start_scan.setText(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
+        self.btn_start_scan.setStyleSheet("""
+            QPushButton { background-color: #15803d; color: white; font-weight: 900; font-size: 14px; border: 1px solid #16a34a; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
+            QPushButton:hover { background-color: #16a34a; }
+            QPushButton:disabled { background-color: #222; color: #555; font-weight: 900; font-size: 14px; border: 1px solid #333; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
+        """)
+        self.scan_finished.emit()
 
     def on_scan_progress(self, stage, percent, text, scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, empty):
         self.progress_bar.setMaximum(100)
@@ -1524,12 +1555,34 @@ class AiClassificationTab(QWidget):
             else f"Matches found: {groups_found} groups, {files_found} files, {format_size(wasted_bytes)}"
         )
 
-    def on_scan_finished(self, results):
+    def on_scan_finished(self, response: AiSearchResponse):
         from PyQt6.QtWidgets import QApplication
         self.progress_bar.setFormat("Формирование таблицы... (100%)" if AppContext.is_ru() else "Building table... (100%)")
         QApplication.processEvents()
         
-        self.populate_results(results)
+        # Конвертируем response в старый формат dict для populate_results
+        results_dict = {}
+        for group in response.groups:
+            results_dict[group.group_name] = []
+            for mf in group.files:
+                try:
+                    import os
+                    size = os.path.getsize(mf.path)
+                except:
+                    size = 0
+                bbox_list = None
+                if mf.matched_bbox:
+                    bbox_list = [mf.matched_bbox.x1, mf.matched_bbox.y1, mf.matched_bbox.x2, mf.matched_bbox.y2]
+                    
+                results_dict[group.group_name].append({
+                    "path": mf.path,
+                    "confidence": mf.score,
+                    "size": size,
+                    "matched_bbox": bbox_list,
+                    "type": "face" if mf.matched_bbox else "general"
+                })
+                
+        self.populate_results(results_dict)
         
         self.progress_bar.hide()
         self.btn_start_scan.setText(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
@@ -1539,9 +1592,6 @@ class AiClassificationTab(QWidget):
             QPushButton:disabled { background-color: #222; color: #555; font-weight: 900; font-size: 14px; border: 1px solid #333; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
         """)
         
-        if self.active_worker:
-            self.active_worker.deleteLater()
-        self.active_worker = None
         self.scan_finished.emit()
         self.update_cache_info_ai()
         if hasattr(self, 'cleaner'):

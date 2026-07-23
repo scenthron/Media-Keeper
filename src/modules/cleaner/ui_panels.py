@@ -72,7 +72,7 @@ class CleanerSettingsPanel(QWidget):
         src_header.addWidget(self.lbl_src)
         src_header.addStretch()
         
-        self.btn_create_dump = QPushButton(AppContext.tr("cln_create_dump") if AppContext.tr("cln_create_dump") != "cln_create_dump" else "+ Создать дамп")
+        self.btn_create_dump = QPushButton(AppContext.tr("cln_create_dump"))
         self.btn_create_dump.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_create_dump.setStyleSheet("""
             QPushButton {
@@ -109,7 +109,7 @@ class CleanerSettingsPanel(QWidget):
         self.drop_zone.files_dropped.connect(self.files_dropped.emit)
         self.drop_zone.clear_default_requested.connect(self.clear_folders_clicked.emit)
         self.drop_zone.btn_clear.show()
-        self.drop_zone.lbl_text.setText(AppContext.tr("cln_dropzone_text") if AppContext.tr("cln_dropzone_text") != "cln_dropzone_text" else "Перетащите внешнюю папку или файл дампа")
+        self.drop_zone.lbl_text.setText(AppContext.tr("cln_dropzone_text"))
         self.drop_zone.setStyleSheet(self.drop_zone.styleSheet() + "margin: 10px;")
         
         # Warning Label
@@ -916,7 +916,7 @@ class SimilarSettingsPanel(QWidget):
         self.drop_zone.files_dropped.connect(self.files_dropped.emit)
         self.drop_zone.clear_default_requested.connect(self.clear_folders_clicked.emit)
         self.drop_zone.btn_clear.show()
-        self.drop_zone.lbl_text.setText(AppContext.tr("cln_dropzone_text") if AppContext.tr("cln_dropzone_text") != "cln_dropzone_text" else "Перетащите внешнюю папку или файл дампа")
+        self.drop_zone.lbl_text.setText(AppContext.tr("cln_dropzone_text"))
         self.drop_zone.setStyleSheet(self.drop_zone.styleSheet() + "margin: 10px;")
         
         # Warning Label
@@ -951,7 +951,7 @@ class SimilarSettingsPanel(QWidget):
         algo_header.addWidget(self.lbl_algo)
         algo_header.addStretch()
         
-        self.btn_reset_settings = QPushButton(AppContext.tr("cln_btn_default") if AppContext.tr("cln_btn_default") != "cln_btn_default" else "По умолчанию")
+        self.btn_reset_settings = QPushButton(AppContext.tr("cln_btn_default"))
         self.btn_reset_settings.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_reset_settings.setStyleSheet("""
             QPushButton {

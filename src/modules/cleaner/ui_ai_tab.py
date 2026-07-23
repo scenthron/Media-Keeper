@@ -1046,8 +1046,6 @@ class AiClassificationTab(QWidget):
 
     def check_models_status(self):
         if self.ai.are_models_present():
-            if not self.ai._is_initialized:
-                self.ai.initialize_sessions()
             self.download_placeholder.hide()
             self.main_content_widget.show()
         else:

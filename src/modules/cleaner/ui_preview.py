@@ -330,6 +330,7 @@ class CleanerPreviewWidget(QWidget):
 
     def show_empty(self, msg):
         self.stop_playback(True)
+        self.clear_faces()
         self.current_media_type = None
         self.current_path = None
         self.view.resetTransform()

@@ -1650,6 +1650,10 @@ class AiClassificationTab(QWidget):
                     logging.error(f"Ошибка получения лиц для предпросмотра: {e}")
                     
                 self.file_selected.emit(path)
+        else:
+            from ui_translations import AppContext
+            msg = "Файл не выбран" if AppContext.is_ru() else "No file selected"
+            self.preview_widget.show_empty(msg)
 
     def on_tree_item_changed(self, item, column):
         if column != 0:

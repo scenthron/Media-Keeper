@@ -1847,7 +1847,7 @@ class SorterBaseListView(QListWidget):
             return
             
         ext = os.path.splitext(self.current_hover_path)[1].lower()
-        is_media = ext in VIDEO_EXTS
+        is_media = ext in VIDEO_EXTS or ext in AUDIO_EXTS or ext in IMAGE_EXTS
         if not is_media:
             return
             
@@ -3677,7 +3677,7 @@ class SorterViewerArea(QWidget):
                 
                 # Запуск асинхронной загрузки превью
                 ext = os.path.splitext(full_path)[1].lower()
-                if ext in VIDEO_EXTS:
+                if ext in VIDEO_EXTS or ext in AUDIO_EXTS or ext in IMAGE_EXTS:
                     ThumbnailLoader.inst().get_thumbnail(full_path, QSize(256, 256))
                     
             # Также обновим self.loading_files в памяти

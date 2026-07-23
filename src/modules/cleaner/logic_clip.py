@@ -104,6 +104,14 @@ class CLIPSearcher:
         if not self.is_loaded:
             return None
             
+        # Автоматический перевод через статический словарь
+        if hasattr(self, 'ru_en_dict') and self.ru_en_dict:
+            import re
+            def replace_word(match):
+                word_lower = match.group(0).lower()
+                return self.ru_en_dict.get(word_lower, match.group(0))
+            text = re.sub(r'[а-яА-ЯёЁ]+', replace_word, text)
+            
         try:
             # Tokenize using tokenizers library directly
             self.tokenizer.enable_truncation(max_length=77)

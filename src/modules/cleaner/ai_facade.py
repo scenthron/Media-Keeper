@@ -366,6 +366,14 @@ class AiServiceFacade(QObject):
         
         self.active_worker = AiCoreWorker(request, self.get_engine(), self.cache, classifier)
         
+        worker = self.active_worker
+        def _cleanup_worker(*args):
+            if self.active_worker is worker:
+                self.active_worker = None
+                
+        worker.signals.finished.connect(_cleanup_worker)
+        worker.signals.error.connect(_cleanup_worker)
+        
         if progress_callback:
             self.active_worker.signals.progress.connect(progress_callback)
         if result_callback:

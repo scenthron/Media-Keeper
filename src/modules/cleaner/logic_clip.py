@@ -144,10 +144,17 @@ class CLIPSearcher:
             input_ids = np.array([encoded.ids], dtype=np.int64)
             attention_mask = np.array([encoded.attention_mask], dtype=np.int64)
             
-            text_out = self.text_sess.run(None, {
-                "input_ids": input_ids,
-                "attention_mask": attention_mask
-            })[0]
+            # Динамически формируем входы ONNX модели на основе её метаданных
+            inputs = {}
+            for input_meta in self.text_sess.get_inputs():
+                if input_meta.name == "input_ids":
+                    inputs["input_ids"] = input_ids
+                elif input_meta.name == "attention_mask":
+                    inputs["attention_mask"] = attention_mask
+                elif input_meta.name == "position_ids":
+                    inputs["position_ids"] = np.arange(len(encoded.ids), dtype=np.int64)[None, :]
+
+            text_out = self.text_sess.run(None, inputs)[0]
             
             # Пулинг или прямое извлечение 512D вектора
             if text_out.ndim == 3:

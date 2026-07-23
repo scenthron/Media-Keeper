@@ -34,7 +34,15 @@ class AiEngine:
 
     def _reset_idle_timer(self):
         if self._idle_timer:
-            self._idle_timer.start()
+            try:
+                from PyQt6.QtCore import QMetaObject, Qt, QThread, QCoreApplication
+                app = QCoreApplication.instance()
+                if app and QThread.currentThread() != app.thread():
+                    QMetaObject.invokeMethod(self._idle_timer, "start", Qt.ConnectionType.QueuedConnection)
+                else:
+                    self._idle_timer.start()
+            except Exception as e:
+                logging.warning(f"Сбой перезапуска таймера простоя: {e}")
 
     def unload_models(self):
         """Освобождает модели нейросетей из ОЗУ после 10 минут простоя."""

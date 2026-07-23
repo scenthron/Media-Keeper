@@ -220,7 +220,7 @@ class AiCoreWorker(QRunnable):
                         best_score = 0
                         for text_emb in text_embs:
                             score_raw = np.dot(text_emb, img_emb)
-                            mapped = (score_raw - 0.20) / (0.32 - 0.20) * 100
+                            mapped = (score_raw - 0.14) / (0.28 - 0.14) * 100
                             mapped = max(0, min(100, int(mapped)))
                             if mapped > best_score:
                                 best_score = mapped

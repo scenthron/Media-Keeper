@@ -5,7 +5,7 @@ import os
 from PyQt6.QtWidgets import QFileIconProvider
 from PyQt6.QtCore import QFileInfo, QSize
 from PyQt6.QtGui import QIcon, QPixmap
-from config import APP_DESIGN
+from config import APP_DESIGN, AppContext
 
 def format_size(size_bytes):
     # Защита: если передано отрицательное число (результат переполнения или ошибки кэша)
@@ -216,8 +216,7 @@ def format_compact_count(value: int) -> str:
         return str(value)
         
     try:
-        from config import AppContext
-        suffix = "к" if AppContext.LANG.upper() == "RU" else "k"
+        suffix = "к" if getattr(AppContext, 'LANG', 'RU').upper() == "RU" else "k"
     except:
         suffix = "к"
         

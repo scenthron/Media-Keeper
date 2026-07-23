@@ -1229,7 +1229,6 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
 
     def toggle_remember_tree(self):
         from .logic_tree_state import TreeStateManager
-        from config import AppContext
         root = self.session_inbox_path if self.session_inbox_path else self.SORT_DIR
         if not root or not os.path.exists(root):
             self.btn_remember_tree.setChecked(False)

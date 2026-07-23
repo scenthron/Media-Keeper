@@ -2775,3 +2775,5 @@
 [DEBUG] show_current_file start
 [DEBUG] show_current_file start
 [DEBUG] show_current_file start
+[DEBUG] show_current_file start
+[DEBUG] show_current_file start

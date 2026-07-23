@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QListWidget, QListWidgetItem, QFileDialog, QMessageBox, QSlider,
     QTreeWidget, QTreeWidgetItem, QProgressBar, QDialog, QLineEdit,
     QRadioButton, QButtonGroup, QAbstractItemView, QMenu, QSplitter,
-    QScrollArea, QSizePolicy, QComboBox, QCheckBox, QTabWidget
+    QScrollArea, QSizePolicy, QComboBox, QCheckBox, QTabWidget, QDoubleSpinBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor, QFont, QPainter, QPen, QDragEnterEvent, QDropEvent
@@ -685,7 +685,7 @@ class AiClassificationTab(QWidget):
             QSlider::handle:horizontal { background: #3b82f6; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
         """)
         
-        self.spin_threshold = CleanSpinBox()
+        self.spin_threshold = QDoubleSpinBox()
         self.spin_threshold.setRange(0.0, 100.0)
         self.spin_threshold.setDecimals(1)
         self.spin_threshold.setSingleStep(0.1)
@@ -1439,7 +1439,7 @@ class AiClassificationTab(QWidget):
         filter_cfg = self.ai_filter_config
         threshold = float(self.spin_threshold.value())
         
-        match_mode = self.combo_match_mode.currentData() or "centroid"
+        match_mode = "centroid"
         use_cache = self.chk_use_cache.isChecked()
         use_gpu = self.chk_use_gpu.isChecked()
         is_cluster = self.chk_auto_cluster.isChecked()

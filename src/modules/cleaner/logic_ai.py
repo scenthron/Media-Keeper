@@ -19,6 +19,34 @@ class AiEngine:
         self.arcface_session = None
         
         self._is_initialized = False
+        self._idle_timer = None
+        self._init_timer()
+
+    def _init_timer(self):
+        try:
+            from PyQt6.QtCore import QTimer
+            self._idle_timer = QTimer()
+            self._idle_timer.setSingleShot(True)
+            self._idle_timer.setInterval(10 * 60 * 1000)  # 10 минут
+            self._idle_timer.timeout.connect(self.unload_models)
+        except Exception as e:
+            logging.error(f"Ошибка инициализации таймера простоя ИИ: {e}")
+
+    def _reset_idle_timer(self):
+        if self._idle_timer:
+            self._idle_timer.start()
+
+    def unload_models(self):
+        """Освобождает модели нейросетей из ОЗУ после 10 минут простоя."""
+        if not self._is_initialized:
+            return
+        logging.info("[AiEngine] Истекло 10 минут простоя. Выгрузка ИИ-моделей из памяти для экономии ОЗУ...")
+        self.clip_searcher = None
+        self.detector = None
+        self.arcface_session = None
+        self._is_initialized = False
+        import gc
+        gc.collect()
 
     def are_models_present(self) -> bool:
         """Проверяет физическое наличие всех файлов моделей."""
@@ -111,6 +139,7 @@ class AiEngine:
                 return False
                 
             self._is_initialized = True
+            self._reset_idle_timer()
             return True
             
         except Exception as e:
@@ -168,7 +197,7 @@ class AiEngine:
         """Возвращает CLIP-вектор сцены (512-d)."""
         if not self._is_initialized:
             return None
-            
+        self._reset_idle_timer()
         try:
             return self.clip_searcher.encode_image(image_path)
         except Exception as e:
@@ -179,6 +208,7 @@ class AiEngine:
         """Возвращает CLIP-вектор текста (512-d)."""
         if not self._is_initialized:
             return None
+        self._reset_idle_timer()
         return self.clip_searcher.encode_text(text)
 
 def check_models_availability(parent_widget=None):

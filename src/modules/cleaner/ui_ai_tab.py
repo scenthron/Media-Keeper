@@ -22,8 +22,8 @@ from .logic_ai_cache import AiCacheManager
 from .logic_ai_classifier import AiClassifier, load_ai_settings, save_ai_settings, get_ai_assets_dir
 from .workers import STAGE_SCANNING, STAGE_ANALYSIS
 from .ai_facade import AiServiceFacade, AiSearchRequest, AiTaskType, AiTarget, AiSearchResponse, AiMatchFile, AiGroup
-
 from .ui_widgets import ImageHoverToolTip, RefImagesListWidget
+from .ui_ai_results_tree import AiResultsTreeWidget
 
 
 # -----------------------------------------------------------------------------
@@ -1688,11 +1688,12 @@ class AiClassificationTab(QWidget):
             else:
                 text_queries_dict["Текст"] = [text_query]
             
+        scan_threshold = min(20.0, threshold) if task_type == AiTaskType.TEXT_TO_IMAGE else threshold
         request = AiSearchRequest(
             target_paths=folders,
             task_type=task_type,
             analysis_target=analysis_target,
-            threshold=threshold,
+            threshold=scan_threshold,
             file_filter_config=filter_cfg,
             text_queries=text_queries_dict,
             use_cache=use_cache,

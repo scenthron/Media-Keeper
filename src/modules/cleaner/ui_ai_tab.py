@@ -356,6 +356,7 @@ class AiClassificationTab(QWidget):
         page_text_layout.addWidget(self.line_text_search)
         
         # Action row for tags + Search button
+        tags_action_layout = QHBoxLayout()
         is_ru = AppContext.is_ru()
         self.btn_manage_tags = QPushButton("⚙️ " + ("Теги" if is_ru else "Tags"))
         self.btn_manage_tags.setToolTip("Управление текстовыми тегами" if is_ru else "Manage text tags")

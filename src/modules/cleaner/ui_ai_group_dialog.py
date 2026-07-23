@@ -47,7 +47,7 @@ class AiGroupSettingsDialog(QDialog):
                 for p in pos_paths + neg_paths:
                     self.trained_status[p] = True
             
-        title = f"Настройка Образеца: {group_name}" if self.group_name else "Создание группы Образецов"
+        title = f"Настройка Образца: {group_name}" if self.group_name else "Создание группы Образцов"
         if not self.is_ru:
             title = f"Edit Reference: {group_name}" if self.group_name else "Create Reference Group"
             
@@ -59,8 +59,8 @@ class AiGroupSettingsDialog(QDialog):
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(12)
         
-        # 1. Путь к Образецу
-        layout.addWidget(QLabel("Файл Образеца:" if self.is_ru else "Reference File:"))
+        # 1. Путь к Образцу
+        layout.addWidget(QLabel("Файл Образца:" if self.is_ru else "Reference File:"))
         
         path_layout = QHBoxLayout()
         
@@ -138,8 +138,8 @@ class AiGroupSettingsDialog(QDialog):
         self._setup_tab(self.tab_pos, is_positive=True)
         self._setup_tab(self.tab_neg, is_positive=False)
         
-        self.tabs.addTab(self.tab_pos, "Позитивы (Образецы)" if self.is_ru else "Positives")
-        self.tabs.addTab(self.tab_neg, "Негативы (Анти-Образецы)" if self.is_ru else "Negatives")
+        self.tabs.addTab(self.tab_pos, "Позитивы (Образцы)" if self.is_ru else "Positives")
+        self.tabs.addTab(self.tab_neg, "Негативы (Анти-Образцы)" if self.is_ru else "Negatives")
         
         # 4. Нижние кнопки
         btn_list_layout = QHBoxLayout()
@@ -630,7 +630,7 @@ class AiGroupSettingsDialog(QDialog):
             self.trained_status[path] = success
                 
         if not pos_features and not is_hash_only:
-            self._show_silent_msg("Ошибка", "Не найдено ни одного лица/вектора в Образецах!")
+            self._show_silent_msg("Ошибка", "Не найдено ни одного лица/вектора в Образцах!")
             self.btn_save.setText("Сохранить")
             return False
             
@@ -720,7 +720,7 @@ class AiGroupSettingsDialog(QDialog):
     def delete_group_ui(self):
         reply = self._show_silent_question(
             "Удалить Образец" if self.is_ru else "Delete Reference Group",
-            f"Вы действительно хотите физически удалить файл Образеца '{self.group_name}' с диска?"
+            f"Вы действительно хотите физически удалить файл Образца '{self.group_name}' с диска?"
         )
         if reply == QMessageBox.StandardButton.Yes:
             settings = load_ai_settings()

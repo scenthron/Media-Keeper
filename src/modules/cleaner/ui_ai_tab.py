@@ -26,7 +26,7 @@ from .ui_widgets import ImageHoverToolTip, RefImagesListWidget
 
 
 # -----------------------------------------------------------------------------
-# Диалог настроек группы Образецов (вызывается при клике по шестеренке)
+# Диалог настроек группы Образцов (вызывается при клике по шестеренке)
 # -----------------------------------------------------------------------------
 from .ui_ai_group_dialog import AiGroupSettingsDialog
 
@@ -346,7 +346,7 @@ class AiClassificationTab(QWidget):
         top_layout.setContentsMargins(15, 6, 15, 6)
         top_layout.setSpacing(12)
         
-        # КОЛОНКА 1: Группы Образецов
+        # КОЛОНКА 1: Группы Образцов
         col_ref = QVBoxLayout()
         col_ref.setContentsMargins(0, 0, 0, 0)
         col_ref.setSpacing(4)
@@ -396,9 +396,11 @@ class AiClassificationTab(QWidget):
         
         ref_header = QHBoxLayout()
         page_ref_layout.addLayout(ref_header)
-        ref_title = QLabel("Группы Образецов" if AppContext.is_ru() else "Reference Groups")
+        ref_title = QLabel("Группы Образцов" if AppContext.is_ru() else "Reference Groups")
         ref_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI';")
         ref_header.addWidget(ref_title)
+        
+        ref_header.addStretch()
         
         self.btn_create_ref = QPushButton("[+] Создать" if AppContext.is_ru() else "[+] Create")
         self.btn_create_ref.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -627,8 +629,8 @@ class AiClassificationTab(QWidget):
         info_text = (
             "🧠 КАК РАБОТАЕТ ИИ-ПОИСК:\n\n"
             "1. Типы анализа:\n"
-            "   • Общее сходство: ИИ сравнивает цветовую гамму, композицию и объекты.\n"
-            "   • Поиск лиц: ИИ находит на фото человеческие лица и сравнивает их черты.\n\n"
+            "   • Общее сходство: Используется модель OpenAI CLIP (ViT-B/32) для сравнения смысловой нагрузки, объектов и цветовой гаммы.\n"
+            "   • Поиск лиц: Используется модель InsightFace для точного обнаружения лиц и их сопоставления.\n\n"
             "2. Сколько картинок-примеров добавлять:\n"
             "   • Для лиц: достаточно 1-3 четких фото лица под разными углами.\n"
             "   • Для общего поиска: достаточно 2-5 характерных скриншотов/картинок.\n\n"
@@ -636,7 +638,7 @@ class AiClassificationTab(QWidget):
             "   • 85% - 100%: Строгий поиск (тот же человек, почти идентичные скриншоты).\n"
             "   • 70% - 85%: Умеренное сходство (тот же человек в другой одежде, похожие сцены).\n"
             "   • 50% - 70%: Широкий поиск (похожие по цветам и структуре изображения).\n\n"
-            "💡 Совет: Для лучшего результата используйте четкие примеры и отключайте ненужные группы Образецов."
+            "💡 Совет: Для лучшего результата используйте четкие примеры и отключайте ненужные группы Образцов."
             if AppContext.is_ru() else
             "🧠 HOW AI SEARCH WORKS:\n\n"
             "1. Analysis Types:\n"
@@ -803,7 +805,7 @@ class AiClassificationTab(QWidget):
             QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; margin-top: 2px; }
             QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
         """)
-        self.chk_auto_cluster.setToolTip("Искать похожие объекты без Образецов и группировать их автоматически." if AppContext.is_ru() else "Group objects automatically without references.")
+        self.chk_auto_cluster.setToolTip("Искать похожие объекты без Образцов и группировать их автоматически." if AppContext.is_ru() else "Group objects automatically without references.")
         self.chk_auto_cluster.stateChanged.connect(self.on_auto_cluster_changed)
         
         self.combo_auto_type = QComboBox()
@@ -916,8 +918,9 @@ class AiClassificationTab(QWidget):
         self.slider_post_filter.setRange(0, 10000)
         self.slider_post_filter.setValue(0)
         self.slider_post_filter.setStyleSheet("""
-            QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
-            QSlider::handle:horizontal { background: #10b981; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
+            QSlider { border: none; background: transparent; }
+            QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; border: none; }
+            QSlider::handle:horizontal { background: #10b981; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; border: none; }
         """)
         self.spin_post_filter = CleanSpinBox()
         self.spin_post_filter.setRange(0.0, 100.0)
@@ -936,6 +939,7 @@ class AiClassificationTab(QWidget):
         post_filter_layout.addWidget(self.spin_post_filter)
         
         self.post_filter_widget = QWidget()
+        self.post_filter_widget.setStyleSheet("border: none;")
         self.post_filter_widget.setLayout(post_filter_layout)
         self.post_filter_widget.hide() # Hidden until scan is done
         self.action_bar.layout().insertWidget(0, self.post_filter_widget)
@@ -1538,7 +1542,7 @@ class AiClassificationTab(QWidget):
                 msg = QMessageBox(self)
                 msg.setIcon(QMessageBox.Icon.NoIcon)
                 msg.setWindowTitle("Ошибка" if AppContext.is_ru() else "Error")
-                msg.setText("Выберите хотя бы одну группу Образецов для поиска!" if AppContext.is_ru() else "Select at least one reference group to search!")
+                msg.setText("Выберите хотя бы одну группу Образцов для поиска!" if AppContext.is_ru() else "Select at least one reference group to search!")
                 msg.exec()
                 return
                 
@@ -1570,7 +1574,7 @@ class AiClassificationTab(QWidget):
             dlg.setFixedSize(300, 100)
             dlg_layout = QVBoxLayout(dlg)
             
-            lbl_title = QLabel("Идет подготовка Образецов..." if AppContext.is_ru() else "Preparing reference groups...")
+            lbl_title = QLabel("Идет подготовка Образцов..." if AppContext.is_ru() else "Preparing reference groups...")
             bar = QProgressBar()
             bar.setRange(0, len(needs_training))
             
@@ -1579,7 +1583,7 @@ class AiClassificationTab(QWidget):
             dlg.show()
             
             for idx, name in enumerate(needs_training):
-                lbl_title.setText(f"Обучение Образеца ({idx + 1}/{len(needs_training)}): {name}")
+                lbl_title.setText(f"Обучение Образца ({idx + 1}/{len(needs_training)}): {name}")
                 from PyQt6.QtWidgets import QApplication
                 QApplication.processEvents()
                 
@@ -2133,7 +2137,7 @@ class AiClassificationTab(QWidget):
 
 
 # -----------------------------------------------------------------------------
-# Кнопка чекбокса, использующаяся в чипах Образецов
+# Кнопка чекбокса, использующаяся в чипах Образцов
 # -----------------------------------------------------------------------------
 
     def open_filter_dialog_ai(self):

@@ -226,7 +226,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.drop_zone = IntegratedDropZone("drop_audio_here")
         self.drop_zone.resize(400, 100) 
         self.proxy_hint = self.scene.addWidget(self.drop_zone)
-        self.proxy_hint.setScale(0.5)
+        self.proxy_hint.setScale(2.0)
         
         player_area_layout.addWidget(self.view, 1)
 
@@ -262,6 +262,12 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.btn_next_frame.setIcon(self.icon_next_frame)
         self.btn_next_frame.setIconSize(QSize(18, 18))
         self.btn_next_frame.setToolTip(AppContext.tr("tooltip_next_frame"))
+        
+        # Auto-repeat for frame navigation
+        for btn in [self.btn_prev_frame, self.btn_next_frame]:
+            btn.setAutoRepeat(True)
+            btn.setAutoRepeatDelay(400)
+            btn.setAutoRepeatInterval(50)
         
         for b in [self.btn_play, self.btn_prev_frame, self.btn_next_frame]:
             b.setFixedSize(36, 36)
@@ -1445,8 +1451,8 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
             return
         segments = [0.0] + markers + [1.0]
         for i in range(len(segments) - 1):
-            take = (i % 2 == 0)
-            if is_inverted: take = not take
+            from .helpers import is_segment_taken
+            take = is_segment_taken(len(markers), i, is_inverted)
             if take:
                 selected_count += 1
                 s_start = segments[i]
@@ -1573,8 +1579,8 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         segments = [0.0] + markers + [1.0]
         first_green_start = -1.0
         for i in range(len(segments) - 1):
-            take = (i % 2 == 0)
-            if inverted: take = not take
+            from .helpers import is_segment_taken
+            take = is_segment_taken(len(markers), i, inverted)
             if take:
                 first_green_start = segments[i]
                 break

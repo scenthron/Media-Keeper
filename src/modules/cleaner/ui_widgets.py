@@ -92,11 +92,11 @@ class SourceListItem(QWidget):
         self.lbl_cache.setVisible(is_cached)
         self.layout.addWidget(self.lbl_cache)
         
-        self.lbl_face_cache = QLabel("🙂") # Yellow smiley for face cache
+        self.lbl_face_cache = QLabel("💾") # Floppy disk for cache
         self.lbl_face_cache.setFixedSize(18, 18)
         self.lbl_face_cache.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_face_cache.setStyleSheet("border: none; background: transparent; font-size: 16px; color: #fbbf24; font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji';")
-        self.lbl_face_cache.setToolTip("Сохранен кэш лиц" if AppContext.is_ru() else "Face cache exists")
+        self.lbl_face_cache.setStyleSheet("border: none; background: transparent; font-size: 16px; color: #60a5fa; font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji';")
+        self.lbl_face_cache.setToolTip("Кэш сохранен" if AppContext.is_ru() else "Cache saved")
         self.lbl_face_cache.setVisible(is_face_cached)
         self.layout.addWidget(self.lbl_face_cache)
         

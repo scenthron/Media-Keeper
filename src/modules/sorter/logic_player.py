@@ -157,168 +157,174 @@ class PlayerMixin:
     """
     
     def show_current_file(self):
-        if not self.files_queue:
-            self.current_file_path = None
-            self.lbl_filename.setText(AppContext.tr("msg_empty") if hasattr(AppContext, 'tr') else "Папка пуста")
-            self.viewer.show_empty_state(AppContext.tr("viewer_empty_msg") if hasattr(AppContext, 'tr') else "Нет файлов для отображения")
-            if hasattr(self, '_recreate_main_player'):
-                self._recreate_main_player()
-            else:
-                self.media_player.stop()
-                self.media_player.setSource(QUrl())
-            return
+        import traceback
+        with open("crash.txt", "a", encoding="utf-8") as f: f.write("[DEBUG] show_current_file start\n")
+        try:
+            if not self.files_queue:
+                self.current_file_path = None
+                self.lbl_filename.setText(AppContext.tr("msg_empty") if hasattr(AppContext, 'tr') else "Папка пуста")
+                self.viewer.show_empty_state(AppContext.tr("viewer_empty_msg") if hasattr(AppContext, 'tr') else "Нет файлов для отображения")
+                if hasattr(self, '_recreate_main_player'):
+                    self._recreate_main_player()
+                else:
+                    self.media_player.stop()
+                    self.media_player.setSource(QUrl())
+                return
 
-        if self.current_index >= len(self.files_queue):
-            self.current_index = 0
-            
-        filename = self.files_queue[self.current_index]
-        self.current_file_path = ensure_long_path(os.path.join(self.UNSORT_DIR, filename))
-        
-        # Проверяем, не перемещается ли файл в данный момент
-        from utils_io import strip_long_path_prefix
-        norm_path = os.path.normpath(strip_long_path_prefix(self.current_file_path))
-        if hasattr(self, 'locked_files') and norm_path in self.locked_files:
-            self.lbl_filename.setText(f"{filename} (Перемещение...)")
-            self.viewer.show_empty_state("Файл перемещается, предпросмотр недоступен...")
-            if hasattr(self, '_recreate_main_player'):
-                self._recreate_main_player()
-            else:
-                self.media_player.stop()
-                self.media_player.setSource(QUrl())
-            if hasattr(self, 'video_controls'):
-                self.video_controls.hide()
-            return
-            
-        # --- Update Filename Label with Metadata (Mandatory) ---
-        size = 0
-        try: 
-            size = os.path.getsize(self.current_file_path)
-        except: 
-            pass
-        size_str = format_size(size)
-        idx_str = f"[{self.current_index + 1}/{len(self.files_queue)}]"
-        
-        from utils_io import strip_long_path_prefix
-        display_name = os.path.basename(strip_long_path_prefix(filename))
-        
-        display_text = f"[{size_str}]  {display_name}  {idx_str}"
-        self.lbl_filename.setText(display_text)
-        # --------------------------------------------------------
-        
-        self.update_window_title()
-
-        if hasattr(self, 'viewer') and self.viewer.current_view_mode != 0:
-            if hasattr(self, '_recreate_main_player'):
-                self._recreate_main_player()
-            else:
-                self.media_player.stop()
-                self.media_player.setSource(QUrl())
-            if hasattr(self, 'video_controls'):
-                self.video_controls.hide()
-            logging.info(f"[PlayerMixin] Synced active index in Grid/List mode: {self.current_index}")
-            self.viewer.sync_active_index(self.current_index)
-            return
-        
-        # Reset Player State
-        if hasattr(self, '_recreate_main_player'):
-            self._recreate_main_player()
-        else:
-            self.media_player.stop()
-        self.video_controls.reset_controls()
-        
-        # Determine Type
-        ext = os.path.splitext(filename)[1].lower()
-        
-        # Управляем видимостью кнопок вращения в соло-режиме
-        is_rotatable = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff', '.tif', '.heic', '.avif', '.apng', '.jfif']
-        if hasattr(self, 'btn_rot_l') and self.btn_rot_l:
-            self.btn_rot_l.setVisible(is_rotatable)
-        if hasattr(self, 'btn_rot_r') and self.btn_rot_r:
-            self.btn_rot_r.setVisible(is_rotatable)
-        
-        # Check if the GIF/WebP is animated
-        is_gif_or_webp = ext in ['.gif', '.webp']
-        is_animated = False
-        if is_gif_or_webp:
-            reader = QImageReader(self.current_file_path)
-            is_animated = reader.supportsAnimation() and reader.imageCount() > 1
-            logging.info(f"[PlayerMixin] File: {filename}, supportsAnimation: {reader.supportsAnimation()}, imageCount: {reader.imageCount()}, resolved is_animated: {is_animated}")
-        
-        # 1. Images (Static)
-        if ext in IMAGE_EXTS or (is_gif_or_webp and not is_animated):
-            self.video_controls.hide()
-            self.current_media_is_video = False
-            self.viewer.set_image(QPixmap(self.current_file_path))
-            
-        # 2. Animations (GIF, WebP)
-        elif is_gif_or_webp and is_animated:
-            self.video_controls.hide()
-            self.current_media_is_video = False
-            self.viewer.set_animated(self.current_file_path)
-            
-        # 3. Video
-        elif ext in get_filtered_exts(VIDEO_EXTS, "logic_player_video"):
-            self.video_controls.show()
-            self.current_media_is_video = True
-            loop = AppContext.session_loop
-            segment_view = AppContext.session_segment_view
-            is_fast_active = AppContext.session_video_speed_active
-            speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
-            
-            self.media_player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
-            self.video_controls.set_playing_state(False)
-            self.video_controls.update_speed_button(AppContext.session_fast_speed_val, is_fast_active)
-            self.video_controls.update_loop_button(loop)
-            if hasattr(self, 'smart_preview_mgr'):
-                self.smart_preview_mgr.set_active(segment_view)
-            if hasattr(self, 'viewer') and hasattr(self.viewer, 'single_view'):
-                if hasattr(self.viewer.single_view, 'update_segment_indicator'):
-                    self.viewer.single_view.update_segment_indicator()
-            
-            self.media_player.stop()
-            from utils_io import strip_long_path_prefix
-            clean_path = strip_long_path_prefix(self.current_file_path)
-            self.media_player.setSource(QUrl.fromLocalFile(clean_path))
-            self.media_player.setPlaybackRate(speed)
-            
-            if loop:
-                self.media_player.setLoops(QMediaPlayer.Loops.Infinite)
-            else:
-                self.media_player.setLoops(QMediaPlayer.Loops.Once)
+            if self.current_index >= len(self.files_queue):
+                self.current_index = 0
                 
-            self.viewer.set_video_mode()
-            is_loading = hasattr(self, 'viewer') and hasattr(self.viewer, 'loading_overlay') and not self.viewer.loading_overlay.isHidden()
-            if not is_loading:
-                self.media_player.play()
+            filename = self.files_queue[self.current_index]
+            self.current_file_path = ensure_long_path(os.path.join(self.UNSORT_DIR, filename))
             
-        # 4. Audio
-        elif ext in get_filtered_exts(AUDIO_EXTS, "logic_player_audio"):
-            self.video_controls.show()
-            self.current_media_is_video = False # Treat as audio for UI logic
-            
-            
-            # Audio always resets speed by default logic
-            AppContext.session_audio_speed_active = False
-            is_fast_active = False
-            speed = 1.0
-            loop = AppContext.session_loop
-            self.media_player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
-            self.video_controls.update_speed_button(AppContext.session_fast_speed_val, is_fast_active)
-            self.video_controls.update_loop_button(loop)
-            
-            self.media_player.stop()
+            # Проверяем, не перемещается ли файл в данный момент
             from utils_io import strip_long_path_prefix
-            clean_path = strip_long_path_prefix(self.current_file_path)
-            self.media_player.setSource(QUrl.fromLocalFile(clean_path))
-            self.viewer.set_audio_mode(filename)
-            is_loading = hasattr(self, 'viewer') and hasattr(self.viewer, 'loading_overlay') and not self.viewer.loading_overlay.isHidden()
-            if not is_loading:
-                self.media_player.play()
+            norm_path = os.path.normpath(strip_long_path_prefix(self.current_file_path))
+            if hasattr(self, 'locked_files') and norm_path in self.locked_files:
+                self.lbl_filename.setText(f"{filename} (Перемещение...)")
+                self.viewer.show_empty_state("Файл перемещается, предпросмотр недоступен...")
+                if hasattr(self, '_recreate_main_player'):
+                    self._recreate_main_player()
+                else:
+                    self.media_player.stop()
+                    self.media_player.setSource(QUrl())
+                if hasattr(self, 'video_controls'):
+                    self.video_controls.hide()
+                return
+                
+            # --- Update Filename Label with Metadata (Mandatory) ---
+            size = 0
+            try: 
+                size = os.path.getsize(self.current_file_path)
+            except: 
+                pass
+            size_str = format_size(size)
+            idx_str = f"[{self.current_index + 1}/{len(self.files_queue)}]"
             
-        else:
-            self.video_controls.hide()
-            self.current_media_is_video = False
-            self.viewer.show_empty_state(AppContext.tr("msg_unsupported") + ext)
+            from utils_io import strip_long_path_prefix
+            display_name = os.path.basename(strip_long_path_prefix(filename))
+            
+            display_text = f"[{size_str}]  {display_name}  {idx_str}"
+            self.lbl_filename.setText(display_text)
+            # --------------------------------------------------------
+            
+            self.update_window_title()
+
+            if hasattr(self, 'viewer') and self.viewer.current_view_mode != 0:
+                if hasattr(self, '_recreate_main_player'):
+                    self._recreate_main_player()
+                else:
+                    self.media_player.stop()
+                    self.media_player.setSource(QUrl())
+                if hasattr(self, 'video_controls'):
+                    self.video_controls.hide()
+                logging.info(f"[PlayerMixin] Synced active index in Grid/List mode: {self.current_index}")
+                self.viewer.sync_active_index(self.current_index)
+                return
+            
+            # Reset Player State
+            if hasattr(self, '_recreate_main_player'):
+                self._recreate_main_player()
+            else:
+                self.media_player.stop()
+            self.video_controls.reset_controls()
+            
+            # Determine Type
+            ext = os.path.splitext(filename)[1].lower()
+            
+            # Управляем видимостью кнопок вращения в соло-режиме
+            is_rotatable = ext in ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp', '.tiff', '.tif', '.heic', '.avif', '.apng', '.jfif']
+            if hasattr(self, 'btn_rot_l') and self.btn_rot_l:
+                self.btn_rot_l.setVisible(is_rotatable)
+            if hasattr(self, 'btn_rot_r') and self.btn_rot_r:
+                self.btn_rot_r.setVisible(is_rotatable)
+            
+            # Check if the GIF/WebP is animated
+            is_gif_or_webp = ext in ['.gif', '.webp']
+            is_animated = False
+            if is_gif_or_webp:
+                reader = QImageReader(self.current_file_path)
+                is_animated = reader.supportsAnimation() and reader.imageCount() > 1
+                logging.info(f"[PlayerMixin] File: {filename}, supportsAnimation: {reader.supportsAnimation()}, imageCount: {reader.imageCount()}, resolved is_animated: {is_animated}")
+            
+            # 1. Images (Static)
+            if ext in IMAGE_EXTS or (is_gif_or_webp and not is_animated):
+                self.video_controls.hide()
+                self.current_media_is_video = False
+                self.viewer.set_image(QPixmap(self.current_file_path))
+                
+            # 2. Animations (GIF, WebP)
+            elif is_gif_or_webp and is_animated:
+                self.video_controls.hide()
+                self.current_media_is_video = False
+                self.viewer.set_animated(self.current_file_path)
+                
+            # 3. Video
+            elif ext in get_filtered_exts(VIDEO_EXTS, "logic_player_video"):
+                self.video_controls.show()
+                self.current_media_is_video = True
+                loop = AppContext.session_loop
+                segment_view = AppContext.session_segment_view
+                is_fast_active = AppContext.session_video_speed_active
+                speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
+                
+                self.media_player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
+                self.video_controls.set_playing_state(False)
+                self.video_controls.update_speed_button(AppContext.session_fast_speed_val, is_fast_active)
+                self.video_controls.update_loop_button(loop)
+                if hasattr(self, 'smart_preview_mgr'):
+                    self.smart_preview_mgr.set_active(segment_view)
+                if hasattr(self, 'viewer') and hasattr(self.viewer, 'single_view'):
+                    if hasattr(self.viewer.single_view, 'update_segment_indicator'):
+                        self.viewer.single_view.update_segment_indicator()
+                
+                self.media_player.stop()
+                from utils_io import strip_long_path_prefix
+                clean_path = strip_long_path_prefix(self.current_file_path)
+                self.media_player.setSource(QUrl.fromLocalFile(clean_path))
+                self.media_player.setPlaybackRate(speed)
+                
+                if loop:
+                    self.media_player.setLoops(QMediaPlayer.Loops.Infinite)
+                else:
+                    self.media_player.setLoops(QMediaPlayer.Loops.Once)
+                    
+                self.viewer.set_video_mode()
+                is_loading = hasattr(self, 'viewer') and hasattr(self.viewer, 'loading_overlay') and not self.viewer.loading_overlay.isHidden()
+                if not is_loading:
+                    self.media_player.play()
+                
+            # 4. Audio
+            elif ext in get_filtered_exts(AUDIO_EXTS, "logic_player_audio"):
+                self.video_controls.show()
+                self.current_media_is_video = False # Treat as audio for UI logic
+                
+                
+                # Audio always resets speed by default logic
+                AppContext.session_audio_speed_active = False
+                is_fast_active = False
+                speed = 1.0
+                loop = AppContext.session_loop
+                self.media_player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
+                self.video_controls.update_speed_button(AppContext.session_fast_speed_val, is_fast_active)
+                self.video_controls.update_loop_button(loop)
+                
+                self.media_player.stop()
+                from utils_io import strip_long_path_prefix
+                clean_path = strip_long_path_prefix(self.current_file_path)
+                self.media_player.setSource(QUrl.fromLocalFile(clean_path))
+                self.viewer.set_audio_mode(filename)
+                is_loading = hasattr(self, 'viewer') and hasattr(self.viewer, 'loading_overlay') and not self.viewer.loading_overlay.isHidden()
+                if not is_loading:
+                    self.media_player.play()
+                
+            else:
+                self.video_controls.hide()
+                self.current_media_is_video = False
+                self.viewer.show_empty_state(AppContext.tr("msg_unsupported") + ext)
+        except Exception as e:
+            with open("crash.txt", "a", encoding="utf-8") as f: f.write(f"[ERROR] Exception in show_current_file: {e}\n{traceback.format_exc()}\n")
+            raise
 
     def toggle_playback(self):
         if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:

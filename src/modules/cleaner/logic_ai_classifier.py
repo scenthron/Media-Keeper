@@ -15,12 +15,12 @@ def get_ai_assets_dir() -> str:
     return path
 
 def load_ai_settings() -> dict:
-    """Загружает метаданные групп эталонов и настройки ИИ."""
+    """Загружает метаданные групп образцов и настройки ИИ."""
     settings_path = os.path.join(get_ai_assets_dir(), SETTINGS_FILE)
     default_settings = {
         "groups": {},
-        "face_det_threshold": 65.0,
-        "face_match_threshold": 1.128,
+        "face_match_threshold": 0.50, # Now we use 0.50 (50%) by default for both
+        "clip_match_threshold": 0.50,
         "deep_merge_enabled": True,
         "deep_merge_threshold": 75.0
     }
@@ -29,18 +29,13 @@ def load_ai_settings() -> dict:
             with open(settings_path, 'r', encoding='utf-8') as f:
                 loaded = json.load(f)
                 default_settings.update(loaded)
-                
-                # Migration for old percentage value
-                if default_settings["face_match_threshold"] > 2.0:
-                    default_settings["face_match_threshold"] = 1.128
-                
                 return default_settings
         except Exception as e:
             logging.error(f"Ошибка чтения ai_settings.json: {e}")
     return default_settings
 
 def save_ai_settings(settings: dict):
-    """Сохраняет метаданные групп эталонов."""
+    """Сохраняет метаданные групп образцов."""
     settings_path = os.path.join(get_ai_assets_dir(), SETTINGS_FILE)
     try:
         with open(settings_path, 'w', encoding='utf-8') as f:
@@ -53,15 +48,13 @@ class AiClassifier:
         self.cache = cache_manager
         self.ai = ai_engine
         
-        # Кэш готовых эталонов в ОЗУ для быстрого сопоставления во время сканирования
-        self.general_centroids = {}  # group_name -> mean_embedding
-        self.general_embeddings = {}  # group_name -> list(embedding)
-        self.face_reference_descriptors = {}  # group_name -> list(descriptor)
+        # Кэш готовых образцов в ОЗУ для быстрого сопоставления во время сканирования
+        self.general_embeddings = {}  # group_name -> list(clip_embedding)
+        self.face_reference_descriptors = {}  # group_name -> list(insightface_descriptor)
 
     def get_group_status(self, group_name: str) -> tuple:
         """
-        Проверяет наличие дампа группы и возвращает статус:
-        (status_color, file_count)
+        Проверяет наличие дампа группы и возвращает статус: (status_color, file_count)
         """
         settings = load_ai_settings()
         group_info = settings.get("groups", {}).get(group_name, {})
@@ -73,16 +66,17 @@ class AiClassifier:
         from .logic_ai_dump import load_dump_info
         info = load_dump_info(dump_path)
         
-        count = info.get("pos_features_count", 0)
+        count_faces = info.get("pos_faces_count", 0)
+        count_features = info.get("pos_features_count", 0)
+        
+        count = count_faces + count_features
         status = "green" if count > 0 else "gray"
         return status, count
 
     def load_active_references(self) -> bool:
         """
-        Загружает в память центроиды и дескрипторы лиц для всех ВКЛЮЧЕННЫХ групп из их дампов.
-        Возвращает True, если есть хотя бы один активный класс для поиска.
+        Загружает в память дескрипторы для всех ВКЛЮЧЕННЫХ групп из их дампов.
         """
-        self.general_centroids.clear()
         self.general_embeddings.clear()
         self.face_reference_descriptors.clear()
         
@@ -97,152 +91,119 @@ class AiClassifier:
         if not active_groups:
             return False
             
-        from .logic_ai_dump import load_dump_info, load_features
+        from .logic_ai_dump import load_features, extract_images_to_temp, save_dump
+        import shutil
+        loaded_any = False
         
-        for group_name, dump_path in active_groups:
-            info = load_dump_info(dump_path)
-            is_face = info.get("type", "face") == "face"
+        for name, dump_path in active_groups:
+            needs_upgrade = False
             
-            descriptors, neg_descriptors = load_features(dump_path)
-            
-            if not descriptors:
-                continue
+            # Check CLIP vectors length
+            pos_feat, _ = load_features(dump_path, "features")
+            if pos_feat and len(pos_feat) > 0 and pos_feat[0].shape[0] != 512:
+                needs_upgrade = True
                 
-            if is_face:
-                if descriptors:
-                    if neg_descriptors:
-                        neg_centroid = np.mean(neg_descriptors, axis=0)
-                        norm_neg = np.linalg.norm(neg_centroid)
-                        if norm_neg > 0:
-                            neg_centroid /= norm_neg
+            # Check InsightFace vectors length
+            pos_faces, _ = load_features(dump_path, "faces")
+            if pos_faces and len(pos_faces) > 0 and pos_faces[0].shape[0] != 512:
+                needs_upgrade = True
+                
+            if needs_upgrade:
+                import logging
+                logging.info(f"Upgrading legacy AI dump vectors for group: {name}")
+                temp_dir, pos_paths, neg_paths = extract_images_to_temp(dump_path)
+                
+                try:
+                    new_pos_features, new_pos_faces = [], []
+                    for p in pos_paths:
+                        # Extract CLIP
+                        emb = self.ai.extract_image_embedding(p)
+                        if emb is not None: new_pos_features.append(emb)
+                        # Extract Face
+                        faces = self.ai.extract_faces(p)
+                        if faces is not None:
+                            for f in faces: new_pos_faces.append(f.embedding)
                             
-                        # adjust positive descriptors
-                        adjusted_descriptors = []
-                        for desc in descriptors:
-                            adj = desc - 0.5 * neg_centroid
-                            norm = np.linalg.norm(adj)
-                            if norm > 0:
-                                adj /= norm
-                            adjusted_descriptors.append(adj)
-                        descriptors = adjusted_descriptors
-                        
-                    self.face_reference_descriptors[group_name] = descriptors
-            else:
-                if descriptors:
-                    self.general_embeddings[group_name] = descriptors
-                    mean_emb = np.mean(descriptors, axis=0)
+                    new_neg_features, new_neg_faces = [], []
+                    for p in neg_paths:
+                        emb = self.ai.extract_image_embedding(p)
+                        if emb is not None: new_neg_features.append(emb)
+                        faces = self.ai.extract_faces(p)
+                        if faces is not None:
+                            for f in faces: new_neg_faces.append(f.embedding)
+                            
+                    # Re-save dump with new vectors
+                    save_dump(
+                        dump_path, "mixed", pos_paths, neg_paths,
+                        new_pos_features, new_neg_features,
+                        new_pos_faces, new_neg_faces, False
+                    )
                     
-                    if neg_descriptors:
-                        neg_centroid = np.mean(neg_descriptors, axis=0)
-                        mean_emb = mean_emb - 0.5 * neg_centroid
-                        
-                    norm = np.linalg.norm(mean_emb)
-                    if norm > 0:
-                        mean_emb /= norm
-                    self.general_centroids[group_name] = mean_emb
-                    
-        return len(self.general_embeddings) > 0 or len(self.face_reference_descriptors) > 0
+                    # Reload the new features
+                    pos_feat, _ = load_features(dump_path, "features")
+                    pos_faces, _ = load_features(dump_path, "faces")
+                finally:
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+            
+            if pos_feat and len(pos_feat) > 0:
+                self.general_embeddings[name] = pos_feat
+                loaded_any = True
+                
+            if pos_faces and len(pos_faces) > 0:
+                self.face_reference_descriptors[name] = pos_faces
+                loaded_any = True
+                
+        return loaded_any
 
-    def match_image(self, filepath: str, mtime: float, size: int, match_mode: str = "centroid", threshold: float = 75.0, use_cache: bool = True) -> tuple:
+    def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
+        """Косинусное сходство между двумя векторами."""
+        a_norm = a / np.linalg.norm(a)
+        b_norm = b / np.linalg.norm(b)
+        return float(np.dot(a_norm, b_norm))
+
+    def classify_file(self, filepath: str) -> dict:
         """
-        Сопоставляет сканируемый файл с активными группами эталонов.
-        Возвращает кортеж: (best_group_name, confidence_percent, details)
-        или (None, 0, None)
+        Сопоставляет файл с активными группами. Возвращает словарь с максимальным % сходства для каждой группы.
         """
-    def get_features_for_image(self, filepath: str, mtime: float, size: int, use_cache: bool = True) -> dict:
-        features = {"faces": [], "general": None}
+        result = {}
         
-        if self.face_reference_descriptors:
-            faces = None
-            if use_cache:
-                faces = self.cache.get_file_faces(filepath, mtime, size)
-            if faces is None:
-                faces = self.ai.detect_and_extract_faces(filepath)
-                if use_cache:
-                    self.cache.save_file_faces(filepath, mtime, size, faces)
-            if faces:
-                features["faces"] = [f["descriptor"] for f in faces]
-                
-        if self.general_embeddings or self.general_centroids:
-            emb = None
-            if use_cache:
-                emb = self.cache.get_image_embedding(filepath, mtime, size)
-            if emb is None:
-                emb = self.ai.extract_image_embedding(filepath)
-                if use_cache:
-                    self.cache.save_image_embedding(filepath, mtime, size, emb)
-            features["general"] = emb
+        # 1. Пробуем получить данные из кэша
+        current_mtime = os.path.getmtime(filepath)
+        current_size = os.path.getsize(filepath)
+        
+        # Загружаем CLIP
+        file_clip_embedding = self.cache.get_image_embedding(filepath, current_mtime, current_size)
+        # Загружаем Лица
+        file_faces = self.cache.get_file_faces(filepath, current_mtime, current_size)
+        
+        # 2. Если чего-то нет в кэше - вычисляем на лету (тяжелая операция, обычно делает Worker заранее)
+        if file_clip_embedding is None or file_faces is None:
+            # Для надежности - в classify_file мы полагаемся на то, что кэш уже собран Worker-ом
+            # Если кэша нет - возвращаем пустой результат (файл пропущен)
+            return result
             
-        return features
-
-    def match_features(self, features: dict, match_mode: str = "centroid", threshold: float = 75.0) -> tuple:
-        if self.face_reference_descriptors and features.get("faces"):
-            best_face_group = None
-            best_face_score = 0.0
-            settings = load_ai_settings()
-            match_thresh = settings.get("face_match_threshold", 1.128)
+        # 3. Сопоставляем CLIP
+        for group_name, clip_list in self.general_embeddings.items():
+            max_sim = 0.0
+            if file_clip_embedding is not None and clip_list:
+                for ref_emb in clip_list:
+                    sim = self._cosine_similarity(file_clip_embedding, ref_emb)
+                    if sim > max_sim: max_sim = sim
+            result[group_name] = max_sim
             
-            for desc in features["faces"]:
-                for group_name, ref_descs in self.face_reference_descriptors.items():
-                    for ref_desc in ref_descs:
-                        dist = np.linalg.norm(desc - ref_desc)
-                        if dist <= match_thresh:
-                            score = 100.0 - (dist / match_thresh) * 25.0
-                        else:
-                            if match_thresh >= 2.0:
-                                score = 0.0
-                            else:
-                                score = 75.0 - ((dist - match_thresh) / (2.0 - match_thresh)) * 75.0
-                        score = max(0.0, min(100.0, score))
-                        if score > best_face_score:
-                            best_face_score = score
-                            best_face_group = group_name
-                            
-            if best_face_group and best_face_score > 0.0:
-                return best_face_group, best_face_score, {"type": "face"}
-                
-        if (self.general_embeddings or self.general_centroids) and features.get("general") is not None:
-            emb = features["general"]
-            best_group = None
-            best_score = 0.0
-            all_groups = set(self.general_embeddings.keys()) | set(self.general_centroids.keys())
-            
-            for group_name in all_groups:
-                if match_mode == "centroid" or group_name not in self.general_embeddings:
-                    centroid = self.general_centroids.get(group_name)
-                    if centroid is not None:
-                        similarity = np.dot(emb, centroid)
-                        score = max(0.0, (similarity - 0.3) / 0.7) * 100.0
-                        if score > best_score:
-                            best_score = score
-                            best_group = group_name
-                else:
-                    embs = self.general_embeddings[group_name]
-                    scores = []
-                    for ref_emb in embs:
-                        similarity = np.dot(emb, ref_emb)
-                        score = max(0.0, (similarity - 0.3) / 0.7) * 100.0
-                        scores.append(score)
-                    if not scores:
+        # 4. Сопоставляем Лица
+        for group_name, face_refs in self.face_reference_descriptors.items():
+            max_face_sim = 0.0
+            if file_faces and face_refs:
+                for file_face in file_faces:
+                    if file_face["descriptor"] is None or file_face["descriptor"].size == 0:
                         continue
-                    if match_mode == "majority":
-                        passed = [s for s in scores if s >= threshold]
-                        if len(passed) >= max(1, len(scores) / 2.0):
-                            mean_passed = np.mean(passed)
-                            if mean_passed > best_score:
-                                best_score = mean_passed
-                                best_group = group_name
-                    else:
-                        max_score = max(scores)
-                        if max_score > best_score:
-                            best_score = max_score
-                            best_group = group_name
-                            
-            if best_group and best_score > 0.0:
-                return best_group, best_score, {"type": "general"}
+                    for ref_desc in face_refs:
+                        sim = self._cosine_similarity(file_face["descriptor"], ref_desc)
+                        if sim > max_face_sim: max_face_sim = sim
+            
+            # Если совпадение по лицу выше, чем по CLIP, перезаписываем результат для группы
+            if max_face_sim > result.get(group_name, 0.0):
+                result[group_name] = max_face_sim
                 
-        return None, 0, None
-
-    def match_image(self, filepath: str, mtime: float, size: int, match_mode: str = "centroid", threshold: float = 75.0, use_cache: bool = True) -> tuple:
-        features = self.get_features_for_image(filepath, mtime, size, use_cache)
-        return self.match_features(features, match_mode, threshold)
+        return result

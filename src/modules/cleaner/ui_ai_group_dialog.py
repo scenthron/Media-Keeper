@@ -1,4 +1,4 @@
-import os
+﻿import os
 import shutil
 import logging
 import tempfile
@@ -47,7 +47,7 @@ class AiGroupSettingsDialog(QDialog):
                 for p in pos_paths + neg_paths:
                     self.trained_status[p] = True
             
-        title = f"Настройка эталона: {group_name}" if self.group_name else "Создание группы эталонов"
+        title = f"Настройка Образеца: {group_name}" if self.group_name else "Создание группы Образецов"
         if not self.is_ru:
             title = f"Edit Reference: {group_name}" if self.group_name else "Create Reference Group"
             
@@ -59,14 +59,14 @@ class AiGroupSettingsDialog(QDialog):
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(12)
         
-        # 1. Путь к эталону
-        layout.addWidget(QLabel("Файл эталона:" if self.is_ru else "Reference File:"))
+        # 1. Путь к Образецу
+        layout.addWidget(QLabel("Файл Образеца:" if self.is_ru else "Reference File:"))
         
         path_layout = QHBoxLayout()
         
         def format_path(path):
             if not path:
-                return "Новый эталон (не сохранен)" if self.is_ru else "New Reference (Unsaved)"
+                return "Новый Образец (не сохранен)" if self.is_ru else "New Reference (Unsaved)"
             parts = path.replace("\\", "/").split("/")
             if len(parts) > 3:
                 return f"{parts[0]}/.../{parts[-2]}/{parts[-1]}"
@@ -138,8 +138,8 @@ class AiGroupSettingsDialog(QDialog):
         self._setup_tab(self.tab_pos, is_positive=True)
         self._setup_tab(self.tab_neg, is_positive=False)
         
-        self.tabs.addTab(self.tab_pos, "Позитивы (Эталоны)" if self.is_ru else "Positives")
-        self.tabs.addTab(self.tab_neg, "Негативы (Анти-эталоны)" if self.is_ru else "Negatives")
+        self.tabs.addTab(self.tab_pos, "Позитивы (Образецы)" if self.is_ru else "Positives")
+        self.tabs.addTab(self.tab_neg, "Негативы (Анти-Образецы)" if self.is_ru else "Negatives")
         
         # 4. Нижние кнопки
         btn_list_layout = QHBoxLayout()
@@ -160,7 +160,7 @@ class AiGroupSettingsDialog(QDialog):
         
         buttons_layout = QHBoxLayout()
         if self.group_name:
-            self.btn_delete_group = QPushButton("Удалить эталон" if self.is_ru else "Delete Reference")
+            self.btn_delete_group = QPushButton("Удалить Образец" if self.is_ru else "Delete Reference")
             self.btn_delete_group.setStyleSheet("background-color: #ef4444; border: none; padding: 6px 16px; border-radius: 4px; font-weight: bold; color: white;")
             self.btn_delete_group.clicked.connect(self.delete_group_ui)
             buttons_layout.addWidget(self.btn_delete_group)
@@ -373,7 +373,7 @@ class AiGroupSettingsDialog(QDialog):
         for item in selected_items:
             path = item.data(Qt.ItemDataRole.UserRole)
             if path == "HASH" or str(path).endswith(".hash.mkaidump") or str(path).endswith(".mkaidump"):
-                self._show_silent_msg("Внимание", "Нельзя удалить хэш-данные. Для удаления нажмите красную кнопку 'Удалить эталон' внизу окна.")
+                self._show_silent_msg("Внимание", "Нельзя удалить хэш-данные. Для удаления нажмите красную кнопку 'Удалить Образец' внизу окна.")
                 continue
             if path in target_list:
                 target_list.remove(path)
@@ -466,7 +466,7 @@ class AiGroupSettingsDialog(QDialog):
                 from PyQt6.QtGui import QImage, QPixmap
                 from PyQt6.QtCore import Qt
                 
-                faces = self.classifier.ai.detect_and_extract_faces(path)
+                faces = self.classifier.ai.extract_faces(path)
                 if faces:
                     with Image.open(path) as img:
                         img = img.convert('RGB')
@@ -504,9 +504,9 @@ class AiGroupSettingsDialog(QDialog):
         target_path = self.dump_path
         
         if is_save_as or not target_path:
-            default_name = self.group_name if self.group_name else "Новый_эталон"
+            default_name = self.group_name if self.group_name else "Новый_Образец"
             default_path = os.path.join(get_ai_assets_dir(), default_name)
-            path, _ = QFileDialog.getSaveFileName(self, "Сохранить эталон", default_path, "AI Dumps (*.mkaidump)")
+            path, _ = QFileDialog.getSaveFileName(self, "Сохранить Образец", default_path, "AI Dumps (*.mkaidump)")
             if not path:
                 return
             target_path = path
@@ -515,7 +515,7 @@ class AiGroupSettingsDialog(QDialog):
         
         if self.group_name and new_name != self.group_name:
             if new_name in groups:
-                self._show_silent_msg("Ошибка" if self.is_ru else "Error", "Эталон с таким именем уже добавлен!" if self.is_ru else "Group already exists!")
+                self._show_silent_msg("Ошибка" if self.is_ru else "Error", "Образец с таким именем уже добавлен!" if self.is_ru else "Group already exists!")
                 return
                 
         success = self.train_and_save(target_path, is_hash_only=False)
@@ -583,7 +583,7 @@ class AiGroupSettingsDialog(QDialog):
                 if search_type == "face":
                     faces = self.classifier.cache.get_file_faces(path, stat.st_mtime, stat.st_size)
                     if faces is None:
-                        faces = self.classifier.ai.detect_and_extract_faces(path)
+                        faces = self.classifier.ai.extract_faces(path)
                         if faces is not None:
                             self.classifier.cache.save_file_faces(path, stat.st_mtime, stat.st_size, faces)
                     if faces:
@@ -592,7 +592,7 @@ class AiGroupSettingsDialog(QDialog):
                 else:
                     emb = self.classifier.cache.get_image_embedding(path, stat.st_mtime, stat.st_size)
                     if emb is None:
-                        emb = self.classifier.ai.extract_image_embedding(path)
+                        emb = self.classifier.ai.extract_clip_embedding(path)
                         if emb is not None:
                             self.classifier.cache.save_image_embedding(path, stat.st_mtime, stat.st_size, emb)
                     if emb is not None:
@@ -610,7 +610,7 @@ class AiGroupSettingsDialog(QDialog):
                 if search_type == "face":
                     faces = self.classifier.cache.get_file_faces(path, stat.st_mtime, stat.st_size)
                     if faces is None:
-                        faces = self.classifier.ai.detect_and_extract_faces(path)
+                        faces = self.classifier.ai.extract_faces(path)
                         if faces is not None:
                             self.classifier.cache.save_file_faces(path, stat.st_mtime, stat.st_size, faces)
                     if faces:
@@ -619,7 +619,7 @@ class AiGroupSettingsDialog(QDialog):
                 else:
                     emb = self.classifier.cache.get_image_embedding(path, stat.st_mtime, stat.st_size)
                     if emb is None:
-                        emb = self.classifier.ai.extract_image_embedding(path)
+                        emb = self.classifier.ai.extract_clip_embedding(path)
                         if emb is not None:
                             self.classifier.cache.save_image_embedding(path, stat.st_mtime, stat.st_size, emb)
                     if emb is not None:
@@ -630,17 +630,21 @@ class AiGroupSettingsDialog(QDialog):
             self.trained_status[path] = success
                 
         if not pos_features and not is_hash_only:
-            self._show_silent_msg("Ошибка", "Не найдено ни одного лица/вектора в эталонах!")
+            self._show_silent_msg("Ошибка", "Не найдено ни одного лица/вектора в Образецах!")
             self.btn_save.setText("Сохранить")
             return False
             
+        # Depending on search_type, we pass vectors to pos_features/neg_features or pos_faces/neg_faces
+        # The save_dump method takes both now.
         save_dump(
             target_path, 
             search_type, 
             self.pending_pos, 
             self.pending_neg, 
-            pos_features, 
-            neg_features, 
+            pos_features=pos_features if search_type == "general" else [], 
+            neg_features=neg_features if search_type == "general" else [], 
+            pos_faces=pos_features if search_type == "face" else [],
+            neg_faces=neg_features if search_type == "face" else [],
             is_hash_only=is_hash_only
         )
         self.btn_save.setText("Сохранить")
@@ -670,7 +674,7 @@ class AiGroupSettingsDialog(QDialog):
                 if search_type == "face":
                     faces = self.classifier.cache.get_file_faces(path, stat.st_mtime, stat.st_size)
                     if faces is None:
-                        faces = self.classifier.ai.detect_and_extract_faces(path)
+                        faces = self.classifier.ai.extract_faces(path)
                         if faces is not None:
                             self.classifier.cache.save_file_faces(path, stat.st_mtime, stat.st_size, faces)
                     if faces:
@@ -678,7 +682,7 @@ class AiGroupSettingsDialog(QDialog):
                 else:
                     emb = self.classifier.cache.get_image_embedding(path, stat.st_mtime, stat.st_size)
                     if emb is None:
-                        emb = self.classifier.ai.extract_image_embedding(path)
+                        emb = self.classifier.ai.extract_clip_embedding(path)
                         if emb is not None:
                             self.classifier.cache.save_image_embedding(path, stat.st_mtime, stat.st_size, emb)
                     if emb is not None:
@@ -693,7 +697,7 @@ class AiGroupSettingsDialog(QDialog):
         self._show_silent_msg("Успех", "Обучение завершено успешно!" if self.is_ru else "Training completed successfully!")
         
     def save_hash_dump(self):
-        default_name = self.group_name if self.group_name else "Новый_хэш_эталон"
+        default_name = self.group_name if self.group_name else "Новый_хэш_Образец"
         default_name = default_name.replace(".hash.mkaidump", "").replace(".mkaidump", "")
         from .logic_ai_classifier import get_ai_assets_dir
         default_path = os.path.join(get_ai_assets_dir(), default_name)
@@ -715,8 +719,8 @@ class AiGroupSettingsDialog(QDialog):
 
     def delete_group_ui(self):
         reply = self._show_silent_question(
-            "Удалить эталон" if self.is_ru else "Delete Reference Group",
-            f"Вы действительно хотите физически удалить файл эталона '{self.group_name}' с диска?"
+            "Удалить Образец" if self.is_ru else "Delete Reference Group",
+            f"Вы действительно хотите физически удалить файл Образеца '{self.group_name}' с диска?"
         )
         if reply == QMessageBox.StandardButton.Yes:
             settings = load_ai_settings()

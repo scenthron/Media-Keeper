@@ -436,7 +436,31 @@ class CleanerPreviewWidget(QWidget):
         self.player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
         self._play_timer.start(100)
 
+    def clear_faces(self):
+        # Удаляем все прямоугольники лиц
+        for item in self.scene.items():
+            from PyQt6.QtWidgets import QGraphicsRectItem
+            if isinstance(item, QGraphicsRectItem):
+                self.scene.removeItem(item)
+
+    def draw_faces(self, bboxes):
+        self.clear_faces()
+        if not bboxes: return
+        from PyQt6.QtWidgets import QGraphicsRectItem
+        from PyQt6.QtGui import QPen, QColor
+        from PyQt6.QtCore import Qt
+        for bbox in bboxes:
+            if len(bbox) == 4:
+                x1, y1, x2, y2 = bbox
+                rect = QGraphicsRectItem(x1, y1, x2 - x1, y2 - y1)
+                pen = QPen(QColor(34, 197, 94)) # Зеленый цвет
+                pen.setWidth(3)
+                pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
+                rect.setPen(pen)
+                self.scene.addItem(rect)
+
     def load_file(self, path):
+        self.clear_faces()
         from utils_io import strip_long_path_prefix
         path = strip_long_path_prefix(path)
         

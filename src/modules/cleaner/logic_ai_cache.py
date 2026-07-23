@@ -6,6 +6,8 @@ import contextlib
 
 from logic_paths import get_app_data_dir
 
+CURRENT_CACHE_VERSION = 2
+
 class AiCacheManager:
     def __init__(self):
         self.db_path = os.path.join(get_app_data_dir(), "ai_cache.db")
@@ -22,12 +24,31 @@ class AiCacheManager:
             conn.close()
 
     def _init_db(self):
-        """Создает таблицы базы данных кэша, если они отсутствуют."""
+        """Создает таблицы базы данных кэша и проверяет версию."""
         try:
             with self._conn() as conn:
                 cursor = conn.cursor()
                 
-                # Таблица для эмбеддингов картинок (MobileNetV3)
+                # Создаем таблицу метаданных
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS sys_meta (
+                        key TEXT PRIMARY KEY,
+                        value TEXT
+                    )
+                """)
+                
+                # Проверяем версию
+                cursor.execute("SELECT value FROM sys_meta WHERE key = 'cache_version'")
+                row = cursor.fetchone()
+                db_version = int(row[0]) if row else 0
+                
+                if db_version != CURRENT_CACHE_VERSION:
+                    logging.warning(f"Версия кэша устарела ({db_version} != {CURRENT_CACHE_VERSION}). Сброс кэша...")
+                    cursor.execute("DROP TABLE IF EXISTS image_embeddings")
+                    cursor.execute("DROP TABLE IF EXISTS face_embeddings")
+                    cursor.execute("INSERT OR REPLACE INTO sys_meta (key, value) VALUES ('cache_version', ?)", (str(CURRENT_CACHE_VERSION),))
+                
+                # Таблица для эмбеддингов картинок (CLIP)
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS image_embeddings (
                         filepath TEXT PRIMARY KEY,
@@ -37,7 +58,7 @@ class AiCacheManager:
                     )
                 """)
                 
-                # Таблица для дескрипторов лиц (SFace)
+                # Таблица для дескрипторов лиц (InsightFace)
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS face_embeddings (
                         filepath TEXT,
@@ -53,13 +74,13 @@ class AiCacheManager:
                 # Создаем индексы для ускорения поиска
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_face_filepath ON face_embeddings(filepath)")
                 conn.commit()
-                logging.info(f"База данных кэша ИИ успешно инициализирована по пути: {self.db_path}")
+                logging.info(f"База данных кэша ИИ успешно инициализирована по пути: {self.db_path} (Версия: {CURRENT_CACHE_VERSION})")
         except Exception as e:
             logging.error(f"Ошибка инициализации базы данных ИИ-кэша: {e}", exc_info=True)
 
     def get_image_embedding(self, filepath: str, current_mtime: float, current_size: int) -> np.ndarray | None:
         """
-        Возвращает сохраненный вектор изображения из кэша, если дата изменения и размер совпадают.
+        Возвращает сохраненный вектор изображения (CLIP) из кэша.
         """
         try:
             with self._conn() as conn:
@@ -72,16 +93,14 @@ class AiCacheManager:
                 
                 if row:
                     mtime, size, emb_blob = row
-                    # Проверяем актуальность файла по дате изменения и размеру
                     if abs(mtime - current_mtime) < 0.01 and size == current_size:
-                        # Десериализуем вектор из байтов
                         return np.frombuffer(emb_blob, dtype=np.float32)
         except Exception as e:
             logging.error(f"Ошибка чтения эмбеддинга из кэша для {filepath}: {e}")
         return None
 
     def save_image_embedding(self, filepath: str, mtime: float, size: int, embedding: np.ndarray):
-        """Сохраняет вектор изображения в кэш."""
+        """Сохраняет вектор изображения (CLIP) в кэш."""
         try:
             emb_blob = embedding.astype(np.float32).tobytes()
             with self._conn() as conn:
@@ -99,8 +118,7 @@ class AiCacheManager:
 
     def get_file_faces(self, filepath: str, current_mtime: float, current_size: int) -> list | None:
         """
-        Возвращает список лиц, найденных на изображении, из кэша (если файл актуален).
-        Возвращает list(dict) или None (если файла нет в кэше).
+        Возвращает список лиц (InsightFace) из кэша.
         """
         try:
             with self._conn() as conn:
@@ -114,11 +132,9 @@ class AiCacheManager:
                 if not rows:
                     return None
                     
-                # Проверим актуальность файла по первому лицу
                 first_face = rows[0]
                 mtime, size = first_face[1], first_face[2]
                 if abs(mtime - current_mtime) > 0.01 or size != current_size:
-                    # Файл изменился, кэш неактуален
                     return None
                     
                 faces = []
@@ -142,15 +158,12 @@ class AiCacheManager:
         return None
 
     def save_file_faces(self, filepath: str, mtime: float, size: int, faces: list):
-        """Сохраняет список найденных лиц файла в кэш."""
+        """Сохраняет список найденных лиц (InsightFace) в кэш."""
         try:
             with self._conn() as conn:
                 cursor = conn.cursor()
-                # Сначала удалим старые записи для этого файла
                 cursor.execute("DELETE FROM face_embeddings WHERE filepath = ?", (filepath,))
                 
-                # Если лиц не найдено, мы записываем специальную запись-пустышку (face_index = -1),
-                # чтобы при следующем сканировании знать, что файл уже был просканирован и на нем нет лиц.
                 if not faces:
                     cursor.execute(
                         """
@@ -161,7 +174,7 @@ class AiCacheManager:
                     )
                 else:
                     for idx, face in enumerate(faces):
-                        bbox_str = ",".join(str(x) for x in face["bbox"])
+                        bbox_str = ",".join(str(int(x)) for x in face["bbox"])
                         desc_blob = face["descriptor"].astype(np.float32).tobytes()
                         cursor.execute(
                             """
@@ -182,11 +195,9 @@ class AiCacheManager:
             prefix = os.path.normpath(folder_path) + os.sep
             with self._conn() as conn:
                 cursor = conn.cursor()
-                # Проверяем наличие записей в image_embeddings
                 cursor.execute("SELECT 1 FROM image_embeddings WHERE filepath LIKE ? LIMIT 1", (prefix + "%",))
                 if cursor.fetchone():
                     has_general = True
-                # Проверяем наличие записей в face_embeddings
                 cursor.execute("SELECT 1 FROM face_embeddings WHERE filepath LIKE ? LIMIT 1", (prefix + "%",))
                 if cursor.fetchone():
                     has_faces = True

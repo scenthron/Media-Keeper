@@ -46,7 +46,8 @@ class EditorGraphicsView(QGraphicsView):
                 # Также игнорируем клик по OverlayGraphicsItem, чтобы не сбивать выделение
                 if not is_control and not isinstance(item, OverlayGraphicsItem):
                     if not item or (hasattr(self.editor_widget, 'video_item') and item == self.editor_widget.video_item) or (hasattr(self.editor_widget, 'preview_item') and item == self.editor_widget.preview_item):
-                        if hasattr(self.editor_widget, 'toggle_play'):
+                        is_cropping = getattr(self.editor_widget, 'is_cropping', False)
+                        if not is_cropping and hasattr(self.editor_widget, 'toggle_play'):
                             self.editor_widget.toggle_play()
         super().mouseReleaseEvent(event)
 

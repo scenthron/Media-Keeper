@@ -32,11 +32,22 @@ class EditorCropMixin:
             self._enable_crop_drag_mode()
             self._update_crop_spins_from_handles()
             self._update_dimming()
+            
+            if not hasattr(self, 'crop_anim_timer'):
+                from PyQt6.QtCore import QTimer
+                self.crop_anim_timer = QTimer(self)
+                self.crop_anim_timer.setInterval(40)
+                self.crop_anim_timer.timeout.connect(self._animate_crop_stripes)
+                self._crop_stripe_offset = 0
+            self.crop_anim_timer.start()
         else:
             self.handle_tl.hide()
             self.handle_br.hide()
             self._disable_crop_drag_mode()
             self._update_dimming()
+            if hasattr(self, 'crop_anim_timer'):
+                self.crop_anim_timer.stop()
+                
         self._update_crop_controls_enabled()
         self._check_start_readiness()
 
@@ -254,6 +265,40 @@ class EditorCropMixin:
         self._update_dimming()
         self._check_start_readiness()
 
+    def _get_crop_stripe_brush(self, is_locked):
+        from PyQt6.QtGui import QPixmap, QPainter, QColor, QPen, QBrush
+        size = 40
+        pixmap = QPixmap(size, size)
+        pixmap.fill(QColor(0, 0, 0, 160)) # Semi-transparent black background
+        
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        stripe_color = QColor(255, 68, 68, 120) if is_locked else QColor(255, 68, 68, 40)
+        pen = QPen(stripe_color, 8)
+        painter.setPen(pen)
+        
+        painter.drawLine(0, size, size, 0)
+        painter.drawLine(0, 0, size, -size)
+        painter.drawLine(0, size*2, size*2, 0)
+        
+        painter.end()
+        return QBrush(pixmap)
+
+    def _animate_crop_stripes(self):
+        if not hasattr(self, '_crop_stripe_offset'):
+            self._crop_stripe_offset = 0
+        self._crop_stripe_offset += 1
+        if self._crop_stripe_offset >= 40:
+            self._crop_stripe_offset = 0
+            
+        from PyQt6.QtGui import QTransform
+        transform = QTransform().translate(self._crop_stripe_offset, 0)
+        if hasattr(self, '_crop_brush'):
+            self._crop_brush.setTransform(transform)
+            for d in [self.crop_dim_top, self.crop_dim_bottom, self.crop_dim_left, self.crop_dim_right]:
+                d.setBrush(self._crop_brush)
+
     def _update_dimming(self):
         if not self.is_cropping:
             for d in [self.crop_dim_top, self.crop_dim_bottom, self.crop_dim_left, self.crop_dim_right]:
@@ -261,6 +306,7 @@ class EditorCropMixin:
             if hasattr(self, 'lbl_crop_size'):
                 self.lbl_crop_size.setText("")
             return
+            
         tl = self.handle_tl.pos()
         br = self.handle_br.pos()
         v_rect = self.video_item.boundingRect()
@@ -269,9 +315,18 @@ class EditorCropMixin:
         self.crop_dim_bottom.setRect(0, br.y(), vw, vh - br.y())
         self.crop_dim_left.setRect(0, tl.y(), tl.x(), br.y() - tl.y())
         self.crop_dim_right.setRect(br.x(), tl.y(), vw - br.x(), br.y() - tl.y())
-        dim_color = QColor(255, 68, 68, 150) if self.is_crop_locked_size else QColor(0, 0, 0, 150)
+        
+        if not hasattr(self, '_crop_brush') or getattr(self, '_last_crop_lock_state', None) != self.is_crop_locked_size:
+            self._crop_brush = self._get_crop_stripe_brush(self.is_crop_locked_size)
+            self._last_crop_lock_state = self.is_crop_locked_size
+            
         for d in [self.crop_dim_top, self.crop_dim_bottom, self.crop_dim_left, self.crop_dim_right]:
-            d.setBrush(QBrush(dim_color))
+            # Apply current offset if it exists
+            if hasattr(self, '_crop_stripe_offset'):
+                from PyQt6.QtGui import QTransform
+                self._crop_brush.setTransform(QTransform().translate(self._crop_stripe_offset, 0))
+            d.setBrush(self._crop_brush)
             d.show()
+            
         if hasattr(self, 'lbl_crop_size'):
             self.lbl_crop_size.setText(f"{self.spin_crop_w.value()} × {self.spin_crop_h.value()} px")

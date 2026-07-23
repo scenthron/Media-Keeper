@@ -61,8 +61,8 @@ class VideoEditorWorker(QThread):
         all_points = [0.0] + markers + [1.0]
         segments = []
         for i in range(len(all_points)-1):
-            take = (i % 2 == 0)
-            if is_inverted: take = not take
+            from .helpers import is_segment_taken
+            take = is_segment_taken(len(markers), i, is_inverted)
             if take:
                 s1, s2 = all_points[i], all_points[i+1]
                 if s2 - s1 > 0.001: # ignore tiny slivers

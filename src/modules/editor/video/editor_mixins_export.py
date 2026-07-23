@@ -88,6 +88,12 @@ class EditorExportMixin:
             self.progress_bar.setValue(100)
         else:
             logging.error(f"Экспорт завершен с ошибкой: {msg}")
+            from PyQt6.QtWidgets import QMessageBox
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Icon.NoIcon)
+            msg_box.setWindowTitle("Ошибка экспорта")
+            msg_box.setText(f"Произошла ошибка при экспорте:\n{msg}")
+            msg_box.exec()
 
     def _update_exec_timer(self):
         """Updates the timer label during export execution."""

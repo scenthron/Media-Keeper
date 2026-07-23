@@ -1,4 +1,4 @@
-import os
+﻿import os
 import shutil
 import logging
 from PyQt6.QtWidgets import (
@@ -22,191 +22,13 @@ from .ui_widgets import ImageHoverToolTip, RefImagesListWidget
 
 
 # -----------------------------------------------------------------------------
-# Диалог настроек группы эталонов (вызывается при клике по шестеренке)
+# Диалог настроек группы Образецов (вызывается при клике по шестеренке)
 # -----------------------------------------------------------------------------
 from .ui_ai_group_dialog import AiGroupSettingsDialog
 
 from .ui_widgets import CleanSpinBox
+from PyQt6.QtWidgets import QStackedWidget
         
-class AiAdvancedSettingsDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Настройки ИИ" if AppContext.is_ru() else "AI Settings")
-        self.setFixedSize(400, 320)
-        self.setStyleSheet("QDialog { background-color: #1e1e1e; } QLabel { color: #f0f0f0; }")
-        layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        
-        self.settings = load_ai_settings()
-        
-        # Юнет
-        l_det = QLabel("Порог детектора лиц (YuNet):")
-        tooltip_det = ("Определяет, насколько 'похожим на лицо' должен быть объект, чтобы нейросеть его захватила.\n"
-                       "Меньшие значения (0.50): Находит даже размытые/мелкие лица в толпе, но может принять за лицо случайные предметы.\n"
-                       "Высокие значения (0.80+): Захватывает только очень четкие, крупные лица анфас.\n"
-                       "Изменение этой настройки автоматически очистит кэш лиц для пересканирования.")
-        l_det.setToolTip(tooltip_det)
-        self.slider_det = QSlider(Qt.Orientation.Horizontal)
-        self.slider_det.setRange(0, 100)
-        self.slider_det.setToolTip(tooltip_det)
-        self.slider_det.setValue(int(self.settings.get("face_det_threshold", 65.0)))
-        self.slider_det.setStyleSheet("""
-            QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
-            QSlider::handle:horizontal { background: #3b82f6; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
-        """)
-        
-        self.spin_det = CleanSpinBox()
-        self.spin_det.setRange(0.0, 1.0)
-        self.spin_det.setDecimals(2)
-        self.spin_det.setSingleStep(0.01)
-        self.spin_det.setValue(float(self.settings.get("face_det_threshold", 65.0)) / 100.0)
-        self.spin_det.setFixedWidth(65)
-        self.spin_det.setStyleSheet("border: none; background: transparent; color: #f0f0f0; font-weight: bold; font-size: 12px; padding: 0 4px;")
-        
-        self.slider_det.valueChanged.connect(lambda v: self.spin_det.setValue(v / 100.0))
-        self.spin_det.valueChanged.connect(lambda v: self.slider_det.setValue(int(v * 100.0)))
-        
-        h1 = QHBoxLayout()
-        h1.addWidget(l_det)
-        h1.addStretch()
-        h1.addWidget(self.spin_det)
-        layout.addLayout(h1)
-        layout.addWidget(self.slider_det)
-        
-        # SFace
-        l_match = QLabel("Строгость совпадения лиц (SFace L2-norm):")
-        tooltip_match = ("Математическое расстояние между лицами для признания их одним человеком.\n"
-                         "Меньшие значения (например, 0.7 - 0.9): Очень строгий поиск, почти идентичные фото.\n"
-                         "Значение по умолчанию (1.128): Оптимальный порог SFace для разных ракурсов и освещения.\n"
-                         "Высокие значения (1.3+): Объединяет в одну группу даже отдаленно похожих людей.\n"
-                         "Изменение не требует пересканирования (кэш не сбрасывается).")
-        l_match.setToolTip(tooltip_match)
-        self.slider_match = QSlider(Qt.Orientation.Horizontal)
-        self.slider_match.setRange(500, 1500)
-        self.slider_match.setToolTip(tooltip_match)
-        
-        current_sface = self.settings.get("face_match_threshold", 1.128)
-        if current_sface > 2.0: current_sface = 1.128
-        
-        self.slider_match.setValue(int(current_sface * 1000))
-        self.slider_match.setStyleSheet("""
-            QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
-            QSlider::handle:horizontal { background: #10b981; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
-        """)
-        
-        self.spin_match = CleanSpinBox()
-        self.spin_match.setRange(0.50, 1.50)
-        self.spin_match.setDecimals(3)
-        self.spin_match.setSingleStep(0.01)
-        self.spin_match.setValue(current_sface)
-        self.spin_match.setFixedWidth(65)
-        self.spin_match.setStyleSheet("border: none; background: transparent; color: #f0f0f0; font-weight: bold; font-size: 12px; padding: 0 4px;")
-        
-        self.slider_match.valueChanged.connect(lambda v: self.spin_match.setValue(v / 1000.0))
-        self.spin_match.valueChanged.connect(lambda v: self.slider_match.setValue(int(v * 1000.0)))
-        
-        h2 = QHBoxLayout()
-        h2.addWidget(l_match)
-        h2.addStretch()
-        h2.addWidget(self.spin_match)
-        layout.addLayout(h2)
-        layout.addWidget(self.slider_match)
-        
-        # Deep Merge
-        self.chk_merge = QCheckBox("Глубокое объединение групп (Deep Merge)")
-        self.chk_merge.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.chk_merge.setStyleSheet("""
-            QCheckBox { color: white; font-weight: bold; font-size: 12px; margin-top: 2px; }
-            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; margin-top: 2px; }
-            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
-        """)
-        self.chk_merge.setChecked(self.settings.get("deep_merge_enabled", True))
-        
-        lbl_desc = QLabel("Если включено, ИИ сделает второй проход и объединит группы одного\nчеловека, снятые с разных ракурсов.")
-        lbl_desc.setStyleSheet("color: #aaa; font-size: 11px;")
-        
-        layout.addWidget(self.chk_merge)
-        layout.addWidget(lbl_desc)
-        
-        # Deep Merge Threshold
-        l_merge_thresh = QLabel("Сила объединения (чем меньше, тем строже):")
-        tooltip_merge = ("Определяет, насколько похожими должны быть две группы лиц, чтобы слиться в одну.\n"
-                         "Меньшие значения (0 - 40): Очень строгое объединение, сливаются только явные дубли.\n"
-                         "Оптимально (75.0): Сливает людей, снятых под небольшими углами.\n"
-                         "Большие значения (90 - 100): Объединяет максимум фото, но высок риск захватить разных людей.")
-        l_merge_thresh.setToolTip(tooltip_merge)
-        l_merge_thresh.setStyleSheet("color: #ccc; font-size: 11px;")
-        
-        self.slider_merge = QSlider(Qt.Orientation.Horizontal)
-        self.slider_merge.setToolTip(tooltip_merge)
-        self.slider_merge.setRange(0, 100)
-        self.slider_merge.setValue(int(self.settings.get("deep_merge_threshold", 75.0)))
-        self.slider_merge.setStyleSheet("""
-            QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
-            QSlider::handle:horizontal { background: #8b5cf6; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
-        """)
-        
-        self.spin_merge = CleanSpinBox()
-        self.spin_merge.setRange(0.0, 1.0)
-        self.spin_merge.setDecimals(2)
-        self.spin_merge.setSingleStep(0.01)
-        self.spin_merge.setValue(float(self.settings.get("deep_merge_threshold", 75.0)) / 100.0)
-        self.spin_merge.setFixedWidth(65)
-        self.spin_merge.setStyleSheet("border: none; background: transparent; color: #f0f0f0; font-weight: bold; font-size: 12px; padding: 0 4px;")
-        
-        self.slider_merge.valueChanged.connect(lambda v: self.spin_merge.setValue(v / 100.0))
-        self.spin_merge.valueChanged.connect(lambda v: self.slider_merge.setValue(int(v * 100.0)))
-        
-        h3 = QHBoxLayout()
-        h3.addWidget(l_merge_thresh)
-        h3.addStretch()
-        h3.addWidget(self.spin_merge)
-        
-        layout.addLayout(h3)
-        layout.addWidget(self.slider_merge)
-        
-        layout.addStretch()
-        
-        btn_box = QHBoxLayout()
-        btn_default = QPushButton("По умолчанию")
-        btn_default.setStyleSheet("background-color: #444; color: white; padding: 6px 15px; border-radius: 4px; font-weight: bold;")
-        btn_default.clicked.connect(self.reset_to_defaults)
-        
-        btn_save = QPushButton("Сохранить")
-        btn_save.setStyleSheet("background-color: #3b82f6; color: white; padding: 6px 20px; border-radius: 4px; font-weight: bold;")
-        btn_save.clicked.connect(self.save_and_close)
-        
-        btn_box.addWidget(btn_default)
-        btn_box.addStretch()
-        btn_box.addWidget(btn_save)
-        layout.addLayout(btn_box)
-        
-    def reset_to_defaults(self):
-        self.slider_det.setValue(65)
-        self.slider_match.setValue(1128)
-        self.chk_merge.setChecked(True)
-        self.slider_merge.setValue(75)
-        
-    def save_and_close(self):
-        old_det = float(self.settings.get("face_det_threshold", 65.0))
-        new_det = float(self.slider_det.value())
-        
-        self.settings["face_det_threshold"] = new_det
-        self.settings["face_match_threshold"] = float(self.slider_match.value()) / 1000.0
-        self.settings["deep_merge_enabled"] = self.chk_merge.isChecked()
-        self.settings["deep_merge_threshold"] = float(self.slider_merge.value())
-        save_ai_settings(self.settings)
-        
-        # Auto-clear cache if detection threshold changed
-        if old_det != new_det and hasattr(self.parent(), 'cache'):
-            self.parent().cache.clear_cache()
-            if hasattr(self.parent(), 'update_cache_info_ai'):
-                self.parent().update_cache_info_ai()
-                
-        self.accept()
-
-
-
 class RefDropContainer(QWidget):
     dump_dropped = pyqtSignal(str)
     
@@ -313,7 +135,7 @@ class AiGroupChipWidget(QFrame):
         layout.addWidget(self.btn_gear)
         
         self.btn_remove = QPushButton("✕")
-        self.btn_remove.setToolTip("Убрать эталон из списка (файл не удалится)")
+        self.btn_remove.setToolTip("Убрать Образец из списка (файл не удалится)")
         self.btn_remove.setFixedSize(18, 18)
         self.btn_remove.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_remove.setStyleSheet("""
@@ -418,10 +240,10 @@ class AiClassificationTab(QWidget):
         ph_layout.addWidget(lbl_title)
         
         lbl_desc = QLabel(
-            "Для работы локального классификатора и поиска по лицам необходимо загрузить модели нейросети (~57 МБ).\n"
+            "Для работы сверхточного ИИ-поиска необходимо наличие моделей CLIP и InsightFace (~1 ГБ).\n"
             "Загрузка выполняется один раз, после чего ИИ работает полностью автономно без подключения к интернету."
             if AppContext.is_ru() else
-            "To use local AI classification and face recognition, neural network models (~57 MB) need to be downloaded.\n"
+            "To use advanced AI classification and face recognition, CLIP and InsightFace models (~1 GB) are required.\n"
             "This download is done once, and then the AI runs completely offline."
         )
         lbl_desc.setWordWrap(True)
@@ -517,13 +339,57 @@ class AiClassificationTab(QWidget):
         top_layout.setContentsMargins(15, 6, 15, 6)
         top_layout.setSpacing(12)
         
-        # КОЛОНКА 1: Группы эталонов
+        # КОЛОНКА 1: Группы Образецов
         col_ref = QVBoxLayout()
         col_ref.setContentsMargins(0, 0, 0, 0)
         col_ref.setSpacing(4)
+
+        mode_header = QHBoxLayout()
+        
+        self.btn_mode_ref = QPushButton("Поиск по образцам" if AppContext.is_ru() else "Search by Samples")
+        self.btn_mode_text = QPushButton("Поиск по тексту" if AppContext.is_ru() else "Search by Text")
+        
+        mode_style = """
+            QPushButton {
+                background-color: #2b2b2b;
+                color: #888;
+                border: 1px solid #444;
+                border-radius: 4px;
+                padding: 4px;
+                font-weight: bold;
+                font-size: 11px;
+            }
+            QPushButton:checked {
+                background-color: #3b82f6;
+                color: white;
+                border-color: #2563eb;
+            }
+        """
+        self.btn_mode_ref.setCheckable(True)
+        self.btn_mode_text.setCheckable(True)
+        self.btn_mode_ref.setStyleSheet(mode_style)
+        self.btn_mode_text.setStyleSheet(mode_style)
+        self.btn_mode_ref.setChecked(True)
+        self.btn_mode_ref.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_mode_text.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        mode_header.addWidget(self.btn_mode_ref)
+        mode_header.addWidget(self.btn_mode_text)
+        col_ref.addLayout(mode_header)
+        
+        self.mode_stack = QStackedWidget()
+        col_ref.addWidget(self.mode_stack)
+        
+        # Page 1: References
+        self.page_ref = QWidget()
+        page_ref_layout = QVBoxLayout(self.page_ref)
+        page_ref_layout.setContentsMargins(0, 0, 0, 0)
+        page_ref_layout.setSpacing(4)
+
         
         ref_header = QHBoxLayout()
-        ref_title = QLabel("Группы эталонов" if AppContext.is_ru() else "Reference Groups")
+        page_ref_layout.addLayout(ref_header)
+        ref_title = QLabel("Группы Образецов" if AppContext.is_ru() else "Reference Groups")
         ref_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI';")
         ref_header.addWidget(ref_title)
         
@@ -548,14 +414,9 @@ class AiClassificationTab(QWidget):
         
         ref_header.addStretch()
         
-        self.btn_ai_settings = QPushButton("⚙")
-        self.btn_ai_settings.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_ai_settings.setStyleSheet("QPushButton { background-color: transparent; border: none; color: #888; font-size: 16px; margin-top: -2px; } QPushButton:hover { color: #fff; }")
-        self.btn_ai_settings.setToolTip("Настройки ИИ" if AppContext.is_ru() else "AI Settings")
-        self.btn_ai_settings.clicked.connect(self.open_ai_settings)
-        ref_header.addWidget(self.btn_ai_settings)
         
-        col_ref.addLayout(ref_header)
+        
+        
         
         self.scroll_ref = QScrollArea()
         self.scroll_ref.setWidgetResizable(True)
@@ -570,7 +431,59 @@ class AiClassificationTab(QWidget):
         self.group_list_layout_ai.setAlignment(Qt.AlignmentFlag.AlignTop)
         
         self.scroll_ref.setWidget(self.ref_container)
-        col_ref.addWidget(self.scroll_ref)
+        page_ref_layout.addWidget(self.scroll_ref)
+        self.mode_stack.addWidget(self.page_ref)
+        
+        # Page 2: Text Search
+        self.page_text = QWidget()
+        page_text_layout = QVBoxLayout(self.page_text)
+        page_text_layout.setContentsMargins(0, 5, 0, 0)
+        page_text_layout.setSpacing(8)
+        page_text_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        
+        lbl_text_search = QLabel("Введите текстовый запрос для поиска:" if AppContext.is_ru() else "Enter text query for search:")
+        lbl_text_search.setStyleSheet("color: #ccc; font-size: 12px;")
+        page_text_layout.addWidget(lbl_text_search)
+        
+        self.line_text_search = QLineEdit()
+        self.line_text_search.setPlaceholderText("Например: a cat sitting on a table" if AppContext.is_ru() else "E.g.: a cat sitting on a table")
+        self.line_text_search.setStyleSheet("""
+            QLineEdit {
+                background-color: #222;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 6px;
+                color: white;
+                font-size: 13px;
+            }
+            QLineEdit:focus { border-color: #3b82f6; }
+        """)
+        page_text_layout.addWidget(self.line_text_search)
+        
+        self.btn_text_search = QPushButton("Найти" if AppContext.is_ru() else "Find")
+        self.btn_text_search.setFixedHeight(32)
+        self.btn_text_search.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_text_search.setStyleSheet("""
+            QPushButton {
+                background-color: #3b82f6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover { background-color: #2563eb; }
+        """)
+        page_text_layout.addWidget(self.btn_text_search)
+        
+        self.mode_stack.addWidget(self.page_text)
+        
+        self.btn_mode_ref.clicked.connect(lambda: self._switch_mode(0))
+        self.btn_mode_text.clicked.connect(lambda: self._switch_mode(1))
+        
+        self.line_text_search.returnPressed.connect(self.start_text_search)
+        self.btn_text_search.clicked.connect(self.start_text_search)
+
         top_layout.addLayout(col_ref, 1)
         
         # КОЛОНКА 2: Каталоги для поиска (ДРОП-ЗОНА НА ВСЮ ШИРИНУ В СТИЛЕ CLEANER)
@@ -678,7 +591,7 @@ class AiClassificationTab(QWidget):
             "   • 85% - 100%: Строгий поиск (тот же человек, почти идентичные скриншоты).\n"
             "   • 70% - 85%: Умеренное сходство (тот же человек в другой одежде, похожие сцены).\n"
             "   • 50% - 70%: Широкий поиск (похожие по цветам и структуре изображения).\n\n"
-            "💡 Совет: Для лучшего результата используйте четкие примеры и отключайте ненужные группы эталонов."
+            "💡 Совет: Для лучшего результата используйте четкие примеры и отключайте ненужные группы Образецов."
             if AppContext.is_ru() else
             "🧠 HOW AI SEARCH WORKS:\n\n"
             "1. Analysis Types:\n"
@@ -766,7 +679,7 @@ class AiClassificationTab(QWidget):
         self.slider_threshold = QSlider(Qt.Orientation.Horizontal)
         self.slider_threshold.setToolTip(tooltip_thresh)
         self.slider_threshold.setRange(0, 10000)
-        self.slider_threshold.setValue(7500)
+        self.slider_threshold.setValue(5000)
         self.slider_threshold.setStyleSheet("""
             QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
             QSlider::handle:horizontal { background: #3b82f6; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
@@ -776,7 +689,7 @@ class AiClassificationTab(QWidget):
         self.spin_threshold.setRange(0.0, 100.0)
         self.spin_threshold.setDecimals(2)
         self.spin_threshold.setSingleStep(0.01)
-        self.spin_threshold.setValue(75.0)
+        self.spin_threshold.setValue(50.0)
         self.spin_threshold.setSuffix("%")
         self.spin_threshold.setFixedWidth(65)
         self.spin_threshold.setStyleSheet("border: none; background: transparent; color: #f0f0f0; font-weight: bold; font-size: 12px; padding: 0 4px;")
@@ -820,7 +733,7 @@ class AiClassificationTab(QWidget):
         is_ru = AppContext.is_ru()
         self.combo_match_mode.addItem("Средний образ" if is_ru else "Average Centroid", "centroid")
         self.combo_match_mode.setItemData(0, 
-            "Сравнивает изображение со средним арифметическим всех эталонов.\nПодходит для поиска однотипных скриншотов или портретов одного человека."
+            "Сравнивает изображение со средним арифметическим всех Образецов.\nПодходит для поиска однотипных скриншотов или портретов одного человека."
             if is_ru else
             "Compares with the average vector of all references.\nBest for uniform images (e.g. same face, same UI).",
             Qt.ItemDataRole.ToolTipRole
@@ -828,7 +741,7 @@ class AiClassificationTab(QWidget):
         
         self.combo_match_mode.addItem("Любое совпадение" if is_ru else "Best Match (Any)", "best_match")
         self.combo_match_mode.setItemData(1, 
-            "Сравнивает с каждым эталоном отдельно и берет максимальное сходство.\nПозволяет искать разнородные объекты в одной группе (разные ракурсы, цвета, машины)."
+            "Сравнивает с каждым Образецом отдельно и берет максимальное сходство.\nПозволяет искать разнородные объекты в одной группе (разные ракурсы, цвета, машины)."
             if is_ru else
             "Compares with each reference individually and takes the maximum similarity.\nBest for diverse images in one group.",
             Qt.ItemDataRole.ToolTipRole
@@ -836,7 +749,7 @@ class AiClassificationTab(QWidget):
         
         self.combo_match_mode.addItem("Большинство совпадений" if is_ru else "Majority Match", "majority")
         self.combo_match_mode.setItemData(2, 
-            "Файл должен быть похож минимум на половину (50%) всех эталонов в группе.\nИсключает случайные ложные совпадения."
+            "Файл должен быть похож минимум на половину (50%) всех Образецов в группе.\nИсключает случайные ложные совпадения."
             if is_ru else
             "Requires the file to match at least 50% of the reference images.\nPrevents accidental false positives.",
             Qt.ItemDataRole.ToolTipRole
@@ -859,7 +772,7 @@ class AiClassificationTab(QWidget):
             QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; margin-top: 2px; }
             QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
         """)
-        self.chk_auto_cluster.setToolTip("Искать похожие объекты без эталонов и группировать их автоматически." if AppContext.is_ru() else "Group objects automatically without references.")
+        self.chk_auto_cluster.setToolTip("Искать похожие объекты без Образецов и группировать их автоматически." if AppContext.is_ru() else "Group objects automatically without references.")
         self.chk_auto_cluster.stateChanged.connect(self.on_auto_cluster_changed)
         
         self.combo_auto_type = QComboBox()
@@ -899,7 +812,7 @@ class AiClassificationTab(QWidget):
             QPushButton:hover { background-color: #16a34a; }
             QPushButton:disabled { background-color: #222; color: #555; font-weight: 900; font-size: 14px; border: 1px solid #333; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
         """)
-        self.btn_start_scan.clicked.connect(self.toggle_scan)
+        self.btn_start_scan.clicked.connect(self.on_btn_start_scan_clicked)
         params_sub_layout.addWidget(self.btn_start_scan)
         
 
@@ -1248,9 +1161,7 @@ class AiClassificationTab(QWidget):
         dlg.exec()
         self.reload_groups()
 
-    def open_ai_settings(self):
-        dlg = AiAdvancedSettingsDialog(self)
-        dlg.exec()
+    
 
     
     def add_external_dump(self, path: str):
@@ -1436,16 +1347,41 @@ class AiClassificationTab(QWidget):
             
         self.update_scan_button_state()
 
+    
+    def _switch_mode(self, index):
+        self.mode_stack.setCurrentIndex(index)
+        self.btn_mode_ref.setChecked(index == 0)
+        self.btn_mode_text.setChecked(index == 1)
+        self.update_scan_button_state()
+
+    def start_text_search(self):
+        # Trigger scanning
+        query = self.line_text_search.text().strip()
+        if not query:
+            from PyQt6.QtWidgets import QMessageBox
+            from utils_env import AppContext
+            QMessageBox.warning(self, "Внимание" if AppContext.is_ru() else "Warning", "Введите текстовый запрос для поиска." if AppContext.is_ru() else "Please enter a search query.")
+            return
+        
+        # Temporarily enable text search mode internally, and execute toggle_scan
+        # We need to adapt logic_ai to handle text search properly!
+        self.toggle_scan(text_query=query)
+
     def update_scan_button_state(self):
         folders = self.cleaner.get_active_source_folders() if hasattr(self, 'cleaner') else []
         has_folders = len(folders) > 0
         has_enabled_groups = any(widget.chk.isChecked() for widget in self.chips_map.values())
         is_cluster = self.chk_auto_cluster.isChecked()
+        is_text_mode = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 1
         
         # _is_ok default to True because logic_actions will pass False if there is a nested/system error
         is_ok = getattr(self, '_is_ok', True) 
         
-        can_run = has_folders and (has_enabled_groups or is_cluster) and is_ok
+        if is_text_mode:
+            can_run = has_folders and is_ok
+        else:
+            can_run = has_folders and (has_enabled_groups or is_cluster) and is_ok
+            
         self.btn_start_scan.setEnabled(can_run)
         
         base_text = " Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search"
@@ -1453,7 +1389,13 @@ class AiClassificationTab(QWidget):
 
 
 
-    def toggle_scan(self):
+    def on_btn_start_scan_clicked(self):
+        if hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 1:
+            self.start_text_search()
+        else:
+            self.toggle_scan()
+
+    def toggle_scan(self, text_query=None):
         if self.active_worker and self.active_worker.isRunning():
             self.active_worker.stop()
             return
@@ -1466,7 +1408,7 @@ class AiClassificationTab(QWidget):
             widget.set_error_highlight(False)
             
         is_cluster = self.chk_auto_cluster.isChecked()
-        if not is_cluster:
+        if not is_cluster and not text_query:
             settings = load_ai_settings()
             enabled_groups = [name for name, info in settings.get("groups", {}).items() if info.get("enabled", True)]
             
@@ -1474,7 +1416,7 @@ class AiClassificationTab(QWidget):
                 msg = QMessageBox(self)
                 msg.setIcon(QMessageBox.Icon.NoIcon)
                 msg.setWindowTitle("Ошибка" if AppContext.is_ru() else "Error")
-                msg.setText("Выберите хотя бы одну группу эталонов для поиска!" if AppContext.is_ru() else "Select at least one reference group to search!")
+                msg.setText("Выберите хотя бы одну группу Образецов для поиска!" if AppContext.is_ru() else "Select at least one reference group to search!")
                 msg.exec()
                 return
                 
@@ -1506,7 +1448,7 @@ class AiClassificationTab(QWidget):
             dlg.setFixedSize(300, 100)
             dlg_layout = QVBoxLayout(dlg)
             
-            lbl_title = QLabel("Идет подготовка эталонов..." if AppContext.is_ru() else "Preparing reference groups...")
+            lbl_title = QLabel("Идет подготовка Образецов..." if AppContext.is_ru() else "Preparing reference groups...")
             bar = QProgressBar()
             bar.setRange(0, len(needs_training))
             
@@ -1515,7 +1457,7 @@ class AiClassificationTab(QWidget):
             dlg.show()
             
             for idx, name in enumerate(needs_training):
-                lbl_title.setText(f"Обучение эталона ({idx + 1}/{len(needs_training)}): {name}")
+                lbl_title.setText(f"Обучение Образеца ({idx + 1}/{len(needs_training)}): {name}")
                 from PyQt6.QtWidgets import QApplication
                 QApplication.processEvents()
                 
@@ -1560,13 +1502,15 @@ class AiClassificationTab(QWidget):
         self.active_worker.start()
 
     def on_scan_progress(self, stage, percent, text, scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, empty):
+        self.progress_bar.setMaximum(100)
+        self.progress_bar.setValue(int(percent))
+        self.progress_bar.setFormat(f"{text} ({int(percent)}%)" if "%" not in text else text)
+        
+        # Меняем цвет полосы в зависимости от этапа
         if stage == STAGE_SCANNING:
-            self.progress_bar.setMaximum(0)
-            self.progress_bar.setFormat(text)
+            self.progress_bar.setStyleSheet("QProgressBar { border: none; background-color: #151515; text-align: center; color: white; font-size: 11px; } QProgressBar::chunk { background-color: #3b82f6; }")
         else:
-            self.progress_bar.setMaximum(100)
-            self.progress_bar.setValue(int(percent))
-            self.progress_bar.setFormat(f"{text} ({int(percent)}%)")
+            self.progress_bar.setStyleSheet("QProgressBar { border: none; background-color: #151515; text-align: center; color: white; font-size: 11px; } QProgressBar::chunk { background-color: #22c55e; }")
             
         from utils_common import format_size
         self.lbl_stats.setText(
@@ -1684,6 +1628,21 @@ class AiClassificationTab(QWidget):
             path = data.get("path")
             if path and os.path.exists(path):
                 self.preview_widget.load_file(path)
+                
+                # Попытка извлечь лица из кэша и нарисовать их
+                try:
+                    stat = os.stat(path)
+                    mtime = stat.st_mtime
+                    size = stat.st_size
+                    faces = self.classifier.cache.get_file_faces(path, mtime, size)
+                    if faces:
+                        bboxes = [f.get("bbox") for f in faces if f.get("bbox")]
+                        if hasattr(self.preview_widget, "draw_faces"):
+                            self.preview_widget.draw_faces(bboxes)
+                except Exception as e:
+                    import logging
+                    logging.error(f"Ошибка получения лиц для предпросмотра: {e}")
+                    
                 self.file_selected.emit(path)
 
     def on_tree_item_changed(self, item, column):
@@ -1982,7 +1941,7 @@ class AiClassificationTab(QWidget):
 
 
 # -----------------------------------------------------------------------------
-# Кнопка чекбокса, использующаяся в чипах эталонов
+# Кнопка чекбокса, использующаяся в чипах Образецов
 # -----------------------------------------------------------------------------
 
     def open_filter_dialog_ai(self):

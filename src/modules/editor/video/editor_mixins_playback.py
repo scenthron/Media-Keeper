@@ -42,14 +42,14 @@ class EditorPlaybackMixin:
                     break
             
             if current_seg_idx != -1:
-                is_green = (current_seg_idx % 2 == 0)
-                if inverted: is_green = not is_green
+                from .helpers import is_segment_taken
+                is_green = is_segment_taken(len(markers), current_seg_idx, inverted)
                 
                 if not is_green:
                     next_green_idx = -1
                     for i in range(current_seg_idx + 1, len(segments) - 1):
-                        take = (i % 2 == 0)
-                        if inverted: take = not take
+                        from .helpers import is_segment_taken
+                        take = is_segment_taken(len(markers), i, inverted)
                         if take:
                             next_green_idx = i
                             break

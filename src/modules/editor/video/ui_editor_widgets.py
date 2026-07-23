@@ -169,9 +169,8 @@ class WaveformProgressWidget(QFrame):
                 for i in range(len(segments) - 1):
                     s1, s2 = segments[i], segments[i + 1]
                     x1, x2 = int(s1 * w), int(s2 * w)
-                    take = (i % 2 == 0)
-                    if self.is_inverted:
-                        take = not take
+                    from .helpers import is_segment_taken
+                    take = is_segment_taken(len(self.markers), i, self.is_inverted)
                     color = self.green_color if take else self.red_color
                     painter.setPen(Qt.PenStyle.NoPen)
                     painter.setBrush(QBrush(color))
@@ -376,9 +375,9 @@ class CollapsibleSection(QFrame):
         self.btn_header.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_header.setStyleSheet("""
             QPushButton {
-                background-color: #3b82f6;
+                background-color: #1d4e28;
                 color: white;
-                border: 1px solid #3b82f6;
+                border: 1px solid #1d4e28;
                 border-bottom: none;
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
@@ -390,9 +389,9 @@ class CollapsibleSection(QFrame):
                 padding-left: 8px;
             }
             QPushButton:hover {
-                background-color: #2563eb;
+                background-color: #226131;
                 color: white;
-                border-color: #2563eb;
+                border-color: #226131;
             }
         """)
         self.btn_header.clicked.connect(self.toggle_expanded)
@@ -432,9 +431,9 @@ class CollapsibleSection(QFrame):
             self.content_container.show()
             self.btn_header.setStyleSheet("""
                 QPushButton {
-                    background-color: #3b82f6;
+                    background-color: #1d4e28;
                     color: white;
-                    border: 1px solid #3b82f6;
+                    border: 1px solid #1d4e28;
                     border-bottom: none;
                     border-top-left-radius: 4px;
                     border-top-right-radius: 4px;
@@ -446,9 +445,9 @@ class CollapsibleSection(QFrame):
                     padding-left: 8px;
                 }
                 QPushButton:hover {
-                    background-color: #2563eb;
+                    background-color: #226131;
                     color: white;
-                    border-color: #2563eb;
+                    border-color: #226131;
                 }
             """)
         else:
@@ -466,9 +465,9 @@ class CollapsibleSection(QFrame):
                     padding-left: 8px;
                 }
                 QPushButton:hover {
-                    background-color: #3b82f6;
+                    background-color: #1d4e28;
                     color: white;
-                    border-color: #3b82f6;
+                    border-color: #1d4e28;
                 }
             """)
 

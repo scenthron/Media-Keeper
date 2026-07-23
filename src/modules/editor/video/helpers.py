@@ -60,3 +60,14 @@ def format_file_info(name, size, codec, res):
     """
     size_mb = size / (1024 * 1024)
     return f"{name} ({size_mb:.0f}MB, {codec}, {res})"
+
+
+def is_segment_taken(num_markers: int, segment_index: int, is_inverted: bool) -> bool:
+    """Determines if a segment should be taken based on marker count and inversion."""
+    if num_markers == 2:
+        take = (segment_index == 1)
+    else:
+        take = (segment_index % 2 == 0)
+    if is_inverted:
+        take = not take
+    return take

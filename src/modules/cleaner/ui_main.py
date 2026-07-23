@@ -17,6 +17,7 @@ from .ui_panels import CleanerSettingsPanel, CleanerActionBar, SimilarSettingsPa
 from .ui_preview import CleanerPreviewWidget
 from .ui_widgets import SourceListItem, GroupHeaderWidget
 from .ui_ai_tab import AiClassificationTab
+from .ui_ai_lab import AILabTab
 from .ui_dialogs import CleanerOverlay
 from .db_cache import CleanerDB
 from .db_session import SessionDB
@@ -180,20 +181,19 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
     @property
     def source_folders(self) -> dict:
         if self.current_tab == 2:
-            return self.source_folders_dupes
+            return self.source_folders_ai
         return self.source_folders_similar if self.current_tab == 1 else self.source_folders_dupes
 
     @source_folders.setter
     def source_folders(self, val: dict) -> None:
         if self.current_tab == 2:
-            self.source_folders_dupes = val
+            self.source_folders_ai = val
         elif self.current_tab == 1:
             self.source_folders_similar = val
         else:
             self.source_folders_dupes = val
 
-    def get_active_source_folders(self) -> list[str]:
-        return list(self.source_folders.keys())
+
 
     @property
     def db_helper(self):
@@ -333,6 +333,11 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         else:
             return self.lbl_groups_found_dupes
 
+    def get_active_source_folders(self) -> list[str]:
+        if self.current_tab == 3:
+            return []
+        return list(self.source_folders.keys())
+
     @property
     def lbl_selection_info(self):
         if self.current_tab == 1:
@@ -359,6 +364,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.tab_bar.addTab("Поиск дубликатов" if is_ru else "Duplicates Search")
         self.tab_bar.addTab("Поиск похожих" if is_ru else "Find Similar")
         self.tab_bar.addTab("ИИ Поиск" if is_ru else "AI Search")
+        self.tab_bar.addTab("AI Lab (Эксперимент)" if is_ru else "AI Lab (Experiment)")
         self.tab_bar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.tab_bar.setCursor(Qt.CursorShape.PointingHandCursor)
         self.tab_bar.setStyleSheet("""
@@ -422,6 +428,10 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         # Create AI Classifier Page
         self.page_ai = AiClassificationTab(self)
         self.stacked_widget.addWidget(self.page_ai)
+
+        # Create AI Lab Page
+        self.page_ai_lab = AILabTab(self)
+        self.stacked_widget.addWidget(self.page_ai_lab)
         
         self.main_layout.addWidget(self.stacked_widget, 1)
 
@@ -443,6 +453,8 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
             self.page_ai.update_folders_label(self.get_active_source_folders())
             if hasattr(self.page_ai, 'check_models_status'):
                 self.page_ai.check_models_status()
+        elif index == 3:
+            self.page_ai_lab.update_folders_label(self.get_active_source_folders())
         else:
             self.update_cache_info()
             self.on_safe_scan_toggled()

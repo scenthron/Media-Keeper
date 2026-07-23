@@ -1181,14 +1181,14 @@ class ZoomableGraphicsView(QGraphicsView):
         self.text_item.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
         self.text_item.setDefaultTextColor(QColor("#3b82f6"))
         
+        self.text_item.setPlainText(f"🎵\n{track_name}")
+        
         # Настройка выравнивания по центру без HTML
         from PyQt6.QtGui import QTextOption
         doc = self.text_item.document()
         option = QTextOption()
         option.setAlignment(Qt.AlignmentFlag.AlignCenter)
         doc.setDefaultTextOption(option)
-        
-        self.text_item.setPlainText(f"🎵\n{track_name}")
         
         base_w, base_h = 1280.0, 720.0
         text_rect = self.text_item.boundingRect()
@@ -1206,7 +1206,22 @@ class ZoomableGraphicsView(QGraphicsView):
         if self.time_overlay: self.time_overlay.hide()
         self.clear_scene_content()
         self.text_item.setPlainText(message)
+        
+        from PyQt6.QtGui import QTextOption
+        doc = self.text_item.document()
+        option = QTextOption()
+        option.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        doc.setDefaultTextOption(option)
+        
+        base_w, base_h = 1280.0, 720.0
+        text_rect = self.text_item.boundingRect()
+        x_text = (base_w - text_rect.width()) / 2
+        y_text = (base_h - text_rect.height()) / 2
+        self.text_item.setPos(x_text, y_text)
         self.text_item.show()
+        
+        self.scene.setSceneRect(0, 0, base_w, base_h)
+        self.reset_view()
         
         # Проверяем, выбрана ли папка входящих и не пуста ли она
         show_btn = True
@@ -2238,7 +2253,7 @@ class SorterGridView(SorterBaseListView):
             if end_row < 0:
                 end_row = self.count() - 1
             
-            _thumb_exts = VIDEO_EXTS
+            _thumb_exts = set(VIDEO_EXTS) | set(IMAGE_EXTS)
             target_thumb_size = QSize(max(256, self.tile_size), max(256, self.tile_size))
             
             for i in range(max(0, start_row), min(self.count(), end_row + 1)):
@@ -2297,7 +2312,7 @@ class SorterGridView(SorterBaseListView):
             return
             
         end = min(self.count(), self._commit_index + 500)
-        _thumb_exts = VIDEO_EXTS
+        _thumb_exts = set(VIDEO_EXTS) | set(IMAGE_EXTS)
         target_thumb_size = QSize(max(256, self.tile_size), max(256, self.tile_size))
         
         for i in range(self._commit_index, end):
@@ -3443,7 +3458,7 @@ class SorterViewerArea(QWidget):
                     
                     # Request async thumbnail generation
                     ext = os.path.splitext(rel_path)[1].lower()
-                    if ext in VIDEO_EXTS:
+                    if ext in set(VIDEO_EXTS) | set(IMAGE_EXTS):
                         ThumbnailLoader.inst().get_thumbnail(full_path, QSize(256, 256))
         finally:
             self.grid_view.setUpdatesEnabled(True)

@@ -1,9 +1,6 @@
 name: Build and Release Media Keeper
 
 on:
-  push:
-    branches:
-      - main
   release:
     types: [published]
 
@@ -46,7 +43,7 @@ jobs:
         
         $tag = "${{ github.event.release.tag_name }}"
         if (-not $tag) {
-          $tag = "main"
+          $tag = "release"
         }
         
         $zipName = "Media_Keeper_$tag.zip"
@@ -55,16 +52,7 @@ jobs:
         
         Add-Content -Path $env:GITHUB_ENV -Value "ZIP_NAME=$zipName"
 
-    - name: Upload artifact (for branch push)
-      if: github.event_name == 'push'
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.ZIP_NAME }}
-        path: ${{ env.ZIP_NAME }}
-        retention-days: 30
-
-    - name: Upload Release Asset (for published release)
-      if: github.event_name == 'release'
+    - name: Upload Release Asset
       uses: softprops/action-gh-release@v2
       with:
         files: ${{ env.ZIP_NAME }}

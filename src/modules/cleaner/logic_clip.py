@@ -2,11 +2,14 @@ import os
 import cv2
 import numpy as np
 import onnxruntime as ort
-from safetensors.numpy import load_file
 import logging
 
 try:
-    import os
+    from safetensors.numpy import load_file
+except ImportError:
+    load_file = None
+
+try:
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     HAS_TRANSFORMERS = True # We keep the flag True to avoid breaking other logic, but use tokenizers directly
 except ImportError:

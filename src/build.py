@@ -71,7 +71,26 @@ def build():
     else:
         print(f"[WARN] fpcalc.exe not found at {fpcalc_path}, it will not be bundled!")
 
-    # Скрытые импорты PyQt6, необходимые для динамической загрузки модулей в рантайме
+    # Автоматический сбор ВСЕХ бинарных DLL, C++ зависимостей и ресурсных файлов для нативных библиотек
+    try:
+        from PyInstaller.utils.hooks import collect_all
+        packages_to_collect = ["onnxruntime", "tokenizers", "safetensors", "cv2", "PIL", "PyQt6"]
+        for pkg in packages_to_collect:
+            try:
+                datas, binaries, hiddenimports = collect_all(pkg)
+                for d in datas:
+                    pyinstaller_cmd.extend(["--add-data", f"{d[0]}{os.pathsep}{d[1]}"])
+                for b in binaries:
+                    pyinstaller_cmd.extend(["--add-binary", f"{b[0]}{os.pathsep}{b[1]}"])
+                for h in hiddenimports:
+                    pyinstaller_cmd.extend(["--hidden-import", h])
+                print(f"[BUILD] Успешно собраны все нативные бинарники и DLL для '{pkg}'")
+            except Exception as pe:
+                print(f"[WARN] Предупреждение при сборке '{pkg}': {pe}")
+    except Exception as e:
+        print(f"[WARN] Ошибка импорта PyInstaller.utils.hooks: {e}")
+
+    # Скрытые импорты PyQt6 и внутренних модулей
     hidden_imports = [
         "PyQt6.QtSvg",
         "PyQt6.QtSvgWidgets",

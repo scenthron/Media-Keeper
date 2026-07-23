@@ -2,12 +2,29 @@ import os
 import cv2
 import numpy as np
 import onnxruntime as ort
+import re
 from PyQt6.QtCore import QObject, pyqtSignal, QRunnable, QThreadPool
+
+def parse_multi_tags(text: str) -> dict:
+    result = {}
+    pattern_multi = r'\(([^:]+):([^\)]+)\)'
+    for match in re.finditer(pattern_multi, text):
+        group_name = match.group(1).strip()
+        components = [c.strip() for c in match.group(2).split(',') if c.strip()]
+        if components:
+            result[group_name] = components
+            
+    text_clean = re.sub(pattern_multi, '', text)
+    regular_tags = [t.strip() for t in text_clean.split(',') if t.strip()]
+    for tag in regular_tags:
+        result[tag] = [tag]
+        
+    return result
 
 class AILabWorker(QRunnable):
     class Signals(QObject):
         progress = pyqtSignal(int, int) # current, total
-        result_found = pyqtSignal(str, float) # filepath, similarity
+        result_found = pyqtSignal(str, float, str) # filepath, similarity, matched_group_name
         finished = pyqtSignal()
         error = pyqtSignal(str)
 
@@ -19,11 +36,14 @@ class AILabWorker(QRunnable):
         self.ref_image_path = ref_image_path
         self.neg_image_path = neg_image_path
         self.text_query = text_query
-        self.cache = cache if cache is not None else {'face': {}, 'text': {}} # { mode: { filepath: feature_vector } }
+        self.cache = cache if cache is not None else {'face': {}, 'text': {}}
         self.models_cache = models_cache if models_cache is not None else {}
         
         self.signals = self.Signals()
         self.is_cancelled = False
+        
+        self.text_queries_dict = {}
+        self.text_embeddings = {} # { group_name: [ emb1, emb2, ... ] }
 
         from logic_paths import get_models_dir
         
@@ -67,8 +87,20 @@ class AILabWorker(QRunnable):
                         self.signals.error.emit("Не удалось загрузить модели CLIP!")
                         return
                     
-                    ref_feature = self.clip_searcher.encode_text(self.text_query)
-                    if ref_feature is None:
+                    if not self.text_query:
+                        self.signals.error.emit("Пустой текстовый запрос!")
+                        return
+                        
+                    self.text_queries_dict = parse_multi_tags(self.text_query)
+                    
+                    for group_name, components in self.text_queries_dict.items():
+                        self.text_embeddings[group_name] = []
+                        for comp in components:
+                            emb = self.clip_searcher.encode_text(comp)
+                            if emb is not None:
+                                self.text_embeddings[group_name].append(emb)
+                                
+                    if not self.text_embeddings:
                         self.signals.error.emit("Ошибка обработки текста CLIP!")
                         return
             else:
@@ -117,7 +149,6 @@ class AILabWorker(QRunnable):
                         elif self.search_mode == 'text':
                             feature = self.clip_searcher.encode_image(file_path)
                             
-                        # Save to cache even if None (to avoid rescanning broken images)
                         self.cache[self.search_mode][file_path] = feature
 
                     if feature is not None and self.action != 'scan_only':
@@ -133,17 +164,24 @@ class AILabWorker(QRunnable):
                                 mapped_score = mapped_score - (neg_mapped * 0.5)
                                 mapped_score = max(0, mapped_score)
                                 
+                            if mapped_score > 0:
+                                self.signals.result_found.emit(file_path, float(mapped_score), "Face")
+                                
                         elif self.search_mode == 'text':
-                            score_raw = np.dot(ref_feature, feature) # text_emb and img_emb are already L2 normalized
-                            # CLIP raw scores usually range from 0.15 (unrelated) to 0.35 (perfect match)
-                            # Map 0.20 to 0%, 0.32 to 100%
-                            mapped_score = (score_raw - 0.20) / (0.32 - 0.20) * 100
-                            mapped_score = max(0, min(100, int(mapped_score)))
-
-                        if mapped_score > 0:
-                            self.signals.result_found.emit(file_path, float(mapped_score))
+                            for group_name, embs in self.text_embeddings.items():
+                                best_mapped_score = 0
+                                for text_emb in embs:
+                                    score_raw = np.dot(text_emb, feature)
+                                    mapped_score = (score_raw - 0.20) / (0.32 - 0.20) * 100
+                                    mapped_score = max(0, min(100, int(mapped_score)))
+                                    if mapped_score > best_mapped_score:
+                                        best_mapped_score = mapped_score
+                                
+                                if best_mapped_score > 0:
+                                    self.signals.result_found.emit(file_path, float(best_mapped_score), group_name)
+                                    
                 except Exception as e:
-                    continue # Skip broken images
+                    continue 
 
             self.signals.finished.emit()
 
@@ -155,7 +193,6 @@ class AILabWorker(QRunnable):
         features = []
         
         for path in paths:
-            # Safe read with numpy for cyrillic paths
             stream = open(path, "rb")
             bytes_array = bytearray(stream.read())
             numpyarray = np.asarray(bytes_array, dtype=np.uint8)

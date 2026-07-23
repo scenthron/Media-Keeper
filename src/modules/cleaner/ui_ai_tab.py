@@ -101,7 +101,12 @@ class AiModelDownloaderThread(QThread):
             progress_callback=on_progress,
             stop_checker=lambda: self._is_stopped
         )
-        self.finished_signal.emit(success)
+        if success and not self._is_stopped:
+            # Инициализируем сессии в фоновом потоке, не блокируя UI
+            init_ok = self.ai_engine.initialize_sessions()
+            self.finished_signal.emit(init_ok)
+        else:
+            self.finished_signal.emit(False)
 
 # -----------------------------------------------------------------------------
 # Основная вкладка ИИ-классификации
@@ -1018,18 +1023,12 @@ class AiClassificationTab(QWidget):
 
             if success:
                 self.placeholder_status.setStyleSheet("color: #4ade80;")
-                self.placeholder_status.setText("Инициализация..." if is_ru else "Initializing...")
-                
-                if self.ai.initialize_sessions():
-                    self.placeholder_status.setText("Успешно!" if is_ru else "Success!")
-                    self.download_placeholder.hide()
-                    self.main_content_widget.show()
-                else:
-                    self.placeholder_status.setStyleSheet("color: #ef4444;")
-                    self.placeholder_status.setText("Ошибка инициализации!" if is_ru else "Initialization failed!")
+                self.placeholder_status.setText("Успешно!" if is_ru else "Success!")
+                self.download_placeholder.hide()
+                self.main_content_widget.show()
             else:
                 self.placeholder_status.setStyleSheet("color: #ef4444;")
-                self.placeholder_status.setText("Ошибка при скачивании моделей!" if is_ru else "Failed to download models!")
+                self.placeholder_status.setText("Ошибка скачивания или инициализации!" if is_ru else "Download or initialization failed!")
 
         self.dl_thread.progress_signal.connect(on_progress)
         self.dl_thread.finished_signal.connect(on_finished)

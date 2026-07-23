@@ -198,6 +198,8 @@ class AiEngine:
             self.detector = SCRFD(self.scrfd_path)
             opts = ort.SessionOptions()
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
+            opts.intra_op_num_threads = 2
+            opts.inter_op_num_threads = 2
             self.arcface_session = ort.InferenceSession(self.arcface_path, sess_options=opts, providers=['CPUExecutionProvider'])
             
             # 2. Загрузка CLIP

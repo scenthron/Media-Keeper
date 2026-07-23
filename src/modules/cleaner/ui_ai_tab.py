@@ -1638,7 +1638,7 @@ class AiClassificationTab(QWidget):
                     faces = self.classifier.cache.get_file_faces(path, mtime, size)
                     if faces:
                         bboxes = [f.get("bbox") for f in faces if f.get("bbox")]
-                        matched_bbox = user_data.get("matched_bbox") if user_data else None
+                        matched_bbox = data.get("matched_bbox") if data else None
                         if hasattr(self.preview_widget, "draw_faces"):
                             self.preview_widget.draw_faces(bboxes, matched_bbox=matched_bbox)
                 except Exception as e:

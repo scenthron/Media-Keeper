@@ -1434,8 +1434,8 @@ class AiClassificationTab(QWidget):
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             
             is_multi = "," in body
-            base_color = "#9a3412" if is_multi else "#166534"
-            hover_color = "#c2410c" if is_multi else "#15803d"
+            base_color = "#d97706" if is_multi else "#166534"
+            hover_color = "#f59e0b" if is_multi else "#15803d"
             
             btn.setStyleSheet(f"""
                 QPushButton {{
@@ -1617,6 +1617,8 @@ class AiClassificationTab(QWidget):
         task_type = AiTaskType.TEXT_TO_IMAGE if text_query else (AiTaskType.AUTO_CLUSTER if is_cluster else AiTaskType.FIND_BY_REFERENCES)
         if task_type == AiTaskType.FIND_BY_REFERENCES:
             analysis_target = AiTarget.BOTH
+        elif task_type == AiTaskType.TEXT_TO_IMAGE:
+            analysis_target = AiTarget.IMAGES
         else:
             analysis_target = AiTarget.FACES if cluster_type == 'face' else AiTarget.IMAGES
         

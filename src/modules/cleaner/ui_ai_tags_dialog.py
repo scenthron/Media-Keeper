@@ -60,12 +60,12 @@ class AiTagChipWidget(QFrame):
             if self.is_multi:
                 self.setStyleSheet("""
                     QFrame {
-                        background-color: #9a3412;
-                        border: 1px solid #c2410c;
+                        background-color: #d97706;
+                        border: 1px solid #f59e0b;
                         border-radius: 4px;
                         color: white;
                     }
-                    QFrame:hover { background-color: #c2410c; }
+                    QFrame:hover { background-color: #f59e0b; }
                 """)
             else:
                 self.setStyleSheet("""
@@ -202,8 +202,8 @@ class AiTagManagerDialog(QDialog):
             # Check if multi-tag
             if "," in body:
                 self.btn_create.setStyleSheet("""
-                    QPushButton { background-color: #c2410c; color: white; border: 1px solid #ea580c; border-radius: 4px; font-weight: bold; }
-                    QPushButton:hover { background-color: #ea580c; }
+                    QPushButton { background-color: #f59e0b; color: white; border: 1px solid #f59e0b; border-radius: 4px; font-weight: bold; }
+                    QPushButton:hover { background-color: #f59e0b; }
                 """)
             else:
                 self.btn_create.setStyleSheet("""

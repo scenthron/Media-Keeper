@@ -1467,7 +1467,6 @@ class AiClassificationTab(QWidget):
         
         if not combined_query:
             from PyQt6.QtWidgets import QMessageBox
-            from config import AppContext
             QMessageBox.warning(self, "Внимание" if AppContext.is_ru() else "Warning", "Введите текстовый запрос или выберите тег." if AppContext.is_ru() else "Please enter a query or select a tag.")
             return
         
@@ -1517,7 +1516,6 @@ class AiClassificationTab(QWidget):
         folders = self.cleaner.get_active_source_folders()
         if not folders:
             from PyQt6.QtWidgets import QMessageBox
-            from config import AppContext
             QMessageBox.warning(self, "Внимание" if AppContext.is_ru() else "Warning", "Выберите хотя бы одну папку с медиафайлами для сканирования!" if AppContext.is_ru() else "Select at least one media folder to scan!")
             return
             

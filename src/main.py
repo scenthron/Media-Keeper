@@ -1,6 +1,8 @@
 import sys
 import os
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 # Предотвращаем запуск интерактивного шелла Python при выходе (сброс унаследованных переменных)
 os.environ.pop('PYTHONINSPECT', None)
 if hasattr(sys, '__interactivehook__'):

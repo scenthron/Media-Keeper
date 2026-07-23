@@ -127,9 +127,13 @@ class CLIPSearcher:
         Превращает текст в нормализованный вектор размерности 512.
         Возвращает None, если модели не загружены или произошла ошибка.
         """
-        if not self.is_loaded:
+        if not self.is_loaded or not text:
             return None
             
+        if self.tokenizer is None or self.text_sess is None:
+            logger.error("Токенизатор или ONNX-сессия текста не инициализирована")
+            return None
+
         # Автоматический перевод кириллицы на английский для CLIP
         import re
         if re.search(r'[а-яА-ЯёЁ]', text):
@@ -139,10 +143,14 @@ class CLIPSearcher:
                 text = translated_text
             
         try:
-            # Tokenize using tokenizers library directly
-            self.tokenizer.enable_truncation(max_length=77)
-            self.tokenizer.enable_padding(length=77)
-            encoded = self.tokenizer.encode(text)
+            # Безопасная токенизация
+            try:
+                self.tokenizer.enable_truncation(max_length=77)
+                self.tokenizer.enable_padding(length=77)
+                encoded = self.tokenizer.encode(text)
+            except Exception as te:
+                logger.error(f"Ошибка токенизации текста '{text}': {te}")
+                return None
             
             input_ids = np.array([encoded.ids], dtype=np.int64)
             attention_mask = np.array([encoded.attention_mask], dtype=np.int64)

@@ -474,6 +474,7 @@ class CleanerPreviewWidget(QWidget):
                 pen.setWidth(3)
                 pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
                 rect.setPen(pen)
+                rect.setZValue(10)
                 self.scene.addItem(rect)
 
     def load_file(self, path):

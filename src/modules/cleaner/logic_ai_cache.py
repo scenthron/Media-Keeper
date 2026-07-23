@@ -94,7 +94,7 @@ class AiCacheManager:
                 
                 if row:
                     mtime, size, emb_blob = row
-                    if abs(mtime - current_mtime) < 0.01 and size == current_size:
+                    if abs(mtime - current_mtime) < 1.0 and size == current_size:
                         return np.frombuffer(emb_blob, dtype=np.float32)
         except Exception as e:
             logging.error(f"Ошибка чтения эмбеддинга из кэша для {filepath}: {e}")
@@ -162,7 +162,7 @@ class AiCacheManager:
                 faces = []
                 for row in rows:
                     idx, mtime, size, bbox_str, desc_blob = row
-                    if abs(mtime - current_mtime) >= 0.01 or size != current_size:
+                    if abs(mtime - current_mtime) >= 1.0 or size != current_size:
                         return None # Кэш устарел, нужно пересканировать весь файл
                         
                     bbox = tuple(map(int, bbox_str.split(','))) if bbox_str else ()
@@ -213,7 +213,7 @@ class AiCacheManager:
         has_general = False
         has_faces = False
         try:
-            prefix = os.path.normpath(folder_path) + os.sep
+            prefix = os.path.normcase(os.path.normpath(folder_path)) + os.sep
             with self._conn() as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT 1 FROM image_embeddings WHERE filepath LIKE ? LIMIT 1", (prefix + "%",))

@@ -204,12 +204,14 @@ class AiCoreWorker(QRunnable):
                          f"Файлов для анализа: {total_files}, Порог: {self.request.threshold}")
 
             cache_batch = []
+            cached_hits = 0
             for fp in valid_files:
                 if self.is_cancelled: return
                 
                 percent = (processed / total_files) * 95.0  # Feature extraction takes up 95% of time
                 if processed % 10 == 0:
-                    self.signals.progress.emit(STAGE_ANALYSIS, percent, f"Извлечение признаков... {processed}/{total_files}", scanned_files, 0, 0, scanned_bytes, 0, 0)
+                    status_text = "Чтение из ИИ-кэша..." if (cached_hits > 0 and cached_hits >= processed - 10) else "Извлечение признаков ИИ..."
+                    self.signals.progress.emit(STAGE_ANALYSIS, percent, f"{status_text} {processed}/{total_files}", scanned_files, 0, 0, scanned_bytes, 0, 0)
                 
                 try:
                     stat = os.stat(fp)
@@ -219,10 +221,12 @@ class AiCoreWorker(QRunnable):
                     processed += 1
                     continue
                 
+                hit_cache = False
                 if self.request.analysis_target in (AiTarget.FACES, AiTarget.BOTH):
                     faces = None
                     if self.request.use_cache and self.cache:
                         faces = self.cache.get_file_faces(fp, mtime, size)
+                        if faces is not None: hit_cache = True
                     if faces is None:
                         faces = self.engine.extract_faces(fp)
                         if self.request.use_cache and self.cache and faces is not None:
@@ -235,6 +239,7 @@ class AiCoreWorker(QRunnable):
                     emb = None
                     if self.request.use_cache and self.cache:
                         emb = self.cache.get_image_embedding(fp, mtime, size)
+                        if emb is not None: hit_cache = True
                     if emb is None:
                         emb = self.engine.extract_clip_embedding(fp)
                         if self.request.use_cache and self.cache and emb is not None:
@@ -245,6 +250,9 @@ class AiCoreWorker(QRunnable):
                             
                     if emb is not None and self.request.analysis_target == AiTarget.IMAGES:
                         file_features.append((fp, emb))
+                        
+                if hit_cache:
+                    cached_hits += 1
                         
                 # If BOTH, file_features won't be used by auto-cluster, but FIND_BY_REFERENCES uses the cache directly
                 if self.request.analysis_target == AiTarget.BOTH:

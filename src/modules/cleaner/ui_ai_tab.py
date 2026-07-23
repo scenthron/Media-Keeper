@@ -486,23 +486,7 @@ class AiClassificationTab(QWidget):
         self.text_highlighter = MultiTagHighlighter(self.line_text_search.document())
         page_text_layout.addWidget(self.line_text_search)
         
-        self.btn_text_search = QPushButton("Найти" if AppContext.is_ru() else "Find")
-        self.btn_text_search.setFixedHeight(32)
-        self.btn_text_search.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_text_search.setStyleSheet("""
-            QPushButton {
-                background-color: #3b82f6;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 13px;
-            }
-            QPushButton:hover { background-color: #2563eb; }
-        """)
-        page_text_layout.addWidget(self.btn_text_search)
-        
-        # Action row for tags
+        # Action row for tags + Search button
         tags_action_layout = QHBoxLayout()
         self.btn_manage_tags = QPushButton("⚙️ Теги")
         self.btn_manage_tags.setToolTip("Управление текстовыми тегами")
@@ -518,18 +502,33 @@ class AiClassificationTab(QWidget):
         self.btn_info_tags.setStyleSheet("QPushButton { background: transparent; border: none; font-size: 16px; }")
         self.btn_info_tags.clicked.connect(self.show_tags_info)
         
+        self.btn_text_search = QPushButton("Найти" if AppContext.is_ru() else "Find")
+        self.btn_text_search.setFixedHeight(32)
+        self.btn_text_search.setFixedWidth(100)
+        self.btn_text_search.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_text_search.setStyleSheet("""
+            QPushButton {
+                background-color: #3b82f6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover { background-color: #2563eb; }
+        """)
+        
         tags_action_layout.addWidget(self.btn_manage_tags)
         tags_action_layout.addWidget(self.btn_info_tags)
         tags_action_layout.addStretch()
+        tags_action_layout.addWidget(self.btn_text_search)
         
         page_text_layout.addLayout(tags_action_layout)
         
         # Tags container
-
         self.tags_scroll = QScrollArea()
         self.tags_scroll.setWidgetResizable(True)
         self.tags_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
-        self.tags_scroll.setFixedHeight(120)
         
         self.tags_container = QWidget()
         self.tags_container.setStyleSheet("background: transparent;")

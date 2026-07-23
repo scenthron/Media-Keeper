@@ -226,8 +226,6 @@ class AiEngine:
             bbox = bboxes[i, :4]
             kps = kpss[i]
             
-            from skimage import transform as trans
-            tform = trans.SimilarityTransform()
             src = np.array([
                 [38.2946, 51.6963],
                 [73.5318, 51.5014],
@@ -235,9 +233,9 @@ class AiEngine:
                 [41.5493, 92.3655],
                 [70.7299, 92.2041]
             ], dtype=np.float32)
-            
-            tform.estimate(kps, src)
-            M = tform.params[0:2, :]
+            M, _ = cv2.estimateAffinePartial2D(kps, src)
+            if M is None:
+                continue
             
             face_img = cv2.warpAffine(img_rgb, M, (112, 112), borderValue=0.0)
             

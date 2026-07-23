@@ -82,12 +82,6 @@ def build():
         "numpy",
         "cv2",
         "onnxruntime",
-        "scipy",
-        "scipy.spatial",
-        "scipy.optimize",
-        "scipy.ndimage",
-        "skimage",
-        "skimage.transform",
         "requests",
         "certifi",
         "urllib3",
@@ -117,7 +111,7 @@ def build():
         pyinstaller_cmd.extend(["--hidden-import", imp])
 
     # Исключаем тяжелые библиотеки для уменьшения размера EXE
-    excludes = ["tkinter", "matplotlib"]
+    excludes = ["tkinter", "matplotlib", "scipy", "skimage"]
     for exc in excludes:
         pyinstaller_cmd.extend(["--exclude-module", exc])
 

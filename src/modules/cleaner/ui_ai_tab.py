@@ -1581,7 +1581,7 @@ class AiClassificationTab(QWidget):
                 file_item.setText(1, f"{f['confidence']:.1f}%")
                 file_item.setText(2, format_size(f["size"]))
                 file_item.setText(3, f["path"])
-                file_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": False, "path": f["path"], "size": f["size"], "confidence": f.get("confidence", 0.0) / 100.0, "matched_bbox": f.get("matched_bbox")})
+                file_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": False, "path": f["path"], "size": f["size"], "confidence": f.get("confidence", 0.0) / 100.0, "matched_bbox": f.get("matched_bbox"), "type": f.get("type", "face")})
                 
             group_item.setExpanded(True)
             

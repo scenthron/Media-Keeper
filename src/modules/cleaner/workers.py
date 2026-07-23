@@ -1097,7 +1097,7 @@ class AiScanWorker(QThread):
                                 cluster_data.append({
                                     "centroid": emb,
                                     "raw_embs": [{"emb": emb}],
-                                    "members": [{"path": fp, "size": size, "confidence": 100.0, "type": "face"}]
+                                    "members": [{"path": fp, "size": size, "confidence": 100.0, "type": "general"}]
                                 })
                 else:
                     if getattr(self, "text_query", None) and text_emb_cached is not None:

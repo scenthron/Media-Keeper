@@ -41,6 +41,8 @@ class SearchTextEdit(QTextEdit):
         super().__init__(parent)
         self.setAcceptRichText(False)
         self.setFixedHeight(36)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
@@ -438,11 +440,6 @@ class AiClassificationTab(QWidget):
         """)
         self.btn_create_ref.clicked.connect(self.create_group)
         ref_header.addWidget(self.btn_create_ref)
-        
-        ref_header.addStretch()
-        
-        
-        
         
         
         self.scroll_ref = QScrollArea()

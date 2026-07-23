@@ -66,6 +66,9 @@ src/docs/
 # Local Agent Customizations
 .agents/
 
+# Local sandbox directory
+sandbox/
+
 # Backup files
 .git_backup/
 

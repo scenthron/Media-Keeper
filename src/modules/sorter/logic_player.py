@@ -158,7 +158,6 @@ class PlayerMixin:
     
     def show_current_file(self):
         import traceback
-        with open("crash.txt", "a", encoding="utf-8") as f: f.write("[DEBUG] show_current_file start\n")
         try:
             if not self.files_queue:
                 self.current_file_path = None
@@ -323,7 +322,7 @@ class PlayerMixin:
                 self.current_media_is_video = False
                 self.viewer.show_empty_state(AppContext.tr("msg_unsupported") + ext)
         except Exception as e:
-            with open("crash.txt", "a", encoding="utf-8") as f: f.write(f"[ERROR] Exception in show_current_file: {e}\n{traceback.format_exc()}\n")
+            logging.error(f"Exception in show_current_file: {e}", exc_info=True)
             raise
 
     def toggle_playback(self):

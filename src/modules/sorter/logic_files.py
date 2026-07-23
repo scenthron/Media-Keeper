@@ -181,7 +181,6 @@ class FileOpsMixin:
 
     def on_scan_finished(self, files):
         import traceback
-        with open("crash.txt", "a", encoding="utf-8") as f: f.write("[DEBUG] on_scan_finished start\n")
         try:
             if getattr(self, '_scan_was_cancelled', False):
                 self._scan_was_cancelled = False
@@ -189,7 +188,6 @@ class FileOpsMixin:
                 if hasattr(self, 'scan_thread') and self.scan_thread:
                     self.scan_thread.deleteLater()
                 self.scan_thread = None
-                with open("crash.txt", "a", encoding="utf-8") as f: f.write("[DEBUG] on_scan_finished aborted: cancelled\n")
                 return
 
             if hasattr(self, 'scan_thread') and self.scan_thread and getattr(self.scan_thread, '_is_cancelled', False):
@@ -198,7 +196,6 @@ class FileOpsMixin:
                 if hasattr(self, 'scan_thread') and self.scan_thread:
                     self.scan_thread.deleteLater()
                 self.scan_thread = None
-                with open("crash.txt", "a", encoding="utf-8") as f: f.write("[DEBUG] on_scan_finished aborted: scan_thread cancelled\n")
                 return
 
             current_set = set(f['rel_path'] for f in getattr(self, '_raw_dir_files', [])) if getattr(self, '_raw_dir_files', None) is not None else None
@@ -224,10 +221,8 @@ class FileOpsMixin:
                             ext = os.path.splitext(norm_p)[1].lower()
                             if ext in IMAGE_EXTS | VIDEO_EXTS | AUDIO_EXTS:
                                 loader.get_thumbnail(f_path, QSize(256, 256))
-                with open("crash.txt", "a", encoding="utf-8") as f: f.write("[DEBUG] on_scan_finished return early (no changes)\n")
                 return
 
-            with open("crash.txt", "a", encoding="utf-8") as f: f.write(f"[DEBUG] on_scan_finished proceed to update files, found {len(files)}\n")
             logging.info(f"Scan finished. Found {len(files)} files.")
             self._raw_dir_files = files
             self.apply_local_filters_and_sorting(trigger_sync=False)
@@ -250,10 +245,9 @@ class FileOpsMixin:
                 if os.path.normpath(new_file_full) == os.path.normpath(self.current_file_path):
                     should_reload_player = False
 
-            with open("crash.txt", "a", encoding="utf-8") as f: f.write("[DEBUG] sync_files_queue start\n")
             self.viewer.sync_files_queue(self.UNSORT_DIR, self.files_queue, self.current_index)
         except Exception as e:
-            with open("crash.txt", "a", encoding="utf-8") as f: f.write(f"[ERROR] Exception in on_scan_finished: {e}\n{traceback.format_exc()}\n")
+            logging.error(f"Exception in on_scan_finished: {e}", exc_info=True)
             raise
 
         if self.isVisible():
@@ -663,7 +657,6 @@ class FileOpsMixin:
     def _stop_all_media_players(self, is_only_images=False, is_single_file=False):
         """Останавливает все плееры (основной, ховер, попапы) и освобождает хэндлы файлов."""
         import traceback
-        with open("crash.txt", "a", encoding="utf-8") as f: f.write("[DEBUG] _stop_all_media_players start\n")
         try:
             # Если перемещаются только изображения, пропускаем долгое ожидание в QThreadPool и плеерах,
             # так как изображения не блокируются QMediaPlayer-ом на диске.
@@ -672,11 +665,10 @@ class FileOpsMixin:
                     if hasattr(self, '_recreate_main_player'):
                         self._recreate_main_player()
                     else:
-                        with open("crash.txt", "a", encoding="utf-8") as f: f.write("[DEBUG] _stop_all_media_players: stopping main player\n")
                         self.media_player.stop()
                         self.media_player.setSource(QUrl())
                 except Exception as e:
-                    with open("crash.txt", "a", encoding="utf-8") as f: f.write(f"[DEBUG] Exception stopping main player: {e}\n")
+                    logging.debug(f"Exception stopping main player: {e}")
                 try:
                     if hasattr(self, 'viewer') and self.viewer:
                         self.viewer.clear_scene_content()
@@ -687,12 +679,11 @@ class FileOpsMixin:
                             try: self.viewer.list_view._stop_hover_playback(force=True)
                             except: pass
                 except Exception as e:
-                    with open("crash.txt", "a", encoding="utf-8") as f: f.write(f"[DEBUG] Exception clearing viewer/hover players: {e}\n")
+                    logging.debug(f"Exception clearing viewer/hover players: {e}")
                 QApplication.processEvents()
-                with open("crash.txt", "a", encoding="utf-8") as f: f.write("[DEBUG] _stop_all_media_players return early (is_only_images)\n")
                 return
         except Exception as e:
-            with open("crash.txt", "a", encoding="utf-8") as f: f.write(f"[ERROR] Exception in _stop_all_media_players (part 1): {e}\n{traceback.format_exc()}\n")
+            logging.error(f"Exception in _stop_all_media_players (part 1): {e}", exc_info=True)
             raise
 
         try:
@@ -774,7 +765,6 @@ class FileOpsMixin:
     def move_current_file(self, destination_dir, start_time=None):
         import time
         import traceback
-        with open("crash.txt", "a", encoding="utf-8") as f: f.write(f"[DEBUG] move_current_file called for dest: {destination_dir}\n")
         try:
             if start_time is None:
                 start_time = time.perf_counter()
@@ -803,13 +793,12 @@ class FileOpsMixin:
                         selected_paths = [popup.filepath]
 
             if not selected_paths:
-                with open("crash.txt", "a", encoding="utf-8") as f: f.write("[DEBUG] move_current_file return early (no selected paths)\n")
                 return
 
             # Проверяем, все ли перемещаемые файлы являются изображениями
             is_only_images = True
         except Exception as e:
-            with open("crash.txt", "a", encoding="utf-8") as f: f.write(f"[ERROR] Exception in move_current_file: {e}\n{traceback.format_exc()}\n")
+            logging.error(f"Exception in move_current_file: {e}", exc_info=True)
             raise
         image_extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif', '.tiff', '.tif', '.heic', '.avif', '.apng', '.jfif'}
         for path in selected_paths:

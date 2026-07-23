@@ -17,7 +17,6 @@ from .ui_panels import CleanerSettingsPanel, CleanerActionBar, SimilarSettingsPa
 from .ui_preview import CleanerPreviewWidget
 from .ui_widgets import SourceListItem, GroupHeaderWidget
 from .ui_ai_tab import AiClassificationTab
-from .ui_ai_lab import AILabTab
 from .ui_dialogs import CleanerOverlay
 from .db_cache import CleanerDB
 from .db_session import SessionDB
@@ -364,7 +363,6 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.tab_bar.addTab("Поиск дубликатов" if is_ru else "Duplicates Search")
         self.tab_bar.addTab("Поиск похожих" if is_ru else "Find Similar")
         self.tab_bar.addTab("ИИ Поиск" if is_ru else "AI Search")
-        self.tab_bar.addTab("AI Lab (Эксперимент)" if is_ru else "AI Lab (Experiment)")
         self.tab_bar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.tab_bar.setCursor(Qt.CursorShape.PointingHandCursor)
         self.tab_bar.setStyleSheet("""
@@ -428,10 +426,6 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         # Create AI Classifier Page
         self.page_ai = AiClassificationTab(self)
         self.stacked_widget.addWidget(self.page_ai)
-
-        # Create AI Lab Page
-        self.page_ai_lab = AILabTab(self)
-        self.stacked_widget.addWidget(self.page_ai_lab)
         
         self.main_layout.addWidget(self.stacked_widget, 1)
 
@@ -453,8 +447,6 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
             self.page_ai.update_folders_label(self.get_active_source_folders())
             if hasattr(self.page_ai, 'check_models_status'):
                 self.page_ai.check_models_status()
-        elif index == 3:
-            self.page_ai_lab.update_folders_label(self.get_active_source_folders())
         else:
             self.update_cache_info()
             self.on_safe_scan_toggled()

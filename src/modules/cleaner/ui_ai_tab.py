@@ -14,9 +14,8 @@ from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor, QFont, QPainte
 
 from config import AppContext, APP_DESIGN
 from ui_widgets_base import DropZoneWidget, FlowLayout
-from .logic_ai_tags import AiTextTagsManager
+from .logic_ai_tags import AiTextTagsManager, parse_multi_tags, MultiTagHighlighter
 from .ui_ai_tags_dialog import AiTagManagerDialog
-from .ui_ai_lab import parse_multi_tags, MultiTagHighlighter
 from .logic_ai import AiEngine
 from .logic_ai_cache import AiCacheManager
 from .logic_ai_classifier import AiClassifier, load_ai_settings, save_ai_settings, get_ai_assets_dir

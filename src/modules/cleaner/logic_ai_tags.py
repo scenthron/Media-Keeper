@@ -40,3 +40,65 @@ class AiTextTagsManager:
         if name in self.tags:
             del self.tags[name]
             self.save_tags()
+
+import re
+from PyQt6.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat
+
+def parse_multi_tags(text: str) -> dict:
+    result = {}
+    pattern_multi = r'\(([^:]+):([^\)]+)\)'
+    for match in re.finditer(pattern_multi, text):
+        group_name = match.group(1).strip()
+        components = [c.strip() for c in match.group(2).split(',') if c.strip()]
+        if components:
+            result[group_name] = components
+            
+    text_clean = re.sub(pattern_multi, '', text)
+    regular_tags = [t.strip() for t in text_clean.split(',') if t.strip()]
+    for tag in regular_tags:
+        result[tag] = [tag]
+        
+    return result
+
+class MultiTagHighlighter(QSyntaxHighlighter):
+    def __init__(self, document):
+        super().__init__(document)
+        self.rules = []
+
+        format_components = QTextCharFormat()
+        format_components.setForeground(QColor("#ffffff"))
+
+        format_group = QTextCharFormat()
+        format_group.setForeground(QColor("#f59e0b"))
+        format_group.setFontWeight(QFont.Weight.Bold)
+
+        format_normal = QTextCharFormat()
+        format_normal.setForeground(QColor("#10b981"))
+        
+        format_punct = QTextCharFormat()
+        format_punct.setForeground(QColor("#888888"))
+
+        self.rules.append((re.compile(r'[\(\):,]'), format_punct))
+
+    def highlightBlock(self, text):
+        self.setFormat(0, len(text), QColor("#10b981"))
+        pattern = re.compile(r'\((.*?)\)')
+        for match in pattern.finditer(text):
+            start = match.start()
+            length = match.end() - start
+            inner_text = match.group(1)
+            
+            self.setFormat(start + 1, length - 2, QColor("#ffffff"))
+            
+            colon_idx = inner_text.find(':')
+            if colon_idx != -1:
+                self.setFormat(start + 1, colon_idx, QColor("#f59e0b"))
+                fmt = QTextCharFormat()
+                fmt.setForeground(QColor("#f59e0b"))
+                fmt.setFontWeight(QFont.Weight.Bold)
+                self.setFormat(start + 1, colon_idx, fmt)
+
+        punct_pattern = re.compile(r'[\(\):,]')
+        for match in punct_pattern.finditer(text):
+            self.setFormat(match.start(), 1, QColor("#888888"))
+

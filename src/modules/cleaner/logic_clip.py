@@ -6,6 +6,9 @@ from safetensors.numpy import load_file
 import logging
 
 try:
+    import os
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    os.environ["TRANSFORMERS_VERBOSITY"] = "error"
     from transformers import AutoTokenizer
     HAS_TRANSFORMERS = True
 except ImportError:
@@ -62,6 +65,19 @@ class CLIPSearcher:
             logger.info("Загрузка CLIP Dense слоя...")
             self.dense_weights = load_file(dense_path)['linear.weight']
             
+            # Загрузка словаря
+            self.ru_en_dict = {}
+            from logic_paths import get_base_path
+            dict_path = os.path.join(get_base_path(), "assets", "dict", "ru_en_dict.json")
+            if os.path.exists(dict_path):
+                import json
+                try:
+                    with open(dict_path, "r", encoding="utf-8") as f:
+                        self.ru_en_dict = json.load(f)
+                    logger.info(f"Загружен словарь ru-en: {len(self.ru_en_dict)} слов")
+                except Exception as de:
+                    logger.warning(f"Ошибка загрузки словаря: {de}")
+            
             self.is_loaded = True
             logger.info("CLIP модели успешно загружены!")
             
@@ -83,6 +99,18 @@ class CLIPSearcher:
         """
         if not self.is_loaded:
             return None
+            
+        # Автоматический перевод через статический словарь
+        if hasattr(self, 'ru_en_dict') and self.ru_en_dict:
+            words = text.lower().split()
+            translated_words = []
+            for w in words:
+                # Очистка слова от знаков препинания для поиска
+                clean_w = ''.join(c for c in w if c.isalnum())
+                trans = self.ru_en_dict.get(clean_w, clean_w)
+                translated_words.append(trans)
+            # Собираем переведенный текст
+            text = " ".join(translated_words)
             
         try:
             inputs = self.tokenizer([text], padding=True, truncation=True, return_tensors="np")

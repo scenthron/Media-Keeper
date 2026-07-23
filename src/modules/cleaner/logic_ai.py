@@ -127,7 +127,7 @@ class AiEngine:
             return []
             
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        bboxes, kpss = self.detector.detect(img_rgb, thresh=0.5, input_size=(640, 640))
+        bboxes, kpss = self.detector.detect(img_rgb, conf_thresh=0.5, input_size=(640, 640))
         
         if bboxes is None or kpss is None or len(bboxes) == 0:
             return []
@@ -169,10 +169,8 @@ class AiEngine:
         if not self._is_initialized:
             return None
             
-        from PIL import Image
         try:
-            image = Image.open(image_path).convert("RGB")
-            return self.clip_searcher.encode_image(image)
+            return self.clip_searcher.encode_image(image_path)
         except Exception as e:
             logging.error(f"CLIP Image encode error for {image_path}: {e}")
             return None

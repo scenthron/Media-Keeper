@@ -184,15 +184,13 @@ class AiClassifier:
         current_mtime = os.path.getmtime(filepath)
         current_size = os.path.getsize(filepath)
         
-        # Загружаем CLIP
-        file_clip_embedding = self.cache.get_image_embedding(filepath, current_mtime, current_size)
-        # Загружаем Лица
-        file_faces = self.cache.get_file_faces(filepath, current_mtime, current_size)
+        has_image_groups = any(t == "image" for t in self.group_types.values())
+        has_face_groups = any(t == "face" for t in self.group_types.values())
         
-        # 2. Если чего-то нет в кэше - вычисляем на лету (тяжелая операция, обычно делает Worker заранее)
-        if file_clip_embedding is None or file_faces is None:
-            # Для надежности - в classify_file мы полагаемся на то, что кэш уже собран Worker-ом
-            # Если кэша нет - возвращаем пустой результат (файл пропущен)
+        file_clip_embedding = self.cache.get_image_embedding(filepath, current_mtime, current_size) if has_image_groups else None
+        file_faces = self.cache.get_file_faces(filepath, current_mtime, current_size) if has_face_groups else None
+        
+        if (has_image_groups and file_clip_embedding is None) or (has_face_groups and file_faces is None):
             return result
             
         for group_name, g_type in self.group_types.items():

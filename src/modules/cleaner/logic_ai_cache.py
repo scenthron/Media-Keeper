@@ -3,6 +3,7 @@ import sqlite3
 import numpy as np
 import logging
 import contextlib
+import threading
 
 from logic_paths import get_app_data_dir
 from utils_io import strip_long_path_prefix
@@ -17,25 +18,27 @@ def _clean_path(path: str) -> str:
 class AiCacheManager:
     def __init__(self):
         self.db_path = os.path.join(get_app_data_dir(), "ai_cache.db")
+        self._lock = threading.Lock()
         self._local_conn = None
         self._init_db()
 
     def _get_connection(self):
         if self._local_conn is None:
-            self._local_conn = sqlite3.connect(self.db_path, check_same_thread=False)
+            self._local_conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
             self._local_conn.execute("PRAGMA journal_mode=WAL;")
             self._local_conn.execute("PRAGMA synchronous=NORMAL;")
         return self._local_conn
 
     @contextlib.contextmanager
     def _conn(self):
-        """Возвращает оптимизированное соединение SQLite."""
-        conn = self._get_connection()
-        try:
-            yield conn
-        except Exception:
-            conn.rollback()
-            raise
+        """Потокобезопасное оптимизированное соединение SQLite."""
+        with self._lock:
+            conn = self._get_connection()
+            try:
+                yield conn
+            except Exception:
+                conn.rollback()
+                raise
 
     def _init_db(self):
         """Создает таблицы базы данных кэша и проверяет версию."""
@@ -178,9 +181,13 @@ class AiCacheManager:
                     idx, mtime, size, bbox_str, desc_blob = row
                     if abs(mtime - current_mtime) >= 1.0 or size != current_size:
                         return None # Кэш устарел, нужно пересканировать весь файл
+                    
+                    if idx == -1:
+                        # Запись означает, что файл сканировался и в нем 0 лиц
+                        continue
                         
-                    bbox = tuple(map(int, bbox_str.split(','))) if bbox_str else ()
-                    descriptor = np.frombuffer(desc_blob, dtype=np.float32)
+                    bbox = tuple(map(float, bbox_str.split(','))) if bbox_str else ()
+                    descriptor = np.frombuffer(desc_blob, dtype=np.float32) if desc_blob else np.array([], dtype=np.float32)
                     faces.append({
                         'bbox': bbox,
                         'descriptor': descriptor

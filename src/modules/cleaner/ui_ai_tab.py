@@ -1,4 +1,4 @@
-﻿import os
+import os
 import shutil
 import logging
 from PyQt6.QtWidgets import (
@@ -446,7 +446,7 @@ class AiClassificationTab(QWidget):
         page_text_layout.addWidget(lbl_text_search)
         
         self.line_text_search = QLineEdit()
-        self.line_text_search.setPlaceholderText("Например: a cat sitting on a table" if AppContext.is_ru() else "E.g.: a cat sitting on a table")
+        self.line_text_search.setPlaceholderText("Например: кот сидит на столе" if AppContext.is_ru() else "E.g.: a cat sitting on a table")
         self.line_text_search.setStyleSheet("""
             QLineEdit {
                 background-color: #222;

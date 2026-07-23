@@ -1132,14 +1132,15 @@ class AiScanWorker(QThread):
                     else:
                         results_dict = self.classifier.classify_file(fp)
                         for g_name, conf in results_dict.items():
-                            if conf >= self.threshold:
+                            conf_pct = conf * 100.0
+                            if conf_pct >= self.threshold:
                                 if g_name not in results:
                                     results[g_name] = []
                                     groups_found += 1
                                 results[g_name].append({
                                     "path": fp,
                                     "size": size,
-                                    "confidence": conf,
+                                    "confidence": conf_pct,
                                     "type": "AI"
                                 })
                                 wasted_bytes += size

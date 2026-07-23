@@ -81,24 +81,13 @@ class SourceListItem(QWidget):
         self.lbl_path.setStyleSheet("color: #888888; font-size: 12px; border: none; background: transparent;")
         self.lbl_path.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.layout.addWidget(self.lbl_path, 1) # Add stretch factor to path to take remaining space
-        
-        self.lbl_cache = QLabel()
-        self.lbl_cache.setFixedSize(14, 14)
-        icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
-        from PyQt6.QtGui import QPixmap
-        self.lbl_cache.setPixmap(load_svg_pixmap(os.path.join(icons_dir, "floppy-disk-color.svg"), QSize(14, 14)))
-        self.lbl_cache.setToolTip(AppContext.tr("cln_tip_cached"))
-        self.lbl_cache.setStyleSheet("border: none; background: transparent;")
-        self.lbl_cache.setVisible(is_cached)
+        self.lbl_cache = QLabel("💾") # Floppy disk for cache
+        self.lbl_cache.setFixedSize(18, 18)
+        self.lbl_cache.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_cache.setStyleSheet("border: none; background: transparent; font-size: 16px; color: #60a5fa; font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji';")
+        self.lbl_cache.setToolTip("Кэш сохранен" if AppContext.is_ru() else "Cache saved")
+        self.lbl_cache.setVisible(is_cached or is_face_cached)
         self.layout.addWidget(self.lbl_cache)
-        
-        self.lbl_face_cache = QLabel("💾") # Floppy disk for cache
-        self.lbl_face_cache.setFixedSize(18, 18)
-        self.lbl_face_cache.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_face_cache.setStyleSheet("border: none; background: transparent; font-size: 16px; color: #60a5fa; font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji';")
-        self.lbl_face_cache.setToolTip("Кэш сохранен" if AppContext.is_ru() else "Cache saved")
-        self.lbl_face_cache.setVisible(is_face_cached)
-        self.layout.addWidget(self.lbl_face_cache)
         
         btn_del = QPushButton("×")
         btn_del.setFixedSize(24, 24)

@@ -27,10 +27,12 @@ class FFmpegDownloaderWorker(QThread):
     status_message = pyqtSignal(str)    # Сообщение о статусе
     finished = pyqtSignal(bool, str)    # Успех, сообщение об ошибке (если есть)
     
-    # Прямая ссылка на стабильную сборку FFmpeg для Windows
-    # Используем gyan.dev - официальный источник стабильных сборок
-    # Альтернатива: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip
-    FFMPEG_DOWNLOAD_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+    # Список зеркал для гарантированной загрузки FFmpeg для Windows
+    FFMPEG_DOWNLOAD_URLS = [
+        "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
+        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip",
+        "https://github.com/GyanD/codexffmpeg/releases/download/6.0/ffmpeg-6.0-essentials_build.zip"
+    ]
     
     def __init__(self):
         super().__init__()
@@ -59,9 +61,8 @@ class FFmpegDownloaderWorker(QThread):
                     pass
             
             self.status_message.emit(AppContext.tr("ffmpeg_start_download"))
-            logging.info(f"Начало загрузки FFmpeg из {self.FFMPEG_DOWNLOAD_URL}")
             
-            # Загрузка файла
+            # Загрузка файла через зеркала
             if not self._download_file():
                 if self.is_running:
                     self.finished.emit(False, AppContext.tr("ffmpeg_err_download"))
@@ -103,41 +104,54 @@ class FFmpegDownloaderWorker(QThread):
             self.finished.emit(False, AppContext.tr("ffmpeg_err_format").format(e))
     
     def _download_file(self):
-        """Загрузка zip-архива с FFmpeg"""
+        """Загрузка zip-архива с FFmpeg с перебором зеркал и браузерным User-Agent"""
         if requests is None:
             logging.error("Библиотека requests не установлена")
             return False
         
-        try:
-            response = requests.get(self.FFMPEG_DOWNLOAD_URL, stream=True, timeout=30)
-            response.raise_for_status()
-            
-            total_size = int(response.headers.get('content-length', 0))
-            downloaded = 0
-            block_size = 8192  # 8 KB
-            
-            with open(self.download_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=block_size):
-                    if not self.is_running:
-                        return False
-                    
-                    if chunk:
-                        f.write(chunk)
-                        downloaded += len(chunk)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        }
+
+        for url in self.FFMPEG_DOWNLOAD_URLS:
+            if not self.is_running:
+                return False
+            try:
+                logging.info(f"Попытка загрузки FFmpeg из {url}...")
+                response = requests.get(url, headers=headers, stream=True, timeout=30)
+                response.raise_for_status()
+                
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded = 0
+                block_size = 8192  # 8 KB
+                
+                with open(self.download_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=block_size):
+                        if not self.is_running:
+                            return False
                         
-                        if total_size > 0:
-                            percent = int((downloaded / total_size) * 100)
-                            self.progress_updated.emit(percent)
-            
-            self.progress_updated.emit(100)
-            return True
-            
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Ошибка загрузки FFmpeg: {e}")
-            return False
-        except Exception as e:
-            logging.error(f"Неожиданная ошибка при загрузке: {e}")
-            return False
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            
+                            if total_size > 0:
+                                percent = int((downloaded / total_size) * 100)
+                                self.progress_updated.emit(percent)
+                
+                self.progress_updated.emit(100)
+                logging.info(f"FFmpeg успешно скачан из {url}")
+                return True
+                
+            except Exception as e:
+                logging.warning(f"Ошибка загрузки FFmpeg с зеркала {url}: {e}. Пробуем следующее зеркало...")
+                if os.path.exists(self.download_path):
+                    try:
+                        os.remove(self.download_path)
+                    except:
+                        pass
+        
+        logging.error("Все зеркала FFmpeg оказались недоступны.")
+        return False
     
     def _extract_archive(self, target_dir):
         """Распаковка архива и поиск ffmpeg.exe и ffprobe.exe"""

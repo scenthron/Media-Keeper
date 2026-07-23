@@ -24,23 +24,30 @@ class AiEngine:
 
     def _init_timer(self):
         try:
-            from PyQt6.QtCore import QTimer
-            self._idle_timer = QTimer()
-            self._idle_timer.setSingleShot(True)
-            self._idle_timer.setInterval(10 * 60 * 1000)  # 10 минут
-            self._idle_timer.timeout.connect(self.unload_models)
+            from PyQt6.QtCore import QCoreApplication, QThread, QTimer
+            app = QCoreApplication.instance()
+            # QTimer разрешено создавать ТОЛЬКО в главном GUI-потоке Qt
+            if app and QThread.currentThread() == app.thread():
+                self._idle_timer = QTimer()
+                self._idle_timer.setSingleShot(True)
+                self._idle_timer.setInterval(10 * 60 * 1000)  # 10 минут
+                self._idle_timer.timeout.connect(self.unload_models)
+            else:
+                self._idle_timer = None
         except Exception as e:
             logging.error(f"Ошибка инициализации таймера простоя ИИ: {e}")
+            self._idle_timer = None
 
     def _reset_idle_timer(self):
         if self._idle_timer:
             try:
                 from PyQt6.QtCore import QMetaObject, Qt, QThread, QCoreApplication
                 app = QCoreApplication.instance()
-                if app and QThread.currentThread() != app.thread():
-                    QMetaObject.invokeMethod(self._idle_timer, "start", Qt.ConnectionType.QueuedConnection)
-                else:
-                    self._idle_timer.start()
+                if app:
+                    if QThread.currentThread() == app.thread():
+                        self._idle_timer.start()
+                    else:
+                        QMetaObject.invokeMethod(self._idle_timer, "start", Qt.ConnectionType.QueuedConnection)
             except Exception as e:
                 logging.warning(f"Сбой перезапуска таймера простоя: {e}")
 

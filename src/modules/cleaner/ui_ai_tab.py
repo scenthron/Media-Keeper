@@ -1637,20 +1637,21 @@ class AiClassificationTab(QWidget):
                 self.preview_widget.load_file(path)
                 
                 # Попытка извлечь лица из кэша и нарисовать их
-                try:
-                    stat = os.stat(path)
-                    mtime = stat.st_mtime
-                    size = stat.st_size
-                    faces = self.classifier.cache.get_file_faces(path, mtime, size)
-                    if faces:
-                        bboxes = [f.get("bbox") for f in faces if f.get("bbox")]
-                        matched_bbox = data.get("matched_bbox") if data else None
-                        if hasattr(self.preview_widget, "draw_faces"):
-                            self.preview_widget.draw_faces(bboxes, matched_bbox=matched_bbox)
-                except Exception as e:
-                    import logging
-                    logging.error(f"Ошибка получения лиц для предпросмотра: {e}")
-                    
+                if data.get("type", "face") == "face":
+                    try:
+                        stat = os.stat(path)
+                        mtime = stat.st_mtime
+                        size = stat.st_size
+                        faces = self.classifier.cache.get_file_faces(path, mtime, size)
+                        if faces:
+                            bboxes = [f.get("bbox") for f in faces if f.get("bbox")]
+                            matched_bbox = data.get("matched_bbox") if data else None
+                            if hasattr(self.preview_widget, "draw_faces"):
+                                self.preview_widget.draw_faces(bboxes, matched_bbox=matched_bbox)
+                    except Exception as e:
+                        import logging
+                        logging.error(f"Ошибка получения лиц для предпросмотра: {e}")
+                        
                 self.file_selected.emit(path)
         else:
             msg = "Файл не выбран" if AppContext.is_ru() else "No file selected"

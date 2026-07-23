@@ -1083,7 +1083,7 @@ class AiScanWorker(QThread):
                             matched = False
                             for cluster in cluster_data:
                                 sim = float(np.dot(emb, cluster["centroid"]))
-                                mapped_score = (sim - 0.20) / (0.32 - 0.20)
+                                mapped_score = (sim - 0.75) / (0.95 - 0.75)
                                 score = max(0.0, min(100.0, float(mapped_score) * 100.0))
                                 
                                 if score >= self.threshold:

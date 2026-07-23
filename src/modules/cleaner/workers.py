@@ -1051,15 +1051,9 @@ class AiScanWorker(QThread):
                                 if emb is None: continue
                                 matched = False
                                 for cluster in cluster_data:
-                                    dist = float(np.linalg.norm(emb - cluster["centroid"]))
-                                    if dist <= match_thresh:
-                                        score = 100.0 - (dist / match_thresh) * 25.0
-                                    else:
-                                        if match_thresh >= 2.0:
-                                            score = 0.0
-                                        else:
-                                            score = 75.0 - ((dist - match_thresh) / (2.0 - match_thresh)) * 75.0
-                                    score = max(0.0, min(100.0, score))
+                                    sim = float(np.dot(emb, cluster["centroid"]))
+                                    mapped_score = (sim - 0.35) / (0.85 - 0.35)
+                                    score = max(0.0, min(100.0, float(mapped_score) * 100.0))
                                     
                                     if score >= self.threshold:
                                         if not any(m["path"] == fp for m in cluster["members"]):
@@ -1092,9 +1086,12 @@ class AiScanWorker(QThread):
                             matched = False
                             for cluster in cluster_data:
                                 sim = float(np.dot(emb, cluster["centroid"]))
-                                if sim >= (self.threshold / 100.0):
+                                mapped_score = (sim - 0.20) / (0.32 - 0.20)
+                                score = max(0.0, min(100.0, float(mapped_score) * 100.0))
+                                
+                                if score >= self.threshold:
                                     if not any(m["path"] == fp for m in cluster["members"]):
-                                        cluster["members"].append({"path": fp, "size": size, "confidence": sim * 100.0, "type": "general"})
+                                        cluster["members"].append({"path": fp, "size": size, "confidence": score, "type": "general"})
                                     
                                     new_centroid = np.mean([c["emb"] for c in cluster["raw_embs"]] + [emb], axis=0)
                                     norm = np.linalg.norm(new_centroid)

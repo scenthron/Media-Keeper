@@ -701,33 +701,6 @@ class AiClassificationTab(QWidget):
         slider_layout.addWidget(self.spin_threshold)
         params_sub_layout.addLayout(slider_layout)
         
-        
-        self.combo_match_mode.addItem("Любое совпадение" if is_ru else "Best Match (Any)", "best_match")
-        self.combo_match_mode.setItemData(1, 
-            "Сравнивает с каждым Образецом отдельно и берет максимальное сходство.\nПозволяет искать разнородные объекты в одной группе (разные ракурсы, цвета, машины)."
-            if is_ru else
-            "Compares with each reference individually and takes the maximum similarity.\nBest for diverse images in one group.",
-            Qt.ItemDataRole.ToolTipRole
-        )
-        
-        self.combo_match_mode.addItem("Большинство совпадений" if is_ru else "Majority Match", "majority")
-        self.combo_match_mode.setItemData(2, 
-            "Файл должен быть похож минимум на половину (50%) всех Образецов в группе.\nИсключает случайные ложные совпадения."
-            if is_ru else
-            "Requires the file to match at least 50% of the reference images.\nPrevents accidental false positives.",
-            Qt.ItemDataRole.ToolTipRole
-        )
-        
-        # Загружаем сохраненный режим из настроек
-        settings = load_ai_settings()
-        saved_mode = settings.get("match_mode", "centroid")
-        idx = self.combo_match_mode.findData(saved_mode)
-        if idx >= 0:
-            self.combo_match_mode.setCurrentIndex(idx)
-            
-        self.combo_match_mode.currentIndexChanged.connect(self.on_match_mode_changed)
-        params_sub_layout.addWidget(self.combo_match_mode)
-        
         self.chk_auto_cluster = QCheckBox("Умный поиск" if AppContext.is_ru() else "Smart Search")
         self.chk_auto_cluster.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_auto_cluster.setStyleSheet("""
@@ -1256,11 +1229,6 @@ class AiClassificationTab(QWidget):
             
         self.update_cleaner_action_bar_info()
 
-    def on_match_mode_changed(self, index):
-        mode = self.combo_match_mode.itemData(index)
-        settings = load_ai_settings()
-        settings["match_mode"] = mode
-        save_ai_settings(settings)
 
     def update_cache_info_ai(self):
         try:

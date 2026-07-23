@@ -1410,16 +1410,34 @@ class AiClassificationTab(QWidget):
         from PyQt6.QtWidgets import QMessageBox
         msg = QMessageBox(self)
         msg.setWindowTitle("Справка по текстовым тегам" if AppContext.is_ru() else "Text Tags Help")
-        msg.setText("Теги позволяют сохранять частые запросы.\n\n"
-                    "Обычный тег: сохраняет одно слово или фразу.\n"
-                    "Мультитег: сохраняет несколько запросов через запятую.\n\n"
-                    "Выберите нужные теги кликом, и они добавятся к вашему текстовому запросу при поиске.\n"
-                    "Мультитеги группируют свои результаты в одну колонку." if AppContext.is_ru() else
-                    "Tags let you save frequent text queries.\n\n"
-                    "Normal tag: saves a single word or phrase.\n"
-                    "Multi-tag: saves multiple comma-separated queries.\n\n"
-                    "Select tags by clicking them, and they will be added to your search query.\n"
-                    "Multi-tags combine their results into a single group.")
+        
+        ru_text = (
+            "<b>Как работает текстовый поиск и теги:</b><br><br>"
+            "Обычные теги и текст из поля поиска создают отдельные колонки (группы) результатов.<br>"
+            "Например, если вы выберете тег <i>«Кошка»</i> и тег <i>«Собака»</i>, то ИИ выдаст 2 независимые группы: "
+            "в одной будут только кошки, в другой — собаки.<br><br>"
+            "<b>Мультитеги</b> позволяют объединить несколько разных запросов в одну общую группу.<br>"
+            "Например, мультитег <i>«Домашние животные: кошка, собака, попугай»</i> и обычный тег <i>«Корова»</i> "
+            "выдадут 2 группы результатов:<br>"
+            "1. Группа <b>«Домашние животные»</b> (в ней будут собраны и кошки, и собаки, и попугаи).<br>"
+            "2. Группа <b>«Корова»</b> (в ней будут только коровы).<br><br>"
+            "<i>Используйте мультитеги, когда вам нужно найти разные объекты, но логически сгруппировать их вместе для удобства сортировки!</i>"
+        )
+        
+        en_text = (
+            "<b>How text search and tags work:</b><br><br>"
+            "Normal tags and text from the search field create separate result groups.<br>"
+            "For example, if you select the 'Cat' tag and the 'Dog' tag, the AI will output 2 independent groups: "
+            "one for cats, one for dogs.<br><br>"
+            "<b>Multi-tags</b> allow combining multiple different queries into a single group.<br>"
+            "For example, a multi-tag <i>'Pets: cat, dog, parrot'</i> and a normal tag <i>'Cow'</i> "
+            "will result in 2 groups:<br>"
+            "1. Group <b>'Pets'</b> (containing cats, dogs, and parrots).<br>"
+            "2. Group <b>'Cow'</b> (only cows).<br><br>"
+            "<i>Use multi-tags when you want to find different objects but group them logically together for convenience!</i>"
+        )
+        
+        msg.setText(ru_text if AppContext.is_ru() else en_text)
         msg.exec()
 
     def refresh_tag_chips(self):

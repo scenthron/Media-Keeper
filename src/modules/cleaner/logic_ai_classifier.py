@@ -122,7 +122,7 @@ class AiClassifier:
                         # Extract Face
                         faces = self.ai.extract_faces(p)
                         if faces is not None:
-                            for f in faces: new_pos_faces.append(f.embedding)
+                            for f in faces: new_pos_faces.append(f["descriptor"])
                             
                     new_neg_features, new_neg_faces = [], []
                     for p in neg_paths:
@@ -130,7 +130,7 @@ class AiClassifier:
                         if emb is not None: new_neg_features.append(emb)
                         faces = self.ai.extract_faces(p)
                         if faces is not None:
-                            for f in faces: new_neg_faces.append(f.embedding)
+                            for f in faces: new_neg_faces.append(f["descriptor"])
                             
                     # Re-save dump with new vectors
                     save_dump(

@@ -49,71 +49,118 @@ class AiEngine:
         gc.collect()
 
     def are_models_present(self) -> bool:
-        """Проверяет физическое наличие всех файлов моделей."""
-        has_arcface = os.path.exists(self.arcface_path)
-        has_scrfd = os.path.exists(self.scrfd_path)
-        has_clip = os.path.exists(os.path.join(self.clip_dir, "vision", "model.onnx"))
-        return has_arcface and has_scrfd and has_clip
+        """Проверяет физическое наличие и корректность всех файлов ИИ-моделей."""
+        arcface_ok = os.path.exists(self.arcface_path) and os.path.getsize(self.arcface_path) > 1000
+        scrfd_ok = os.path.exists(self.scrfd_path) and os.path.getsize(self.scrfd_path) > 1000
+        clip_vis_ok = os.path.exists(os.path.join(self.clip_dir, "vision", "model.onnx")) and os.path.getsize(os.path.join(self.clip_dir, "vision", "model.onnx")) > 1000
+        clip_txt_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "model.onnx")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "model.onnx")) > 1000
+        dense_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "dense.safetensors")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "dense.safetensors")) > 100
+        tok_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) > 100
+        return arcface_ok and scrfd_ok and clip_vis_ok and clip_txt_ok and dense_ok and tok_ok
 
-    
     def download_models(self, progress_callback=None) -> bool:
-        """Скачивает модели ИИ, если они отсутствуют."""
+        """Скачивает реальные ИИ-модели по прямым интернет-ссылкам."""
         import requests
-        import zipfile
-        import shutil
 
-        # URLs для скачивания (здесь должны быть прямые ссылки на веса)
-        # Для заглушки мы можем просто создать пустые файлы, но правильнее
-        # реализовать реальное скачивание или сообщить об ошибке/заглушке, 
-        # как просил пользователь ("Мы добавляем заглушку... с уведомлением о размере").
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
 
-        # Если пользователь просил заглушку с диалоговым окном, 
-        # то скачивание мы пока симулируем и возвращаем True.
-        
-        # Вместо реального скачивания (которое занимает 1+ ГБ), 
-        # мы сообщим пользователю, что функция пока в разработке, 
-        # или просто создадим пустые файлы для симуляции успешной установки
-        
-        # NOTE: В реальной версии здесь будет скачивание .onnx файлов
-        # det_10g.onnx, w600k_r50.onnx и clip/vision/model.onnx
-        
+        models_to_download = [
+            {
+                "name": "SCRFD Face Detector (det_10g.onnx)",
+                "dest": self.scrfd_path,
+                "urls": [
+                    "https://huggingface.co/onnx-community/scrfd-det-10g/resolve/main/onnx/model.onnx",
+                    "https://github.com/deepinsight/insightface/releases/download/v0.7/det_10g.onnx"
+                ]
+            },
+            {
+                "name": "ArcFace Model (w600k_r50.onnx)",
+                "dest": self.arcface_path,
+                "urls": [
+                    "https://huggingface.co/onnx-community/arcface-w600k-r50/resolve/main/onnx/model.onnx",
+                    "https://github.com/deepinsight/insightface/releases/download/v0.7/w600k_r50.onnx"
+                ]
+            },
+            {
+                "name": "CLIP Vision Model (vision/model.onnx)",
+                "dest": os.path.join(self.clip_dir, "vision", "model.onnx"),
+                "urls": [
+                    "https://huggingface.co/onnx-community/clip-vit-base-patch32/resolve/main/onnx/model.onnx"
+                ]
+            },
+            {
+                "name": "CLIP Text Model (text_multi/model.onnx)",
+                "dest": os.path.join(self.clip_dir, "text_multi", "model.onnx"),
+                "urls": [
+                    "https://huggingface.co/onnx-community/clip-vit-base-patch32/resolve/main/onnx/model.onnx"
+                ]
+            },
+            {
+                "name": "CLIP Dense Weights (text_multi/dense.safetensors)",
+                "dest": os.path.join(self.clip_dir, "text_multi", "dense.safetensors"),
+                "urls": [
+                    "https://huggingface.co/M-CLIP/XLM-Roberta-Large-Vit-B-32/resolve/main/dense.safetensors"
+                ]
+            },
+            {
+                "name": "CLIP Tokenizer (text_multi/tokenizer.json)",
+                "dest": os.path.join(self.clip_dir, "text_multi", "tokenizer.json"),
+                "urls": [
+                    "https://huggingface.co/M-CLIP/XLM-Roberta-Large-Vit-B-32/resolve/main/tokenizer.json"
+                ]
+            }
+        ]
+
         try:
-            from PyQt6.QtWidgets import QMessageBox, QApplication
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Icon.Information)
-            msg.setWindowTitle("Скачивание нейросетей")
-            msg.setText(
-                "Скачивание моделей (около 1 ГБ) началось.\n\n"
-                "ПОСКОЛЬКУ ЭТО ЗАГЛУШКА:\n"
-                "В рабочей версии здесь будет происходить реальная загрузка по прямым ссылкам.\n"
-                "Сейчас будут созданы пустые файлы-заглушки для тестирования UI."
-            )
-            msg.exec()
-            
-            # Simulate download
-            import time
-            total_size = 100 * 1024 * 1024  # 100 MB simulation
-            downloaded = 0
-            chunk = 5 * 1024 * 1024
-            
-            while downloaded < total_size:
-                downloaded += chunk
-                if downloaded > total_size: downloaded = total_size
-                if progress_callback:
-                    progress_callback("AI Models Archive", downloaded, total_size)
-                time.sleep(0.1)
-                
-            # Create dummy files to pass `are_models_present()`
-            os.makedirs(self.models_dir, exist_ok=True)
-            with open(self.arcface_path, "wb") as f: f.write(b"")
-            with open(self.scrfd_path, "wb") as f: f.write(b"")
-            
-            os.makedirs(os.path.join(self.clip_dir, "vision"), exist_ok=True)
-            with open(os.path.join(self.clip_dir, "vision", "model.onnx"), "wb") as f: f.write(b"")
-            
+            for item in models_to_download:
+                dest = item["dest"]
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+
+                # Проверяем, если файл уже существует и не пустой
+                if os.path.exists(dest) and os.path.getsize(dest) > 1000:
+                    logging.info(f"Файл {item['name']} уже существует, пропуск загрузки.")
+                    continue
+
+                download_success = False
+                for url in item["urls"]:
+                    logging.info(f"Попытка скачивания {item['name']} с {url}...")
+                    try:
+                        resp = requests.get(url, stream=True, headers=headers, timeout=30)
+                        if resp.status_code == 200:
+                            total_size = int(resp.headers.get("content-length", 0))
+                            downloaded = 0
+                            tmp_dest = dest + ".tmp"
+                            
+                            with open(tmp_dest, "wb") as f:
+                                for chunk in resp.iter_content(chunk_size=65536):
+                                    if chunk:
+                                        f.write(chunk)
+                                        downloaded += len(chunk)
+                                        if progress_callback:
+                                            progress_callback(item["name"], downloaded, total_size)
+
+                            if os.path.exists(tmp_dest) and os.path.getsize(tmp_dest) > 100:
+                                if os.path.exists(dest):
+                                    os.remove(dest)
+                                os.rename(tmp_dest, dest)
+                                download_success = True
+                                logging.info(f"Успешно скачан файл {item['name']}")
+                                break
+                    except Exception as err:
+                        logging.warning(f"Сбой загрузки с {url}: {err}")
+                        if os.path.exists(dest + ".tmp"):
+                            try: os.remove(dest + ".tmp")
+                            except: pass
+
+                if not download_success and not (os.path.exists(dest) and os.path.getsize(dest) > 1000):
+                    logging.error(f"Не удалось скачать модель: {item['name']}")
+                    return False
+
             return True
         except Exception as e:
-            logging.error(f"Ошибка загрузки моделей: {e}")
+            logging.error(f"Критическая ошибка загрузки нейросетей: {e}", exc_info=True)
             return False
 
     def initialize_sessions(self, use_gpu: bool = True) -> bool:

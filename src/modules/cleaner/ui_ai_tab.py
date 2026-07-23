@@ -49,7 +49,8 @@ class SearchTextEdit(QTextEdit):
             if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
                 super().keyPressEvent(event)
             else:
-                self.returnPressed.emit()
+                event.accept()
+                QTimer.singleShot(0, self.returnPressed.emit)
         else:
             super().keyPressEvent(event)
         

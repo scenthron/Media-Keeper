@@ -104,18 +104,6 @@ class CLIPSearcher:
         if not self.is_loaded:
             return None
             
-        # Автоматический перевод через статический словарь
-        if hasattr(self, 'ru_en_dict') and self.ru_en_dict:
-            words = text.lower().split()
-            translated_words = []
-            for w in words:
-                # Очистка слова от знаков препинания для поиска
-                clean_w = ''.join(c for c in w if c.isalnum())
-                trans = self.ru_en_dict.get(clean_w, clean_w)
-                translated_words.append(trans)
-            # Собираем переведенный текст
-            text = " ".join(translated_words)
-            
         try:
             # Tokenize using tokenizers library directly
             self.tokenizer.enable_truncation(max_length=77)

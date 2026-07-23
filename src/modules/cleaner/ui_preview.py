@@ -457,12 +457,15 @@ class CleanerPreviewWidget(QWidget):
                 
                 is_matched = False
                 if matched_bbox and len(matched_bbox) == 4:
-                    mx1, my1, mx2, my2 = matched_bbox
-                    cx1, cy1 = (x1 + x2) / 2.0, (y1 + y2) / 2.0
-                    mcx, mcy = (mx1 + mx2) / 2.0, (my1 + my2) / 2.0
-                    w, h = max(10.0, x2 - x1), max(10.0, y2 - y1)
-                    if abs(cx1 - mcx) <= max(20.0, w * 0.4) and abs(cy1 - mcy) <= max(20.0, h * 0.4):
+                    if len(bboxes) == 1:
                         is_matched = True
+                    else:
+                        mx1, my1, mx2, my2 = matched_bbox
+                        cx1, cy1 = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+                        mcx, mcy = (mx1 + mx2) / 2.0, (my1 + my2) / 2.0
+                        w, h = max(10.0, x2 - x1), max(10.0, y2 - y1)
+                        if abs(cx1 - mcx) <= max(20.0, w * 0.5) and abs(cy1 - mcy) <= max(20.0, h * 0.5):
+                            is_matched = True
                         
                 if matched_bbox is not None:
                     if is_matched:

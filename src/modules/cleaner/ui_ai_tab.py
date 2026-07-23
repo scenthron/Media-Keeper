@@ -1822,11 +1822,16 @@ class AiClassificationTab(QWidget):
                     mtime = stat.st_mtime
                     size = stat.st_size
                     faces = self.classifier.cache.get_file_faces(path, mtime, size)
+                    matched_bbox = data.get("matched_bbox") if data else None
+                    
+                    bboxes = []
                     if faces:
                         bboxes = [f.get("bbox") for f in faces if f.get("bbox")]
-                        matched_bbox = data.get("matched_bbox") if data else None
-                        if hasattr(self.preview_widget, "draw_faces"):
-                            self.preview_widget.draw_faces(bboxes, matched_bbox=matched_bbox)
+                    if not bboxes and matched_bbox:
+                        bboxes = [matched_bbox]
+                        
+                    if hasattr(self.preview_widget, "draw_faces"):
+                        self.preview_widget.draw_faces(bboxes, matched_bbox=matched_bbox)
                 except Exception as e:
                     import logging
                     logging.error(f"Ошибка получения лиц для предпросмотра: {e}")

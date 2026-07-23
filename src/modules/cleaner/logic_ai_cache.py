@@ -5,8 +5,14 @@ import logging
 import contextlib
 
 from logic_paths import get_app_data_dir
+from utils_io import strip_long_path_prefix
 
 CURRENT_CACHE_VERSION = 2
+
+def _clean_path(path: str) -> str:
+    if not path:
+        return ""
+    return os.path.normcase(os.path.abspath(strip_long_path_prefix(path)))
 
 class AiCacheManager:
     def __init__(self):
@@ -82,7 +88,7 @@ class AiCacheManager:
         """
         Возвращает сохраненный вектор изображения (CLIP) из кэша.
         """
-        norm_path = os.path.normcase(os.path.abspath(filepath))
+        norm_path = _clean_path(filepath)
         try:
             with self._conn() as conn:
                 cursor = conn.cursor()
@@ -102,7 +108,7 @@ class AiCacheManager:
 
     def save_image_embedding(self, filepath: str, mtime: float, size: int, embedding: np.ndarray):
         """Сохраняет вектор изображения (CLIP) в кэш."""
-        norm_path = os.path.normcase(os.path.abspath(filepath))
+        norm_path = _clean_path(filepath)
         try:
             emb_blob = embedding.astype(np.float32).tobytes()
             with self._conn() as conn:
@@ -125,7 +131,7 @@ class AiCacheManager:
         try:
             prepared = []
             for filepath, mtime, size, embedding in items:
-                norm_path = os.path.normcase(os.path.abspath(filepath))
+                norm_path = _clean_path(filepath)
                 emb_blob = embedding.astype(np.float32).tobytes()
                 prepared.append((norm_path, mtime, size, emb_blob))
 
@@ -146,7 +152,7 @@ class AiCacheManager:
         """
         Возвращает список лиц для файла из кэша.
         """
-        norm_path = os.path.normcase(os.path.abspath(filepath))
+        norm_path = _clean_path(filepath)
         try:
             with self._conn() as conn:
                 cursor = conn.cursor()
@@ -178,7 +184,7 @@ class AiCacheManager:
 
     def save_file_faces(self, filepath: str, mtime: float, size: int, faces: list[dict]):
         """Сохраняет список лиц файла в кэш."""
-        norm_path = os.path.normcase(os.path.abspath(filepath))
+        norm_path = _clean_path(filepath)
         try:
             with self._conn() as conn:
                 cursor = conn.cursor()
@@ -213,7 +219,8 @@ class AiCacheManager:
         has_general = False
         has_faces = False
         try:
-            prefix = os.path.normcase(os.path.normpath(folder_path)) + os.sep
+            clean_folder = strip_long_path_prefix(folder_path)
+            prefix = os.path.normcase(os.path.normpath(clean_folder)) + os.sep
             with self._conn() as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT 1 FROM image_embeddings WHERE filepath LIKE ? LIMIT 1", (prefix + "%",))

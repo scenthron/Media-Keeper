@@ -12,7 +12,10 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor, QFont, QPainter, QPen, QDragEnterEvent, QDropEvent
 
 from config import AppContext, APP_DESIGN
-from ui_widgets_base import DropZoneWidget
+from ui_widgets_base import DropZoneWidget, FlowLayout
+from .logic_ai_tags import AiTextTagsManager
+from .ui_ai_tags_dialog import AiTagManagerDialog
+from .ui_ai_lab import parse_multi_tags
 from .logic_ai import AiEngine
 from .logic_ai_cache import AiCacheManager
 from .logic_ai_classifier import AiClassifier, load_ai_settings, save_ai_settings, get_ai_assets_dir
@@ -208,6 +211,9 @@ class AiClassificationTab(QWidget):
         self.active_worker = None
         self.chips_map = {}
         self.ai_filter_config = None
+        
+        self.tags_manager = AiTextTagsManager()
+        self.active_tag_buttons = {}
         
         self._init_ui()
         self.reload_groups()
@@ -477,7 +483,45 @@ class AiClassificationTab(QWidget):
         """)
         page_text_layout.addWidget(self.btn_text_search)
         
+        # Action row for tags
+        tags_action_layout = QHBoxLayout()
+        self.btn_manage_tags = QPushButton("⚙️ Теги")
+        self.btn_manage_tags.setToolTip("Управление текстовыми тегами")
+        self.btn_manage_tags.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_manage_tags.setStyleSheet("""
+            QPushButton { background-color: #333; border: 1px solid #555; border-radius: 4px; padding: 4px 8px; color: #ccc; }
+            QPushButton:hover { background-color: #444; color: white; }
+        """)
+        self.btn_manage_tags.clicked.connect(self.open_tag_manager)
+        
+        self.btn_info_tags = QPushButton("ℹ️")
+        self.btn_info_tags.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_info_tags.setStyleSheet("QPushButton { background: transparent; border: none; font-size: 16px; }")
+        self.btn_info_tags.clicked.connect(self.show_tags_info)
+        
+        tags_action_layout.addWidget(self.btn_manage_tags)
+        tags_action_layout.addWidget(self.btn_info_tags)
+        tags_action_layout.addStretch()
+        
+        page_text_layout.addLayout(tags_action_layout)
+        
+        # Tags container
+        from PyQt6.QtWidgets import QScrollArea
+        self.tags_scroll = QScrollArea()
+        self.tags_scroll.setWidgetResizable(True)
+        self.tags_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        self.tags_scroll.setFixedHeight(120)
+        
+        self.tags_container = QWidget()
+        self.tags_container.setStyleSheet("background: transparent;")
+        self.tags_flow = FlowLayout(self.tags_container, margin=0, spacing=6)
+        self.tags_scroll.setWidget(self.tags_container)
+        
+        page_text_layout.addWidget(self.tags_scroll)
+        
         self.mode_stack.addWidget(self.page_text)
+        
+        self.refresh_tag_chips()
         
         self.btn_mode_ref.clicked.connect(lambda: self._switch_mode(0))
         self.btn_mode_text.clicked.connect(lambda: self._switch_mode(1))
@@ -1352,6 +1396,70 @@ class AiClassificationTab(QWidget):
         self.update_scan_button_state()
 
     
+
+    def open_tag_manager(self):
+        dlg = AiTagManagerDialog(self.tags_manager, self)
+        dlg.tags_changed.connect(self.refresh_tag_chips)
+        dlg.exec()
+
+    def show_tags_info(self):
+        from PyQt6.QtWidgets import QMessageBox
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Справка по текстовым тегам" if AppContext.is_ru() else "Text Tags Help")
+        msg.setText("Теги позволяют сохранять частые запросы.\n\n"
+                    "Обычный тег: сохраняет одно слово или фразу.\n"
+                    "Мультитег: сохраняет несколько запросов через запятую.\n\n"
+                    "Выберите нужные теги кликом, и они добавятся к вашему текстовому запросу при поиске.\n"
+                    "Мультитеги группируют свои результаты в одну колонку." if AppContext.is_ru() else
+                    "Tags let you save frequent text queries.\n\n"
+                    "Normal tag: saves a single word or phrase.\n"
+                    "Multi-tag: saves multiple comma-separated queries.\n\n"
+                    "Select tags by clicking them, and they will be added to your search query.\n"
+                    "Multi-tags combine their results into a single group.")
+        msg.exec()
+
+    def refresh_tag_chips(self):
+        # Clear existing
+        while self.tags_flow.count():
+            item = self.tags_flow.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+                
+        self.active_tag_buttons.clear()
+        
+        tags = self.tags_manager.get_tags()
+        for name, body in tags.items():
+            btn = QPushButton(name)
+            btn.setCheckable(True)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            
+            is_multi = "," in body
+            base_color = "#9a3412" if is_multi else "#166534"
+            hover_color = "#c2410c" if is_multi else "#15803d"
+            
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: transparent;
+                    color: #888;
+                    border: 1px solid #444;
+                    border-radius: 12px;
+                    padding: 4px 10px;
+                    font-size: 11px;
+                }}
+                QPushButton:hover {{
+                    border-color: {hover_color};
+                    color: #eee;
+                }}
+                QPushButton:checked {{
+                    background-color: {base_color};
+                    color: white;
+                    border: 1px solid {hover_color};
+                }}
+            """)
+            
+            self.active_tag_buttons[name] = btn
+            self.tags_flow.addWidget(btn)
+
     def _switch_mode(self, index):
         self.mode_stack.setCurrentIndex(index)
         self.btn_mode_ref.setChecked(index == 0)
@@ -1361,15 +1469,25 @@ class AiClassificationTab(QWidget):
     def start_text_search(self):
         # Trigger scanning
         query = self.line_text_search.text().strip()
-        if not query:
+        
+        active_tags = []
+        for name, btn in self.active_tag_buttons.items():
+            if btn.isChecked():
+                body = self.tags_manager.get_tags().get(name)
+                if body:
+                    # Format as multi-tag group so parse_multi_tags handles it correctly
+                    # A tag like 'собака' with body 'собака' becomes (собака: собака)
+                    active_tags.append(f"({name}: {body})")
+                    
+        combined_query = ", ".join(filter(None, [query] + active_tags))
+        
+        if not combined_query:
             from PyQt6.QtWidgets import QMessageBox
             from utils_env import AppContext
-            QMessageBox.warning(self, "Внимание" if AppContext.is_ru() else "Warning", "Введите текстовый запрос для поиска." if AppContext.is_ru() else "Please enter a search query.")
+            QMessageBox.warning(self, "Внимание" if AppContext.is_ru() else "Warning", "Введите текстовый запрос или выберите тег." if AppContext.is_ru() else "Please enter a query or select a tag.")
             return
         
-        # Temporarily enable text search mode internally, and execute toggle_scan
-        # We need to adapt logic_ai to handle text search properly!
-        self.toggle_scan(text_query=query)
+        self.toggle_scan(text_query=combined_query)
 
     def update_scan_button_state(self):
         folders = self.cleaner.get_active_source_folders() if hasattr(self, 'cleaner') else []
@@ -1504,7 +1622,11 @@ class AiClassificationTab(QWidget):
         
         text_queries_dict = {}
         if text_query:
-            text_queries_dict["Текст"] = [text_query]
+            parsed = parse_multi_tags(text_query)
+            if parsed:
+                text_queries_dict = parsed
+            else:
+                text_queries_dict["Текст"] = [text_query]
             
         request = AiSearchRequest(
             target_paths=folders,

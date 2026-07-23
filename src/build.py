@@ -4,192 +4,53 @@ import sys
 import shutil
 
 def build():
-    # Определяем директорию скрипта (папка src)
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Переходим в корень проекта
+    src_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(src_dir)
+    os.chdir(root_dir)
     
-    # Удаляем старый EXE-файл перед сборкой, чтобы гарантировать актуальность результата
-    app_name = "Media_Keeper"
-    root_dist = os.path.join(os.path.dirname(script_dir), "dist")
-    dest_exe = os.path.join(root_dist, f"{app_name}.exe")
-    if os.path.exists(dest_exe):
-        try:
-            os.remove(dest_exe)
-            print(f"[INFO] Removed old executable at {dest_exe}")
-        except Exception as e:
-            print(f"[WARN] Failed to remove old executable: {e}")
-            
-    # Переходим в директорию src, чтобы все пути определялись относительно неё
-    os.chdir(script_dir)
-    print(f"Working directory changed to: {os.getcwd()}")
+    spec_path = os.path.join(root_dir, "Media_Keeper.spec")
+    if not os.path.exists(spec_path):
+        spec_path = os.path.join(src_dir, "Media_Keeper.spec")
 
-    # Убеждаемся, что pyinstaller установлен
+    print(f"[BUILD] Запуск официальной спецификации PyInstaller: {spec_path}")
+
+    # Проверяем PyInstaller
     try:
         import PyInstaller
     except ImportError:
-        print("PyInstaller not found. Installing...")
+        print("[BUILD] Установка PyInstaller...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
-    # Получаем версию из config.py с помощью регулярных выражений
-    app_version = "v1.0"
-    config_path = "config.py"
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                content = f.read()
-                import re
-                match = re.search(r'APP_VERSION\s*=\s*["\']([^"\']+)["\']', content)
-                if match:
-                    app_version = match.group(1)
-        except Exception as e:
-            print(f"Warning: Failed to read version from config.py: {e}")
-
-    app_name = "Media_Keeper"
-
-    # Базовая команда
+    # Выполняем сборку по официальному .spec файлу
     pyinstaller_cmd = [
         sys.executable,
         "-m",
         "PyInstaller",
         "--noconfirm",
-        "--onefile",
-        "--windowed",
-        "--paths", ".",
-        "--name", app_name
+        "--clean",
+        spec_path
     ]
 
-    # Добавляем папки ресурсов динамически, если они существуют
-    data_dirs = ["icons", "launcher", "languages", "assets"]
-    for d in data_dirs:
-        if os.path.exists(d):
-            # Используем os.pathsep (; для Windows, : для Unix)
-            pyinstaller_cmd.extend(["--add-data", f"{d}{os.pathsep}{d}"])
-            
-    # Добавляем исполняемые утилиты (только fpcalc)
-    fpcalc_path = os.path.join("bin", "fpcalc.exe")
-    if os.path.exists(fpcalc_path):
-        pyinstaller_cmd.extend(["--add-binary", f"{fpcalc_path}{os.pathsep}bin"])
-    else:
-        print(f"[WARN] fpcalc.exe not found at {fpcalc_path}, it will not be bundled!")
-
-    # Автоматический сбор ВСЕХ бинарных DLL, C++ зависимостей и ресурсных файлов для нативных библиотек
-    try:
-        from PyInstaller.utils.hooks import collect_all
-        packages_to_collect = ["onnxruntime", "tokenizers", "safetensors", "cv2", "PIL", "PyQt6"]
-        for pkg in packages_to_collect:
-            try:
-                datas, binaries, hiddenimports = collect_all(pkg)
-                for d in datas:
-                    pyinstaller_cmd.extend(["--add-data", f"{d[0]}{os.pathsep}{d[1]}"])
-                for b in binaries:
-                    pyinstaller_cmd.extend(["--add-binary", f"{b[0]}{os.pathsep}{b[1]}"])
-                for h in hiddenimports:
-                    pyinstaller_cmd.extend(["--hidden-import", h])
-                print(f"[BUILD] Успешно собраны все нативные бинарники и DLL для '{pkg}'")
-            except Exception as pe:
-                print(f"[WARN] Предупреждение при сборке '{pkg}': {pe}")
-    except Exception as e:
-        print(f"[WARN] Ошибка импорта PyInstaller.utils.hooks: {e}")
-
-    # Скрытые импорты PyQt6 и внутренних модулей
-    hidden_imports = [
-        "PyQt6.QtSvg",
-        "PyQt6.QtSvgWidgets",
-        "PyQt6.QtMultimedia",
-        "PyQt6.QtMultimediaWidgets",
-        "PyQt6.sip",
-        "PIL",
-        "numpy",
-        "cv2",
-        "onnxruntime",
-        "requests",
-        "certifi",
-        "urllib3",
-        "idna",
-        "charset_normalizer",
-        "tokenizers",
-        "tokenizers.models",
-        "tokenizers.decoders",
-        "tokenizers.normalizers",
-        "tokenizers.pre_tokenizers",
-        "tokenizers.processors",
-        "tokenizers.trainers",
-        "safetensors",
-        "safetensors.numpy",
-        "backports",
-        "jaraco",
-        "setuptools",
-        "pkg_resources",
-        "utils_io",
-        "utils_common",
-        "logic_paths",
-        "logic_cache",
-        "logic_logger",
-        "config",
-        "modules.cleaner.vhash",
-        "modules.cleaner.dhash",
-        "modules.cleaner.ahash_audio",
-        "modules.cleaner.ui_ai_results_tree",
-        "modules.cleaner.ui_ai_references_panel",
-        "modules.cleaner.ui_ai_tags_dialog",
-        "modules.cleaner.ui_ai_group_dialog",
-        "modules.cleaner.logic_ai_classifier",
-        "modules.cleaner.logic_ai_cache",
-        "modules.cleaner.logic_ai_tags",
-        "modules.cleaner.logic_ai_dump",
-        "modules.cleaner.logic_ai",
-        "modules.cleaner.logic_scrfd",
-        "modules.cleaner.logic_clip",
-        "modules.cleaner.ai_facade",
-        "modules.cleaner.db_cache",
-        "modules.cleaner.db_session",
-        "modules.cleaner.workers",
-        "modules.cleaner.workers_move",
-        "modules.sorter.logic_files",
-        "modules.sorter.logic_player",
-        "modules.sorter.logic_mover",
-        "modules.analyzer.worker",
-        "modules.editor.audio.worker",
-        "modules.editor.video.worker",
-        "modules.editor.image.worker"
-    ]
-    for imp in hidden_imports:
-        pyinstaller_cmd.extend(["--hidden-import", imp])
-
-    # Исключаем тяжелые библиотеки для уменьшения размера EXE
-    excludes = ["tkinter", "matplotlib", "scipy", "skimage"]
-    for exc in excludes:
-        pyinstaller_cmd.extend(["--exclude-module", exc])
-
-    # Добавляем иконку приложения, если она есть
-    icon_path = os.path.join("launcher", "icon.ico")
-    if os.path.exists(icon_path):
-        pyinstaller_cmd.extend(["--icon", icon_path])
-
-    # Точка входа в приложение
-    pyinstaller_cmd.append("main.py")
-
-    print(f"Running command: {' '.join(pyinstaller_cmd)}")
-    
-    # Запуск сборки
+    print(f"[BUILD] Команда сборки: {' '.join(pyinstaller_cmd)}")
     result = subprocess.run(pyinstaller_cmd, shell=False)
-    
+
     if result.returncode == 0:
-        print("\nBuild completed successfully!")
-        exe_name = f"{app_name}.exe"
-        src_exe = os.path.join("dist", exe_name)
-        
-        if os.path.exists(src_exe):
-            root_dist = os.path.join(os.path.dirname(script_dir), "dist")
-            os.makedirs(root_dist, exist_ok=True)
-            dest_exe = os.path.join(root_dist, exe_name)
+        print("\n[BUILD] Сборка успешно завершена!")
+        app_name = "Media_Keeper.exe"
+        src_exe = os.path.join(root_dir, "dist", app_name)
+        if not os.path.exists(src_exe):
+            src_exe = os.path.join(src_dir, "dist", app_name)
             
-            try:
+        if os.path.exists(src_exe):
+            root_dist = os.path.join(root_dir, "dist")
+            os.makedirs(root_dist, exist_ok=True)
+            dest_exe = os.path.join(root_dist, app_name)
+            if src_exe != dest_exe:
                 shutil.copy2(src_exe, dest_exe)
-                print(f"Executable successfully copied to root folder: {dest_exe}")
-            except Exception as e:
-                print(f"Warning: Failed to copy executable to root dist folder: {e}")
+            print(f"[BUILD] Финальный исполняемый файл готов: {dest_exe}")
     else:
-        print("\nAn error occurred during build.")
+        print("\n[BUILD] Ошибка при сборке приложения.")
         sys.exit(result.returncode)
 
 if __name__ == "__main__":

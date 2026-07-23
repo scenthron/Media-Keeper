@@ -1192,6 +1192,7 @@ class AiScanWorker(QThread):
                     results[group_name] = cluster["members"]
                     groups_found += 1
                     wasted_bytes += sum(m["size"] for m in cluster["members"])
+                    files_found += len(cluster["members"])
 
         for g in results:
             results[g].sort(key=lambda x: x["confidence"], reverse=True)

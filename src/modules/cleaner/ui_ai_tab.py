@@ -687,8 +687,8 @@ class AiClassificationTab(QWidget):
         
         self.spin_threshold = CleanSpinBox()
         self.spin_threshold.setRange(0.0, 100.0)
-        self.spin_threshold.setDecimals(2)
-        self.spin_threshold.setSingleStep(0.01)
+        self.spin_threshold.setDecimals(1)
+        self.spin_threshold.setSingleStep(0.1)
         self.spin_threshold.setValue(50.0)
         self.spin_threshold.setSuffix("%")
         self.spin_threshold.setFixedWidth(65)
@@ -701,43 +701,6 @@ class AiClassificationTab(QWidget):
         slider_layout.addWidget(self.spin_threshold)
         params_sub_layout.addLayout(slider_layout)
         
-        # Выбор режима сопоставления
-        self.lbl_match_mode = QLabel("Режим сопоставления:" if AppContext.is_ru() else "Matching Mode:")
-        self.lbl_match_mode.setStyleSheet("color: #ccc; font-weight: bold; font-size: 11px; border: none; background: transparent; margin-top: 4px;")
-        params_sub_layout.addWidget(self.lbl_match_mode)
-        
-        self.combo_match_mode = QComboBox()
-        self.combo_match_mode.setMinimumHeight(24)
-        self.combo_match_mode.setStyleSheet("""
-            QComboBox {
-                background-color: #2b2b2b;
-                border: 1px solid #444;
-                border-radius: 4px;
-                padding: 2px 8px;
-                color: white;
-                font-size: 11px;
-            }
-            QComboBox:hover {
-                border-color: #555;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #2b2b2b;
-                color: white;
-                selection-background-color: #3b82f6;
-            }
-        """)
-        
-        is_ru = AppContext.is_ru()
-        self.combo_match_mode.addItem("Средний образ" if is_ru else "Average Centroid", "centroid")
-        self.combo_match_mode.setItemData(0, 
-            "Сравнивает изображение со средним арифметическим всех Образецов.\nПодходит для поиска однотипных скриншотов или портретов одного человека."
-            if is_ru else
-            "Compares with the average vector of all references.\nBest for uniform images (e.g. same face, same UI).",
-            Qt.ItemDataRole.ToolTipRole
-        )
         
         self.combo_match_mode.addItem("Любое совпадение" if is_ru else "Best Match (Any)", "best_match")
         self.combo_match_mode.setItemData(1, 
@@ -1269,6 +1232,28 @@ class AiClassificationTab(QWidget):
                         group_item.setHidden(False)
         finally:
             self.tree_results.blockSignals(False)
+            
+        visible_groups = 0
+        visible_files = 0
+        visible_bytes = 0
+        for i in range(root.childCount()):
+            group_item = root.child(i)
+            if not group_item.isHidden():
+                visible_groups += 1
+                for j in range(group_item.childCount()):
+                    child = group_item.child(j)
+                    if not child.isHidden():
+                        visible_files += 1
+                        data = child.data(0, Qt.ItemDataRole.UserRole)
+                        if data and 'size' in data:
+                            visible_bytes += data['size']
+                            
+        from utils_common import format_size
+        self.lbl_stats.setText(
+            f"Отображено: {visible_groups} групп, {visible_files} файлов, {visible_bytes // (1024*1024) if visible_bytes else 0} MB" if AppContext.is_ru()
+            else f"Displayed: {visible_groups} groups, {visible_files} files, {format_size(visible_bytes)}"
+        )
+            
         self.update_cleaner_action_bar_info()
 
     def on_match_mode_changed(self, index):

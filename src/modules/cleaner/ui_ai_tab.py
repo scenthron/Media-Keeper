@@ -506,7 +506,7 @@ class AiClassificationTab(QWidget):
         page_text_layout.addLayout(tags_action_layout)
         
         # Tags container
-        from PyQt6.QtWidgets import QScrollArea
+
         self.tags_scroll = QScrollArea()
         self.tags_scroll.setWidgetResizable(True)
         self.tags_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")

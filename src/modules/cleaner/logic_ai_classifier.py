@@ -227,12 +227,15 @@ class AiClassifier:
                 
                 if file_faces and face_refs:
                     max_sim = 0.0
+                    matched_bbox = None
                     for file_face in file_faces:
                         if file_face["descriptor"] is None or file_face["descriptor"].size == 0:
                             continue
                         for ref_desc in face_refs:
                             sim = self._cosine_similarity(file_face["descriptor"], ref_desc)
-                            if sim > max_sim: max_sim = sim
+                            if sim > max_sim: 
+                                max_sim = sim
+                                matched_bbox = file_face.get("bbox")
                             
                     mapped_score = (max_sim - 0.35) / (0.85 - 0.35)
                     mapped_score = max(0.0, min(1.0, float(mapped_score)))
@@ -251,6 +254,6 @@ class AiClassifier:
                         mapped_score = max(0.0, mapped_score - (neg_mapped * 0.5))
                         
                     if mapped_score > 0:
-                        result[group_name] = mapped_score
+                        result[group_name] = {"score": mapped_score, "bbox": matched_bbox}
                         
         return result

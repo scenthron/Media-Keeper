@@ -1577,7 +1577,7 @@ class AiClassificationTab(QWidget):
                 file_item.setText(1, f"{f['confidence']:.1f}%")
                 file_item.setText(2, format_size(f["size"]))
                 file_item.setText(3, f["path"])
-                file_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": False, "path": f["path"], "size": f["size"], "confidence": f.get("confidence", 0.0) / 100.0})
+                file_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": False, "path": f["path"], "size": f["size"], "confidence": f.get("confidence", 0.0) / 100.0, "matched_bbox": f.get("matched_bbox")})
                 
             group_item.setExpanded(True)
             
@@ -1638,8 +1638,9 @@ class AiClassificationTab(QWidget):
                     faces = self.classifier.cache.get_file_faces(path, mtime, size)
                     if faces:
                         bboxes = [f.get("bbox") for f in faces if f.get("bbox")]
+                        matched_bbox = user_data.get("matched_bbox") if user_data else None
                         if hasattr(self.preview_widget, "draw_faces"):
-                            self.preview_widget.draw_faces(bboxes)
+                            self.preview_widget.draw_faces(bboxes, matched_bbox=matched_bbox)
                 except Exception as e:
                     import logging
                     logging.error(f"Ошибка получения лиц для предпросмотра: {e}")

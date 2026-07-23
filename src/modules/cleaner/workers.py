@@ -1048,6 +1048,8 @@ class AiScanWorker(QThread):
                         if faces:
                             for face in faces:
                                 emb = face.get("descriptor", face.get("embedding", None)) if isinstance(face, dict) else face.embedding
+                                bbox = face.get("bbox") if isinstance(face, dict) else getattr(face, "bbox", None)
+                                bbox_list = list(bbox) if bbox is not None else None
                                 if emb is None: continue
                                 matched = False
                                 for cluster in cluster_data:
@@ -1057,13 +1059,8 @@ class AiScanWorker(QThread):
                                     
                                     if score >= self.threshold:
                                         if not any(m["path"] == fp for m in cluster["members"]):
-                                            cluster["members"].append({"path": fp, "size": size, "confidence": score, "type": "face"})
+                                            cluster["members"].append({"path": fp, "size": size, "confidence": score, "type": "face", "matched_bbox": bbox_list})
                                         
-                                        new_centroid = np.mean([c["emb"] for c in cluster["raw_embs"]] + [emb], axis=0)
-                                        norm = np.linalg.norm(new_centroid)
-                                        if norm > 0:
-                                            new_centroid /= norm
-                                        cluster["centroid"] = new_centroid
                                         cluster["raw_embs"].append({"emb": emb})
                                         matched = True
                                         break
@@ -1071,7 +1068,7 @@ class AiScanWorker(QThread):
                                     cluster_data.append({
                                         "centroid": emb,
                                         "raw_embs": [{"emb": emb}],
-                                        "members": [{"path": fp, "size": size, "confidence": 100.0, "type": "face"}]
+                                        "members": [{"path": fp, "size": size, "confidence": 100.0, "type": "face", "matched_bbox": bbox_list}]
                                     })
                     else:
                         emb = None
@@ -1093,11 +1090,6 @@ class AiScanWorker(QThread):
                                     if not any(m["path"] == fp for m in cluster["members"]):
                                         cluster["members"].append({"path": fp, "size": size, "confidence": score, "type": "general"})
                                     
-                                    new_centroid = np.mean([c["emb"] for c in cluster["raw_embs"]] + [emb], axis=0)
-                                    norm = np.linalg.norm(new_centroid)
-                                    if norm > 0:
-                                        new_centroid /= norm
-                                    cluster["centroid"] = new_centroid
                                     cluster["raw_embs"].append({"emb": emb})
                                     matched = True
                                     break
@@ -1131,18 +1123,27 @@ class AiScanWorker(QThread):
                                 files_found += 1
                     else:
                         results_dict = self.classifier.classify_file(fp)
-                        for g_name, conf in results_dict.items():
+                        for g_name, conf_data in results_dict.items():
+                            if isinstance(conf_data, dict):
+                                conf = conf_data["score"]
+                                bbox = conf_data.get("bbox")
+                            else:
+                                conf = conf_data
+                                bbox = None
                             conf_pct = conf * 100.0
                             if conf_pct >= self.threshold:
                                 if g_name not in results:
                                     results[g_name] = []
                                     groups_found += 1
-                                results[g_name].append({
+                                member_data = {
                                     "path": fp,
                                     "size": size,
                                     "confidence": conf_pct,
-                                    "type": "AI"
-                                })
+                                    "type": "general"
+                                }
+                                if bbox is not None:
+                                    member_data["matched_bbox"] = list(bbox)
+                                results[g_name].append(member_data)
                                 wasted_bytes += size
                                 files_found += 1
             except Exception as e:
@@ -1160,21 +1161,18 @@ class AiScanWorker(QThread):
                 settings = load_ai_settings()
                 if settings.get("deep_merge_enabled", True):
                     merge_threshold = settings.get("deep_merge_threshold", 75.0)
-                    dist_thresh = 1.5 * (merge_threshold / 100.0)
                     merged = True
                     while merged:
                         merged = False
                         for i in range(len(cluster_data)):
                             for j in range(i + 1, len(cluster_data)):
-                                dist = float(np.linalg.norm(cluster_data[i]["centroid"] - cluster_data[j]["centroid"]))
-                                if dist <= dist_thresh:
+                                sim = float(np.dot(cluster_data[i]["centroid"], cluster_data[j]["centroid"]))
+                                mapped_score = (sim - 0.35) / (0.85 - 0.35)
+                                score = max(0.0, min(100.0, float(mapped_score) * 100.0))
+                                if score >= merge_threshold:
                                     cluster_data[i]["members"].extend([m for m in cluster_data[j]["members"] if m["path"] not in [om["path"] for om in cluster_data[i]["members"]]])
                                     cluster_data[i]["raw_embs"].extend(cluster_data[j]["raw_embs"])
-                                    new_centroid = np.mean([c["emb"] for c in cluster_data[i]["raw_embs"]], axis=0)
-                                    norm = np.linalg.norm(new_centroid)
-                                    if norm > 0:
-                                        new_centroid /= norm
-                                    cluster_data[i]["centroid"] = new_centroid
+                                    # No centroid shift
                                     del cluster_data[j]
                                     merged = True
                                     break

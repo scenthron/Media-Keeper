@@ -51,6 +51,10 @@ class AiClassifier:
         # Кэш готовых образцов в ОЗУ для быстрого сопоставления во время сканирования
         self.general_embeddings = {}  # group_name -> list(clip_embedding)
         self.face_reference_descriptors = {}  # group_name -> list(insightface_descriptor)
+        
+        self.general_negative_embeddings = {}
+        self.face_negative_descriptors = {}
+        self.group_types = {}
 
     def get_group_status(self, group_name: str) -> tuple:
         """
@@ -79,6 +83,9 @@ class AiClassifier:
         """
         self.general_embeddings.clear()
         self.face_reference_descriptors.clear()
+        self.general_negative_embeddings.clear()
+        self.face_negative_descriptors.clear()
+        self.group_types.clear()
         
         settings = load_ai_settings()
         active_groups = []
@@ -91,20 +98,24 @@ class AiClassifier:
         if not active_groups:
             return False
             
-        from .logic_ai_dump import load_features, extract_images_to_temp, save_dump
+        from .logic_ai_dump import load_features, extract_images_to_temp, save_dump, load_dump_info
         import shutil
         loaded_any = False
         
         for name, dump_path in active_groups:
             needs_upgrade = False
             
+            dump_info = load_dump_info(dump_path)
+            g_type = dump_info.get("type", "face")
+            self.group_types[name] = g_type
+            
             # Check CLIP vectors length
-            pos_feat, _ = load_features(dump_path, "features")
+            pos_feat, neg_feat = load_features(dump_path, "features")
             if pos_feat and len(pos_feat) > 0 and pos_feat[0].shape[0] != 512:
                 needs_upgrade = True
                 
             # Check InsightFace vectors length
-            pos_faces, _ = load_features(dump_path, "faces")
+            pos_faces, neg_faces = load_features(dump_path, "faces")
             if pos_faces and len(pos_faces) > 0 and pos_faces[0].shape[0] != 512:
                 needs_upgrade = True
                 
@@ -140,17 +151,19 @@ class AiClassifier:
                     )
                     
                     # Reload the new features
-                    pos_feat, _ = load_features(dump_path, "features")
-                    pos_faces, _ = load_features(dump_path, "faces")
+                    pos_feat, neg_feat = load_features(dump_path, "features")
+                    pos_faces, neg_faces = load_features(dump_path, "faces")
                 finally:
                     shutil.rmtree(temp_dir, ignore_errors=True)
             
             if pos_feat and len(pos_feat) > 0:
                 self.general_embeddings[name] = pos_feat
+                if neg_feat: self.general_negative_embeddings[name] = neg_feat
                 loaded_any = True
                 
             if pos_faces and len(pos_faces) > 0:
                 self.face_reference_descriptors[name] = pos_faces
+                if neg_faces: self.face_negative_descriptors[name] = neg_faces
                 loaded_any = True
                 
         return loaded_any
@@ -182,28 +195,62 @@ class AiClassifier:
             # Если кэша нет - возвращаем пустой результат (файл пропущен)
             return result
             
-        # 3. Сопоставляем CLIP
-        for group_name, clip_list in self.general_embeddings.items():
-            max_sim = 0.0
-            if file_clip_embedding is not None and clip_list:
-                for ref_emb in clip_list:
-                    sim = self._cosine_similarity(file_clip_embedding, ref_emb)
-                    if sim > max_sim: max_sim = sim
-            result[group_name] = max_sim
-            
-        # 4. Сопоставляем Лица
-        for group_name, face_refs in self.face_reference_descriptors.items():
-            max_face_sim = 0.0
-            if file_faces and face_refs:
-                for file_face in file_faces:
-                    if file_face["descriptor"] is None or file_face["descriptor"].size == 0:
-                        continue
-                    for ref_desc in face_refs:
-                        sim = self._cosine_similarity(file_face["descriptor"], ref_desc)
-                        if sim > max_face_sim: max_face_sim = sim
-            
-            # Если совпадение по лицу выше, чем по CLIP, перезаписываем результат для группы
-            if max_face_sim > result.get(group_name, 0.0):
-                result[group_name] = max_face_sim
+        for group_name, g_type in self.group_types.items():
+            if g_type == "image":
+                clip_list = self.general_embeddings.get(group_name, [])
+                neg_clip_list = self.general_negative_embeddings.get(group_name, [])
                 
+                if file_clip_embedding is not None and clip_list:
+                    max_sim = 0.0
+                    for ref_emb in clip_list:
+                        sim = self._cosine_similarity(file_clip_embedding, ref_emb)
+                        if sim > max_sim: max_sim = sim
+                        
+                    mapped_score = (max_sim - 0.20) / (0.32 - 0.20)
+                    mapped_score = max(0.0, min(1.0, float(mapped_score)))
+                    
+                    if neg_clip_list:
+                        max_neg = 0.0
+                        for ref_neg in neg_clip_list:
+                            sim = self._cosine_similarity(file_clip_embedding, ref_neg)
+                            if sim > max_neg: max_neg = sim
+                        neg_mapped = (max_neg - 0.20) / (0.32 - 0.20)
+                        neg_mapped = max(0.0, min(1.0, float(neg_mapped)))
+                        mapped_score = max(0.0, mapped_score - (neg_mapped * 0.5))
+                        
+                    if mapped_score > 0:
+                        result[group_name] = mapped_score
+
+            elif g_type == "face":
+                face_refs = self.face_reference_descriptors.get(group_name, [])
+                neg_faces = self.face_negative_descriptors.get(group_name, [])
+                
+                if file_faces and face_refs:
+                    max_sim = 0.0
+                    for file_face in file_faces:
+                        if file_face["descriptor"] is None or file_face["descriptor"].size == 0:
+                            continue
+                        for ref_desc in face_refs:
+                            sim = self._cosine_similarity(file_face["descriptor"], ref_desc)
+                            if sim > max_sim: max_sim = sim
+                            
+                    mapped_score = (max_sim - 0.35) / (0.85 - 0.35)
+                    mapped_score = max(0.0, min(1.0, float(mapped_score)))
+                    
+                    if neg_faces:
+                        max_neg = 0.0
+                        for file_face in file_faces:
+                            if file_face["descriptor"] is None or file_face["descriptor"].size == 0:
+                                continue
+                            for ref_neg in neg_faces:
+                                sim = self._cosine_similarity(file_face["descriptor"], ref_neg)
+                                if sim > max_neg: max_neg = sim
+                                
+                        neg_mapped = (max_neg - 0.35) / (0.85 - 0.35)
+                        neg_mapped = max(0.0, min(1.0, float(neg_mapped)))
+                        mapped_score = max(0.0, mapped_score - (neg_mapped * 0.5))
+                        
+                    if mapped_score > 0:
+                        result[group_name] = mapped_score
+                        
         return result

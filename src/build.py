@@ -90,6 +90,8 @@ def build():
         "tokenizers",
         "safetensors",
         "safetensors.numpy",
+        "utils_io",
+        "utils_common",
         "modules.cleaner.vhash",
         "modules.cleaner.ahash_audio",
         "modules.cleaner.ui_ai_results_tree",

@@ -61,6 +61,8 @@ class AiEngine:
     def download_models(self, progress_callback=None) -> bool:
         """Скачивает реальные ИИ-модели по прямым интернет-ссылкам."""
         import requests
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -127,7 +129,7 @@ class AiEngine:
                 for url in item["urls"]:
                     logging.info(f"Попытка скачивания {item['name']} с {url}...")
                     try:
-                        resp = requests.get(url, stream=True, headers=headers, timeout=30)
+                        resp = requests.get(url, stream=True, headers=headers, allow_redirects=True, verify=False, timeout=30)
                         if resp.status_code == 200:
                             total_size = int(resp.headers.get("content-length", 0))
                             downloaded = 0
@@ -148,6 +150,8 @@ class AiEngine:
                                 download_success = True
                                 logging.info(f"Успешно скачан файл {item['name']}")
                                 break
+                        else:
+                            logging.warning(f"HTTP статус {resp.status_code} при попытке скачивания {url}")
                     except Exception as err:
                         logging.warning(f"Сбой загрузки с {url}: {err}")
                         if os.path.exists(dest + ".tmp"):

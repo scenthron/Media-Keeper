@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QScrollArea, QSizePolicy, QComboBox, QCheckBox, QTabWidget, QDoubleSpinBox,
     QTextEdit
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent
+from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent, QThread
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor, QFont, QPainter, QPen, QDragEnterEvent, QDropEvent
 
 from config import AppContext, APP_DESIGN
@@ -79,6 +79,21 @@ class AiFolderDropContainer(QWidget):
         if paths:
             self.files_dropped.emit(paths)
 
+
+class AiModelDownloaderThread(QThread):
+    progress_signal = pyqtSignal(str, int, int)
+    finished_signal = pyqtSignal(bool)
+
+    def __init__(self, ai_engine, parent=None):
+        super().__init__(parent)
+        self.ai_engine = ai_engine
+
+    def run(self):
+        def on_progress(filename, downloaded, total_size):
+            self.progress_signal.emit(filename, downloaded, total_size)
+
+        success = self.ai_engine.download_models(progress_callback=on_progress)
+        self.finished_signal.emit(success)
 
 # -----------------------------------------------------------------------------
 # Основная вкладка ИИ-классификации
@@ -947,6 +962,8 @@ class AiClassificationTab(QWidget):
         
         is_ru = AppContext.is_ru()
         
+        self.dl_thread = AiModelDownloaderThread(self.ai, self)
+        
         def on_progress(filename, downloaded, total_size):
             if total_size > 0:
                 pct = int((downloaded / total_size) * 100.0)
@@ -954,27 +971,28 @@ class AiClassificationTab(QWidget):
                 self.placeholder_status.setText(f"Загрузка {filename}: {downloaded // 1024} KB / {total_size // 1024} KB")
             else:
                 self.placeholder_status.setText(f"Загрузка {filename}: {downloaded // 1024} KB")
-            from PyQt6.QtWidgets import QApplication
-            QApplication.processEvents()
-            
-        success = self.ai.download_models(progress_callback=on_progress)
-        
-        if success:
-            self.placeholder_status.setStyleSheet("color: #4ade80;")
-            self.placeholder_status.setText("Инициализация..." if is_ru else "Initializing...")
-            
-            if self.ai.initialize_sessions():
-                self.placeholder_status.setText("Успешно!" if is_ru else "Success!")
-                self.download_placeholder.hide()
-                self.main_content_widget.show()
+                
+        def on_finished(success):
+            if success:
+                self.placeholder_status.setStyleSheet("color: #4ade80;")
+                self.placeholder_status.setText("Инициализация..." if is_ru else "Initializing...")
+                
+                if self.ai.initialize_sessions():
+                    self.placeholder_status.setText("Успешно!" if is_ru else "Success!")
+                    self.download_placeholder.hide()
+                    self.main_content_widget.show()
+                else:
+                    self.btn_download_models.setEnabled(True)
+                    self.placeholder_status.setStyleSheet("color: #ef4444;")
+                    self.placeholder_status.setText("Ошибка инициализации!" if is_ru else "Initialization failed!")
             else:
                 self.btn_download_models.setEnabled(True)
                 self.placeholder_status.setStyleSheet("color: #ef4444;")
-                self.placeholder_status.setText("Ошибка инициализации!" if is_ru else "Initialization failed!")
-        else:
-            self.btn_download_models.setEnabled(True)
-            self.placeholder_status.setStyleSheet("color: #ef4444;")
-            self.placeholder_status.setText("Ошибка при скачивании моделей!" if is_ru else "Failed to download models!")
+                self.placeholder_status.setText("Ошибка при скачивании моделей!" if is_ru else "Failed to download models!")
+
+        self.dl_thread.progress_signal.connect(on_progress)
+        self.dl_thread.finished_signal.connect(on_finished)
+        self.dl_thread.start()
 
     def reload_groups(self):
         self.chips_map.clear()

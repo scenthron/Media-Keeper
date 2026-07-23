@@ -1520,6 +1520,12 @@ class AiClassificationTab(QWidget):
         )
 
     def on_scan_finished(self, results):
+        from PyQt6.QtWidgets import QApplication
+        self.lbl_progress.setText("Формирование таблицы..." if AppContext.is_ru() else "Building table...")
+        QApplication.processEvents()
+        
+        self.populate_results(results)
+        
         self.progress_bar.hide()
         self.btn_start_scan.setText(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
         self.btn_start_scan.setStyleSheet("""
@@ -1535,8 +1541,6 @@ class AiClassificationTab(QWidget):
         self.update_cache_info_ai()
         if hasattr(self, 'cleaner'):
             self.update_folders_label(self.cleaner.get_active_source_folders())
-        
-        self.populate_results(results)
 
 
 

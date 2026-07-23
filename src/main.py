@@ -1,6 +1,14 @@
 import sys
 import os
 
+# PRE-IMPORT TRANSFORMERS TO PREVENT HARD C++ CRASH WITH PYQT6
+try:
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+    import transformers
+except ImportError:
+    pass
+
 # Предотвращаем запуск интерактивного шелла Python при выходе (сброс унаследованных переменных)
 os.environ.pop('PYTHONINSPECT', None)
 if hasattr(sys, '__interactivehook__'):

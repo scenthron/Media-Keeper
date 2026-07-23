@@ -148,12 +148,15 @@ class AiCoreWorker(QRunnable):
             # Initialize text embeddings if TEXT_TO_IMAGE
             text_embeddings = {}
             if self.request.task_type == AiTaskType.TEXT_TO_IMAGE:
-                for group_name, comps in self.request.text_queries.items():
-                    text_embeddings[group_name] = []
-                    for comp in comps:
-                        emb = self.engine.extract_text_embedding(comp)
-                        if emb is not None:
-                            text_embeddings[group_name].append(emb)
+                if hasattr(self.request, "precomputed_text_embeddings"):
+                    text_embeddings = self.request.precomputed_text_embeddings
+                else:
+                    for group_name, comps in self.request.text_queries.items():
+                        text_embeddings[group_name] = []
+                        for comp in comps:
+                            emb = self.engine.extract_text_embedding(comp)
+                            if emb is not None:
+                                text_embeddings[group_name].append(emb)
 
             # 3. Process each file
             file_features = []
@@ -357,13 +360,24 @@ class AiServiceFacade(QObject):
         return self.engine
 
     def search(self, request: AiSearchRequest, 
-               progress_callback=None, 
-               result_callback=None, 
-               error_callback=None,
-               classifier=None):
+                 progress_callback=None, 
+                 result_callback=None, 
+                 error_callback=None,
+                 classifier=None):
         
         self.cancel_search()
         
+        # PRE-COMPUTE TEXT EMBEDDINGS IN MAIN THREAD TO PREVENT C++ RUST TOKENIZER CRASH
+        if request.task_type == AiTaskType.TEXT_TO_IMAGE:
+            engine = self.get_engine()
+            request.precomputed_text_embeddings = {}
+            for group_name, comps in request.text_queries.items():
+                request.precomputed_text_embeddings[group_name] = []
+                for comp in comps:
+                    emb = engine.extract_text_embedding(comp)
+                    if emb is not None:
+                        request.precomputed_text_embeddings[group_name].append(emb)
+
         self.active_worker = AiCoreWorker(request, self.get_engine(), self.cache, classifier)
         
         worker = self.active_worker

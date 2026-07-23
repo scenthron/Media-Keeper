@@ -58,6 +58,46 @@ class AiSearchRequest:
 class AiSearchResponse:
     groups: list[AiGroup] = field(default_factory=list)
 
+def _dbscan_numpy(X: np.ndarray, eps: float, min_samples: int = 2) -> np.ndarray:
+    """Чистый NumPy DBSCAN алгоритм кластеризации с косинусным расстоянием без внешних зависимостей."""
+    n = len(X)
+    if n == 0:
+        return np.array([], dtype=int)
+    
+    norms = np.linalg.norm(X, axis=1, keepdims=True)
+    norms = np.clip(norms, 1e-9, None)
+    X_norm = X / norms
+    
+    sims = np.dot(X_norm, X_norm.T)
+    dists = np.clip(1.0 - sims, 0.0, None)
+    
+    labels = np.full(n, -1, dtype=int)
+    cluster_id = 0
+    
+    for i in range(n):
+        if labels[i] != -1:
+            continue
+            
+        neighbors = np.where(dists[i] <= eps)[0]
+        if len(neighbors) < min_samples:
+            labels[i] = -1
+        else:
+            labels[i] = cluster_id
+            seeds = list(neighbors)
+            while seeds:
+                curr = seeds.pop(0)
+                if labels[curr] == -1:
+                    labels[curr] = cluster_id
+                elif labels[curr] != -1:
+                    continue
+                labels[curr] = cluster_id
+                curr_neighbors = np.where(dists[curr] <= eps)[0]
+                if len(curr_neighbors) >= min_samples:
+                    seeds.extend(curr_neighbors)
+            cluster_id += 1
+            
+    return labels
+
 # -----------------------------------------------------------------------------
 # Core Worker
 # -----------------------------------------------------------------------------
@@ -257,9 +297,6 @@ class AiCoreWorker(QRunnable):
                                 groups_dict[group_name].append(match_file)
 
             elif self.request.task_type == AiTaskType.AUTO_CLUSTER and self.request.analysis_target == AiTarget.FACES:
-                # Simple O(N^2) naive clustering for testing (can be replaced by DBSCAN later inside this facade)
-                # To keep it simple without scikit-learn for now, just group by first match
-                from sklearn.cluster import DBSCAN
                 all_embs = []
                 file_face_map = []
                 
@@ -271,8 +308,7 @@ class AiCoreWorker(QRunnable):
                 if all_embs:
                     X = np.array(all_embs)
                     eps = 1.0 - (self.request.threshold / 100.0)
-                    dbscan = DBSCAN(eps=eps, min_samples=2, metric='cosine')
-                    labels = dbscan.fit_predict(X)
+                    labels = _dbscan_numpy(X, eps=eps, min_samples=2)
                     
                     for i, label in enumerate(labels):
                         if label == -1: continue # noise
@@ -297,12 +333,9 @@ class AiCoreWorker(QRunnable):
                     file_map.append(fp)
                     
                 if all_embs:
-                    from sklearn.cluster import DBSCAN
                     X = np.array(all_embs)
-                    # For CLIP, threshold map: 0.85 cosine sim is ~85%
                     eps = 1.0 - (self.request.threshold / 100.0)
-                    dbscan = DBSCAN(eps=eps, min_samples=2, metric='cosine')
-                    labels = dbscan.fit_predict(X)
+                    labels = _dbscan_numpy(X, eps=eps, min_samples=2)
                     
                     for i, label in enumerate(labels):
                         if label == -1: continue 

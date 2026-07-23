@@ -1722,6 +1722,9 @@ class AiClassificationTab(QWidget):
 
     def populate_results(self, results):
         self.tree_results.clear()
+        msg = "Файл не выбран" if AppContext.is_ru() else "No file selected"
+        self.preview_widget.show_empty(msg)
+        self.file_selected.emit("")
         if not results:
             self.post_filter_widget.hide()
             return
@@ -1801,6 +1804,9 @@ class AiClassificationTab(QWidget):
     def on_tree_selection_changed(self):
         selected_items = self.tree_results.selectedItems()
         if not selected_items:
+            msg = "Файл не выбран" if AppContext.is_ru() else "No file selected"
+            self.preview_widget.show_empty(msg)
+            self.file_selected.emit("")
             return
             
         item = selected_items[0]
@@ -1830,6 +1836,7 @@ class AiClassificationTab(QWidget):
         else:
             msg = "Файл не выбран" if AppContext.is_ru() else "No file selected"
             self.preview_widget.show_empty(msg)
+            self.file_selected.emit("")
 
     def on_tree_item_changed(self, item, column):
         if column != 0:

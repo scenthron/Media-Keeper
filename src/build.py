@@ -3,8 +3,15 @@ import subprocess
 import sys
 import shutil
 
+# Гарантируем UTF-8 вывод логов для любых серверных консолей (Windows Actions CP1252)
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 def build():
-    # Переходим в корень проекта
     src_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.dirname(src_dir)
     os.chdir(root_dir)
@@ -13,16 +20,14 @@ def build():
     if not os.path.exists(spec_path):
         spec_path = os.path.join(src_dir, "Media_Keeper.spec")
 
-    print(f"[BUILD] Запуск официальной спецификации PyInstaller: {spec_path}")
+    print(f"[BUILD] Launching PyInstaller build with spec: {spec_path}")
 
-    # Проверяем PyInstaller
     try:
         import PyInstaller
     except ImportError:
-        print("[BUILD] Установка PyInstaller...")
+        print("[BUILD] Installing PyInstaller...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
-    # Выполняем сборку по официальному .spec файлу
     pyinstaller_cmd = [
         sys.executable,
         "-m",
@@ -32,11 +37,11 @@ def build():
         spec_path
     ]
 
-    print(f"[BUILD] Команда сборки: {' '.join(pyinstaller_cmd)}")
+    print(f"[BUILD] Running command: {' '.join(pyinstaller_cmd)}")
     result = subprocess.run(pyinstaller_cmd, shell=False)
 
     if result.returncode == 0:
-        print("\n[BUILD] Сборка успешно завершена!")
+        print("\n[BUILD] Build completed successfully!")
         app_name = "Media_Keeper.exe"
         src_exe = os.path.join(root_dir, "dist", app_name)
         if not os.path.exists(src_exe):
@@ -48,9 +53,9 @@ def build():
             dest_exe = os.path.join(root_dist, app_name)
             if src_exe != dest_exe:
                 shutil.copy2(src_exe, dest_exe)
-            print(f"[BUILD] Финальный исполняемый файл готов: {dest_exe}")
+            print(f"[BUILD] Final executable ready: {dest_exe}")
     else:
-        print("\n[BUILD] Ошибка при сборке приложения.")
+        print("\n[BUILD] Build failed with errors.")
         sys.exit(result.returncode)
 
 if __name__ == "__main__":

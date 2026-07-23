@@ -28,7 +28,7 @@ hiddenimports = [
     "config",
 ]
 
-# Декларативный сбор нативных пакетов по стандарту PyInstaller
+# Native package collection for PyInstaller
 native_packages = ["onnxruntime", "tokenizers", "safetensors", "cv2", "PIL", "PyQt6"]
 for pkg in native_packages:
     try:
@@ -37,16 +37,16 @@ for pkg in native_packages:
         binaries.extend(b)
         hiddenimports.extend(h)
     except Exception as e:
-        print(f"[SPEC WARN] Не удалось выполнить collect_all для {pkg}: {e}")
+        print(f"[SPEC WARN] Failed to collect_all for {pkg}: {e}")
 
-# Сбор встроенных папок ресурсов
+# Application resource directories
 resource_dirs = ["icons", "launcher", "languages", "assets"]
 for rdir in resource_dirs:
     rpath = os.path.join(src_dir, rdir)
     if os.path.exists(rpath):
         datas.append((rpath, rdir))
 
-# Сбор исполняемой бинарной утилиты fpcalc
+# Binary executable fpcalc
 fpcalc = os.path.join(src_dir, "bin", "fpcalc.exe")
 if os.path.exists(fpcalc):
     binaries.append((fpcalc, "bin"))

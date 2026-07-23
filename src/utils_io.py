@@ -20,6 +20,71 @@ def strip_long_path_prefix(path):
         return path[4:]
     return path
 
+def safe_cv2_imread(path: str, flags=1):
+    """
+    Безопасное чтение изображений через OpenCV со 100% поддержкой 
+    кириллицы, Юникод-символов и длинных путей Windows.
+    """
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        norm_p = ensure_long_path(path)
+        with open(norm_p, "rb") as f:
+            bytes_array = bytearray(f.read())
+            numpyarray = __import__('numpy').asarray(bytes_array, dtype=__import__('numpy').uint8)
+            return __import__('cv2').imdecode(numpyarray, flags)
+    except Exception as e:
+        logging.error(f"[utils_io] Ошибка чтения изображения {path}: {e}")
+        return None
+
+def safe_cv2_imwrite(path: str, img, ext=".jpg") -> bool:
+    """
+    Безопасная запись изображений через OpenCV с поддержкой кириллицы и Юникода.
+    """
+    if img is None or not path:
+        return False
+    try:
+        cv2 = __import__('cv2')
+        success, buf = cv2.imencode(ext, img)
+        if success:
+            norm_p = ensure_long_path(path)
+            os.makedirs(os.path.dirname(norm_p), exist_ok=True)
+            with open(norm_p, "wb") as f:
+                f.write(buf)
+            return True
+    except Exception as e:
+        logging.error(f"[utils_io] Ошибка записи изображения {path}: {e}")
+    return False
+
+def safe_open(path: str, mode: str = "r", encoding: str = None, **kwargs):
+    """
+    Безопасное открытие файла с поддержкой длинных путей Windows и нормализацией.
+    """
+    norm_p = ensure_long_path(path)
+    if "b" not in mode and encoding is None:
+        encoding = "utf-8"
+    if "w" in mode or "a" in mode or "+" in mode:
+        parent = os.path.dirname(norm_p)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+    return open(norm_p, mode=mode, encoding=encoding, **kwargs)
+
+def safe_path_exists(path: str) -> bool:
+    """Безопасная проверка существования пути с поддержкой длинных путей."""
+    if not path:
+        return False
+    return os.path.exists(ensure_long_path(path))
+
+def safe_file_size(path: str) -> int:
+    """Безопасное чтение размера файла."""
+    try:
+        norm_p = ensure_long_path(path)
+        if os.path.exists(norm_p):
+            return os.path.getsize(norm_p)
+    except Exception:
+        pass
+    return 0
+
 def smart_move_file(src, dst, progress_callback=None, stop_event=None):
     """
     Moves a file intelligently:

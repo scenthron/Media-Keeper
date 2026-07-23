@@ -193,13 +193,8 @@ class CLIPSearcher:
             return None
             
         try:
-            # Чтение через utils для поддержки кириллицы можно добавить позже,
-            # но пока используем np.fromfile как в logic_scrfd, чтобы избежать проблем с путями
-            stream = open(img_path, "rb")
-            bytes_array = bytearray(stream.read())
-            numpyarray = np.asarray(bytes_array, dtype=np.uint8)
-            img = cv2.imdecode(numpyarray, cv2.IMREAD_COLOR)
-            stream.close()
+            from utils_io import safe_cv2_imread
+            img = safe_cv2_imread(img_path)
             
             if img is None:
                 return None

@@ -221,15 +221,8 @@ class AiEngine:
         if not self._is_initialized:
             return []
             
-        try:
-            with open(image_path, "rb") as f:
-                bytes_array = bytearray(f.read())
-                numpyarray = np.asarray(bytes_array, dtype=np.uint8)
-                img = cv2.imdecode(numpyarray, cv2.IMREAD_COLOR)
-        except Exception as e:
-            logging.error(f"Ошибка чтения файла {image_path}: {e}")
-            return []
-
+        from utils_io import safe_cv2_imread
+        img = safe_cv2_imread(image_path)
         if img is None:
             return []
             

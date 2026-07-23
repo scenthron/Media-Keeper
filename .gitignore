@@ -55,10 +55,9 @@ ffmpeg2pass-*.log.mbtree
 media_keeper.log*
 
 
-# Personal files
+# Personal & Test files
 *.ini
 !src/languages/*/meta.json
-*.zip
 
 # Documentation
 src/docs/
@@ -66,18 +65,55 @@ src/docs/
 # Local Agent Customizations
 .agents/
 
-# Local sandbox directory
-sandbox/
-
 # Backup files
 .git_backup/
 
-# Heavy AI model files & scratch tests
+# Video files
+*.mp4
+*.avi
+*.mkv
+*.mov
+*.webm
+*.flv
+*.wmv
+*.m4v
+*.mpg
+*.mpeg
+*.3gp
+
+# Audio files
+*.mp3
+*.wav
+*.flac
+*.aac
+*.ogg
+*.m4a
+
+# Heavy AI Model weights & checkpoints
 *.onnx
 *.safetensors
 *.bin
 *.pt
 *.pth
-test_trash/
+*.tflite
+*.h5
+*.engine
+*.onnx_data
+*.npz
+
+# Heavy Archives & Dumps
+*.zip
+*.tar
+*.gz
+*.7z
+*.rar
+
+# Local Sandboxes & Test Dumps
+sandbox/
 scratch/
 src/scratch/
+test_trash/
+tests_output/
+temp_test/
+crash.txt
+*.tmp

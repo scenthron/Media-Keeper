@@ -17,17 +17,25 @@ def _clean_path(path: str) -> str:
 class AiCacheManager:
     def __init__(self):
         self.db_path = os.path.join(get_app_data_dir(), "ai_cache.db")
+        self._local_conn = None
         self._init_db()
+
+    def _get_connection(self):
+        if self._local_conn is None:
+            self._local_conn = sqlite3.connect(self.db_path, check_same_thread=False)
+            self._local_conn.execute("PRAGMA journal_mode=WAL;")
+            self._local_conn.execute("PRAGMA synchronous=NORMAL;")
+        return self._local_conn
 
     @contextlib.contextmanager
     def _conn(self):
-        """Гарантированно закрывает соединение и управляет транзакцией."""
-        conn = sqlite3.connect(self.db_path)
+        """Возвращает оптимизированное соединение SQLite."""
+        conn = self._get_connection()
         try:
-            with conn:
-                yield conn
-        finally:
-            conn.close()
+            yield conn
+        except Exception:
+            conn.rollback()
+            raise
 
     def _init_db(self):
         """Создает таблицы базы данных кэша и проверяет версию."""

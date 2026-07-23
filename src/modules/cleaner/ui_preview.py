@@ -450,35 +450,44 @@ class CleanerPreviewWidget(QWidget):
         from PyQt6.QtWidgets import QGraphicsRectItem
         from PyQt6.QtGui import QPen, QColor
         from PyQt6.QtCore import Qt
-        for bbox in bboxes:
-            if len(bbox) == 4:
+
+        valid_bboxes = [b for b in bboxes if len(b) == 4]
+        if not valid_bboxes: return
+
+        # Находим индекс целевого лица (лучшее совпадение с matched_bbox)
+        target_idx = -1
+        if matched_bbox and len(matched_bbox) == 4:
+            mx1, my1, mx2, my2 = matched_bbox
+            mcx, mcy = (mx1 + mx2) / 2.0, (my1 + my2) / 2.0
+            
+            best_dist = float('inf')
+            for idx, bbox in enumerate(valid_bboxes):
                 x1, y1, x2, y2 = bbox
-                rect = QGraphicsRectItem(x1, y1, x2 - x1, y2 - y1)
+                cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+                dist = (cx - mcx)**2 + (cy - mcy)**2
+                if dist < best_dist:
+                    best_dist = dist
+                    target_idx = idx
+
+        for idx, bbox in enumerate(valid_bboxes):
+            x1, y1, x2, y2 = bbox
+            rect = QGraphicsRectItem(x1, y1, x2 - x1, y2 - y1)
+            
+            if target_idx != -1:
+                is_target = (idx == target_idx)
+            else:
+                is_target = (idx == 0) # Первое лицо зеленое, остальные красные
                 
-                is_matched = False
-                if matched_bbox and len(matched_bbox) == 4:
-                    if len(bboxes) == 1:
-                        is_matched = True
-                    else:
-                        mx1, my1, mx2, my2 = matched_bbox
-                        cx1, cy1 = (x1 + x2) / 2.0, (y1 + y2) / 2.0
-                        mcx, mcy = (mx1 + mx2) / 2.0, (my1 + my2) / 2.0
-                        w, h = max(10.0, x2 - x1), max(10.0, y2 - y1)
-                        if abs(cx1 - mcx) <= max(20.0, w * 0.5) and abs(cy1 - mcy) <= max(20.0, h * 0.5):
-                            is_matched = True
-                        
-                if matched_bbox is not None:
-                    if is_matched:
-                        pen = QPen(QColor(34, 197, 94)) # Green (#22c55e) for target person
-                    else:
-                        pen = QPen(QColor(239, 68, 68)) # Red (#ef4444) for other faces
-                else:
-                    pen = QPen(QColor(34, 197, 94)) # Green default
-                pen.setWidth(3)
-                pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
-                rect.setPen(pen)
-                rect.setZValue(10)
-                self.scene.addItem(rect)
+            if is_target:
+                pen = QPen(QColor(34, 197, 94)) # Green (#22c55e) for target person
+            else:
+                pen = QPen(QColor(239, 68, 68)) # Red (#ef4444) for other faces
+                
+            pen.setWidth(3)
+            pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
+            rect.setPen(pen)
+            rect.setZValue(10)
+            self.scene.addItem(rect)
 
     def load_file(self, path):
         self.clear_faces()

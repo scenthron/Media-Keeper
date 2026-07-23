@@ -6,7 +6,8 @@ from PyQt6.QtWidgets import (
     QListWidget, QListWidgetItem, QFileDialog, QMessageBox, QSlider,
     QTreeWidget, QTreeWidgetItem, QProgressBar, QDialog, QLineEdit,
     QRadioButton, QButtonGroup, QAbstractItemView, QMenu, QSplitter,
-    QScrollArea, QSizePolicy, QComboBox, QCheckBox, QTabWidget, QDoubleSpinBox
+    QScrollArea, QSizePolicy, QComboBox, QCheckBox, QTabWidget, QDoubleSpinBox,
+    QTextEdit
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QPoint, QEvent
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor, QFont, QPainter, QPen, QDragEnterEvent, QDropEvent
@@ -15,7 +16,7 @@ from config import AppContext, APP_DESIGN
 from ui_widgets_base import DropZoneWidget, FlowLayout
 from .logic_ai_tags import AiTextTagsManager
 from .ui_ai_tags_dialog import AiTagManagerDialog
-from .ui_ai_lab import parse_multi_tags
+from .ui_ai_lab import parse_multi_tags, MultiTagHighlighter
 from .logic_ai import AiEngine
 from .logic_ai_cache import AiCacheManager
 from .logic_ai_classifier import AiClassifier, load_ai_settings, save_ai_settings, get_ai_assets_dir
@@ -32,6 +33,23 @@ from .ui_ai_group_dialog import AiGroupSettingsDialog
 
 from .ui_widgets import CleanSpinBox
 from PyQt6.QtWidgets import QStackedWidget
+
+class SearchTextEdit(QTextEdit):
+    returnPressed = pyqtSignal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptRichText(False)
+        self.setFixedHeight(36)
+        
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
+            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                super().keyPressEvent(event)
+            else:
+                self.returnPressed.emit()
+        else:
+            super().keyPressEvent(event)
         
 class RefDropContainer(QWidget):
     dump_dropped = pyqtSignal(str)
@@ -454,19 +472,21 @@ class AiClassificationTab(QWidget):
         lbl_text_search.setStyleSheet("color: #ccc; font-size: 12px;")
         page_text_layout.addWidget(lbl_text_search)
         
-        self.line_text_search = QLineEdit()
+        self.line_text_search = SearchTextEdit()
         self.line_text_search.setPlaceholderText("Например: кот сидит на столе" if AppContext.is_ru() else "E.g.: a cat sitting on a table")
         self.line_text_search.setStyleSheet("""
-            QLineEdit {
+            QTextEdit {
                 background-color: #222;
                 border: 1px solid #555;
                 border-radius: 4px;
                 padding: 6px;
                 color: white;
+                font-family: 'Consolas', 'Courier New';
                 font-size: 13px;
             }
-            QLineEdit:focus { border-color: #3b82f6; }
+            QTextEdit:focus { border-color: #3b82f6; }
         """)
+        self.text_highlighter = MultiTagHighlighter(self.line_text_search.document())
         page_text_layout.addWidget(self.line_text_search)
         
         self.btn_text_search = QPushButton("Найти" if AppContext.is_ru() else "Find")
@@ -1410,29 +1430,33 @@ class AiClassificationTab(QWidget):
         msg.setWindowTitle("Справка по текстовым тегам" if AppContext.is_ru() else "Text Tags Help")
         
         ru_text = (
-            "<b>Как работает текстовый поиск и теги:</b><br><br>"
-            "Обычные теги и текст из поля поиска создают отдельные колонки (группы) результатов.<br>"
-            "Например, если вы выберете тег <i>«Кошка»</i> и тег <i>«Собака»</i>, то ИИ выдаст 2 независимые группы: "
-            "в одной будут только кошки, в другой — собаки.<br><br>"
-            "<b>Мультитеги</b> позволяют объединить несколько разных запросов в одну общую группу.<br>"
-            "Например, мультитег <i>«Домашние животные: кошка, собака, попугай»</i> и обычный тег <i>«Корова»</i> "
-            "выдадут 2 группы результатов:<br>"
-            "1. Группа <b>«Домашние животные»</b> (в ней будут собраны и кошки, и собаки, и попугаи).<br>"
-            "2. Группа <b>«Корова»</b> (в ней будут только коровы).<br><br>"
-            "<i>Используйте мультитеги, когда вам нужно найти разные объекты, но логически сгруппировать их вместе для удобства сортировки!</i>"
+            "<b>Сложные поисковые запросы (Мультитеги):</b><br>"
+            "Вы можете вводить сложные запросы прямо в строку поиска, используя круглые скобки и двоеточие.<br>"
+            "Синтаксис: <b>(Заголовок: запрос 1, запрос 2, ...)</b><br>"
+            "<i>Пример:</i> запрос <b>(Домашние животные: кошка, собака, попугай)</b> создаст одну колонку результатов "
+            "с именем «Домашние животные», в которой будут собраны все 3 вида животных.<br><br>"
+            "<b>Система сохраненных тегов:</b><br>"
+            "Теги — это удобные закладки для ваших частых запросов.<br>"
+            "Заголовок тега формирует название группы результатов, в которую будет выводиться поиск:<br>"
+            "• По <i>одиночному тегу</i> (например, «Собака») — группа будет называться так же.<br>"
+            "• По <i>мультитегу</i> — заголовок тега станет именем группы для множественного запроса.<br><br>"
+            "Вы можете комбинировать обычный текст в строке поиска с выбранными тегами. Каждый отдельный тег или запрос "
+            "создает свою независимую колонку результатов."
         )
         
         en_text = (
-            "<b>How text search and tags work:</b><br><br>"
-            "Normal tags and text from the search field create separate result groups.<br>"
-            "For example, if you select the 'Cat' tag and the 'Dog' tag, the AI will output 2 independent groups: "
-            "one for cats, one for dogs.<br><br>"
-            "<b>Multi-tags</b> allow combining multiple different queries into a single group.<br>"
-            "For example, a multi-tag <i>'Pets: cat, dog, parrot'</i> and a normal tag <i>'Cow'</i> "
-            "will result in 2 groups:<br>"
-            "1. Group <b>'Pets'</b> (containing cats, dogs, and parrots).<br>"
-            "2. Group <b>'Cow'</b> (only cows).<br><br>"
-            "<i>Use multi-tags when you want to find different objects but group them logically together for convenience!</i>"
+            "<b>Complex Search Queries (Multi-tags):</b><br>"
+            "You can enter complex queries directly into the search bar using parentheses and a colon.<br>"
+            "Syntax: <b>(Header: query 1, query 2, ...)</b><br>"
+            "<i>Example:</i> query <b>(Pets: cat, dog, parrot)</b> creates a single result group "
+            "named 'Pets' containing all 3 types of animals.<br><br>"
+            "<b>Saved Tags System:</b><br>"
+            "Tags are convenient bookmarks for your frequent queries.<br>"
+            "The tag header sets the name of the result group for the search:<br>"
+            "• For a <i>single tag</i> (e.g., 'Dog') — the group will have the same name.<br>"
+            "• For a <i>multi-tag</i> — the tag header becomes the group name for multiple queries.<br><br>"
+            "You can combine plain text in the search bar with selected tags. Each individual tag or query "
+            "creates its own independent result column."
         )
         
         msg.setText(ru_text if AppContext.is_ru() else en_text)
@@ -1488,7 +1512,7 @@ class AiClassificationTab(QWidget):
 
     def start_text_search(self):
         # Trigger scanning
-        query = self.line_text_search.text().strip()
+        query = self.line_text_search.toPlainText().strip()
         
         active_tags = []
         for name, btn in self.active_tag_buttons.items():

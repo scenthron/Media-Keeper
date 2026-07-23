@@ -33,8 +33,8 @@ class CLIPSearcher:
                 logger.error("Для работы CLIP требуется пакет transformers. Установите: pip install transformers tokenizers")
                 return
                 
-            app_data = os.path.join(os.path.expanduser("~"), ".mediakeeper")
-            clip_dir = os.path.join(app_data, "models", "clip")
+            from logic_paths import get_models_dir
+            clip_dir = os.path.join(get_models_dir(), "clip")
             vision_model_path = os.path.join(clip_dir, "vision", "model.onnx")
             text_model_dir = os.path.join(clip_dir, "text_multi")
             text_model_path = os.path.join(text_model_dir, "model.onnx")

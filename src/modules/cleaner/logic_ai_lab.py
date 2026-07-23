@@ -28,8 +28,9 @@ class AILabWorker(QRunnable):
         from logic_paths import get_models_dir
         
         # Paths to models
-        self.arcface_path = os.path.join(os.path.expanduser('~/.mediakeeper/models'), 'w600k_r50.onnx')
-        self.scrfd_path = os.path.join(os.path.expanduser('~/.mediakeeper/models'), 'det_10g.onnx')
+        models_dir = get_models_dir()
+        self.arcface_path = os.path.join(models_dir, 'w600k_r50.onnx')
+        self.scrfd_path = os.path.join(models_dir, 'det_10g.onnx')
 
     def run(self):
         try:

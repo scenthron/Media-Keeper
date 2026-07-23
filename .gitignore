@@ -72,3 +72,12 @@ sandbox/
 # Backup files
 .git_backup/
 
+# Heavy AI model files & scratch tests
+*.onnx
+*.safetensors
+*.bin
+*.pt
+*.pth
+test_trash/
+scratch/
+src/scratch/

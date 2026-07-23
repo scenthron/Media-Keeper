@@ -51,6 +51,12 @@ class CLIPSearcher:
             tokenizer_path = os.path.join(text_model_dir, "tokenizer.json")
             if os.path.exists(tokenizer_path):
                 self.tokenizer = Tokenizer.from_file(tokenizer_path)
+                try:
+                    self.tokenizer.no_padding()
+                    self.tokenizer.no_truncation()
+                    logger.info("[CLIP Tokenizer] Успешно отключен автопаддинг и автообрезка (без мутаций C++ в runtime)")
+                except Exception as e_tok:
+                    logger.warning(f"[CLIP Tokenizer] Предупреждение при однократной настройке токенизатора: {e_tok}")
             else:
                 logger.error(f"Файл токенизатора не найден: {tokenizer_path}")
                 return
@@ -124,11 +130,14 @@ class CLIPSearcher:
         Возвращает None, если модели не загружены или произошла ошибка.
         """
         if not self.is_loaded or not text:
+            logger.warning("[CLIP] encode_text вызван с пустым текстом или незагруженными моделями")
             return None
             
         if self.tokenizer is None or self.text_sess is None:
             logger.error("[CLIP] Токенизатор или ONNX-сессия текста не инициализирована")
             return None
+
+        logger.info(f"[CLIP] Начало кодирования текста: '{text}'")
 
         # Автоматический перевод кириллицы на английский для CLIP
         import re
@@ -144,8 +153,9 @@ class CLIPSearcher:
                 encoded = self.tokenizer.encode(text)
                 raw_ids = list(encoded.ids)
                 raw_mask = list(encoded.attention_mask)
+                logger.info(f"[CLIP] Сырая токенизация выполнена. Длина токенов: {len(raw_ids)}")
             except Exception as te:
-                logger.error(f"[CLIP] Ошибка токенизации текста '{text}': {te}")
+                logger.error(f"[CLIP] Ошибка токенизации текста '{text}': {te}", exc_info=True)
                 return None
             
             # Ручное безопасное приведение длины строго к 77 токенам
@@ -157,6 +167,8 @@ class CLIPSearcher:
                 pad_count = pad_len - len(raw_ids)
                 raw_ids = raw_ids + [0] * pad_count
                 raw_mask = raw_mask + [0] * pad_count
+
+            logger.info(f"[CLIP] Ручной паддинг/срез выполнен. Финальная длина массива: {len(raw_ids)}")
 
             input_ids = np.array([raw_ids], dtype=np.int64)
             attention_mask = np.array([raw_mask], dtype=np.int64)
@@ -173,6 +185,7 @@ class CLIPSearcher:
 
             logger.info(f"[CLIP] Запуск ONNX инференса текста для '{text}'...")
             text_out = self.text_sess.run(None, inputs)[0]
+            logger.info(f"[CLIP] ONNX инференс завершен. Форма выхода: {text_out.shape}")
             
             # Пулинг или прямое извлечение 512D вектора
             if text_out.ndim == 3:

@@ -458,13 +458,19 @@ class CleanerPreviewWidget(QWidget):
                 is_matched = False
                 if matched_bbox and len(matched_bbox) == 4:
                     mx1, my1, mx2, my2 = matched_bbox
-                    if abs(x1 - mx1) < 5 and abs(y1 - my1) < 5:
+                    cx1, cy1 = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+                    mcx, mcy = (mx1 + mx2) / 2.0, (my1 + my2) / 2.0
+                    w, h = max(10.0, x2 - x1), max(10.0, y2 - y1)
+                    if abs(cx1 - mcx) <= max(20.0, w * 0.4) and abs(cy1 - mcy) <= max(20.0, h * 0.4):
                         is_matched = True
                         
-                if is_matched or matched_bbox is None:
-                    pen = QPen(QColor(34, 197, 94)) # Green
+                if matched_bbox is not None:
+                    if is_matched:
+                        pen = QPen(QColor(34, 197, 94)) # Green (#22c55e) for target person
+                    else:
+                        pen = QPen(QColor(239, 68, 68)) # Red (#ef4444) for other faces
                 else:
-                    pen = QPen(QColor(239, 68, 68)) # Red
+                    pen = QPen(QColor(34, 197, 94)) # Green default
                 pen.setWidth(3)
                 pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
                 rect.setPen(pen)

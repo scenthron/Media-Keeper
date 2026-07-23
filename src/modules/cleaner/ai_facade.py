@@ -166,7 +166,7 @@ class AiCoreWorker(QRunnable):
             for fp in valid_files:
                 if self.is_cancelled: return
                 
-                percent = (processed / total_files) * 50.0  # First 50% is extracting
+                percent = (processed / total_files) * 95.0  # Feature extraction takes up 95% of time
                 if processed % 10 == 0:
                     self.signals.progress.emit(STAGE_ANALYSIS, percent, f"Извлечение признаков... {processed}/{total_files}", scanned_files, 0, 0, scanned_bytes, 0, 0)
                 
@@ -209,7 +209,7 @@ class AiCoreWorker(QRunnable):
                 processed += 1
 
             # 4. Search and Cluster logic
-            self.signals.progress.emit(STAGE_ANALYSIS, 50.0, "Группировка результатов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
+            self.signals.progress.emit(STAGE_ANALYSIS, 95.0, "Группировка результатов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
             
             groups_dict = {}
             

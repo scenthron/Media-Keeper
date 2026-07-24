@@ -143,8 +143,13 @@ def build():
     for lib in collect_all_libs:
         pyinstaller_cmd.extend(["--collect-all", lib])
 
-    # Исключаем тяжелые библиотеки для уменьшения размера EXE
-    excludes = ["tkinter", "matplotlib", "scipy", "skimage"]
+    # Исключаем тяжелые библиотеки для уменьшения размера EXE и предотвращения падения PyInstaller
+    excludes = [
+        "tkinter", "matplotlib", "scipy", "skimage", 
+        "sentencepiece", "transformers", "huggingface_hub",
+        "PyQt6.QtSql", "PyQt6.QtWebEngine", "PyQt6.QtWebEngineWidgets", "PyQt6.QAxContainer",
+        "PyQt6.QtBluetooth", "PyQt6.QtDBus", "PyQt6.QtDesigner", "PyQt6.QtNfc", "PyQt6.QtSensors"
+    ]
     for exc in excludes:
         pyinstaller_cmd.extend(["--exclude-module", exc])
 

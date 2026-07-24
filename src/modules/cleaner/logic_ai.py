@@ -260,6 +260,7 @@ class AiEngine:
             
             logging.debug(f"[DEBUG-AI] Запускаем ArcFace onnxruntime для {image_path} (face {i})")
             blob = cv2.dnn.blobFromImage(face_img, 1.0 / 127.5, (112, 112), (127.5, 127.5, 127.5), swapRB=False)
+            blob = np.ascontiguousarray(blob, dtype=np.float32)
             net_out = self.arcface_session.run(None, {self.arcface_session.get_inputs()[0].name: blob})[0]
             logging.debug(f"[DEBUG-AI] Успешно получен ArcFace вектор для {image_path} (face {i})")
             

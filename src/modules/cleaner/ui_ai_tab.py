@@ -1695,7 +1695,9 @@ class AiClassificationTab(QWidget):
         
         # Конвертируем response в старый формат dict для populate_results
         results_dict = {}
-        for group in response.groups:
+        # Сортируем группы по количеству найденных файлов (по убыванию)
+        sorted_groups = sorted(response.groups, key=lambda g: len(g.files), reverse=True)
+        for group in sorted_groups:
             results_dict[group.group_name] = []
             for mf in group.files:
                 try:

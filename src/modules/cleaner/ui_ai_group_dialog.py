@@ -416,21 +416,29 @@ class AiGroupSettingsDialog(QDialog):
             return
             
         removed = False
+        
+        # Remove from positive list widget
+        for i in range(self.list_pos.count()):
+            if self.list_pos.item(i).data(Qt.ItemDataRole.UserRole) == path:
+                self.list_pos.takeItem(i)
+                removed = True
+                break
+                
+        # Remove from negative list widget
+        for i in range(self.list_neg.count()):
+            if self.list_neg.item(i).data(Qt.ItemDataRole.UserRole) == path:
+                self.list_neg.takeItem(i)
+                removed = True
+                break
+                
+        # Remove from underlying data structures
         if path in self.pending_pos:
             self.pending_pos.remove(path)
             removed = True
-            for i in range(self.list_pos.count()):
-                if self.list_pos.item(i).data(Qt.ItemDataRole.UserRole) == path:
-                    self.list_pos.takeItem(i)
-                    break
-                    
+            
         if path in self.pending_neg:
             self.pending_neg.remove(path)
             removed = True
-            for i in range(self.list_neg.count()):
-                if self.list_neg.item(i).data(Qt.ItemDataRole.UserRole) == path:
-                    self.list_neg.takeItem(i)
-                    break
                     
         if removed:
             self.has_changes = True
@@ -530,7 +538,7 @@ class AiGroupSettingsDialog(QDialog):
                     bgr_img = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR)
                     for face in faces:
                         x1, y1, x2, y2 = face["bbox"]
-                        cv2.rectangle(bgr_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        cv2.rectangle(bgr_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                     
                     rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
                     height, width, ch = rgb_img.shape

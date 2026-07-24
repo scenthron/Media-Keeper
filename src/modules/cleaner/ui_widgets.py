@@ -525,12 +525,48 @@ class ImageHoverToolTip(QLabel):
         self.setStyleSheet("background-color: #2b2b2b; border: 2px solid #3b82f6; padding: 2px; border-radius: 6px;")
         self.hide()
         
-    def show_image(self, path: str, pos: QPoint):
+    def show_image(self, path: str, pos: QPoint, is_face: bool = False):
         if not path or not os.path.exists(path):
             self.hide()
             return
             
         try:
+            if is_face:
+                # Попробуем найти лица и нарисовать рамки
+                from utils_app import AppContext
+                if hasattr(AppContext, "cleaner_tab") and AppContext.cleaner_tab:
+                    classifier = AppContext.cleaner_tab.ai
+                    if classifier and classifier.initialize_sessions():
+                        faces = classifier.extract_faces(path)
+                        if faces:
+                            import cv2
+                            import numpy as np
+                            from PIL import Image
+                            from PyQt6.QtGui import QImage
+                            
+                            with Image.open(path) as img:
+                                img = img.convert('RGB')
+                                img_data = np.array(img, dtype=np.uint8)
+                            
+                            bgr_img = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR)
+                            for face in faces:
+                                x1, y1, x2, y2 = face["bbox"]
+                                cv2.rectangle(bgr_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                                
+                            rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+                            height, width, ch = rgb_img.shape
+                            bytes_per_line = ch * width
+                            qt_img = QImage(rgb_img.data, width, height, bytes_per_line, QImage.Format.Format_RGB888)
+                            pixmap = QPixmap.fromImage(qt_img)
+                            if not pixmap.isNull():
+                                scaled = pixmap.scaled(640, 640, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                                self.setPixmap(scaled)
+                                self.adjustSize()
+                                self.move(pos.x() + 15, pos.y() + 15)
+                                self.show()
+                                return
+
+            # Fallback к обычному отображению
             pixmap = QPixmap(path)
             if not pixmap.isNull():
                 # Масштабируем до 640x640 с сохранением пропорций

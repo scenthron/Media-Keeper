@@ -224,7 +224,9 @@ class AiEngine:
             return []
             
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        logging.debug(f"[DEBUG-AI] Запускаем SCRFD для {image_path} (shape: {img_rgb.shape})")
         bboxes, kpss = self.detector.detect(img_rgb, conf_thresh=0.5, input_size=(640, 640))
+        logging.debug(f"[DEBUG-AI] SCRFD успешно завершен для {image_path}, найдено {len(bboxes) if bboxes is not None else 0} лиц.")
         
         if bboxes is None or kpss is None or len(bboxes) == 0:
             return []
@@ -245,10 +247,14 @@ class AiEngine:
             if M is None:
                 continue
             
+            
             face_img = cv2.warpAffine(img_rgb, M, (112, 112), borderValue=0.0)
             
+            logging.debug(f"[DEBUG-AI] Запускаем ArcFace onnxruntime для {image_path} (face {i})")
             blob = cv2.dnn.blobFromImage(face_img, 1.0 / 127.5, (112, 112), (127.5, 127.5, 127.5), swapRB=False)
             net_out = self.arcface_session.run(None, {self.arcface_session.get_inputs()[0].name: blob})[0]
+            logging.debug(f"[DEBUG-AI] Успешно получен ArcFace вектор для {image_path} (face {i})")
+            
             emb = net_out[0]
             emb = emb / np.linalg.norm(emb)
             

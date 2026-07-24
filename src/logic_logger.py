@@ -346,7 +346,7 @@ def setup_logging():
         log_path = "media_keeper.log"
         file_log_level = logging.DEBUG
         
-    root_logger.setLevel(logging.WARNING if getattr(sys, 'frozen', False) else logging.DEBUG)
+    root_logger.setLevel(logging.DEBUG)
 
     # 2. Форматтер
     log_formatter = SafeFormatter(

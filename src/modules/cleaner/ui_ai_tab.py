@@ -291,6 +291,7 @@ class AiClassificationTab(QWidget):
         
         self.btn_mode_ref = QPushButton("Поиск по образцам" if AppContext.is_ru() else "Search by Samples")
         self.btn_mode_text = QPushButton("Поиск по тексту" if AppContext.is_ru() else "Search by Text")
+        self.btn_mode_smart = QPushButton("Умный поиск" if AppContext.is_ru() else "Smart Search")
         
         mode_style = """
             QPushButton {
@@ -310,14 +311,18 @@ class AiClassificationTab(QWidget):
         """
         self.btn_mode_ref.setCheckable(True)
         self.btn_mode_text.setCheckable(True)
+        self.btn_mode_smart.setCheckable(True)
         self.btn_mode_ref.setStyleSheet(mode_style)
         self.btn_mode_text.setStyleSheet(mode_style)
+        self.btn_mode_smart.setStyleSheet(mode_style)
         self.btn_mode_ref.setChecked(True)
         self.btn_mode_ref.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_mode_text.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_mode_smart.setCursor(Qt.CursorShape.PointingHandCursor)
         
         mode_header.addWidget(self.btn_mode_ref)
         mode_header.addWidget(self.btn_mode_text)
+        mode_header.addWidget(self.btn_mode_smart)
         col_ref.addLayout(mode_header)
         
         self.mode_stack = QStackedWidget()
@@ -456,10 +461,43 @@ class AiClassificationTab(QWidget):
         
         self.mode_stack.addWidget(self.page_text)
         
+        # Page 3: Smart Search
+        self.page_smart = QWidget()
+        page_smart_layout = QVBoxLayout(self.page_smart)
+        page_smart_layout.setContentsMargins(0, 5, 0, 0)
+        page_smart_layout.setSpacing(8)
+        page_smart_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        
+        lbl_smart_title = QLabel("Автоматическая группировка" if AppContext.is_ru() else "Automatic Grouping")
+        lbl_smart_title.setStyleSheet("color: #ccc; font-weight: bold; font-size: 12px;")
+        page_smart_layout.addWidget(lbl_smart_title)
+        
+        lbl_smart_desc = QLabel("Умный поиск позволяет находить похожие объекты и лица в указанных каталогах без использования заранее подготовленных Образцов. ИИ автоматически сгруппирует похожие файлы." if AppContext.is_ru() else "Smart search automatically groups similar objects and faces without using prepared references.")
+        lbl_smart_desc.setWordWrap(True)
+        lbl_smart_desc.setStyleSheet("color: #888; font-size: 11px;")
+        page_smart_layout.addWidget(lbl_smart_desc)
+        
+        smart_type_layout = QHBoxLayout()
+        lbl_smart_type = QLabel("Тип поиска:" if AppContext.is_ru() else "Search Type:")
+        lbl_smart_type.setStyleSheet("color: #ccc; font-size: 12px;")
+        smart_type_layout.addWidget(lbl_smart_type)
+        
+        self.combo_auto_type = QComboBox()
+        self.combo_auto_type.addItem("По людям" if AppContext.is_ru() else "By People", "face")
+        self.combo_auto_type.addItem("По изображениям" if AppContext.is_ru() else "By Images", "general")
+        self.combo_auto_type.setStyleSheet("QComboBox { background-color: #2b2b2b; color: white; border: 1px solid #444; border-radius: 4px; padding: 2px 5px; font-size: 11px; height: 22px; }")
+        self.combo_auto_type.setFixedWidth(130)
+        smart_type_layout.addWidget(self.combo_auto_type)
+        smart_type_layout.addStretch()
+        
+        page_smart_layout.addLayout(smart_type_layout)
+        self.mode_stack.addWidget(self.page_smart)
+        
         self.refresh_tag_chips()
         
         self.btn_mode_ref.clicked.connect(lambda: self._switch_mode(0))
         self.btn_mode_text.clicked.connect(lambda: self._switch_mode(1))
+        self.btn_mode_smart.clicked.connect(lambda: self._switch_mode(2))
         
         self.line_text_search.returnPressed.connect(self.start_text_search)
         self.btn_text_search.clicked.connect(self.start_text_search)
@@ -731,27 +769,7 @@ class AiClassificationTab(QWidget):
         slider_layout.addWidget(spin_container)
         params_sub_layout.addLayout(slider_layout)
         
-        self.chk_auto_cluster = QCheckBox("Умный поиск" if AppContext.is_ru() else "Smart Search")
-        self.chk_auto_cluster.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.chk_auto_cluster.setStyleSheet("""
-            QCheckBox { color: white; font-weight: bold; font-size: 13px; margin-top: 2px; }
-            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; margin-top: 2px; }
-            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
-        """)
-        self.chk_auto_cluster.setToolTip("Искать похожие объекты без Образцов и группировать их автоматически." if AppContext.is_ru() else "Group objects automatically without references.")
-        self.chk_auto_cluster.stateChanged.connect(self.on_auto_cluster_changed)
-        
-        self.combo_auto_type = QComboBox()
-        self.combo_auto_type.addItem("По людям" if AppContext.is_ru() else "By People", "face")
-        self.combo_auto_type.addItem("По изображениям" if AppContext.is_ru() else "By Images", "general")
-        self.combo_auto_type.setStyleSheet("QComboBox { background-color: #2b2b2b; color: white; border: 1px solid #444; border-radius: 4px; padding: 2px 5px; font-size: 11px; height: 22px; }")
-        self.combo_auto_type.setFixedWidth(130)
-        
-        auto_h = QHBoxLayout()
-        auto_h.addWidget(self.chk_auto_cluster)
-        auto_h.addStretch()
-        auto_h.addWidget(self.combo_auto_type)
-        params_sub_layout.addLayout(auto_h)
+
         
         self.chk_use_gpu = QCheckBox("Аппаратное ускорение (GPU)" if AppContext.is_ru() else "Hardware Acceleration (GPU)")
         self.chk_use_gpu.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1175,22 +1193,6 @@ class AiClassificationTab(QWidget):
     def on_threshold_changed(self, value):
         pass
 
-    def on_auto_cluster_changed(self, state):
-        is_cluster = (state == Qt.CheckState.Checked.value)
-        # Disable reference groups container if clustering is enabled
-        self.ref_container.setEnabled(not is_cluster)
-        self.scroll_ref.setEnabled(not is_cluster)
-        if is_cluster:
-            self.scroll_ref.setStyleSheet("QScrollArea { border: 1px solid #333; background-color: #1e1e1e; border-radius: 4px; }")
-            self.ref_container.setStyleSheet("background-color: #1e1e1e; opacity: 0.5;")
-        else:
-            self.scroll_ref.setStyleSheet("QScrollArea { border: 1px solid #333; background-color: #111; border-radius: 4px; }")
-            self.ref_container.setStyleSheet("background-color: #111;")
-        
-        self.update_scan_button_state()
-
-
-
     def _on_slider_moved(self, value):
         if getattr(self, "is_cluster_results", False) and hasattr(self, "cluster_unique_sizes"):
             if 0 <= value < len(self.cluster_unique_sizes):
@@ -1449,6 +1451,7 @@ class AiClassificationTab(QWidget):
         self.mode_stack.setCurrentIndex(index)
         self.btn_mode_ref.setChecked(index == 0)
         self.btn_mode_text.setChecked(index == 1)
+        self.btn_mode_smart.setChecked(index == 2)
         self.update_scan_button_state()
 
     def start_text_search(self):
@@ -1478,7 +1481,7 @@ class AiClassificationTab(QWidget):
         folders = self.cleaner.get_active_source_folders() if hasattr(self, 'cleaner') else []
         has_folders = len(folders) > 0
         has_enabled_groups = any(widget.chk.isChecked() for widget in self.chips_map.values())
-        is_cluster = self.chk_auto_cluster.isChecked()
+        is_cluster = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 2
         is_text_mode = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 1
         
         # _is_ok default to True because logic_actions will pass False if there is a nested/system error
@@ -1522,7 +1525,7 @@ class AiClassificationTab(QWidget):
         for widget in self.chips_map.values():
             widget.set_error_highlight(False)
             
-        is_cluster = self.chk_auto_cluster.isChecked()
+        is_cluster = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 2
         if not is_cluster and not text_query:
             settings = load_ai_settings()
             enabled_groups = [name for name, info in settings.get("groups", {}).items() if info.get("enabled", True)]
@@ -1604,7 +1607,7 @@ class AiClassificationTab(QWidget):
         match_mode = "centroid"
         use_cache = self.chk_use_cache.isChecked()
         use_gpu = self.chk_use_gpu.isChecked()
-        is_cluster = self.chk_auto_cluster.isChecked()
+        is_cluster = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 2
         cluster_type = self.combo_auto_type.currentData() if hasattr(self, 'combo_auto_type') else 'face'
         
         task_type = AiTaskType.TEXT_TO_IMAGE if text_query else (AiTaskType.AUTO_CLUSTER if is_cluster else AiTaskType.FIND_BY_REFERENCES)
@@ -1731,7 +1734,7 @@ class AiClassificationTab(QWidget):
             
         from utils_common import format_size
         
-        self.is_cluster_results = self.chk_auto_cluster.isChecked()
+        self.is_cluster_results = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 2
         
         unique_sizes = set()
         

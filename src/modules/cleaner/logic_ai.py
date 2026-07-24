@@ -191,6 +191,15 @@ class AiEngine:
             logging.error(f"Критическая ошибка загрузки нейросетей: {e}", exc_info=True)
             return False
 
+    def clear_sessions(self):
+        """Принудительно выгружает все ИИ-модели из памяти и сбрасывает статус инициализации."""
+        self._is_initialized = False
+        self.detector = None
+        self.arcface_session = None
+        self.clip_searcher = None
+        import gc; gc.collect()
+        logging.info("[AiEngine] Сессии ONNXRuntime выгружены из памяти.")
+
     def initialize_sessions(self, use_gpu: bool = True) -> bool:
         if self._is_initialized:
             return True

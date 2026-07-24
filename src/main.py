@@ -10,6 +10,12 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 os.environ["ORT_INTRA_OP_NUM_THREADS"] = "1"
 os.environ["ORT_INTER_OP_NUM_THREADS"] = "1"
 
+try:
+    import cv2
+    cv2.setNumThreads(1)
+except ImportError:
+    pass
+
 # Предотвращаем запуск интерактивного шелла Python при выходе (сброс унаследованных переменных)
 os.environ.pop('PYTHONINSPECT', None)
 if hasattr(sys, '__interactivehook__'):

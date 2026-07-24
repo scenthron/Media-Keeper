@@ -181,6 +181,10 @@ class AiCoreWorker(QRunnable):
                 from .logic_ai import AiEngine
                 self.engine = AiEngine()
             
+            # Принудительная выгрузка ИИ-моделей перед сканированием, 
+            # чтобы избежать крашей QThreadPool из-за переиспользования потоков в Windows
+            self.engine.clear_sessions()
+            
             if not self.engine.initialize_sessions(use_gpu=self.request.use_gpu):
                 self.signals.error.emit("Не удалось инициализировать нейросети.")
                 return

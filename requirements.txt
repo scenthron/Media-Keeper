@@ -1,8 +1,8 @@
 PyQt6>=6.5.0
 requests>=2.31.0
 Pillow>=10.0.0
-numpy>=1.21.0
-opencv-python>=4.5.0
+numpy>=1.21.0,<2.0.0
+opencv-python>=4.5.0,<4.9.0
 onnxruntime==1.15.1
 setuptools>=68.0.0
 safetensors>=0.3.3

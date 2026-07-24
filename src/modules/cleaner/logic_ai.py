@@ -101,14 +101,14 @@ class AiEngine:
                 "name": "CLIP Text Model Multi (text_multi/model.onnx)",
                 "dest": os.path.join(self.clip_dir, "text_multi", "model.onnx"),
                 "urls": [
-                    "https://huggingface.co/Xenova/clip-vit-base-patch32-multilingual-v1/resolve/main/onnx/text_model.onnx"
+                    "https://huggingface.co/sentence-transformers/clip-ViT-B-32-multilingual-v1/resolve/main/onnx/model.onnx"
                 ]
             },
             {
                 "name": "CLIP Tokenizer Multi (text_multi/tokenizer.json)",
                 "dest": os.path.join(self.clip_dir, "text_multi", "tokenizer.json"),
                 "urls": [
-                    "https://huggingface.co/Xenova/clip-vit-base-patch32-multilingual-v1/resolve/main/tokenizer.json"
+                    "https://huggingface.co/sentence-transformers/clip-ViT-B-32-multilingual-v1/resolve/main/tokenizer.json"
                 ]
             }
         ]

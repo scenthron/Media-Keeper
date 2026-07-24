@@ -115,7 +115,7 @@ class AiGroupChipWidget(QFrame):
                 color: #3b82f6;
             }
         """)
-        self.btn_gear.clicked.connect(lambda: self.settings_clicked.emit(self.group_name))
+        self.btn_gear.clicked.connect(lambda *args, name=self.group_name: self.settings_clicked.emit(name))
         layout.addWidget(self.btn_gear)
         
         self.btn_remove = QPushButton("✕")
@@ -169,3 +169,4 @@ class AiGroupChipWidget(QFrame):
                     border-radius: 4px;
                 }
             """)
+        self.btn_gear.setEnabled(True)

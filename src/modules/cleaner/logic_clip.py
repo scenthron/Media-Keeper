@@ -59,7 +59,7 @@ class CLIPSearcher:
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 1
             opts.intra_op_num_threads = 1
-            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
+            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
             self.vision_sess = ort.InferenceSession(vision_model_path, sess_options=opts, providers=['CPUExecutionProvider'])
             self.text_sess = ort.InferenceSession(text_model_path, sess_options=opts, providers=['CPUExecutionProvider'])
 

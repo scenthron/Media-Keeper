@@ -199,7 +199,7 @@ class AiEngine:
             opts = ort.SessionOptions()
             opts.inter_op_num_threads = 1
             opts.intra_op_num_threads = 1
-            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
+            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
             self.arcface_session = ort.InferenceSession(self.arcface_path, sess_options=opts, providers=['CPUExecutionProvider'])
             
             # 2. Загрузка CLIP

@@ -1,3 +1,6 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 import numpy as np
 import cv2
 import onnxruntime as ort
@@ -31,7 +34,7 @@ class SCRFD:
         opts = ort.SessionOptions()
         opts.inter_op_num_threads = 1
         opts.intra_op_num_threads = 1
-        opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
+        opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
         self.session = ort.InferenceSession(model_file, sess_options=opts, providers=['CPUExecutionProvider'])
         self.input_name = self.session.get_inputs()[0].name
         self._feat_stride_fpn = [8, 16, 32]

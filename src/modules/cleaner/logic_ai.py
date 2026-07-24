@@ -197,9 +197,7 @@ class AiEngine:
             from .logic_scrfd import SCRFD
             self.detector = SCRFD(self.scrfd_path)
             opts = ort.SessionOptions()
-            opts.inter_op_num_threads = 1
-            opts.intra_op_num_threads = 1
-            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
+            # Возвращаем оптимизации и многопоточность по умолчанию
             self.arcface_session = ort.InferenceSession(self.arcface_path, sess_options=opts, providers=['CPUExecutionProvider'])
             
             # 2. Загрузка CLIP

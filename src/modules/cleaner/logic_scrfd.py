@@ -32,9 +32,7 @@ def distance2kps(points, distance, max_shape=None):
 class SCRFD:
     def __init__(self, model_file):
         opts = ort.SessionOptions()
-        opts.inter_op_num_threads = 1
-        opts.intra_op_num_threads = 1
-        opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
+        # Возвращаем оптимизации и многопоточность по умолчанию
         self.session = ort.InferenceSession(model_file, sess_options=opts, providers=['CPUExecutionProvider'])
         self.input_name = self.session.get_inputs()[0].name
         self._feat_stride_fpn = [8, 16, 32]

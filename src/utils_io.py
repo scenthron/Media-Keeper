@@ -158,3 +158,43 @@ def smart_move_file(src, dst, progress_callback=None, stop_event=None):
 
     return False
 
+def safe_cv2_imread(path: str):
+    """
+    Безопасное чтение изображения через OpenCV с поддержкой:
+    1. Русских символов (кириллицы) в пути (через numpy.fromfile).
+    2. Длинных путей Windows (через нормализацию и префикс \\?\).
+    """
+    import cv2
+    import numpy as np
+    
+    path = ensure_long_path(os.path.normpath(path))
+    try:
+        # Чтение через байтовый поток numpy для обхода ограничений cv2.imread
+        with open(path, "rb") as stream:
+            bytes_array = bytearray(stream.read())
+        numpyarray = np.asarray(bytes_array, dtype=np.uint8)
+        img = cv2.imdecode(numpyarray, cv2.IMREAD_COLOR)
+        return img
+    except Exception as e:
+        logging.error(f"Ошибка безопасного чтения изображения {path}: {e}")
+        return None
+
+def safe_cv2_imwrite(path: str, img) -> bool:
+    """
+    Безопасная запись изображения через OpenCV с поддержкой кириллицы и длинных путей.
+    """
+    import cv2
+    import numpy as np
+    
+    path = ensure_long_path(os.path.normpath(path))
+    try:
+        ext = os.path.splitext(path)[1].lower() or '.jpg'
+        success, encoded_img = cv2.imencode(ext, img)
+        if success:
+            with open(path, "wb") as f:
+                encoded_img.tofile(f)
+            return True
+        return False
+    except Exception as e:
+        logging.error(f"Ошибка безопасной записи изображения {path}: {e}")
+        return False

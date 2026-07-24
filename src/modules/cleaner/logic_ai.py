@@ -197,6 +197,8 @@ class AiEngine:
             from .logic_scrfd import SCRFD
             self.detector = SCRFD(self.scrfd_path)
             opts = ort.SessionOptions()
+            opts.inter_op_num_threads = 1
+            opts.intra_op_num_threads = 1
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
             self.arcface_session = ort.InferenceSession(self.arcface_path, sess_options=opts, providers=['CPUExecutionProvider'])
             
@@ -214,21 +216,25 @@ class AiEngine:
             logging.error(f"Ошибка инициализации моделей: {e}")
             return False
 
-    def extract_faces(self, image_path: str) -> list:
-        """Находит все лица на фото и возвращает список словарей {"bbox": [...], "descriptor": np.ndarray}"""
+    def extract_faces(self, image_path: str) -> list | None:
+        """Находит все лица на фото и возвращает список словарей {"bbox": [...], "descriptor": np.ndarray}. Возвращает None если файл битый."""
         if not self._is_initialized:
-            return []
+            return None
             
-        from utils_io import safe_cv2_imread
-        img = safe_cv2_imread(image_path)
-        if img is None:
-            logging.warning(f"[DEBUG-AI] Не удалось прочитать изображение: {image_path}")
-            return []
-            
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        logging.debug(f"[DEBUG-AI] Запускаем SCRFD для {image_path} (shape: {img_rgb.shape})")
-        bboxes, kpss = self.detector.detect(img_rgb, conf_thresh=0.5, input_size=(640, 640))
-        logging.debug(f"[DEBUG-AI] SCRFD успешно завершен для {image_path}, найдено {len(bboxes) if bboxes is not None else 0} лиц.")
+        try:
+            from utils_io import safe_cv2_imread
+            img = safe_cv2_imread(image_path)
+            if img is None:
+                logging.warning(f"[DEBUG-AI] Не удалось прочитать изображение (битый файл): {image_path}")
+                return None
+                
+            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            logging.debug(f"[DEBUG-AI] Запускаем SCRFD для {image_path} (shape: {img_rgb.shape})")
+            bboxes, kpss = self.detector.detect(img_rgb, conf_thresh=0.5, input_size=(640, 640))
+            logging.debug(f"[DEBUG-AI] SCRFD успешно завершен для {image_path}, найдено {len(bboxes) if bboxes is not None else 0} лиц.")
+        except Exception as e:
+            logging.error(f"[DEBUG-AI] Ошибка во время детекции лиц для {image_path}: {e}", exc_info=True)
+            return None
         
         if bboxes is None or kpss is None or len(bboxes) == 0:
             return []

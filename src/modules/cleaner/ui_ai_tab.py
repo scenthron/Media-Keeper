@@ -408,10 +408,11 @@ class AiClassificationTab(QWidget):
         self.text_highlighter = MultiTagHighlighter(self.line_text_search.document())
         page_text_layout.addWidget(self.line_text_search)
         
-        lbl_hint = QLabel("💡 Если результаты поиска на русском неточные, попробуйте написать запрос на английском языке (базовая модель понимает его лучше)." if AppContext.is_ru() else "💡 If search results are inaccurate, try querying in English (base model understands it better).")
-        lbl_hint.setStyleSheet("color: #a3a3a3; font-style: italic; font-size: 11px;")
-        lbl_hint.setWordWrap(True)
-        page_text_layout.addWidget(lbl_hint)
+        if AppContext.is_ru():
+            lbl_hint = QLabel("💡 Если результаты поиска на русском неточные, попробуйте написать запрос на английском языке (базовая модель понимает его лучше).")
+            lbl_hint.setStyleSheet("color: #a3a3a3; font-style: italic; font-size: 11px;")
+            lbl_hint.setWordWrap(True)
+            page_text_layout.addWidget(lbl_hint)
         
         # Action row for tags + Search button
         tags_action_layout = QHBoxLayout()

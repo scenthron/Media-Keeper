@@ -342,45 +342,53 @@ class AiGroupSettingsDialog(QDialog):
         if is_face_mode:
             ai_initialized = self.classifier.ai.initialize_sessions()
             
-        skipped_files = []
-        
         for path in file_paths:
             if path not in target_list:
+                is_invalid = False
                 if is_face_mode and ai_initialized:
                     faces = self.classifier.ai.extract_faces(path)
                     if not faces or len(faces) != 1:
-                        skipped_files.append(os.path.basename(path))
-                        continue
+                        is_invalid = True
                         
-                if is_positive:
-                    self.pending_pos.append(path)
-                else:
-                    self.pending_neg.append(path)
+                if not is_invalid:
+                    if is_positive:
+                        self.pending_pos.append(path)
+                    else:
+                        self.pending_neg.append(path)
+                        
                 item = QListWidgetItem()
                 pixmap = QPixmap(path)
                 if not pixmap.isNull():
                     scaled = pixmap.scaled(128, 128, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                     square = QPixmap(128, 128)
                     square.fill(Qt.GlobalColor.transparent)
-                    from PyQt6.QtGui import QPainter
+                    from PyQt6.QtGui import QPainter, QPen, QColor
                     painter = QPainter(square)
                     painter.drawPixmap((128 - scaled.width()) // 2, (128 - scaled.height()) // 2, scaled)
+                    
+                    if is_invalid:
+                        # Draw red tint/border and an X
+                        painter.fillRect(0, 0, 128, 128, QColor(255, 0, 0, 80))
+                        pen = QPen(QColor(255, 50, 50), 4)
+                        painter.setPen(pen)
+                        painter.drawRect(2, 2, 124, 124)
+                        painter.drawLine(20, 20, 108, 108)
+                        painter.drawLine(108, 20, 20, 108)
+                        
                     painter.end()
                     item.setIcon(QIcon(square))
                 else:
                     item.setIcon(QIcon(path))
+                
                 item.setData(Qt.ItemDataRole.UserRole, path)
-                item.setToolTip(os.path.basename(path))
+                if is_invalid:
+                    item.setToolTip(f"ОШИБКА: Не найдено лиц или найдено > 1 лица\nФайл будет проигнорирован\n\n{os.path.basename(path)}")
+                else:
+                    item.setToolTip(os.path.basename(path))
+                    
                 target_widget.addItem(item)
                 self.has_changes = True
                 
-        if skipped_files:
-            msg = "Следующие фото пропущены (на них не найдено лиц, либо найдено больше 1 лица):\n\n" + "\n".join(skipped_files[:10])
-            if len(skipped_files) > 10:
-                msg += f"\n...и еще {len(skipped_files)-10} файлов"
-            msg += "\n\nДля ИИ-поиска по лицам необходимо добавлять фото строго с одним человеком!"
-            self._show_silent_msg("Внимание", msg)
-            
         self._update_save_state()
 
     def delete_selected_files(self, is_positive):
@@ -401,6 +409,32 @@ class AiGroupSettingsDialog(QDialog):
             target_widget.takeItem(target_widget.row(item))
             self.has_changes = True
         self._update_save_state()
+
+    def delete_specific_file(self, path):
+        if path == "HASH" or str(path).endswith(".hash.mkaidump") or str(path).endswith(".mkaidump"):
+            self._show_silent_msg("Внимание", "Нельзя удалить хэш-данные. Для удаления нажмите красную кнопку 'Удалить Образец' внизу окна.")
+            return
+            
+        removed = False
+        if path in self.pending_pos:
+            self.pending_pos.remove(path)
+            removed = True
+            for i in range(self.list_pos.count()):
+                if self.list_pos.item(i).data(Qt.ItemDataRole.UserRole) == path:
+                    self.list_pos.takeItem(i)
+                    break
+                    
+        if path in self.pending_neg:
+            self.pending_neg.remove(path)
+            removed = True
+            for i in range(self.list_neg.count()):
+                if self.list_neg.item(i).data(Qt.ItemDataRole.UserRole) == path:
+                    self.list_neg.takeItem(i)
+                    break
+                    
+        if removed:
+            self.has_changes = True
+            self._update_save_state()
 
     def reload_thumbnails(self):
         self.list_pos.clear()

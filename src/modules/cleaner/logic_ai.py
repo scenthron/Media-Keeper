@@ -219,8 +219,10 @@ class AiEngine:
         if not self._is_initialized:
             return []
             
-        img = cv2.imread(image_path)
+        from utils_io import safe_cv2_imread
+        img = safe_cv2_imread(image_path)
         if img is None:
+            logging.warning(f"[DEBUG-AI] Не удалось прочитать изображение: {image_path}")
             return []
             
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)

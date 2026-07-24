@@ -160,10 +160,10 @@ class AiClassificationTab(QWidget):
         ph_layout.addWidget(lbl_title)
         
         lbl_desc = QLabel(
-            "Для работы сверхточного ИИ-поиска необходимо наличие моделей CLIP и InsightFace (~1 ГБ).\n"
+            "Для работы сверхточного ИИ-поиска необходимо наличие моделей CLIP и InsightFace (~1.5 ГБ).\n"
             "Загрузка выполняется один раз, после чего ИИ работает полностью автономно без подключения к интернету."
             if AppContext.is_ru() else
-            "To use advanced AI classification and face recognition, CLIP and InsightFace models (~1 GB) are required.\n"
+            "To use advanced AI classification and face recognition, CLIP and InsightFace models (~1.5 GB) are required.\n"
             "This download is done once, and then the AI runs completely offline."
         )
         lbl_desc.setWordWrap(True)

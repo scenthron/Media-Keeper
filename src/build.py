@@ -132,14 +132,15 @@ def build():
         "modules.editor.audio.worker",
         "modules.editor.video.worker",
         "modules.editor.image.worker",
-        "backports",
-        "setuptools"
+        "backports.tarfile",
+        "pkg_resources"
     ]
     for imp in hidden_imports:
         pyinstaller_cmd.extend(["--hidden-import", imp])
 
     # Добавляем collect-all для тяжелых C++ библиотек с DLL, чтобы предотвратить их потерю
-    collect_all_libs = ["onnxruntime", "tokenizers", "cv2", "PyQt6"]
+    # Убрал PyQt6 и cv2, чтобы не раздувать размер (230MB -> 130MB)
+    collect_all_libs = ["onnxruntime", "tokenizers"]
     for lib in collect_all_libs:
         pyinstaller_cmd.extend(["--collect-all", lib])
 

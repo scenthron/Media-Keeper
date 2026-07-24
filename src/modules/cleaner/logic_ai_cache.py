@@ -17,7 +17,7 @@ def _clean_path(path: str) -> str:
 
 class AiCacheManager:
     def __init__(self):
-        self.db_path = os.path.join(get_app_data_dir(), "ai_cache.db")
+        self.db_path = os.path.join(get_app_data_dir(), "ai_cache_multi.db")
         self._lock = threading.Lock()
         self._local_conn = None
         self._init_db()

@@ -12,7 +12,7 @@ class AiEngine:
         
         self.arcface_path = os.path.join(self.models_dir, "w600k_r50.onnx")
         self.scrfd_path = os.path.join(self.models_dir, "det_10g.onnx")
-        self.clip_dir = os.path.join(self.models_dir, "clip")
+        self.clip_dir = os.path.join(self.models_dir, "clip_multi")
         
         self.clip_searcher = None
         self.detector = None
@@ -98,17 +98,17 @@ class AiEngine:
                 ]
             },
             {
-                "name": "CLIP Text Model (text_multi/model.onnx)",
+                "name": "CLIP Text Model Multi (text_multi/model.onnx)",
                 "dest": os.path.join(self.clip_dir, "text_multi", "model.onnx"),
                 "urls": [
-                    "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/onnx/text_model.onnx"
+                    "https://huggingface.co/Xenova/clip-vit-base-patch32-multilingual-v1/resolve/main/onnx/text_model.onnx"
                 ]
             },
             {
-                "name": "CLIP Tokenizer (text_multi/tokenizer.json)",
+                "name": "CLIP Tokenizer Multi (text_multi/tokenizer.json)",
                 "dest": os.path.join(self.clip_dir, "text_multi", "tokenizer.json"),
                 "urls": [
-                    "https://huggingface.co/Xenova/clip-vit-base-patch32/resolve/main/tokenizer.json"
+                    "https://huggingface.co/Xenova/clip-vit-base-patch32-multilingual-v1/resolve/main/tokenizer.json"
                 ]
             }
         ]
@@ -304,8 +304,8 @@ def check_models_availability(parent_widget=None):
         msg.setIcon(QMessageBox.Icon.Information)
         msg.setText(
             "Для работы нового сверхточного ИИ-поиска необходимо скачать новые модели (CLIP и InsightFace).\n"
-            "Общий объем загрузки составит около 1 ГБ.\n\n"
-            "Внимание: загрузка будет интегрирована в следующих версиях.\n"
+            "Общий объем загрузки составит около 1.5 ГБ.\n\n"
+            "Во время загрузки программа может ненадолго перестать отвечать, пожалуйста, дождитесь завершения.\n"
             "Сейчас убедитесь, что вы распаковали модели в папку:\n"
             f"{engine.models_dir}"
         )

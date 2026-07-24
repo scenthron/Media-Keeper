@@ -131,13 +131,13 @@ class CLIPSearcher:
             logger.error("Токенизатор или ONNX-сессия текста не инициализирована")
             return None
 
-        # Автоматический перевод кириллицы на английский для CLIP
-        import re
-        if re.search(r'[а-яА-ЯёЁ]', text):
-            translated_text = self._translate_ru_to_en(text)
-            if translated_text:
-                logger.info(f"Запрос '{text}' переведен для CLIP: '{translated_text}'")
-                text = translated_text
+        # Автоматический перевод кириллицы отключен для мультиязычной модели M-CLIP
+        # import re
+        # if re.search(r'[а-яА-ЯёЁ]', text):
+        #     translated_text = self._translate_ru_to_en(text)
+        #     if translated_text:
+        #         logger.info(f"Запрос '{text}' переведен для CLIP: '{translated_text}'")
+        #         text = translated_text
             
         try:
             # Safe tokenization without C++ padding mutations

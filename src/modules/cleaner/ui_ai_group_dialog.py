@@ -1,4 +1,4 @@
-﻿import os
+import os
 import shutil
 import logging
 import tempfile
@@ -337,8 +337,21 @@ class AiGroupSettingsDialog(QDialog):
         target_list = self.pending_pos if is_positive else self.pending_neg
         target_widget = self.list_pos if is_positive else self.list_neg
         
+        is_face_mode = self.rad_face.isChecked()
+        ai_initialized = False
+        if is_face_mode:
+            ai_initialized = self.classifier.ai.initialize_sessions()
+            
+        skipped_files = []
+        
         for path in file_paths:
             if path not in target_list:
+                if is_face_mode and ai_initialized:
+                    faces = self.classifier.ai.extract_faces(path)
+                    if not faces or len(faces) != 1:
+                        skipped_files.append(os.path.basename(path))
+                        continue
+                        
                 if is_positive:
                     self.pending_pos.append(path)
                 else:
@@ -360,6 +373,14 @@ class AiGroupSettingsDialog(QDialog):
                 item.setToolTip(os.path.basename(path))
                 target_widget.addItem(item)
                 self.has_changes = True
+                
+        if skipped_files:
+            msg = "Следующие фото пропущены (на них не найдено лиц, либо найдено больше 1 лица):\n\n" + "\n".join(skipped_files[:10])
+            if len(skipped_files) > 10:
+                msg += f"\n...и еще {len(skipped_files)-10} файлов"
+            msg += "\n\nДля ИИ-поиска по лицам необходимо добавлять фото строго с одним человеком!"
+            self._show_silent_msg("Внимание", msg)
+            
         self._update_save_state()
 
     def delete_selected_files(self, is_positive):
@@ -474,8 +495,8 @@ class AiGroupSettingsDialog(QDialog):
                     
                     bgr_img = cv2.cvtColor(img_data, cv2.COLOR_RGB2BGR)
                     for face in faces:
-                        x, y, w, h = face["bbox"]
-                        cv2.rectangle(bgr_img, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                        x1, y1, x2, y2 = face["bbox"]
+                        cv2.rectangle(bgr_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     
                     rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
                     height, width, ch = rgb_img.shape

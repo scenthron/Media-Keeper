@@ -789,6 +789,17 @@ class AiClassificationTab(QWidget):
         self.chk_use_gpu.setChecked(True)
         params_sub_layout.addWidget(self.chk_use_gpu)
         
+        self.chk_show_faces = QCheckBox("Показывать рамки на лицах" if AppContext.is_ru() else "Show face bounding boxes")
+        self.chk_show_faces.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_show_faces.setStyleSheet("""
+            QCheckBox { color: white; font-weight: bold; font-size: 13px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        """)
+        self.chk_show_faces.setChecked(True)
+        self.chk_show_faces.toggled.connect(self._on_chk_show_faces_toggled)
+        params_sub_layout.addWidget(self.chk_show_faces)
+        
         # Пружинка для выравнивания настроек по верхнему краю и прижатия кнопки вниз
         params_sub_layout.addStretch()
         
@@ -1852,8 +1863,10 @@ class AiClassificationTab(QWidget):
                         bboxes = [matched_bbox]
                         
                     logging.info(f"[UI_AI_TAB] Предпросмотр лиц для {os.path.basename(path)}: всего {len(bboxes)} рамок (кэш: {len(faces) if faces else 0})")
-                    if hasattr(self.preview_widget, "draw_faces"):
+                    if hasattr(self.preview_widget, "draw_faces") and hasattr(self, "chk_show_faces") and self.chk_show_faces.isChecked():
                         self.preview_widget.draw_faces(bboxes, matched_bbox=matched_bbox)
+                    elif hasattr(self.preview_widget, "clear_faces"):
+                        self.preview_widget.clear_faces()
                 except Exception as e:
                     import logging
                     logging.error(f"Ошибка получения лиц для предпросмотра: {e}", exc_info=True)
@@ -1863,6 +1876,11 @@ class AiClassificationTab(QWidget):
             msg = "Файл не выбран" if AppContext.is_ru() else "No file selected"
             self.preview_widget.show_empty(msg)
             self.file_selected.emit("")
+
+    def _on_chk_show_faces_toggled(self, checked):
+        # Если выбрана какая-то картинка, перерисовываем её превью (чтобы добавить или убрать рамки)
+        if self.tree_results.selectedItems():
+            self.on_tree_selection_changed()
 
     def on_tree_item_changed(self, item, column):
         if column != 0:

@@ -131,10 +131,17 @@ def build():
         "modules.analyzer.worker",
         "modules.editor.audio.worker",
         "modules.editor.video.worker",
-        "modules.editor.image.worker"
+        "modules.editor.image.worker",
+        "backports",
+        "setuptools"
     ]
     for imp in hidden_imports:
         pyinstaller_cmd.extend(["--hidden-import", imp])
+
+    # Добавляем collect-all для тяжелых C++ библиотек с DLL, чтобы предотвратить их потерю
+    collect_all_libs = ["onnxruntime", "tokenizers", "cv2", "PyQt6"]
+    for lib in collect_all_libs:
+        pyinstaller_cmd.extend(["--collect-all", lib])
 
     # Исключаем тяжелые библиотеки для уменьшения размера EXE
     excludes = ["tkinter", "matplotlib", "scipy", "skimage"]

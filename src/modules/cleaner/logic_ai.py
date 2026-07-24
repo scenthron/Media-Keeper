@@ -229,7 +229,8 @@ class AiEngine:
                 
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             logging.debug(f"[DEBUG-AI] Запускаем SCRFD для {image_path} (shape: {img_rgb.shape})")
-            bboxes, kpss = self.detector.detect(img_rgb, conf_thresh=0.5, input_size=(640, 640))
+            # Увеличиваем порог уверенности (conf_thresh) с 0.5 до 0.8, чтобы отсечь ложные срабатывания (коты, руки, и т.д.)
+            bboxes, kpss = self.detector.detect(img_rgb, conf_thresh=0.8, input_size=(640, 640))
             logging.debug(f"[DEBUG-AI] SCRFD успешно завершен для {image_path}, найдено {len(bboxes) if bboxes is not None else 0} лиц.")
         except Exception as e:
             logging.error(f"[DEBUG-AI] Ошибка во время детекции лиц для {image_path}: {e}", exc_info=True)

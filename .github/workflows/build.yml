@@ -28,31 +28,34 @@ jobs:
         pip install pyinstaller
 
     - name: Run build script
-      working-directory: src
-      env:
-        PYTHONUTF8: "1"
+      shell: pwsh
       run: |
-        python build.py
+        $env:PYTHONUTF8 = "1"
+        $env:PYTHONIOENCODING = "utf-8"
+        python src/build.py
 
     - name: Find and Zip EXE
       shell: pwsh
       run: |
-        $exeFile = Get-ChildItem -Path dist\*.exe | Select-Object -First 1
+        $exeFile = Get-ChildItem -Path dist\*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
         if (-not $exeFile) {
-          Write-Error "Исполняемый файл .exe не найден в папке dist!"
+          $exeFile = Get-ChildItem -Recurse -Path dist\*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+        }
+        if (-not $exeFile) {
+          Write-Error "EXE file not found in dist folder!"
           exit 1
         }
-        Write-Host "Найден файл: $($exeFile.FullName)"
-        
+        Write-Host "Found: $($exeFile.FullName)"
+
         $tag = "${{ github.event.release.tag_name }}"
         if (-not $tag) {
           $tag = "release"
         }
-        
+
         $zipName = "Media_Keeper_$tag.zip"
         Compress-Archive -Path $exeFile.FullName -DestinationPath $zipName -Force
-        Write-Host "Создан архив: $zipName"
-        
+        Write-Host "Archive created: $zipName"
+
         Add-Content -Path $env:GITHUB_ENV -Value "ZIP_NAME=$zipName"
 
     - name: Upload Release Asset

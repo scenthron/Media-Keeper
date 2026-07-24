@@ -102,9 +102,7 @@ class AiModelDownloaderThread(QThread):
             stop_checker=lambda: self._is_stopped
         )
         if success and not self._is_stopped:
-            # Инициализируем сессии в фоновом потоке, не блокируя UI
-            init_ok = self.ai_engine.initialize_sessions()
-            self.finished_signal.emit(init_ok)
+            self.finished_signal.emit(True)
         else:
             self.finished_signal.emit(False)
 
@@ -1023,9 +1021,17 @@ class AiClassificationTab(QWidget):
 
             if success:
                 self.placeholder_status.setStyleSheet("color: #4ade80;")
-                self.placeholder_status.setText("Успешно!" if is_ru else "Success!")
-                self.download_placeholder.hide()
-                self.main_content_widget.show()
+                self.placeholder_status.setText("Инициализация моделей..." if is_ru else "Initializing models...")
+                from PyQt6.QtWidgets import QApplication
+                QApplication.processEvents()
+                
+                if self.ai.initialize_sessions():
+                    self.placeholder_status.setText("Успешно!" if is_ru else "Success!")
+                    self.download_placeholder.hide()
+                    self.main_content_widget.show()
+                else:
+                    self.placeholder_status.setStyleSheet("color: #ef4444;")
+                    self.placeholder_status.setText("Ошибка инициализации!" if is_ru else "Initialization failed!")
             else:
                 self.placeholder_status.setStyleSheet("color: #ef4444;")
                 self.placeholder_status.setText("Ошибка скачивания или инициализации!" if is_ru else "Download or initialization failed!")

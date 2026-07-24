@@ -239,15 +239,6 @@ class AiEngine:
 
     def extract_faces(self, image_path: str) -> list:
         """Находит все лица на фото и возвращает список словарей {"bbox": [...], "descriptor": np.ndarray}"""
-        import threading
-        if self._is_initialized and getattr(self, '_init_thread_id', None) != threading.get_ident():
-            logging.warning("Обнаружен кросс-поточный вызов! Перезапуск сессий во избежание падения ONNXRuntime C++.")
-            self._is_initialized = False
-            self.detector = None
-            self.arcface_session = None
-            self.clip_searcher = None
-            import gc; gc.collect()
-            
         if not self._is_initialized:
             if not self.initialize_sessions():
                 return []
@@ -307,15 +298,6 @@ class AiEngine:
 
     def extract_clip_embedding(self, image_path: str) -> np.ndarray | None:
         """Возвращает CLIP-вектор изображения (512-d)."""
-        import threading
-        if self._is_initialized and getattr(self, '_init_thread_id', None) != threading.get_ident():
-            logging.warning("Обнаружен кросс-поточный вызов! Перезапуск сессий во избежание падения ONNXRuntime C++.")
-            self._is_initialized = False
-            self.detector = None
-            self.arcface_session = None
-            self.clip_searcher = None
-            import gc; gc.collect()
-            
         if not self._is_initialized:
             if not self.initialize_sessions():
                 return None
@@ -328,15 +310,6 @@ class AiEngine:
             
     def extract_text_embedding(self, text: str) -> np.ndarray | None:
         """Возвращает CLIP-вектор текста (512-d)."""
-        import threading
-        if self._is_initialized and getattr(self, '_init_thread_id', None) != threading.get_ident():
-            logging.warning("Обнаружен кросс-поточный вызов! Перезапуск сессий во избежание падения ONNXRuntime C++.")
-            self._is_initialized = False
-            self.detector = None
-            self.arcface_session = None
-            self.clip_searcher = None
-            import gc; gc.collect()
-            
         if not self._is_initialized:
             if not self.initialize_sessions():
                 return None

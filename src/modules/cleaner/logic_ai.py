@@ -62,8 +62,9 @@ class AiEngine:
         scrfd_ok = os.path.exists(self.scrfd_path) and os.path.getsize(self.scrfd_path) > 1000
         clip_vis_ok = os.path.exists(os.path.join(self.clip_dir, "vision", "model.onnx")) and os.path.getsize(os.path.join(self.clip_dir, "vision", "model.onnx")) > 1000
         clip_txt_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "model.onnx")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "model.onnx")) > 1000
+        dense_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "dense.safetensors")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "dense.safetensors")) > 100
         tok_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) > 100
-        return arcface_ok and scrfd_ok and clip_vis_ok and clip_txt_ok and tok_ok
+        return arcface_ok and scrfd_ok and clip_vis_ok and clip_txt_ok and tok_ok and dense_ok
 
     def download_models(self, progress_callback=None, stop_checker=None) -> bool:
         """Скачивает реальные ИИ-модели по прямым интернет-ссылкам."""
@@ -102,6 +103,13 @@ class AiEngine:
                 "dest": os.path.join(self.clip_dir, "text_multi", "model.onnx"),
                 "urls": [
                     "https://huggingface.co/sentence-transformers/clip-ViT-B-32-multilingual-v1/resolve/main/onnx/model.onnx"
+                ]
+            },
+            {
+                "name": "CLIP Dense Layer Multi (text_multi/dense.safetensors)",
+                "dest": os.path.join(self.clip_dir, "text_multi", "dense.safetensors"),
+                "urls": [
+                    "https://huggingface.co/sentence-transformers/clip-ViT-B-32-multilingual-v1/resolve/main/2_Dense/model.safetensors"
                 ]
             },
             {

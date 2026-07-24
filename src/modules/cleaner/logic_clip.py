@@ -34,11 +34,10 @@ class CLIPSearcher:
     def load_models(self, use_gpu=False):
         try:
             from logic_paths import get_models_dir
-            clip_dir = os.path.join(get_models_dir(), "clip")
+            clip_dir = os.path.join(get_models_dir(), "clip_multi")
             vision_model_path = os.path.join(clip_dir, "vision", "model.onnx")
             text_model_dir = os.path.join(clip_dir, "text_multi")
             text_model_path = os.path.join(text_model_dir, "model.onnx")
-            dense_path = os.path.join(text_model_dir, "dense.safetensors")
             
             if not os.path.exists(vision_model_path):
                 logger.error(f"Модель CLIP Vision не найдена: {vision_model_path}")
@@ -138,6 +137,8 @@ class CLIPSearcher:
         #     if translated_text:
         #         logger.info(f"Запрос '{text}' переведен для CLIP: '{translated_text}'")
         #         text = translated_text
+        
+        logger.info(f"[M-CLIP] Отправка запроса в нейросеть: '{text}'")
             
         try:
             # Safe tokenization without C++ padding mutations

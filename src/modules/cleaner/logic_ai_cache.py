@@ -8,7 +8,7 @@ import threading
 from logic_paths import get_app_data_dir
 from utils_io import strip_long_path_prefix
 
-CURRENT_CACHE_VERSION = 3
+CURRENT_CACHE_VERSION = 4
 
 def _clean_path(path: str) -> str:
     if not path:

@@ -139,27 +139,40 @@ class CLIPSearcher:
                 text = translated_text
             
         try:
-            # Безопасная токенизация
+            # Safe tokenization without C++ padding mutations
             try:
-                self.tokenizer.enable_truncation(max_length=77)
-                self.tokenizer.enable_padding(length=77)
                 encoded = self.tokenizer.encode(text)
+                raw_ids = list(encoded.ids)
+                raw_mask = list(encoded.attention_mask)
             except Exception as te:
                 logger.error(f"Ошибка токенизации текста '{text}': {te}")
                 return None
             
-            input_ids = np.array([encoded.ids], dtype=np.int64)
-            attention_mask = np.array([encoded.attention_mask], dtype=np.int64)
+            # Manual safe padding/truncation strictly to 77 tokens in Python
+            pad_len = 77
+            if len(raw_ids) > pad_len:
+                raw_ids = raw_ids[:pad_len]
+                raw_mask = raw_mask[:pad_len]
+            else:
+                pad_count = pad_len - len(raw_ids)
+                raw_ids = raw_ids + [0] * pad_count
+                raw_mask = raw_mask + [0] * pad_count
+
+            input_ids = np.array([raw_ids], dtype=np.int64)
+            attention_mask = np.array([raw_mask], dtype=np.int64)
             
-            # Динамически формируем входы ONNX модели на основе её метаданных
+            # Form ONNX inputs based on metadata
             inputs = {}
             for input_meta in self.text_sess.get_inputs():
+                dtype = np.int64 if "int64" in str(input_meta.type) else np.int32
                 if input_meta.name == "input_ids":
-                    inputs["input_ids"] = input_ids
+                    inputs["input_ids"] = input_ids.astype(dtype)
                 elif input_meta.name == "attention_mask":
-                    inputs["attention_mask"] = attention_mask
+                    inputs["attention_mask"] = attention_mask.astype(dtype)
                 elif input_meta.name == "position_ids":
-                    inputs["position_ids"] = np.arange(len(encoded.ids), dtype=np.int64)[None, :]
+                    inputs["position_ids"] = np.arange(pad_len, dtype=dtype)[None, :]
+                elif input_meta.name == "token_type_ids":
+                    inputs["token_type_ids"] = np.zeros((1, pad_len), dtype=dtype)
 
             text_out = self.text_sess.run(None, inputs)[0]
             

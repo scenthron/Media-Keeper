@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 import logging
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFrame,
@@ -1642,6 +1643,8 @@ class AiClassificationTab(QWidget):
             self.facade = AiServiceFacade()
             self.facade.cache = self.cache
             
+        self.scan_start_time = time.time()
+            
         self.facade.search(
             request,
             progress_callback=self.on_scan_progress,
@@ -1665,7 +1668,13 @@ class AiClassificationTab(QWidget):
     def on_scan_progress(self, stage, percent, text, scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, empty):
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(int(percent))
-        self.progress_bar.setFormat(f"{text} ({int(percent)}%)" if "%" not in text else text)
+        
+        elapsed_sec = int(time.time() - getattr(self, 'scan_start_time', time.time()))
+        m, s = divmod(elapsed_sec, 60)
+        time_str = f" [{m:02d}:{s:02d}]"
+        
+        base_text = f"{text} ({int(percent)}%)" if "%" not in text else text
+        self.progress_bar.setFormat(base_text + time_str)
         
         # Меняем цвет полосы в зависимости от этапа
         if stage == STAGE_SCANNING:
@@ -1675,8 +1684,8 @@ class AiClassificationTab(QWidget):
             
         from utils_common import format_size
         self.lbl_stats.setText(
-            f"Найдено совпадений: {groups_found} групп, {files_found} файлов, {wasted_bytes // (1024*1024) if wasted_bytes else 0} MB" if AppContext.is_ru()
-            else f"Matches found: {groups_found} groups, {files_found} files, {format_size(wasted_bytes)}"
+            f"Найдено совпадений: {groups_found} групп, {files_found} файлов, {wasted_bytes // (1024*1024) if wasted_bytes else 0} MB (Время: {m:02d}:{s:02d})" if AppContext.is_ru()
+            else f"Matches found: {groups_found} groups, {files_found} files, {format_size(wasted_bytes)} (Time: {m:02d}:{s:02d})"
         )
 
     def on_scan_finished(self, response: AiSearchResponse):

@@ -4,7 +4,13 @@ import sys
 from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
-spec_dir = os.path.dirname(os.path.abspath(__file__))
+if 'SPECPATH' in globals():
+    spec_dir = SPECPATH
+elif '__file__' in globals():
+    spec_dir = os.path.dirname(os.path.abspath(__file__))
+else:
+    spec_dir = os.path.abspath('.')
+
 src_dir = os.path.join(spec_dir, "src") if os.path.exists(os.path.join(spec_dir, "src", "main.py")) else spec_dir
 
 datas = []

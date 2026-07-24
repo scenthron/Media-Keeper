@@ -117,8 +117,9 @@ class FFmpegDownloaderWorker(QThread):
             if not self.is_running:
                 return False
             try:
-                logging.info(f"Попытка загрузки FFmpeg из {url}...")
-                response = requests.get(url, headers=headers, stream=True, timeout=30)
+                import urllib3
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+                response = requests.get(url, headers=headers, stream=True, timeout=30, verify=False, allow_redirects=True)
                 response.raise_for_status()
                 
                 total_size = int(response.headers.get('content-length', 0))

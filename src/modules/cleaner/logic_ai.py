@@ -230,12 +230,24 @@ class AiEngine:
             
         from utils_io import safe_cv2_imread
         img = safe_cv2_imread(image_path)
-        if img is None:
+        if img is None or not hasattr(img, 'shape') or img.size == 0:
             return []
-            
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        try:
+            if len(img.shape) == 2:
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+            elif len(img.shape) == 3 and img.shape[2] == 4:
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
+            elif len(img.shape) == 3 and img.shape[2] == 3:
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            else:
+                return []
+        except Exception as e:
+            logging.warning(f"Ошибка цветовой конвертации изображения '{image_path}': {e}")
+            return []
+
         bboxes, kpss = self.detector.detect(img_rgb, conf_thresh=0.5, input_size=(640, 640))
-        
+
         if bboxes is None or kpss is None or len(bboxes) == 0:
             return []
             

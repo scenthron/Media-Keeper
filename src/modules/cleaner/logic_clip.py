@@ -221,13 +221,22 @@ class CLIPSearcher:
             from utils_io import safe_cv2_imread
             img = safe_cv2_imread(img_path)
             
-            if img is None:
+            if img is None or not hasattr(img, 'shape') or img.size == 0:
                 return None
                 
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            
+            if len(img.shape) == 2:
+                img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+            elif len(img.shape) == 3 and img.shape[2] == 4:
+                img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
+            elif len(img.shape) == 3 and img.shape[2] == 3:
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            else:
+                return None
+
             # Препроцессинг CLIP (Resize, CenterCrop 224, Normalize)
             h, w = img.shape[:2]
+            if h == 0 or w == 0:
+                return None
             scale = max(224.0 / h, 224.0 / w)
             new_h, new_w = int(np.ceil(h * scale)), int(np.ceil(w * scale))
             img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_CUBIC)

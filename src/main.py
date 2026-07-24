@@ -51,15 +51,23 @@ def silence_c_stderr():
     import sys
     import threading
     try:
+        if sys.stderr is None or not hasattr(sys.stderr, 'fileno'):
+            return
+        fd = sys.stderr.fileno()
+        if fd < 0:
+            return
         r_fd, w_fd = os.pipe()
-        original_stderr_fd = os.dup(sys.stderr.fileno())
-        os.dup2(w_fd, sys.stderr.fileno())
+        original_stderr_fd = os.dup(fd)
+        os.dup2(w_fd, fd)
         def stderr_reader():
             with os.fdopen(r_fd, 'r', errors='ignore') as pipe_reader:
                 for line in pipe_reader:
                     if any(x in line for x in ("d3d11", "hwaccel", "h264 @", "hevc @", "aac @", "swscaler")):
                         continue
-                    os.write(original_stderr_fd, line.encode('utf-8', errors='ignore'))
+                    try:
+                        os.write(original_stderr_fd, line.encode('utf-8', errors='ignore'))
+                    except Exception:
+                        pass
         t = threading.Thread(target=stderr_reader, daemon=True)
         t.start()
     except Exception:
@@ -444,6 +452,19 @@ def global_excepthook(exctype, value, traceback_obj):
 if __name__ == "__main__":
     setup_logging()
     sys.excepthook = global_excepthook
+
+    def thread_excepthook(args):
+        global_excepthook(args.exc_type, args.exc_value, args.exc_traceback)
+
+    import threading
+    threading.excepthook = thread_excepthook
+
+    def unraisable_hook(args):
+        import logging
+        logging.error(f"Unraisable exception: {args.exc_value}", exc_info=args.exc_traceback)
+
+    sys.unraisablehook = unraisable_hook
+
     logging.info(f"Запуск приложения {APP_VERSION}.")
     app = QApplication(sys.argv)
     

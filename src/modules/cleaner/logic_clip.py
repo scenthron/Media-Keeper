@@ -38,6 +38,7 @@ class CLIPSearcher:
             vision_model_path = os.path.join(clip_dir, "vision", "model.onnx")
             text_model_dir = os.path.join(clip_dir, "text_multi")
             text_model_path = os.path.join(text_model_dir, "model.onnx")
+            dense_path = os.path.join(text_model_dir, "dense.safetensors")
             
             if not os.path.exists(vision_model_path):
                 logger.error(f"Модель CLIP Vision не найдена: {vision_model_path}")

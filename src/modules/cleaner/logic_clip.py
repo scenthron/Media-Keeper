@@ -63,6 +63,9 @@ class CLIPSearcher:
             
             logger.info("Загрузка CLIP ONNX сессий...")
             opts = ort.SessionOptions()
+            opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+            opts.intra_op_num_threads = 1
+            opts.inter_op_num_threads = 1
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
             self.vision_sess = ort.InferenceSession(vision_model_path, sess_options=opts, providers=['CPUExecutionProvider'])
             self.text_sess = ort.InferenceSession(text_model_path, sess_options=opts, providers=['CPUExecutionProvider'])
@@ -170,20 +173,23 @@ class CLIPSearcher:
 
             logger.info(f"[CLIP] Ручной паддинг/срез выполнен. Финальная длина массива: {len(raw_ids)}")
 
-            input_ids = np.array([raw_ids], dtype=np.int64)
-            attention_mask = np.array([raw_mask], dtype=np.int64)
+            input_ids_arr = np.array([raw_ids], dtype=np.int64)
+            attention_mask_arr = np.array([raw_mask], dtype=np.int64)
             
-            # Динамически формируем входы ONNX модели на основе её метаданных
+            # Динамически формируем входы ONNX модели на основе её метаданных и типов данных
             inputs = {}
             for input_meta in self.text_sess.get_inputs():
+                dtype = np.int64 if "int64" in str(input_meta.type) else np.int32
                 if input_meta.name == "input_ids":
-                    inputs["input_ids"] = input_ids
+                    inputs["input_ids"] = input_ids_arr.astype(dtype)
                 elif input_meta.name == "attention_mask":
-                    inputs["attention_mask"] = attention_mask
+                    inputs["attention_mask"] = attention_mask_arr.astype(dtype)
                 elif input_meta.name == "position_ids":
-                    inputs["position_ids"] = np.arange(pad_len, dtype=np.int64)[None, :]
+                    inputs["position_ids"] = np.arange(pad_len, dtype=dtype)[None, :]
+                elif input_meta.name == "token_type_ids":
+                    inputs["token_type_ids"] = np.zeros((1, pad_len), dtype=dtype)
 
-            logger.info(f"[CLIP] Запуск ONNX инференса текста для '{text}'...")
+            logger.info(f"[CLIP] Запуск ONNX инференса текста для '{text}' (входы: {list(inputs.keys())})...")
             text_out = self.text_sess.run(None, inputs)[0]
             logger.info(f"[CLIP] ONNX инференс завершен. Форма выхода: {text_out.shape}")
             

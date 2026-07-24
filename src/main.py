@@ -2,6 +2,13 @@ import sys
 import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["ORT_INTRA_OP_NUM_THREADS"] = "1"
+os.environ["ORT_INTER_OP_NUM_THREADS"] = "1"
 
 # Предотвращаем запуск интерактивного шелла Python при выходе (сброс унаследованных переменных)
 os.environ.pop('PYTHONINSPECT', None)

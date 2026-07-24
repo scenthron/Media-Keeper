@@ -271,11 +271,10 @@ class SafeFormatter(logging.Formatter):
         return anon_message
 
     def format(self, record):
-        if not hasattr(self, 'last_log_time'):
-            self.last_log_time = record.created
+        if not hasattr(self, 'start_log_time'):
+            self.start_log_time = record.created
             
-        elapsed = record.created - self.last_log_time
-        self.last_log_time = record.created
+        elapsed = record.created - self.start_log_time
         time_prefix = f"[+{elapsed:.3f}s] "
 
         if not getattr(sys, 'frozen', False):

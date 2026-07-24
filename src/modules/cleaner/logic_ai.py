@@ -195,14 +195,15 @@ class AiEngine:
         try:
             # 1. Загрузка InsightFace (SCRFD + ArcFace)
             from .logic_scrfd import SCRFD
-            self.detector = SCRFD(self.scrfd_path)
+            self.detector = SCRFD(self.scrfd_path, use_gpu=use_gpu)
             opts = ort.SessionOptions()
             # Возвращаем оптимизации и многопоточность по умолчанию
-            self.arcface_session = ort.InferenceSession(self.arcface_path, sess_options=opts, providers=['CPUExecutionProvider'])
+            providers = ['DmlExecutionProvider', 'CPUExecutionProvider'] if use_gpu else ['CPUExecutionProvider']
+            self.arcface_session = ort.InferenceSession(self.arcface_path, sess_options=opts, providers=providers)
             
             # 2. Загрузка CLIP
             from .logic_clip import CLIPSearcher
-            self.clip_searcher = CLIPSearcher()
+            self.clip_searcher = CLIPSearcher(use_gpu=use_gpu)
             if not self.clip_searcher.is_loaded:
                 return False
                 

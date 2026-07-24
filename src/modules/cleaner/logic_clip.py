@@ -22,16 +22,16 @@ class CLIPSearcher:
     Класс для работы с мультиязычным CLIP (Text + Vision).
     Использует onnxruntime для инференса.
     """
-    def __init__(self):
+    def __init__(self, use_gpu=False):
         self.vision_sess = None
         self.text_sess = None
         self.tokenizer = None
         self.dense_weights = None
         
         self.is_loaded = False
-        self.load_models()
+        self.load_models(use_gpu)
         
-    def load_models(self):
+    def load_models(self, use_gpu=False):
         try:
             from logic_paths import get_models_dir
             clip_dir = os.path.join(get_models_dir(), "clip")
@@ -58,8 +58,9 @@ class CLIPSearcher:
             logger.info("Загрузка CLIP ONNX сессий...")
             opts = ort.SessionOptions()
             # Возвращаем оптимизации и многопоточность по умолчанию
-            self.vision_sess = ort.InferenceSession(vision_model_path, sess_options=opts, providers=['CPUExecutionProvider'])
-            self.text_sess = ort.InferenceSession(text_model_path, sess_options=opts, providers=['CPUExecutionProvider'])
+            providers = ['DmlExecutionProvider', 'CPUExecutionProvider'] if use_gpu else ['CPUExecutionProvider']
+            self.vision_sess = ort.InferenceSession(vision_model_path, sess_options=opts, providers=providers)
+            self.text_sess = ort.InferenceSession(text_model_path, sess_options=opts, providers=providers)
 
             if os.path.exists(dense_path):
                 logger.info("Загрузка CLIP Dense слоя...")

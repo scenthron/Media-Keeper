@@ -30,10 +30,11 @@ def distance2kps(points, distance, max_shape=None):
     return np.column_stack(preds).reshape(-1, 5, 2)
 
 class SCRFD:
-    def __init__(self, model_file):
+    def __init__(self, model_file, use_gpu=False):
         opts = ort.SessionOptions()
         # Возвращаем оптимизации и многопоточность по умолчанию
-        self.session = ort.InferenceSession(model_file, sess_options=opts, providers=['CPUExecutionProvider'])
+        providers = ['DmlExecutionProvider', 'CPUExecutionProvider'] if use_gpu else ['CPUExecutionProvider']
+        self.session = ort.InferenceSession(model_file, sess_options=opts, providers=providers)
         self.input_name = self.session.get_inputs()[0].name
         self._feat_stride_fpn = [8, 16, 32]
         self._num_anchors = 2

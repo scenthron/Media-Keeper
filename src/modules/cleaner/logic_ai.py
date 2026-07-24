@@ -207,6 +207,8 @@ class AiEngine:
             opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
             opts.intra_op_num_threads = 1
             opts.inter_op_num_threads = 1
+            opts.enable_cpu_mem_arena = False
+            opts.enable_mem_pattern = False
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
             self.arcface_session = ort.InferenceSession(self.arcface_path, sess_options=opts, providers=['CPUExecutionProvider'])
             
@@ -217,6 +219,8 @@ class AiEngine:
                 return False
                 
             self._is_initialized = True
+            import threading
+            self._init_thread_id = threading.get_ident()
             self._reset_idle_timer()
             return True
             
@@ -226,8 +230,18 @@ class AiEngine:
 
     def extract_faces(self, image_path: str) -> list:
         """Находит все лица на фото и возвращает список словарей {"bbox": [...], "descriptor": np.ndarray}"""
+        import threading
+        if self._is_initialized and getattr(self, '_init_thread_id', None) != threading.get_ident():
+            logging.warning("Обнаружен кросс-поточный вызов! Перезапуск сессий во избежание падения ONNXRuntime C++.")
+            self._is_initialized = False
+            self.detector = None
+            self.arcface_session = None
+            self.clip_searcher = None
+            import gc; gc.collect()
+            
         if not self._is_initialized:
-            return []
+            if not self.initialize_sessions():
+                return []
             
         from utils_io import safe_cv2_imread
         img = safe_cv2_imread(image_path)
@@ -283,9 +297,19 @@ class AiEngine:
         return faces
 
     def extract_clip_embedding(self, image_path: str) -> np.ndarray | None:
-        """Возвращает CLIP-вектор сцены (512-d)."""
+        """Возвращает CLIP-вектор изображения (512-d)."""
+        import threading
+        if self._is_initialized and getattr(self, '_init_thread_id', None) != threading.get_ident():
+            logging.warning("Обнаружен кросс-поточный вызов! Перезапуск сессий во избежание падения ONNXRuntime C++.")
+            self._is_initialized = False
+            self.detector = None
+            self.arcface_session = None
+            self.clip_searcher = None
+            import gc; gc.collect()
+            
         if not self._is_initialized:
-            return None
+            if not self.initialize_sessions():
+                return None
         self._reset_idle_timer()
         try:
             return self.clip_searcher.encode_image(image_path)
@@ -295,8 +319,18 @@ class AiEngine:
             
     def extract_text_embedding(self, text: str) -> np.ndarray | None:
         """Возвращает CLIP-вектор текста (512-d)."""
+        import threading
+        if self._is_initialized and getattr(self, '_init_thread_id', None) != threading.get_ident():
+            logging.warning("Обнаружен кросс-поточный вызов! Перезапуск сессий во избежание падения ONNXRuntime C++.")
+            self._is_initialized = False
+            self.detector = None
+            self.arcface_session = None
+            self.clip_searcher = None
+            import gc; gc.collect()
+            
         if not self._is_initialized:
-            return None
+            if not self.initialize_sessions():
+                return None
         self._reset_idle_timer()
         return self.clip_searcher.encode_text(text)
 

@@ -32,6 +32,8 @@ class SCRFD:
         opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
         opts.intra_op_num_threads = 1
         opts.inter_op_num_threads = 1
+        opts.enable_cpu_mem_arena = False
+        opts.enable_mem_pattern = False
         opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_BASIC
         self.session = ort.InferenceSession(model_file, sess_options=opts, providers=['CPUExecutionProvider'])
         self.input_name = self.session.get_inputs()[0].name

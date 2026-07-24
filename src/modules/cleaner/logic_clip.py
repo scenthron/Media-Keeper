@@ -198,7 +198,7 @@ class CLIPSearcher:
             logger.error(f"Ошибка при кодировании текста '{text}': {e}", exc_info=True)
             return None
 
-    def encode_image(self, img_path: str) -> np.ndarray:
+    def encode_image(self, img_path: str, img_rgb: np.ndarray = None) -> np.ndarray:
         """
         Превращает изображение по пути в нормализованный вектор размерности 512.
         Возвращает None, если модели не загружены или файл не читается.
@@ -207,13 +207,16 @@ class CLIPSearcher:
             return None
             
         try:
-            from utils_io import safe_cv2_imread
-            img = safe_cv2_imread(img_path)
-            
-            if img is None:
-                return None
+            if img_rgb is None:
+                from utils_io import safe_cv2_imread
+                img = safe_cv2_imread(img_path)
                 
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                if img is None:
+                    return None
+                    
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                
+            img = img_rgb
             
             # Препроцессинг CLIP (Resize, CenterCrop 224, Normalize)
             h, w = img.shape[:2]

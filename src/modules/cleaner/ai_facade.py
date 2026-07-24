@@ -204,33 +204,84 @@ class AiCoreWorker(QRunnable):
                          f"Файлов для анализа: {total_files}, Порог: {self.request.threshold}")
 
             cache_batch = []
+            faces_cache_batch = []
             cached_hits = 0
-            for fp in valid_files:
+
+            import queue
+            import cv2
+            import threading
+            from utils_io import safe_cv2_imread
+            from concurrent.futures import ThreadPoolExecutor
+
+            task_queue = queue.Queue(maxsize=16)
+
+            def producer(fp):
                 if self.is_cancelled: return
-                
-                percent = (processed / total_files) * 95.0  # Feature extraction takes up 95% of time
-                if processed % 10 == 0:
-                    status_text = "Чтение из ИИ-кэша..." if (cached_hits > 0 and cached_hits >= processed - 10) else "Извлечение признаков ИИ..."
-                    self.signals.progress.emit(STAGE_ANALYSIS, percent, f"{status_text} {processed}/{total_files}", scanned_files, 0, 0, scanned_bytes, 0, 0)
-                
                 try:
                     stat = os.stat(fp)
                     size = stat.st_size
                     mtime = stat.st_mtime
+                    
+                    # Проверка необходимости декодирования (если кэш уже есть, пиксели не нужны)
+                    needs_decode = False
+                    if self.request.analysis_target in (AiTarget.FACES, AiTarget.BOTH):
+                        if not (self.request.use_cache and self.cache and self.cache.get_file_faces(fp, mtime, size) is not None):
+                            needs_decode = True
+                    if self.request.analysis_target in (AiTarget.IMAGES, AiTarget.BOTH) and not needs_decode:
+                        if not (self.request.use_cache and self.cache and self.cache.get_image_embedding(fp, mtime, size) is not None):
+                            needs_decode = True
+                            
+                    img_rgb = None
+                    if needs_decode:
+                        img = safe_cv2_imread(fp)
+                        if img is not None:
+                            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                            
+                    task_queue.put((fp, mtime, size, img_rgb))
                 except Exception:
+                    task_queue.put((fp, 0, 0, None))
+
+            def producer_manager():
+                with ThreadPoolExecutor(max_workers=4) as executor:
+                    for fp in valid_files:
+                        if self.is_cancelled: break
+                        executor.submit(producer, fp)
+                task_queue.put(None) # EOF marker
+
+            threading.Thread(target=producer_manager, daemon=True).start()
+
+            while True:
+                if self.is_cancelled: break
+                item = task_queue.get()
+                if item is None:
+                    break
+                    
+                fp, mtime, size, img_rgb = item
+                
+                percent = (processed / total_files) * 95.0
+                if processed % 10 == 0:
+                    status_text = "Чтение из ИИ-кэша..." if (cached_hits > 0 and cached_hits >= processed - 10) else "Извлечение признаков ИИ..."
+                    self.signals.progress.emit(STAGE_ANALYSIS, percent, f"{status_text} {processed}/{total_files}", scanned_files, 0, 0, scanned_bytes, 0, 0)
+                
+                if mtime == 0 and size == 0:
                     processed += 1
                     continue
                 
                 hit_cache = False
+                
                 if self.request.analysis_target in (AiTarget.FACES, AiTarget.BOTH):
                     faces = None
                     if self.request.use_cache and self.cache:
                         faces = self.cache.get_file_faces(fp, mtime, size)
                         if faces is not None: hit_cache = True
+                        
                     if faces is None:
-                        faces = self.engine.extract_faces(fp)
+                        faces = self.engine.extract_faces(fp, img_rgb)
                         if self.request.use_cache and self.cache and faces is not None:
-                            self.cache.save_file_faces(fp, mtime, size, faces)
+                            faces_cache_batch.append((fp, mtime, size, faces))
+                            if len(faces_cache_batch) >= 50:
+                                self.cache.save_file_faces_batch(faces_cache_batch)
+                                faces_cache_batch = []
                     
                     if faces and self.request.analysis_target == AiTarget.FACES:
                         file_features.append((fp, faces))
@@ -240,29 +291,28 @@ class AiCoreWorker(QRunnable):
                     if self.request.use_cache and self.cache:
                         emb = self.cache.get_image_embedding(fp, mtime, size)
                         if emb is not None: hit_cache = True
+                        
                     if emb is None:
-                        emb = self.engine.extract_clip_embedding(fp)
+                        emb = self.engine.extract_clip_embedding(fp, img_rgb)
                         if self.request.use_cache and self.cache and emb is not None:
                             cache_batch.append((fp, mtime, size, emb))
                             if len(cache_batch) >= 50:
                                 self.cache.save_image_embeddings_batch(cache_batch)
                                 cache_batch = []
-                            
+                                
                     if emb is not None and self.request.analysis_target == AiTarget.IMAGES:
                         file_features.append((fp, emb))
                         
                 if hit_cache:
                     cached_hits += 1
-                        
-                # If BOTH, file_features won't be used by auto-cluster, but FIND_BY_REFERENCES uses the cache directly
-                if self.request.analysis_target == AiTarget.BOTH:
-                    pass
-                
+                    
                 processed += 1
 
+            if faces_cache_batch and self.request.use_cache and self.cache:
+                self.cache.save_file_faces_batch(faces_cache_batch)
+                
             if cache_batch and self.request.use_cache and self.cache:
                 self.cache.save_image_embeddings_batch(cache_batch)
-                cache_batch = []
 
             # 4. Search and Cluster logic
             self.signals.progress.emit(STAGE_ANALYSIS, 95.0, "Группировка результатов...", scanned_files, 0, 0, scanned_bytes, 0, 0)

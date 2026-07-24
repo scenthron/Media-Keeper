@@ -229,6 +229,42 @@ class AiCacheManager:
             import logging
             logging.error(f"Ошибка сохранения лиц в кэш для {filepath}: {e}")
 
+    def save_file_faces_batch(self, items: list[tuple[str, float, int, list[dict]]]):
+        """Сохраняет пакет лиц для нескольких файлов единой транзакцией."""
+        if not items:
+            return
+            
+        try:
+            deletes = []
+            inserts = []
+            
+            for filepath, mtime, size, faces in items:
+                norm_path = _clean_path(filepath)
+                deletes.append((norm_path,))
+                
+                if not faces:
+                    inserts.append((norm_path, -1, mtime, size, "", b""))
+                else:
+                    for idx, face in enumerate(faces):
+                        bbox_str = ",".join(map(str, face['bbox']))
+                        desc_blob = face['descriptor'].astype(np.float32).tobytes()
+                        inserts.append((norm_path, idx, mtime, size, bbox_str, desc_blob))
+                        
+            with self._conn() as conn:
+                cursor = conn.cursor()
+                cursor.executemany("DELETE FROM face_embeddings WHERE filepath = ?", deletes)
+                if inserts:
+                    cursor.executemany(
+                        """
+                        INSERT INTO face_embeddings (filepath, face_index, mtime, size, bbox, descriptor)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """, inserts
+                    )
+                conn.commit()
+        except Exception as e:
+            import logging
+            logging.error(f"Ошибка пакетного сохранения лиц в кэш: {e}", exc_info=True)
+
     def has_cached_files_for_folder(self, folder_path: str) -> tuple[bool, bool]:
         """Проверяет наличие кэшированных файлов для заданной папки. Возвращает (has_general, has_faces)."""
         has_general = False

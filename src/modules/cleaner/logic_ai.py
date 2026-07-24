@@ -215,19 +215,20 @@ class AiEngine:
             logging.error(f"Ошибка инициализации моделей: {e}")
             return False
 
-    def extract_faces(self, image_path: str) -> list | None:
+    def extract_faces(self, image_path: str, img_rgb: np.ndarray = None) -> list | None:
         """Находит все лица на фото и возвращает список словарей {"bbox": [...], "descriptor": np.ndarray}. Возвращает None если файл битый."""
         if not self._is_initialized:
             return None
             
         try:
-            from utils_io import safe_cv2_imread
-            img = safe_cv2_imread(image_path)
-            if img is None:
-                logging.warning(f"[DEBUG-AI] Не удалось прочитать изображение (битый файл): {image_path}")
-                return None
+            if img_rgb is None:
+                from utils_io import safe_cv2_imread
+                img = safe_cv2_imread(image_path)
+                if img is None:
+                    logging.warning(f"[DEBUG-AI] Не удалось прочитать изображение (битый файл): {image_path}")
+                    return None
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             logging.debug(f"[DEBUG-AI] Запускаем SCRFD для {image_path} (shape: {img_rgb.shape})")
             # Увеличиваем порог уверенности (conf_thresh) до 0.65, чтобы отсечь ложные срабатывания (коты, руки, и т.д.)
             bboxes, kpss = self.detector.detect(img_rgb, conf_thresh=0.65, input_size=(640, 640))
@@ -274,13 +275,13 @@ class AiEngine:
             
         return faces
 
-    def extract_clip_embedding(self, image_path: str) -> np.ndarray | None:
+    def extract_clip_embedding(self, image_path: str, img_rgb: np.ndarray = None) -> np.ndarray | None:
         """Возвращает CLIP-вектор сцены (512-d)."""
         if not self._is_initialized:
             return None
         self._reset_idle_timer()
         try:
-            return self.clip_searcher.encode_image(image_path)
+            return self.clip_searcher.encode_image(image_path, img_rgb)
         except Exception as e:
             logging.error(f"CLIP Image encode error for {image_path}: {e}")
             return None

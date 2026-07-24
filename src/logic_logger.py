@@ -341,7 +341,7 @@ def setup_logging():
     if getattr(sys, 'frozen', False):
         from logic_paths import get_app_data_dir
         log_path = os.path.join(get_app_data_dir(), "media_keeper.log")
-        file_log_level = logging.WARNING
+        file_log_level = logging.DEBUG
     else:
         log_path = "media_keeper.log"
         file_log_level = logging.DEBUG
@@ -385,17 +385,22 @@ def setup_logging():
             root_logger.addHandler(logging.NullHandler())
             return
 
-    # 4. Создаем Очередь и Слушателя
-    log_queue = queue.Queue(-1) # Бесконечная очередь
-    
-    # QueueListener автоматически запускает свой поток для обработки записей
-    _log_listener = QueueListener(log_queue, *handlers, respect_handler_level=True)
-    _log_listener.start()
+    # 4. Временно отключаем QueueListener для EXE, чтобы гарантировать синхронную запись логов до краша
+    if getattr(sys, 'frozen', False):
+        for h in handlers:
+            root_logger.addHandler(h)
+    else:
+        # Создаем Очередь и Слушателя
+        log_queue = queue.Queue(-1) # Бесконечная очередь
+        
+        # QueueListener автоматически запускает свой поток для обработки записей
+        global _log_listener
+        _log_listener = QueueListener(log_queue, *handlers, respect_handler_level=True)
+        _log_listener.start()
 
-    # 5. Подключаем QueueHandler к корневому логгеру
-    # Это единственный хендлер в основном потоке. Он просто кидает задачу в очередь.
-    queue_handler = QueueHandler(log_queue)
-    root_logger.addHandler(queue_handler)
+        # 5. Подключаем QueueHandler к корневому логгеру
+        queue_handler = QueueHandler(log_queue)
+        root_logger.addHandler(queue_handler)
 
     logging.info("="*50)
     logging.info(f"Асинхронная система логгирования запущена. Путь: {log_path}")

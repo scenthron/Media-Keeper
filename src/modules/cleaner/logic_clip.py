@@ -195,7 +195,8 @@ class CLIPSearcher:
             
             # Пулинг или прямое извлечение 512D вектора
             if text_out.ndim == 3:
-                text_emb = self._mean_pooling(text_out, attention_mask)
+                # В случае 3D тензора используем attention_mask_arr (определен выше)
+                text_emb = self._mean_pooling(text_out, attention_mask_arr)
             else:
                 text_emb = text_out
                 

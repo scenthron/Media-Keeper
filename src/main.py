@@ -475,6 +475,10 @@ if __name__ == "__main__":
     logging.info(f"Запуск приложения {APP_VERSION}.")
     app = QApplication(sys.argv)
     
+    # Увеличиваем размер стека для фоновых потоков (8 МБ) для предотвращения C++ вылетов (Stack Overflow) ONNXRuntime
+    from PyQt6.QtCore import QThreadPool
+    QThreadPool.globalInstance().setStackSize(8 * 1024 * 1024)
+    
     # Load built-in Qt translations for system dialogs (e.g. QFileDialog)
     try:
         from PyQt6.QtCore import QTranslator

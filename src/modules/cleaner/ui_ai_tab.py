@@ -1829,8 +1829,8 @@ class AiClassificationTab(QWidget):
         self.slider_post_filter.blockSignals(False)
         
         self.post_filter_widget.show()
-        if self.is_cluster_results:
-            self.on_post_filter_changed(self.spin_post_filter.value())
+        # Always apply initial post filter so it actually filters the view
+        self.on_post_filter_changed(self.spin_post_filter.value())
 
     def on_tree_selection_changed(self):
         selected_items = self.tree_results.selectedItems()

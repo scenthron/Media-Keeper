@@ -36,12 +36,12 @@ def main():
     
     refs = {}
     for f in os.listdir(ref_dir):
-        if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+        if f.lower().endswith(('.jpg', '.jpeg', '.png', '.avif')):
             feat = get_face_feature(os.path.join(ref_dir, f), detector, arcface_session)
             if feat is not None: refs[f] = feat
                 
     for tf in os.listdir(target_dir):
-        if tf.lower().endswith(('.jpg', '.jpeg', '.png')):
+        if tf.lower().endswith(('.jpg', '.jpeg', '.png', '.avif')):
             feat = get_face_feature(os.path.join(target_dir, tf), detector, arcface_session)
             if feat is not None:
                 print(f"\n--- Target: {tf} ---")

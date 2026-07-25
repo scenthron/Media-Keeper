@@ -68,19 +68,6 @@ class CLIPSearcher:
             else:
                 self.dense_weights = None
             
-            # Загрузка словаря
-            self.ru_en_dict = {}
-            from logic_paths import get_base_path
-            dict_path = os.path.join(get_base_path(), "assets", "dict", "ru_en_dict.json")
-            if os.path.exists(dict_path):
-                import json
-                try:
-                    with open(dict_path, "r", encoding="utf-8") as f:
-                        self.ru_en_dict = json.load(f)
-                    logger.info(f"Загружен словарь ru-en: {len(self.ru_en_dict)} слов")
-                except Exception as de:
-                    logger.warning(f"Ошибка загрузки словаря: {de}")
-            
             self.is_loaded = True
             logger.info("CLIP модели успешно загружены!")
             
@@ -94,30 +81,6 @@ class CLIPSearcher:
         sum_embeddings = np.sum(model_output * input_mask_expanded, axis=1)
         sum_mask = np.clip(np.sum(input_mask_expanded, axis=1), a_min=1e-9, a_max=None)
         return sum_embeddings / sum_mask
-    def _translate_ru_to_en(self, text: str) -> str:
-        """Переводит русский текст на английский 100% офлайн по 50,000-словарному файлу ru_en_dict.json с нормализацией окончаний."""
-        import re
-        if hasattr(self, 'ru_en_dict') and self.ru_en_dict:
-            def replace_word(match):
-                w = match.group(0).lower()
-                # 1. Прямое совпадение
-                if w in self.ru_en_dict:
-                    return self.ru_en_dict[w]
-                # 2. Нормализация падежей/множественного числа
-                for suffix in ['ами', 'ям', 'ях', 'ам', 'ов', 'ев', 'ей', 'ы', 'и', 'а', 'е', 'у', 'ом', 'ой', 'ем']:
-                    if w.endswith(suffix):
-                        stem = w[:-len(suffix)]
-                        if stem in self.ru_en_dict:
-                            return self.ru_en_dict[stem]
-                        if (stem + 'а') in self.ru_en_dict:
-                            return self.ru_en_dict[stem + 'а']
-                        if (stem + 'о') in self.ru_en_dict:
-                            return self.ru_en_dict[stem + 'о']
-                return match.group(0)
-
-            return re.sub(r'[а-яА-ЯёЁ]+', replace_word, text)
-
-        return text
 
     def encode_text(self, text: str) -> np.ndarray:
         """
@@ -131,13 +94,6 @@ class CLIPSearcher:
             logger.error("Токенизатор или ONNX-сессия текста не инициализирована")
             return None
 
-        # Автоматический перевод кириллицы отключен для мультиязычной модели M-CLIP
-        # import re
-        # if re.search(r'[а-яА-ЯёЁ]', text):
-        #     translated_text = self._translate_ru_to_en(text)
-        #     if translated_text:
-        #         logger.info(f"Запрос '{text}' переведен для CLIP: '{translated_text}'")
-        #         text = translated_text
         
         logger.info(f"[M-CLIP] Отправка запроса в нейросеть: '{text}'")
             

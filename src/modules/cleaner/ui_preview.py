@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QGraphicsTextItem
 )
 from modules.cleaner.ui_view import ClickableGraphicsView
-from PyQt6.QtCore import Qt, QUrl, QRectF, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, QUrl, QRectF, pyqtSignal, QTimer, QEvent
 from PyQt6.QtGui import QPixmap, QImageReader, QMovie, QColor, QFont, QDesktopServices
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QGraphicsVideoItem
@@ -97,6 +97,7 @@ class CleanerPreviewWidget(QWidget):
         self.segment_indicator.clicked.connect(self._on_segment_indicator_clicked)
         
         self.media_container.setMouseTracking(True)
+        self.media_container.installEventFilter(self)
         
         self.splitter.addWidget(self.media_container)
         
@@ -188,6 +189,8 @@ class CleanerPreviewWidget(QWidget):
         if event is not None:
             super().resizeEvent(event)
         QTimer.singleShot(10, self.reset_view)
+        
+        self._position_ai_scores()
         
         if self.time_overlay.isVisible():
             padding = 10
@@ -350,6 +353,68 @@ class CleanerPreviewWidget(QWidget):
         self.reset_view()
         self.meta_table.clear()
         self.meta_table.setRowCount(0)
+        self.set_ai_info(None)
+
+    def set_ai_info(self, tag_scores: dict, group_name: str = None):
+        if not hasattr(self, 'lbl_ai_scores'):
+            self.lbl_ai_scores = QLabel(self.media_container)
+            self.lbl_ai_scores.setWordWrap(True)
+            self.lbl_ai_scores.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.lbl_ai_scores.setStyleSheet("background-color: rgba(0, 0, 0, 180); color: white; border-radius: 8px; padding: 6px 12px; font-weight: bold; font-size: 13px;")
+            self.lbl_ai_scores.hide()
+            
+        if not tag_scores:
+            self.lbl_ai_scores.setText("")
+            self.lbl_ai_scores.hide()
+            self._has_ai_scores = False
+            return
+            
+        try:
+            # Sort scores descending
+            sorted_items = sorted(tag_scores.items(), key=lambda x: x[1], reverse=True)
+            parts = []
+            for k, v in sorted_items:
+                # Colorize positive and negative scores differently
+                color = "#ef4444" if k.startswith("-") else "#22c55e"
+                # Заменяем обычные пробелы на неразрывные, чтобы блок не разрывался
+                k_safe = k.replace(" ", "&nbsp;")
+                parts.append(f"<span style='white-space: nowrap;'><span style='color: #ccc;'>{k_safe}:</span>&nbsp;<span style='color: {color};'>{v}%</span></span>")
+            
+            text = " | ".join(parts)
+            
+            # Добавляем название группы, если это именованный мультитег
+            if group_name and group_name != "Текст" and not group_name.startswith("Группа "):
+                text = f"<div style='text-align: center;'><b style='color: #f59e0b;'>{group_name}</b><br>({text})</div>"
+            else:
+                text = f"<div style='text-align: center;'>{text}</div>"
+                
+            self.lbl_ai_scores.setText(text)
+            self.lbl_ai_scores.show()
+            self._position_ai_scores()
+            self._has_ai_scores = True
+        except Exception as e:
+            import logging
+            logging.error(f"Error rendering AI scores: {e}")
+            self.lbl_ai_scores.hide()
+            self._has_ai_scores = False
+
+    def _position_ai_scores(self):
+        if hasattr(self, 'lbl_ai_scores') and self.lbl_ai_scores.text():
+            max_w = self.media_container.width() - 40
+            self.lbl_ai_scores.setMaximumWidth(max_w)
+            self.lbl_ai_scores.adjustSize()
+            x = (self.media_container.width() - self.lbl_ai_scores.width()) // 2
+            self.lbl_ai_scores.move(x, 15)
+
+    def eventFilter(self, obj, event):
+        if obj == self.media_container:
+            if event.type() == QEvent.Type.Enter:
+                if getattr(self, '_has_ai_scores', False) and hasattr(self, 'lbl_ai_scores'):
+                    self.lbl_ai_scores.show()
+            elif event.type() == QEvent.Type.Leave:
+                if hasattr(self, 'lbl_ai_scores'):
+                    self.lbl_ai_scores.hide()
+        return super().eventFilter(obj, event)
 
     def setup_static_image(self, path):
         self._clear_media()
@@ -460,8 +525,12 @@ class CleanerPreviewWidget(QWidget):
                 self.scene.removeItem(item)
 
     def draw_faces(self, bboxes, matched_bbox=None):
+        import logging
+        logging.info(f"[UI_PREVIEW] draw_faces called with bboxes={bboxes}, matched_bbox={matched_bbox}")
         self.clear_faces()
-        if not bboxes: return
+        if not bboxes: 
+            logging.info("[UI_PREVIEW] No bboxes to draw")
+            return
         from PyQt6.QtWidgets import QGraphicsRectItem
         from PyQt6.QtGui import QPen, QColor
         from PyQt6.QtCore import Qt
@@ -472,20 +541,30 @@ class CleanerPreviewWidget(QWidget):
         # Находим индекс целевого лица (лучшее совпадение с matched_bbox)
         target_idx = -1
         if matched_bbox and len(matched_bbox) == 4:
-            mx1, my1, mx2, my2 = matched_bbox
-            mcx, mcy = (mx1 + mx2) / 2.0, (my1 + my2) / 2.0
-            
-            best_dist = float('inf')
-            for idx, bbox in enumerate(valid_bboxes):
-                x1, y1, x2, y2 = bbox
-                cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
-                dist = (cx - mcx)**2 + (cy - mcy)**2
-                if dist < best_dist:
-                    best_dist = dist
-                    target_idx = idx
+            try:
+                mx1, my1, mx2, my2 = float(matched_bbox[0]), float(matched_bbox[1]), float(matched_bbox[2]), float(matched_bbox[3])
+                mcx, mcy = (mx1 + mx2) / 2.0, (my1 + my2) / 2.0
+                
+                best_dist = float('inf')
+                for idx, bbox in enumerate(valid_bboxes):
+                    x1, y1, x2, y2 = float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])
+                    cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+                    dist = (cx - mcx)**2 + (cy - mcy)**2
+                    if dist < best_dist:
+                        best_dist = dist
+                        target_idx = idx
+            except (ValueError, TypeError):
+                pass
 
         for idx, bbox in enumerate(valid_bboxes):
-            x1, y1, x2, y2 = bbox
+            try:
+                x1, y1, x2, y2 = float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])
+            except (ValueError, TypeError) as e:
+                import logging
+                logging.error(f"[UI_PREVIEW] Error converting bbox to float: {e}")
+                continue
+                
+            logging.info(f"[UI_PREVIEW] Drawing rect at {x1}, {y1}, width={x2-x1}, height={y2-y1}")
             rect = QGraphicsRectItem(x1, y1, x2 - x1, y2 - y1)
             
             if target_idx != -1:
@@ -498,7 +577,10 @@ class CleanerPreviewWidget(QWidget):
             else:
                 pen = QPen(QColor(239, 68, 68)) # Red (#ef4444) for other faces
                 
+            # Устанавливаем косметическое перо, чтобы ширина рамки была 
+            # одинаковой (в пикселях экрана) независимо от разрешения картинки (масштаба сцены)
             pen.setWidth(3)
+            pen.setCosmetic(True) 
             pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
             rect.setPen(pen)
             rect.setZValue(10)

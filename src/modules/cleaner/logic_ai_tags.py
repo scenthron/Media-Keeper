@@ -48,8 +48,8 @@ def parse_multi_tags(text: str) -> dict:
     result = {}
     group_counter = 1
     
-    # 1. Match named groups (Name: t1, t2)
-    pattern_named = r'\(([^:\)]+):([^\)]+)\)'
+    # 1. Match named groups [Name: t1, t2]
+    pattern_named = r'\[([^:\]]+):([^\]]+)\]'
     for match in re.finditer(pattern_named, text):
         group_name = match.group(1).strip()
         components = [c.strip() for c in match.group(2).split(',') if c.strip()]
@@ -58,8 +58,8 @@ def parse_multi_tags(text: str) -> dict:
             
     text_clean = re.sub(pattern_named, '', text)
     
-    # 2. Match unnamed groups (t1, t2)
-    pattern_unnamed = r'\(([^\)]+)\)'
+    # 2. Match unnamed groups [t1, t2]
+    pattern_unnamed = r'\[([^\]]+)\]'
     for match in re.finditer(pattern_unnamed, text_clean):
         components = [c.strip() for c in match.group(1).split(',') if c.strip()]
         if components:
@@ -75,49 +75,39 @@ def parse_multi_tags(text: str) -> dict:
         
     return result
 
+def parse_tag_weight(tag_text: str) -> dict:
+    """Извлекает слово и вес из строки вида 'собака(80)'. Если веса нет, возвращает None."""
+    import re
+    match = re.search(r'^(.*?)\((\d+)\)$', tag_text.strip())
+    if match:
+        word = match.group(1).strip()
+        try:
+            weight = float(match.group(2))
+            return {"text": word, "weight": weight}
+        except ValueError:
+            return {"text": word, "weight": None}
+    return {"text": tag_text.strip(), "weight": None}
+
 class MultiTagHighlighter(QSyntaxHighlighter):
     def __init__(self, document):
         super().__init__(document)
-        self.rules = []
-
-        format_components = QTextCharFormat()
-        format_components.setForeground(QColor("#ffffff"))
-
-        format_group = QTextCharFormat()
-        format_group.setForeground(QColor("#f59e0b"))
-        format_group.setFontWeight(QFont.Weight.Bold)
-
-        format_normal = QTextCharFormat()
-        format_normal.setForeground(QColor("#10b981"))
-        
-        format_punct = QTextCharFormat()
-        format_punct.setForeground(QColor("#888888"))
-
-        self.rules.append((re.compile(r'[\(\):,]'), format_punct))
 
     def highlightBlock(self, text):
+        # 1. По умолчанию всё зеленое (позитивные паттерны и их веса)
         self.setFormat(0, len(text), QColor("#10b981"))
-        pattern = re.compile(r'\((.*?)\)')
-        for match in pattern.finditer(text):
-            start = match.start()
-            length = match.end() - start
-            inner_text = match.group(1)
+        
+        # 2. Серые запятые
+        for match in re.finditer(r',', text):
+            self.setFormat(match.start(), match.end() - match.start(), QColor("#888888"))
             
-            self.setFormat(start + 1, length - 2, QColor("#ffffff"))
-            
-            colon_idx = inner_text.find(':')
-            if colon_idx != -1:
-                self.setFormat(start + 1, colon_idx, QColor("#f59e0b"))
-                fmt = QTextCharFormat()
-                fmt.setForeground(QColor("#f59e0b"))
-                fmt.setFontWeight(QFont.Weight.Bold)
-                self.setFormat(start + 1, colon_idx, fmt)
-
-        punct_pattern = re.compile(r'[\(\):,]')
-        for match in punct_pattern.finditer(text):
-            self.setFormat(match.start(), 1, QColor("#888888"))
-            
-        neg_pattern = re.compile(r'-\s*[^,\)]+')
-        for match in neg_pattern.finditer(text):
+        # 3. Красные антипаттерны (включая скобки с весом, до запятой или закрывающей скобки группы)
+        for match in re.finditer(r'-\s*[^,\[\]]+', text):
             self.setFormat(match.start(), match.end() - match.start(), QColor("#ef4444"))
+            
+        # 4. Оранжевые группы (открывающая скобка с именем [Name: и закрывающая скобка ])
+        for match in re.finditer(r'\[[^:\]]+:|\]', text):
+            fmt = QTextCharFormat()
+            fmt.setForeground(QColor("#f59e0b"))
+            fmt.setFontWeight(QFont.Weight.Bold)
+            self.setFormat(match.start(), match.end() - match.start(), fmt)
 

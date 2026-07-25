@@ -131,11 +131,13 @@ class AiTagManagerDialog(QDialog):
         create_panel = QHBoxLayout()
         
         self.line_name = QLineEdit()
+        self.line_name.setMaxLength(50)
         self.line_name.setPlaceholderText("Название тега" if AppContext.is_ru() else "Tag Name")
         self.line_name.textChanged.connect(self.validate_input)
         create_panel.addWidget(self.line_name, 1)
 
         self.line_body = QLineEdit()
+        self.line_body.setMaxLength(300)
         self.line_body.setPlaceholderText("Пример: собака, кошка" if AppContext.is_ru() else "Example: dog, cat")
         self.line_body.textChanged.connect(self.validate_input)
         create_panel.addWidget(self.line_body, 2)

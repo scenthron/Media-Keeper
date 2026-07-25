@@ -66,6 +66,54 @@ class AiEngine:
         tok_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) > 100
         return arcface_ok and scrfd_ok and clip_vis_ok and clip_txt_ok and tok_ok and dense_ok
 
+    def check_legacy_models(self) -> list:
+        """Проверяет наличие старых (неиспользуемых) моделей и возвращает список путей к ним."""
+        legacy_names = {
+            "1k3d68.onnx", "2d106det.onnx", "genderage.onnx", "glintr100.onnx", 
+            "scrfd_10g_bnkps.onnx", "mobilenetv3_large.onnx", 
+            "face_recognition_sface.onnx", "face_detection_yunet.onnx",
+            "ai_cache.db", "ai_cache.db-wal", "ai_cache.db-shm"
+        }
+        found = []
+        from logic_paths import get_app_data_dir
+        app_dir = get_app_data_dir()
+        
+        # Рекурсивный обход директории .mediakeeper
+        for root, dirs, files in os.walk(app_dir):
+            for file in files:
+                if file.lower() in legacy_names:
+                    found.append(os.path.join(root, file))
+                    
+        # Отдельная проверка для старой модели CLIP (model.onnx в папке text, а не text_multi)
+        old_clip_path = os.path.join(self.clip_dir, "text", "model.onnx")
+        if os.path.exists(old_clip_path):
+            found.append(old_clip_path)
+            
+        return found
+
+    def clean_legacy_models(self, legacy_files: list) -> int:
+        """Удаляет старые модели и возвращает объем освобожденного места в байтах."""
+        freed_bytes = 0
+        import shutil
+        for path in legacy_files:
+            try:
+                size = os.path.getsize(path)
+                os.remove(path)
+                freed_bytes += size
+                logging.info(f"Удалена старая ИИ-модель: {path}")
+            except Exception as e:
+                logging.error(f"Не удалось удалить старую модель {path}: {e}")
+        
+        # Попытка удалить пустую старую папку
+        old_text_dir = os.path.join(self.clip_dir, "text")
+        if os.path.exists(old_text_dir):
+            try:
+                shutil.rmtree(old_text_dir)
+            except:
+                pass
+                
+        return freed_bytes
+
     def download_models(self, progress_callback=None, stop_checker=None) -> bool:
         """Скачивает реальные ИИ-модели по прямым интернет-ссылкам."""
         import requests

@@ -53,7 +53,7 @@ class SCRFD:
         det_img = np.zeros((input_size[1], input_size[0], 3), dtype=np.uint8)
         det_img[:new_height, :new_width, :] = resized_img
         
-        blob = cv2.dnn.blobFromImage(det_img, 1.0/128.0, input_size, (127.5, 127.5, 127.5), swapRB=True)
+        blob = cv2.dnn.blobFromImage(det_img, 1.0/128.0, input_size, (127.5, 127.5, 127.5), swapRB=False)
         blob = np.ascontiguousarray(blob, dtype=np.float32)
         net_outs = self.session.run(None, {self.input_name : blob})
         

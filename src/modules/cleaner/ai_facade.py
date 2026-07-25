@@ -36,6 +36,7 @@ class AiMatchFile:
     matched_bbox: Rect = None
     matched_reference_id: str = None
     auto_tags: list[str] = field(default_factory=list)
+    tag_scores: dict[str, int] = field(default_factory=dict)
 
 @dataclass
 class AiGroup:
@@ -51,8 +52,8 @@ class AiSearchRequest:
     neg_threshold: float = 50.0
     file_filter_config: dict = field(default_factory=dict)
     reference_embeddings: list[list[float]] = field(default_factory=list)
-    text_queries: dict[str, list[str]] = field(default_factory=dict)
-    negative_queries: dict[str, list[str]] = field(default_factory=dict)
+    text_queries: dict[str, list[dict]] = field(default_factory=dict)
+    negative_queries: dict[str, list[dict]] = field(default_factory=dict)
     use_cache: bool = True
     use_gpu: bool = True
 
@@ -190,38 +191,36 @@ class AiCoreWorker(QRunnable):
             # Initialize text embeddings if TEXT_TO_IMAGE
             text_embeddings = {}
             if self.request.task_type == AiTaskType.TEXT_TO_IMAGE:
-                import numpy as np
-                
                 # Precompute global negatives
                 global_negatives = []
                 for neg_q in getattr(self.request, 'negative_queries', {}).get("__global__", []):
-                    emb = self.engine.extract_text_embedding(neg_q)
+                    text = neg_q.get("text", "")
+                    weight = neg_q.get("weight")
+                    emb = self.engine.extract_text_embedding(text)
                     if emb is not None:
-                        global_negatives.append(emb)
+                        global_negatives.append({"emb": emb, "weight": weight, "text": text})
                         
-                # Encode positive queries and apply negative subtraction
+                # Encode positive queries and applying specific negatives
                 for group_name, comps in self.request.text_queries.items():
-                    text_embeddings[group_name] = []
-                    
                     # Compute specific negatives for this group
                     group_negatives = []
                     for neg_q in getattr(self.request, 'negative_queries', {}).get(group_name, []):
-                        emb = self.engine.extract_text_embedding(neg_q)
+                        text = neg_q.get("text", "")
+                        weight = neg_q.get("weight")
+                        emb = self.engine.extract_text_embedding(text)
                         if emb is not None:
-                            group_negatives.append(emb)
+                            group_negatives.append({"emb": emb, "weight": weight, "text": text})
                             
-                    # Combine global and specific negatives
                     all_negs = global_negatives + group_negatives
-                    neg_mean = None
-                    if all_negs:
-                        neg_mean = np.mean(np.array(all_negs), axis=0)
                         
                     pos_embs = []
                     for comp in comps:
-                        emb = self.engine.extract_text_embedding(comp)
+                        text = comp.get("text", "")
+                        weight = comp.get("weight")
+                        emb = self.engine.extract_text_embedding(text)
                         if emb is not None:
-                            pos_embs.append(emb)
-                    text_embeddings[group_name] = {"pos": pos_embs, "neg": neg_mean}
+                            pos_embs.append({"emb": emb, "weight": weight, "text": text})
+                    text_embeddings[group_name] = {"pos": pos_embs, "neg": all_negs}
 
             # 3. Process each file
             file_features = []
@@ -364,42 +363,74 @@ class AiCoreWorker(QRunnable):
 
                         for group_name, group_data in text_embeddings.items():
                             text_embs = group_data["pos"]
-                            neg_mean = group_data["neg"]
+                            neg_embs = group_data["neg"]
                             
                             if not text_embs:
                                 continue
-                            txt_cleaned = [np.asarray(t, dtype=np.float32).flatten() for t in text_embs if t is not None]
-                            txt_cleaned = [t for t in txt_cleaned if t.size > 0]
-                            if not txt_cleaned:
+                                
+                            pos_weights = []
+                            pos_vectors = []
+                            pos_words = []
+                            for p in text_embs:
+                                if p["emb"] is not None:
+                                    arr = np.asarray(p["emb"], dtype=np.float32).flatten()
+                                    if arr.size > 0:
+                                        pos_vectors.append(arr)
+                                        pos_weights.append(p["weight"])
+                                        pos_words.append(p["text"])
+                                        
+                            if not pos_vectors:
                                 continue
-                            txt_mat = np.array(txt_cleaned, dtype=np.float32)  # Shape: (M, 512)
+                            txt_mat = np.array(pos_vectors, dtype=np.float32)  # Shape: (M, 512)
                             
                             # Fast matrix dot product: (N, 512) x (512, M) -> (N, M)
                             sim_matrix = np.dot(img_mat, txt_mat.T)
                             
-                            # Highest similarity score across positive queries for each image
-                            max_sims = np.max(sim_matrix, axis=1)  # Shape: (N,)
-                            
                             # Scale positive score to percentage 0..100
-                            mapped_scores = (max_sims - 0.14) / (0.28 - 0.14) * 100.0
+                            mapped_scores = (sim_matrix - 0.14) / (0.28 - 0.14) * 100.0
                             mapped_scores = np.clip(mapped_scores, 0, 100).astype(int)
                             
-                            # 1. Позитивная "пачка": отбираем те, что прошли порог пользователя
-                            match_indices = np.where(mapped_scores >= self.request.threshold)[0]
+                            # 1. Позитивная "пачка": проверяем пороги для каждого тега индивидуально
+                            passes_pos = np.zeros(len(img_mat), dtype=bool)
+                            best_score_per_img = np.zeros(len(img_mat), dtype=int)
+                            tag_scores_per_img = [{} for _ in range(len(img_mat))]
                             
-                            if len(match_indices) > 0 and neg_mean is not None:
-                                # 2. Негативный фильтр: проверяем только отобранные индексы
-                                neg_mat = np.asarray(neg_mean, dtype=np.float32).flatten().reshape(1, -1)
-                                neg_sims = np.dot(img_mat[match_indices], neg_mat.T).flatten()
+                            for m in range(len(pos_vectors)):
+                                threshold = pos_weights[m] if pos_weights[m] is not None else self.request.threshold
+                                passes_this = mapped_scores[:, m] >= threshold
+                                passes_pos = passes_pos | passes_this
+                                best_score_per_img = np.maximum(best_score_per_img, mapped_scores[:, m])
+                                word = pos_words[m]
+                                for idx in range(len(img_mat)):
+                                    tag_scores_per_img[idx][word] = int(mapped_scores[idx, m])
                                 
-                                # Scale negative score
-                                neg_mapped = (neg_sims - 0.14) / (0.28 - 0.14) * 100.0
-                                neg_mapped = np.clip(neg_mapped, 0, 100)
+                            match_indices = np.where(passes_pos)[0]
+                            
+                            if len(match_indices) > 0 and neg_embs:
+                                # 2. Негативный фильтр: проверяем каждый антипаттерн индивидуально
+                                valid_mask = np.ones(len(match_indices), dtype=bool)
                                 
-                                # 3. Исключаем фото, где сходство с антипаттерном превышает заданный порог
-                                # Чем выше строгость (0-100), тем меньше допустимое сходство с антипаттерном
-                                NEGATIVE_THRESHOLD = 100.0 - self.request.neg_threshold
-                                valid_mask = neg_mapped < NEGATIVE_THRESHOLD
+                                for n_data in neg_embs:
+                                    n_vec = np.asarray(n_data["emb"], dtype=np.float32).flatten().reshape(1, -1)
+                                    n_weight = n_data["weight"]
+                                    n_word = f"-{n_data['text']}"
+                                    
+                                    n_sims = np.dot(img_mat[match_indices], n_vec.T).flatten()
+                                    n_mapped = (n_sims - 0.14) / (0.28 - 0.14) * 100.0
+                                    n_mapped = np.clip(n_mapped, 0, 100).astype(int)
+                                    
+                                    # Если вес задан вручную, он означает прямой порог отсечения
+                                    if n_weight is not None:
+                                        threshold = n_weight
+                                    else:
+                                        # Если нет - используем глобальную строгость (она тоже задается как прямой порог)
+                                        threshold = self.request.neg_threshold
+                                        
+                                    valid_mask &= (n_mapped < threshold)
+                                    
+                                    for i, idx in enumerate(match_indices):
+                                        tag_scores_per_img[idx][n_word] = int(n_mapped[i])
+                                        
                                 match_indices = match_indices[valid_mask]
                             
                             if len(match_indices) > 0:
@@ -408,8 +439,9 @@ class AiCoreWorker(QRunnable):
                                 for idx in match_indices:
                                     match_file = AiMatchFile(
                                         path=filepaths[idx], 
-                                        score=int(mapped_scores[idx]), 
-                                        matched_reference_id=group_name
+                                        score=int(best_score_per_img[idx]), 
+                                        matched_reference_id=group_name,
+                                        tag_scores=tag_scores_per_img[idx]
                                     )
                                     groups_dict[group_name].append(match_file)
 

@@ -29,17 +29,37 @@ def load_ai_settings() -> dict:
             with open(settings_path, 'r', encoding='utf-8') as f:
                 loaded = json.load(f)
                 default_settings.update(loaded)
+                
+                # Migrate relative paths to absolute for runtime use
+                assets_dir = get_ai_assets_dir()
+                for group_name, info in default_settings.get("groups", {}).items():
+                    path = info.get("path")
+                    if path and not os.path.isabs(path):
+                        info["path"] = os.path.normpath(os.path.join(assets_dir, path))
+                        
                 return default_settings
         except Exception as e:
             logging.error(f"Ошибка чтения ai_settings.json: {e}")
     return default_settings
 
 def save_ai_settings(settings: dict):
-    """Сохраняет метаданные групп образцов."""
+    """Сохраняет метаданные групп образцов, конвертируя локальные пути в относительные."""
+    import copy
+    settings_to_save = copy.deepcopy(settings)
+    assets_dir = os.path.normpath(get_ai_assets_dir()).lower()
+    
+    for group_name, info in settings_to_save.get("groups", {}).items():
+        path = info.get("path")
+        if path:
+            path_norm = os.path.normpath(path)
+            if path_norm.lower().startswith(assets_dir):
+                rel_path = os.path.relpath(path_norm, get_ai_assets_dir())
+                info["path"] = rel_path
+                
     settings_path = os.path.join(get_ai_assets_dir(), SETTINGS_FILE)
     try:
         with open(settings_path, 'w', encoding='utf-8') as f:
-            json.dump(settings, f, ensure_ascii=False, indent=4)
+            json.dump(settings_to_save, f, ensure_ascii=False, indent=4)
     except Exception as e:
         logging.error(f"Ошибка записи ai_settings.json: {e}")
 

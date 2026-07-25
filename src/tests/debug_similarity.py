@@ -65,7 +65,7 @@ def main():
     print(f"Loading reference images from {ref_dir}...")
     ref_features = []
     for f in os.listdir(ref_dir):
-        if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+        if f.lower().endswith(('.jpg', '.jpeg', '.png', '.avif')):
             feat = get_face_feature(os.path.join(ref_dir, f), detector, arcface_session)
             if feat is not None:
                 ref_features.append(feat)
@@ -79,7 +79,7 @@ def main():
     
     print(f"\nComparing target images in {target_dir} against average reference...")
     for f in os.listdir(target_dir):
-        if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+        if f.lower().endswith(('.jpg', '.jpeg', '.png', '.avif')):
             feat = get_face_feature(os.path.join(target_dir, f), detector, arcface_session)
             if feat is not None:
                 score_raw = np.dot(avg_ref, feat)

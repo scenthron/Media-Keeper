@@ -15,7 +15,7 @@ from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor, QFont, QPainte
 
 from config import AppContext, APP_DESIGN
 from ui_widgets_base import DropZoneWidget, FlowLayout
-from .logic_ai_tags import AiTextTagsManager, parse_multi_tags, MultiTagHighlighter
+from .logic_ai_tags import AiTextTagsManager, parse_multi_tags, parse_tag_weight, MultiTagHighlighter
 from .ui_ai_tags_dialog import AiTagManagerDialog
 from .logic_ai import AiEngine
 from .logic_ai_cache import AiCacheManager
@@ -41,10 +41,23 @@ class SearchTextEdit(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptRichText(False)
-        self.setFixedHeight(36)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setFixedHeight(72)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.textChanged.connect(self._check_length)
         
+    def _check_length(self):
+        max_len = 500
+        if len(self.toPlainText()) > max_len:
+            cursor = self.textCursor()
+            pos = cursor.position()
+            text = self.toPlainText()[:max_len]
+            self.blockSignals(True)
+            self.setPlainText(text)
+            cursor.setPosition(min(pos, max_len))
+            self.setTextCursor(cursor)
+            self.blockSignals(False)
+
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
             if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
@@ -52,6 +65,18 @@ class SearchTextEdit(QTextEdit):
             else:
                 event.accept()
                 QTimer.singleShot(0, self.returnPressed.emit)
+        elif event.text() == '(':
+            super().keyPressEvent(event)
+            self.insertPlainText(')')
+            cursor = self.textCursor()
+            cursor.movePosition(cursor.MoveOperation.Left)
+            self.setTextCursor(cursor)
+        elif event.text() == '[':
+            super().keyPressEvent(event)
+            self.insertPlainText(']')
+            cursor = self.textCursor()
+            cursor.movePosition(cursor.MoveOperation.Left)
+            self.setTextCursor(cursor)
         else:
             super().keyPressEvent(event)
         
@@ -392,7 +417,7 @@ class AiClassificationTab(QWidget):
         page_text_layout.addWidget(lbl_text_search)
         
         self.line_text_search = SearchTextEdit()
-        self.line_text_search.setPlaceholderText("Например: кот сидит на столе" if AppContext.is_ru() else "E.g.: a cat sitting on a table")
+        self.line_text_search.setPlaceholderText("Например: дом(30), дождь, -люди, -собака(80), [Домашние животные: кошка(70)]" if AppContext.is_ru() else "E.g.: house(30), rain, -people, -dog(80), [Pets: cat(70)]")
         self.line_text_search.setStyleSheet("""
             QTextEdit {
                 background-color: #222;
@@ -408,11 +433,7 @@ class AiClassificationTab(QWidget):
         self.text_highlighter = MultiTagHighlighter(self.line_text_search.document())
         page_text_layout.addWidget(self.line_text_search)
         
-        if AppContext.is_ru():
-            lbl_hint = QLabel("💡 Если результаты поиска на русском неточные, попробуйте написать запрос на английском языке (базовая модель понимает его лучше).")
-            lbl_hint.setStyleSheet("color: #a3a3a3; font-style: italic; font-size: 11px;")
-            lbl_hint.setWordWrap(True)
-            page_text_layout.addWidget(lbl_hint)
+
         
         # Action row for tags + Search button
         tags_action_layout = QHBoxLayout()
@@ -777,8 +798,8 @@ class AiClassificationTab(QWidget):
         params_sub_layout.addLayout(slider_layout)
         
         # --- Negative Threshold Slider ---
-        self.lbl_neg_threshold = QLabel("Строгость антипаттернов:" if AppContext.is_ru() else "Negative Strictness:")
-        tooltip_neg = ("Порог исключения картинок, содержащих минус-слова (антипаттерны).\n"
+        self.lbl_neg_threshold = QLabel("Толерантность антипаттернов:" if AppContext.is_ru() else "Negative Tolerance:")
+        tooltip_neg = ("Порог толерантности для картинок, содержащих минус-слова (антипаттерны).\n"
                        "Меньшие значения (30-40%): Очень строгий фильтр, удаляет почти всё подозрительное.\n"
                        "Оптимально (50-60%): Золотая середина.\n"
                        "Большие значения (70%+): Удаляет только те фото, где нейросеть абсолютно уверена в наличии антипаттерна.")
@@ -1094,6 +1115,36 @@ class AiClassificationTab(QWidget):
         self.main_layout.addWidget(self.main_content_widget, 1)
 
     def check_models_status(self):
+        legacy = self.ai.check_legacy_models()
+        if legacy:
+            from PyQt6.QtWidgets import QMessageBox
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Icon.Question)
+            msg.setWindowTitle("Найдены устаревшие ИИ-модели" if AppContext.is_ru() else "Legacy AI Models Found")
+            
+            total_size = sum(os.path.getsize(f) for f in legacy) // (1024 * 1024)
+            text = (f"Обнаружены файлы прошлых версий, которые уже не используются в приложении.\n"
+                    f"Вы можете удалить их без опасений, т.к. они более не поддерживаются программой и занимают место на диске (~{total_size} МБ).") if AppContext.is_ru() else \
+                   (f"Found files from previous versions that are no longer used by the application.\n"
+                    f"You can safely delete them as they are no longer supported and take up disk space (~{total_size} MB).")
+            
+            msg.setText(text)
+            msg.setDetailedText("\n".join(legacy))
+            
+            btn_yes = msg.addButton("Удалить" if AppContext.is_ru() else "Delete", QMessageBox.ButtonRole.YesRole)
+            btn_no = msg.addButton("Отмена" if AppContext.is_ru() else "Cancel", QMessageBox.ButtonRole.NoRole)
+            msg.setDefaultButton(btn_yes)
+            
+            msg.exec()
+            
+            if msg.clickedButton() == btn_yes:
+                freed = self.ai.clean_legacy_models(legacy)
+                QMessageBox.information(
+                    self, 
+                    "Успешно" if AppContext.is_ru() else "Success", 
+                    f"Освобождено {freed // (1024*1024)} МБ." if AppContext.is_ru() else f"Freed {freed // (1024*1024)} MB."
+                )
+                
         if self.ai.are_models_present():
             self.download_placeholder.hide()
             self.main_content_widget.show()
@@ -1169,9 +1220,21 @@ class AiClassificationTab(QWidget):
         groups = settings.get("groups", {})
         
         import os
+        from .logic_ai_classifier import get_ai_assets_dir
+        assets_dir = get_ai_assets_dir()
+        
         to_delete = []
         for name, info in groups.items():
             path = info.get("path")
+            if path:
+                # Защита от дубликатов при переносе программы: если файл с таким же именем 
+                # существует в текущей папке Ai_assets, мы принудительно обновляем путь на локальный.
+                basename = os.path.basename(path)
+                local_path = os.path.join(assets_dir, basename)
+                if os.path.exists(local_path):
+                    path = local_path
+                    info["path"] = path
+                    
             if not path or not os.path.exists(path):
                 to_delete.append(name)
                 
@@ -1470,27 +1533,33 @@ class AiClassificationTab(QWidget):
         
         ru_text = (
             "<b>Сложные поисковые запросы (Мультитеги):</b><br>"
-            "Вы можете вводить сложные запросы прямо в строку поиска, используя круглые скобки и двоеточие.<br>"
-            "Синтаксис: <b>(Заголовок: запрос 1, запрос 2, ...)</b><br>"
-            "<i>Пример:</i> запрос <b>(Домашние животные: кошка, собака, попугай)</b> создаст одну колонку результатов "
+            "Вы можете вводить сложные запросы прямо в строку поиска, используя квадратные скобки и двоеточие.<br>"
+            "Синтаксис: <b>[Заголовок: запрос 1, запрос 2, ...]</b><br>"
+            "<i>Пример:</i> запрос <b>[Домашние животные: кошка, собака, попугай]</b> создаст одну колонку результатов "
             "с именем «Домашние животные», в которой будут собраны все 3 вида животных.<br><br>"
+            "<b>Индивидуальные пороги параметров (число):</b><br>"
+            "Вы можете точно настраивать порог срабатывания для каждого конкретного слова, приписав порог в круглых скобках (без пробела).<br>"
+            "<i>Пример позитивного:</i> <b>девушка(80)</b> — картинка пройдет, если сходство с девушкой ≥ 80%. (Чем выше число, тем строже отсев).<br>"
+            "<i>Пример негативного (толерантность):</i> <b>-парень(50)</b> — картинка будет отброшена, если сходство с парнем ≥ 50%. (Чем <b>ниже</b> число, тем строже отсев мусора).<br><br>"
             "<b>Система сохраненных тегов:</b><br>"
             "Теги — это удобные закладки для ваших частых запросов.<br>"
             "Заголовок тега формирует название группы результатов, в которую будет выводиться поиск:<br>"
             "• По <i>одиночному тегу</i> (например, «Собака») — группа будет называться так же.<br>"
             "• По <i>мультитегу</i> — заголовок тега станет именем группы для множественного запроса.<br><br>"
             "Вы можете комбинировать обычный текст в строке поиска с выбранными тегами. Каждый отдельный тег или запрос "
-            "создает свою независимую колонку результатов.<br><br>"
-            "<i>💡 Подсказка: Если поиск на русском языке не выдает нужный результат или путает объекты, "
-            "попробуйте ввести запрос на английском языке — базовая модель распознает его более качественно.</i>"
+            "создает свою независимую колонку результатов."
         )
         
         en_text = (
             "<b>Complex Search Queries (Multi-tags):</b><br>"
-            "You can enter complex queries directly into the search bar using parentheses and a colon.<br>"
-            "Syntax: <b>(Header: query 1, query 2, ...)</b><br>"
-            "<i>Example:</i> query <b>(Pets: cat, dog, parrot)</b> creates a single result group "
+            "You can enter complex queries directly into the search bar using square brackets and a colon.<br>"
+            "Syntax: <b>[Header: query 1, query 2, ...]</b><br>"
+            "<i>Example:</i> query <b>[Pets: cat, dog, parrot]</b> creates a single result group "
             "named 'Pets' containing all 3 types of animals.<br><br>"
+            "<b>Individual Parameter Thresholds (number):</b><br>"
+            "You can fine-tune the match threshold for any specific word by appending a number in round brackets (no space).<br>"
+            "<i>Positive example:</i> <b>girl(80)</b> — passes if similarity is ≥ 80%. (Higher = stricter filtering).<br>"
+            "<i>Negative example (tolerance):</i> <b>-boy(50)</b> — drops the image if similarity is ≥ 50%. (Lower = stricter filtering).<br><br>"
             "<b>Saved Tags System:</b><br>"
             "Tags are convenient bookmarks for your frequent queries.<br>"
             "The tag header sets the name of the result group for the search:<br>"
@@ -1562,8 +1631,8 @@ class AiClassificationTab(QWidget):
                 body = self.tags_manager.get_tags().get(name)
                 if body:
                     # Format as multi-tag group so parse_multi_tags handles it correctly
-                    # A tag like 'собака' with body 'собака' becomes (собака: собака)
-                    active_tags.append(f"({name}: {body})")
+                    # A tag like 'собака' with body 'собака' becomes [собака: собака]
+                    active_tags.append(f"[{name}: {body}]")
                     
         combined_query = ", ".join(filter(None, [query] + active_tags))
         
@@ -1729,24 +1798,26 @@ class AiClassificationTab(QWidget):
             if parsed:
                 for group, tags in parsed.items():
                     if group.startswith('-'):
-                        global_negatives.extend([t[1:].strip() if t.startswith('-') else t for t in tags])
+                        for t in tags:
+                            tt = t[1:].strip() if t.startswith('-') else t
+                            global_negatives.append(parse_tag_weight(tt))
                     else:
                         pos = []
                         neg = []
                         for t in tags:
                             if t.startswith('-'):
-                                neg.append(t[1:].strip())
+                                neg.append(parse_tag_weight(t[1:].strip()))
                             else:
-                                pos.append(t)
+                                pos.append(parse_tag_weight(t))
                         if pos:
-                            text_queries_dict[group] = [", ".join(pos)]
+                            text_queries_dict[group] = pos
                         if neg:
                             negative_queries[group] = neg
             else:
                 if text_query.startswith('-'):
-                    global_negatives.append(text_query[1:].strip())
+                    global_negatives.append(parse_tag_weight(text_query[1:].strip()))
                 else:
-                    text_queries_dict["Текст"] = [text_query]
+                    text_queries_dict["Текст"] = [parse_tag_weight(text_query)]
                     
             if global_negatives:
                 negative_queries["__global__"] = global_negatives
@@ -1840,7 +1911,8 @@ class AiClassificationTab(QWidget):
                     "confidence": mf.score,
                     "size": size,
                     "matched_bbox": bbox_list,
-                    "type": "face" if mf.matched_bbox else "general"
+                    "type": "face" if mf.matched_bbox else "general",
+                    "tag_scores": mf.tag_scores
                 })
                 
         self.populate_results(results_dict)
@@ -1900,7 +1972,7 @@ class AiClassificationTab(QWidget):
                 file_item.setText(1, f"{f['confidence']:.1f}%")
                 file_item.setText(2, format_size(f["size"]))
                 file_item.setText(3, f["path"])
-                file_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": False, "path": f["path"], "size": f["size"], "confidence": f.get("confidence", 0.0) / 100.0, "matched_bbox": f.get("matched_bbox"), "type": f.get("type", "face")})
+                file_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": False, "path": f["path"], "size": f["size"], "confidence": f.get("confidence", 0.0) / 100.0, "matched_bbox": f.get("matched_bbox"), "type": f.get("type", "face"), "tag_scores": f.get("tag_scores", {})})
                 
             group_item.setExpanded(True)
             
@@ -1953,8 +2025,21 @@ class AiClassificationTab(QWidget):
         data = item.data(0, Qt.ItemDataRole.UserRole)
         if data and not data.get("is_group", False):
             path = data.get("path")
+            
+            group_item = item.parent()
+            group_name = None
+            if group_item:
+                g_data = group_item.data(0, Qt.ItemDataRole.UserRole)
+                if g_data:
+                    group_name = g_data.get("name")
+                    
             if path and os.path.exists(path):
                 self.preview_widget.load_file(path)
+                
+                # Показываем AI-оценки тегов, если они есть
+                tag_scores = data.get("tag_scores")
+                if hasattr(self.preview_widget, "set_ai_info"):
+                    self.preview_widget.set_ai_info(tag_scores, group_name=group_name)
                 
                 # Попытка извлечь лица из кэша и нарисовать их (зелёным — целевое лицо, красным — остальные)
                 try:

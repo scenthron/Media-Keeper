@@ -397,7 +397,8 @@ class AiCoreWorker(QRunnable):
                                 neg_mapped = np.clip(neg_mapped, 0, 100)
                                 
                                 # 3. Исключаем фото, где сходство с антипаттерном превышает заданный порог
-                                NEGATIVE_THRESHOLD = self.request.neg_threshold
+                                # Чем выше строгость (0-100), тем меньше допустимое сходство с антипаттерном
+                                NEGATIVE_THRESHOLD = 100.0 - self.request.neg_threshold
                                 valid_mask = neg_mapped < NEGATIVE_THRESHOLD
                                 match_indices = match_indices[valid_mask]
                             

@@ -776,7 +776,87 @@ class AiClassificationTab(QWidget):
         slider_layout.addWidget(spin_container)
         params_sub_layout.addLayout(slider_layout)
         
+        # --- Negative Threshold Slider ---
+        self.lbl_neg_threshold = QLabel("Строгость антипаттернов:" if AppContext.is_ru() else "Negative Strictness:")
+        tooltip_neg = ("Порог исключения картинок, содержащих минус-слова (антипаттерны).\n"
+                       "Меньшие значения (30-40%): Очень строгий фильтр, удаляет почти всё подозрительное.\n"
+                       "Оптимально (50-60%): Золотая середина.\n"
+                       "Большие значения (70%+): Удаляет только те фото, где нейросеть абсолютно уверена в наличии антипаттерна.")
+        self.lbl_neg_threshold.setToolTip(tooltip_neg)
+        self.lbl_neg_threshold.setStyleSheet("color: #ccc; font-weight: bold; font-size: 11px; border: none; background: transparent; margin-top: 8px;")
+        params_sub_layout.addWidget(self.lbl_neg_threshold)
+        
+        neg_slider_layout = QHBoxLayout()
+        self.slider_neg_threshold = QSlider(Qt.Orientation.Horizontal)
+        self.slider_neg_threshold.setToolTip(tooltip_neg)
+        self.slider_neg_threshold.setRange(0, 10000)
+        self.slider_neg_threshold.setValue(5000)
+        self.slider_neg_threshold.setStyleSheet("""
+            QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
+            QSlider::handle:horizontal { background: #ef4444; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
+        """)
+        
+        neg_spin_container = QFrame()
+        neg_spin_container.setFixedHeight(26)
+        neg_spin_container.setFixedWidth(84)
+        neg_spin_container.setStyleSheet("QFrame { background-color: #333; border: 1px solid #555; border-radius: 4px; }")
+        nsc_layout = QHBoxLayout(neg_spin_container)
+        nsc_layout.setContentsMargins(0, 0, 0, 0)
+        nsc_layout.setSpacing(0)
+        
+        neg_arrows_w = QWidget()
+        neg_arrows_w.setFixedWidth(20)
+        neg_arrows_w.setFixedHeight(24)
+        nal = QVBoxLayout(neg_arrows_w)
+        nal.setContentsMargins(0, 0, 0, 0)
+        nal.setSpacing(0)
+        
+        self.btn_up_neg = QPushButton()
+        self.btn_up_neg.setFixedHeight(12)
+        self.btn_up_neg.setIcon(get_svg_icon(UP_BASE64))
+        self.btn_up_neg.setIconSize(QSize(8, 8))
+        self.btn_up_neg.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_up_neg.setAutoRepeat(True)
+        self.btn_up_neg.setStyleSheet("QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-top-left-radius: 4px; border-bottom: 1px solid #444; } QPushButton:hover { background: rgba(255, 255, 255, 0.1); }")
+        
+        self.btn_down_neg = QPushButton()
+        self.btn_down_neg.setFixedHeight(12)
+        self.btn_down_neg.setIcon(get_svg_icon(DOWN_BASE64))
+        self.btn_down_neg.setIconSize(QSize(8, 8))
+        self.btn_down_neg.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_down_neg.setAutoRepeat(True)
+        self.btn_down_neg.setStyleSheet("QPushButton { border: none; background: rgba(0, 0, 0, 0.2); border-bottom-left-radius: 4px; } QPushButton:hover { background: rgba(255, 255, 255, 0.1); }")
+        
+        nal.addWidget(self.btn_up_neg)
+        nal.addWidget(self.btn_down_neg)
+        nsc_layout.addWidget(neg_arrows_w)
 
+        self.spin_neg_threshold = QDoubleSpinBox()
+        self.spin_neg_threshold.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.spin_neg_threshold.setRange(0.0, 100.0)
+        self.spin_neg_threshold.setDecimals(1)
+        self.spin_neg_threshold.setSingleStep(0.1)
+        self.spin_neg_threshold.setValue(50.0)
+        self.spin_neg_threshold.setSuffix("%")
+        self.spin_neg_threshold.setFixedWidth(64)
+        self.spin_neg_threshold.setFixedHeight(24)
+        self.spin_neg_threshold.setStyleSheet("border: none; background: transparent; color: white; font-weight: bold; font-size: 13px; padding-left: 2px;")
+        nsc_layout.addWidget(self.spin_neg_threshold)
+        
+        self.btn_up_neg.clicked.connect(self.spin_neg_threshold.stepUp)
+        self.btn_down_neg.clicked.connect(self.spin_neg_threshold.stepDown)
+        
+        self.slider_neg_threshold.valueChanged.connect(lambda v: self.spin_neg_threshold.setValue(v / 100.0))
+        self.spin_neg_threshold.valueChanged.connect(lambda v: self.slider_neg_threshold.setValue(int(v * 100)))
+        
+        # Enable instant re-scan on slider release if we have already ran a scan
+        self.slider_threshold.sliderReleased.connect(self.on_slider_re_scan)
+        self.slider_neg_threshold.sliderReleased.connect(self.on_slider_re_scan)
+        
+        neg_slider_layout.addWidget(self.slider_neg_threshold)
+        neg_slider_layout.addWidget(neg_spin_container)
+        params_sub_layout.addLayout(neg_slider_layout)
+        # -------------------------------
         
         self.chk_use_gpu = QCheckBox("Аппаратное ускорение (GPU)" if AppContext.is_ru() else "Hardware Acceleration (GPU)")
         self.chk_use_gpu.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1515,7 +1595,12 @@ class AiClassificationTab(QWidget):
         base_text = " Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search"
         self.btn_start_scan.setText(base_text)
 
-
+    def on_slider_re_scan(self):
+        # Если сканирование уже проводилось и кеш включен - перезапускаем моментально
+        if hasattr(self, 'facade') and self.chk_use_cache.isChecked():
+            # Проверяем, есть ли результаты в дереве (значит сканирование было)
+            if self.tree_results.topLevelItemCount() > 0 or self.lbl_stats.text() != "":
+                self.on_btn_start_scan_clicked()
 
     def on_btn_start_scan_clicked(self):
         if hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 1:
@@ -1672,6 +1757,7 @@ class AiClassificationTab(QWidget):
             task_type=task_type,
             analysis_target=analysis_target,
             threshold=scan_threshold,
+            neg_threshold=float(self.spin_neg_threshold.value()),
             file_filter_config=filter_cfg,
             text_queries=text_queries_dict,
             negative_queries=negative_queries,

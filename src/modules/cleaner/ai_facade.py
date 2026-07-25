@@ -48,6 +48,7 @@ class AiSearchRequest:
     task_type: AiTaskType
     analysis_target: AiTarget
     threshold: float
+    neg_threshold: float = 50.0
     file_filter_config: dict = field(default_factory=dict)
     reference_embeddings: list[list[float]] = field(default_factory=list)
     text_queries: dict[str, list[str]] = field(default_factory=dict)
@@ -395,9 +396,8 @@ class AiCoreWorker(QRunnable):
                                 neg_mapped = (neg_sims - 0.14) / (0.28 - 0.14) * 100.0
                                 neg_mapped = np.clip(neg_mapped, 0, 100)
                                 
-                                # 3. Исключаем фото, где сходство с антипаттерном превышает 50%
-                                # 50% - это уверенное присутствие объекта в кадре
-                                NEGATIVE_THRESHOLD = 50
+                                # 3. Исключаем фото, где сходство с антипаттерном превышает заданный порог
+                                NEGATIVE_THRESHOLD = self.request.neg_threshold
                                 valid_mask = neg_mapped < NEGATIVE_THRESHOLD
                                 match_indices = match_indices[valid_mask]
                             

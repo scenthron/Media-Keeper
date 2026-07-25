@@ -215,16 +215,12 @@ class AiCoreWorker(QRunnable):
                     if all_negs:
                         neg_mean = np.mean(np.array(all_negs), axis=0)
                         
+                    pos_embs = []
                     for comp in comps:
                         emb = self.engine.extract_text_embedding(comp)
                         if emb is not None:
-                            if neg_mean is not None:
-                                # Apply negative prompt vector subtraction
-                                combined = emb - neg_mean
-                                # L2 Normalization
-                                norm = np.linalg.norm(combined, axis=-1, keepdims=True)
-                                emb = combined / np.clip(norm, 1e-9, None)
-                            text_embeddings[group_name].append(emb)
+                            pos_embs.append(emb)
+                    text_embeddings[group_name] = {"pos": pos_embs, "neg": neg_mean}
 
             # 3. Process each file
             file_features = []
@@ -365,7 +361,10 @@ class AiCoreWorker(QRunnable):
                     if img_embs:
                         img_mat = np.array(img_embs, dtype=np.float32)  # Shape: (N, 512)
 
-                        for group_name, text_embs in text_embeddings.items():
+                        for group_name, group_data in text_embeddings.items():
+                            text_embs = group_data["pos"]
+                            neg_mean = group_data["neg"]
+                            
                             if not text_embs:
                                 continue
                             txt_cleaned = [np.asarray(t, dtype=np.float32).flatten() for t in text_embs if t is not None]
@@ -377,11 +376,22 @@ class AiCoreWorker(QRunnable):
                             # Fast matrix dot product: (N, 512) x (512, M) -> (N, M)
                             sim_matrix = np.dot(img_mat, txt_mat.T)
                             
-                            # Highest similarity score across queries for each image
+                            # Highest similarity score across positive queries for each image
                             max_sims = np.max(sim_matrix, axis=1)  # Shape: (N,)
                             
                             # Scale to percentage 0..100
                             mapped_scores = (max_sims - 0.14) / (0.28 - 0.14) * 100.0
+                            
+                            if neg_mean is not None:
+                                neg_mat = np.asarray(neg_mean, dtype=np.float32).flatten().reshape(1, -1)
+                                neg_sims = np.dot(img_mat, neg_mat.T).flatten()
+                                # Calculate negative score on the same scale, but shift it a bit higher
+                                # If an image matches the negative concept strongly (e.g. > 0.20), it gets penalized heavily.
+                                neg_mapped = (neg_sims - 0.14) / (0.28 - 0.14) * 100.0
+                                neg_mapped = np.clip(neg_mapped, 0, 100)
+                                # Subtract negative penalty from positive score
+                                mapped_scores -= (neg_mapped * 1.5)  # Penalize with a 1.5 multiplier to aggressively remove negatives
+                            
                             mapped_scores = np.clip(mapped_scores, 0, 100).astype(int)
                             
                             # Filter indices exceeding similarity threshold

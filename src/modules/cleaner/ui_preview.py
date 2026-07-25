@@ -361,6 +361,21 @@ class CleanerPreviewWidget(QWidget):
             reader = QImageReader(path)
             reader.setAutoTransform(True)
             img = reader.read()
+            
+            # Fallback for AVIF or other unsupported formats
+            if img.isNull() and os.path.splitext(path)[1].lower() == '.avif':
+                try:
+                    from PIL import Image
+                    import pillow_avif
+                    from PyQt6.QtGui import QImage
+                    with Image.open(path) as pil_img:
+                        if pil_img.mode != 'RGB':
+                            pil_img = pil_img.convert('RGB')
+                        data = pil_img.tobytes("raw", "RGB")
+                        img = QImage(data, pil_img.width, pil_img.height, pil_img.width * 3, QImage.Format.Format_RGB888).copy()
+                except Exception as pil_e:
+                    logging.debug(f"Pillow preview fallback failed for {path}: {pil_e}")
+
             if not img.isNull():
                 self.pixmap_item.setPixmap(QPixmap.fromImage(img))
                 self.pixmap_item.show()

@@ -358,6 +358,22 @@ class AiGroupSettingsDialog(QDialog):
                         
                 item = QListWidgetItem()
                 pixmap = QPixmap(path)
+                
+                # Fallback for AVIF
+                if pixmap.isNull() and path.lower().endswith('.avif'):
+                    try:
+                        from PIL import Image
+                        import pillow_avif
+                        from PyQt6.QtGui import QImage
+                        with Image.open(path) as pil_img:
+                            if pil_img.mode != 'RGB':
+                                pil_img = pil_img.convert('RGB')
+                            data = pil_img.tobytes("raw", "RGB")
+                            img = QImage(data, pil_img.width, pil_img.height, pil_img.width * 3, QImage.Format.Format_RGB888).copy()
+                            pixmap = QPixmap.fromImage(img)
+                    except Exception as pil_e:
+                        logging.debug(f"Pillow preview fallback failed for {path}: {pil_e}")
+                        
                 if not pixmap.isNull():
                     scaled = pixmap.scaled(128, 128, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                     square = QPixmap(128, 128)
@@ -483,6 +499,21 @@ class AiGroupSettingsDialog(QDialog):
         def _create_item(path, list_widget):
             item = QListWidgetItem()
             pixmap = QPixmap(path)
+            
+            # Fallback for AVIF
+            if pixmap.isNull() and path.lower().endswith('.avif'):
+                try:
+                    from PIL import Image
+                    import pillow_avif
+                    from PyQt6.QtGui import QImage
+                    with Image.open(path) as pil_img:
+                        if pil_img.mode != 'RGB':
+                            pil_img = pil_img.convert('RGB')
+                        data = pil_img.tobytes("raw", "RGB")
+                        img = QImage(data, pil_img.width, pil_img.height, pil_img.width * 3, QImage.Format.Format_RGB888).copy()
+                        pixmap = QPixmap.fromImage(img)
+                except Exception as pil_e:
+                    logging.debug(f"Pillow preview fallback failed for {path}: {pil_e}")
             if not pixmap.isNull():
                 scaled = pixmap.scaled(128, 128, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                 # Чтобы превью были квадратными и не искажались, создадим квадратную основу

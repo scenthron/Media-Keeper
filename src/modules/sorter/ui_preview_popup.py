@@ -657,6 +657,20 @@ class LargePreviewPopup(QDialog):
             self.content_layout.addWidget(self.media_viewer)
             
             pixmap = QPixmap(filepath)
+            if pixmap.isNull() and ext == '.avif':
+                try:
+                    from PIL import Image
+                    import pillow_avif
+                    from PyQt6.QtGui import QImage
+                    with Image.open(filepath) as pil_img:
+                        if pil_img.mode != 'RGB':
+                            pil_img = pil_img.convert('RGB')
+                        data = pil_img.tobytes("raw", "RGB")
+                        img = QImage(data, pil_img.width, pil_img.height, pil_img.width * 3, QImage.Format.Format_RGB888).copy()
+                        pixmap = QPixmap.fromImage(img)
+                except Exception as pil_e:
+                    logging.debug(f"Pillow preview fallback failed for {filepath}: {pil_e}")
+            
             self.media_viewer.set_pixmap(pixmap)
             self.btn_reset_view.show()
             self.btn_reset_view.clicked.connect(self.media_viewer.reset_view)

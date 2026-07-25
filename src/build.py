@@ -96,7 +96,7 @@ def build():
         "tokenizers.trainers",
         "safetensors",
         "safetensors.numpy",
-        "pillow_heif",
+        
         "backports",
         "jaraco",
         "setuptools",
@@ -141,7 +141,7 @@ def build():
 
     # Добавляем collect-all для тяжелых C++ библиотек с DLL, чтобы предотвратить их потерю
     # Убрал PyQt6 и cv2, чтобы не раздувать размер (230MB -> 130MB)
-    collect_all_libs = ["onnxruntime", "tokenizers", "pillow_heif"]
+    collect_all_libs = ["onnxruntime", "tokenizers",]
     for lib in collect_all_libs:
         pyinstaller_cmd.extend(["--collect-all", lib])
 

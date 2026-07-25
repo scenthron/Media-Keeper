@@ -7,4 +7,3 @@ onnxruntime-directml==1.15.1
 setuptools>=68.0.0
 safetensors>=0.3.3
 tokenizers>=0.13.3
-pillow-heif>=0.14.0

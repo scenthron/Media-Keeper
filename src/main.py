@@ -20,12 +20,6 @@ from PyQt6.QtGui import QIcon, QAction
 import logging
 from logic_logger import setup_logging, shutdown_logging
 
-try:
-    import pillow_heif
-    pillow_heif.register_heif_opener()
-except ImportError:
-    pass
-
 os.environ["QT_LOGGING_RULES"] = "*.debug=false;qt.multimedia.*=false"
 os.environ["AV_LOG_LEVEL"] = "quiet"
 

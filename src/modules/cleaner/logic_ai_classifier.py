@@ -228,7 +228,7 @@ class AiClassifier:
                         if sim > max_sim: max_sim = sim
                         
                     # SigLIP image-to-image similarity has a very high baseline
-                    mapped_score = (max_sim - 0.82) / (0.95 - 0.82)
+                    mapped_score = (max_sim - 0.40) / (0.85 - 0.40)
                     mapped_score = max(0.0, min(1.0, float(mapped_score)))
                     
                     if neg_clip_list:
@@ -236,7 +236,7 @@ class AiClassifier:
                         for ref_neg in neg_clip_list:
                             sim = self._cosine_similarity(file_clip_embedding, ref_neg)
                             if sim > max_neg: max_neg = sim
-                        neg_mapped = (max_neg - 0.82) / (0.95 - 0.82)
+                        neg_mapped = (max_neg - 0.40) / (0.85 - 0.40)
                         neg_mapped = max(0.0, min(1.0, float(neg_mapped)))
                         mapped_score = max(0.0, mapped_score - (neg_mapped * neg_weight))
                         

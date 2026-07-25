@@ -209,20 +209,20 @@ class AiClassifier:
         current_mtime = os.path.getmtime(filepath)
         current_size = os.path.getsize(filepath)
         
-        has_image_groups = any(t == "image" for t in self.group_types.values())
-        has_face_groups = any(t == "face" for t in self.group_types.values())
+        has_image_groups = any(t in ("general", "mixed") for t in self.group_types.values())
+        has_face_groups = any(t in ("face", "mixed") for t in self.group_types.values())
         
         file_clip_embedding = self.cache.get_image_embedding(filepath, current_mtime, current_size) if has_image_groups else None
         file_faces = self.cache.get_file_faces(filepath, current_mtime, current_size) if has_face_groups else None
         
-        if (has_image_groups and file_clip_embedding is None) or (has_face_groups and file_faces is None):
+        if (has_image_groups and file_clip_embedding is None) and (has_face_groups and file_faces is None):
             return result
             
         # Сила антипаттернов зависит от ползунка (0 = 2x, 50 = 1x, 100 = 0x)
         neg_weight = (100.0 - neg_threshold) / 50.0
             
         for group_name, g_type in self.group_types.items():
-            if g_type == "image":
+            if g_type in ("general", "mixed"):
                 clip_list = self.general_embeddings.get(group_name, [])
                 neg_clip_list = self.general_negative_embeddings.get(group_name, [])
                 
@@ -248,7 +248,7 @@ class AiClassifier:
                     if mapped_score > 0:
                         result[group_name] = mapped_score
 
-            elif g_type == "face":
+            if g_type in ("face", "mixed"):
                 face_refs = self.face_reference_descriptors.get(group_name, [])
                 neg_faces = self.face_negative_descriptors.get(group_name, [])
                 

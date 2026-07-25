@@ -51,7 +51,7 @@ class AiSearchRequest:
     file_filter_config: dict = field(default_factory=dict)
     reference_embeddings: list[list[float]] = field(default_factory=list)
     text_queries: dict[str, list[str]] = field(default_factory=dict)
-    negative_queries: list[str] = field(default_factory=list)
+    negative_queries: dict[str, list[str]] = field(default_factory=dict)
     use_cache: bool = True
     use_gpu: bool = True
 
@@ -191,20 +191,30 @@ class AiCoreWorker(QRunnable):
             if self.request.task_type == AiTaskType.TEXT_TO_IMAGE:
                 import numpy as np
                 
-                # Encode negative queries
-                neg_embeddings = []
-                for neg_q in getattr(self.request, 'negative_queries', []):
+                # Precompute global negatives
+                global_negatives = []
+                for neg_q in getattr(self.request, 'negative_queries', {}).get("__global__", []):
                     emb = self.engine.extract_text_embedding(neg_q)
                     if emb is not None:
-                        neg_embeddings.append(emb)
-                
-                neg_mean = None
-                if neg_embeddings:
-                    neg_mean = np.mean(np.array(neg_embeddings), axis=0)
-                    
+                        global_negatives.append(emb)
+                        
                 # Encode positive queries and apply negative subtraction
                 for group_name, comps in self.request.text_queries.items():
                     text_embeddings[group_name] = []
+                    
+                    # Compute specific negatives for this group
+                    group_negatives = []
+                    for neg_q in getattr(self.request, 'negative_queries', {}).get(group_name, []):
+                        emb = self.engine.extract_text_embedding(neg_q)
+                        if emb is not None:
+                            group_negatives.append(emb)
+                            
+                    # Combine global and specific negatives
+                    all_negs = global_negatives + group_negatives
+                    neg_mean = None
+                    if all_negs:
+                        neg_mean = np.mean(np.array(all_negs), axis=0)
+                        
                     for comp in comps:
                         emb = self.engine.extract_text_embedding(comp)
                         if emb is not None:

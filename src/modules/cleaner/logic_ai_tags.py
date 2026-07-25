@@ -101,4 +101,8 @@ class MultiTagHighlighter(QSyntaxHighlighter):
         punct_pattern = re.compile(r'[\(\):,]')
         for match in punct_pattern.finditer(text):
             self.setFormat(match.start(), 1, QColor("#888888"))
+            
+        neg_pattern = re.compile(r'-\s*[^,\)]+')
+        for match in neg_pattern.finditer(text):
+            self.setFormat(match.start(), match.end() - match.start(), QColor("#ef4444"))
 

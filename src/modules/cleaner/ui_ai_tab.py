@@ -1637,12 +1637,21 @@ class AiClassificationTab(QWidget):
             analysis_target = AiTarget.FACES if cluster_type == 'face' else AiTarget.IMAGES
         
         text_queries_dict = {}
+        negative_queries = []
         if text_query:
             parsed = parse_multi_tags(text_query)
             if parsed:
-                text_queries_dict = parsed
+                for group, tags in parsed.items():
+                    # Check if the group is a negative prompt
+                    if group.startswith('-'):
+                        negative_queries.extend([t[1:].strip() if t.startswith('-') else t for t in tags])
+                    else:
+                        text_queries_dict[group] = tags
             else:
-                text_queries_dict["Текст"] = [text_query]
+                if text_query.startswith('-'):
+                    negative_queries.append(text_query[1:].strip())
+                else:
+                    text_queries_dict["Текст"] = [text_query]
             
         scan_threshold = min(20.0, threshold) if task_type == AiTaskType.TEXT_TO_IMAGE else threshold
         request = AiSearchRequest(
@@ -1652,6 +1661,7 @@ class AiClassificationTab(QWidget):
             threshold=scan_threshold,
             file_filter_config=filter_cfg,
             text_queries=text_queries_dict,
+            negative_queries=negative_queries,
             use_cache=use_cache,
             use_gpu=use_gpu
         )

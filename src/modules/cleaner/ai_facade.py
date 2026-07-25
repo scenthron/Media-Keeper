@@ -51,6 +51,7 @@ class AiSearchRequest:
     file_filter_config: dict = field(default_factory=dict)
     reference_embeddings: list[list[float]] = field(default_factory=list)
     text_queries: dict[str, list[str]] = field(default_factory=dict)
+    negative_queries: list[str] = field(default_factory=list)
     use_cache: bool = True
     use_gpu: bool = True
 
@@ -188,11 +189,31 @@ class AiCoreWorker(QRunnable):
             # Initialize text embeddings if TEXT_TO_IMAGE
             text_embeddings = {}
             if self.request.task_type == AiTaskType.TEXT_TO_IMAGE:
+                import numpy as np
+                
+                # Encode negative queries
+                neg_embeddings = []
+                for neg_q in getattr(self.request, 'negative_queries', []):
+                    emb = self.engine.extract_text_embedding(neg_q)
+                    if emb is not None:
+                        neg_embeddings.append(emb)
+                
+                neg_mean = None
+                if neg_embeddings:
+                    neg_mean = np.mean(np.array(neg_embeddings), axis=0)
+                    
+                # Encode positive queries and apply negative subtraction
                 for group_name, comps in self.request.text_queries.items():
                     text_embeddings[group_name] = []
                     for comp in comps:
                         emb = self.engine.extract_text_embedding(comp)
                         if emb is not None:
+                            if neg_mean is not None:
+                                # Apply negative prompt vector subtraction
+                                combined = emb - neg_mean
+                                # L2 Normalization
+                                norm = np.linalg.norm(combined, axis=-1, keepdims=True)
+                                emb = combined / np.clip(norm, 1e-9, None)
                             text_embeddings[group_name].append(emb)
 
             # 3. Process each file

@@ -10,9 +10,9 @@ class AiEngine:
     def __init__(self):
         self.models_dir = get_models_dir()
         
-        self.arcface_path = os.path.join(self.models_dir, "w600k_r50.onnx")
-        self.scrfd_path = os.path.join(self.models_dir, "det_10g.onnx")
-        self.clip_dir = os.path.join(self.models_dir, "clip_multi")
+        self.arcface_path = os.path.join(self.models_dir, "face_detection", "w600k_r50.onnx")
+        self.scrfd_path = os.path.join(self.models_dir, "face_detection", "det_10g.onnx")
+        self.clip_dir = os.path.join(self.models_dir, "image_vision")
         
         self.clip_searcher = None
         self.detector = None

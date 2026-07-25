@@ -34,7 +34,7 @@ class CLIPSearcher:
     def load_models(self, use_gpu=False):
         try:
             from logic_paths import get_models_dir
-            clip_dir = os.path.join(get_models_dir(), "clip_multi")
+            clip_dir = os.path.join(get_models_dir(), "image_vision")
             vision_model_path = os.path.join(clip_dir, "vision", "model.onnx")
             text_model_dir = os.path.join(clip_dir, "text_multi")
             text_model_path = os.path.join(text_model_dir, "model.onnx")

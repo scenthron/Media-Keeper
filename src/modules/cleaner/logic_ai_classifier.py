@@ -194,7 +194,7 @@ class AiClassifier:
         b_norm = b / np.linalg.norm(b)
         return float(np.dot(a_norm, b_norm))
 
-    def classify_file(self, filepath: str) -> dict:
+    def classify_file(self, filepath: str, neg_threshold: float = 50.0) -> dict:
         """
         Сопоставляет файл с активными группами. Возвращает словарь с максимальным % сходства для каждой группы.
         """
@@ -213,6 +213,9 @@ class AiClassifier:
         if (has_image_groups and file_clip_embedding is None) or (has_face_groups and file_faces is None):
             return result
             
+        # Сила антипаттернов зависит от ползунка (0 = 2x, 50 = 1x, 100 = 0x)
+        neg_weight = (100.0 - neg_threshold) / 50.0
+            
         for group_name, g_type in self.group_types.items():
             if g_type == "image":
                 clip_list = self.general_embeddings.get(group_name, [])
@@ -224,7 +227,8 @@ class AiClassifier:
                         sim = self._cosine_similarity(file_clip_embedding, ref_emb)
                         if sim > max_sim: max_sim = sim
                         
-                    mapped_score = (max_sim - 0.20) / (0.32 - 0.20)
+                    # SigLIP image-to-image similarity has a very high baseline
+                    mapped_score = (max_sim - 0.82) / (0.95 - 0.82)
                     mapped_score = max(0.0, min(1.0, float(mapped_score)))
                     
                     if neg_clip_list:
@@ -232,9 +236,9 @@ class AiClassifier:
                         for ref_neg in neg_clip_list:
                             sim = self._cosine_similarity(file_clip_embedding, ref_neg)
                             if sim > max_neg: max_neg = sim
-                        neg_mapped = (max_neg - 0.20) / (0.32 - 0.20)
+                        neg_mapped = (max_neg - 0.82) / (0.95 - 0.82)
                         neg_mapped = max(0.0, min(1.0, float(neg_mapped)))
-                        mapped_score = max(0.0, mapped_score - (neg_mapped * 0.5))
+                        mapped_score = max(0.0, mapped_score - (neg_mapped * neg_weight))
                         
                     if mapped_score > 0:
                         result[group_name] = mapped_score
@@ -269,7 +273,7 @@ class AiClassifier:
                                 
                         neg_mapped = (max_neg - 0.35) / (0.85 - 0.35)
                         neg_mapped = max(0.0, min(1.0, float(neg_mapped)))
-                        mapped_score = max(0.0, mapped_score - (neg_mapped * 0.5))
+                        mapped_score = max(0.0, mapped_score - (neg_mapped * neg_weight))
                         
                     if mapped_score > 0:
                         result[group_name] = {"score": mapped_score, "bbox": matched_bbox}

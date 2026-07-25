@@ -507,7 +507,7 @@ class AiCoreWorker(QRunnable):
                 # Use classifier logic natively
                 for fp in valid_files:
                     if self.is_cancelled: return
-                    results_dict = self.classifier.classify_file(fp)
+                    results_dict = self.classifier.classify_file(fp, self.request.neg_threshold)
                     for g_name, conf_data in results_dict.items():
                         if isinstance(conf_data, dict):
                             conf = conf_data["score"]

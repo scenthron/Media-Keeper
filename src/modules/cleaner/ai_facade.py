@@ -130,7 +130,7 @@ class AiCoreWorker(QRunnable):
             
             # 1. Gather valid files
             self.signals.progress.emit(STAGE_SCANNING, 0.0, "Поиск медиафайлов...", 0, 0, 0, 0, 0, 0)
-            valid_exts = {'.jpg', '.jpeg', '.png', '.bmp'}
+            valid_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.avif'}
             valid_files = []
             scanned_files = 0
             scanned_bytes = 0

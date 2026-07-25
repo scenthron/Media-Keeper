@@ -715,7 +715,7 @@ class UiSetupMixin:
         
         # Защита от вращения видео/аудио
         ext = os.path.splitext(self.current_file_path)[1].lower()
-        if ext not in ['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp']:
+        if ext not in ['.jpg', '.jpeg', '.png', '.bmp', '.avif', '.gif', '.webp', '.avif']:
             logging.warning(f"Rotation ignored for non-image file: {self.current_file_path}")
             return
             

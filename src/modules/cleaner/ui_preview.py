@@ -510,8 +510,8 @@ class CleanerPreviewWidget(QWidget):
         ext = os.path.splitext(path)[1].lower()
         self.update_meta(path)
         
-        if ext in ['.jpg', '.jpeg', '.png', '.bmp']: self.setup_static_image(path)
-        elif ext in ['.gif', '.webp']: self.setup_animated(path)
+        if ext in ['.jpg', '.jpeg', '.png', '.bmp', '.avif']: self.setup_static_image(path)
+        elif ext in ['.gif', '.webp', '.avif']: self.setup_animated(path)
         elif ext in VIDEO_EXTS or ext in ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma', '.aac']: 
             self.setup_video(path)
         else:
@@ -608,7 +608,7 @@ class CleanerPreviewWidget(QWidget):
                 (AppContext.tr("cln_meta_date"), date_str)
             ]
             ext = os.path.splitext(path)[1].lower()
-            if ext in ['.jpg', '.jpeg', '.png', '.bmp', '.webp', '.gif']:
+            if ext in ['.jpg', '.jpeg', '.png', '.bmp', '.avif', '.webp', '.avif', '.gif']:
                 reader = QImageReader(path)
                 sz = reader.size()
                 if sz.isValid(): data.append((AppContext.tr("cln_meta_res"), f"{sz.width()} x {sz.height()}"))

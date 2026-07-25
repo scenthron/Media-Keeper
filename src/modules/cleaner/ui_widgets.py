@@ -703,7 +703,7 @@ class RefImagesListWidget(QListWidget):
             fp = url.toLocalFile()
             if os.path.isfile(fp):
                 ext = os.path.splitext(fp)[1].lower()
-                if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}:
+                if ext in {'.png', '.jpg', '.jpeg', '.bmp', '.avif', '.webp', '.avif'}:
                     files.append(fp)
         if files:
             self.files_dropped.emit(files)

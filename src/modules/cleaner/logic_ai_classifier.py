@@ -131,17 +131,21 @@ class AiClassifier:
             
             # Check CLIP vectors length
             pos_feat, neg_feat = load_features(dump_path, "features")
-            if pos_feat and len(pos_feat) > 0 and pos_feat[0].shape[0] != 512:
+            if pos_feat and len(pos_feat) > 0 and pos_feat[0].shape[0] != 768:
+                needs_upgrade = True
+            elif g_type in ("general", "mixed") and pos_count > 0 and len(pos_feat) == 0:
                 needs_upgrade = True
                 
             # Check InsightFace vectors length
             pos_faces, neg_faces = load_features(dump_path, "faces")
             if pos_faces and len(pos_faces) > 0 and pos_faces[0].shape[0] != 512:
                 needs_upgrade = True
+            elif g_type in ("face", "mixed") and pos_count > 0 and len(pos_faces) == 0:
+                needs_upgrade = True
                 
             if needs_upgrade:
                 import logging
-                logging.info(f"Upgrading legacy AI dump vectors for group: {name}")
+                logging.info(f"Upgrading legacy or incomplete AI dump vectors for group: {name}")
                 temp_dir, pos_paths, neg_paths = extract_images_to_temp(dump_path)
                 
                 try:
@@ -165,9 +169,10 @@ class AiClassifier:
                             
                     # Re-save dump with new vectors
                     save_dump(
-                        dump_path, "mixed", pos_paths, neg_paths,
+                        dump_path, g_type, pos_paths, neg_paths,
                         new_pos_features, new_neg_features,
-                        new_pos_faces, new_neg_faces, False
+                        new_pos_faces, new_neg_faces,
+                        is_hash_only=False
                     )
                     
                     # Reload the new features

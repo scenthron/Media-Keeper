@@ -76,7 +76,7 @@ def get_app_data_dir():
         # logic_paths.py is in src/, main.py is in src/. 
         # So we use this file's directory as the base.
         src_dir = os.path.dirname(os.path.abspath(__file__)) # .../Project/src
-        base_dir = src_dir # .../Project/src
+        base_dir = os.path.dirname(src_dir) # .../Project
 
     path = os.path.join(base_dir, ".mediakeeper")
     

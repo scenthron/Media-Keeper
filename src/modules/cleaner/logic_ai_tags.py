@@ -46,17 +46,32 @@ from PyQt6.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat
 
 def parse_multi_tags(text: str) -> dict:
     result = {}
-    pattern_multi = r'\(([^:]+):([^\)]+)\)'
-    for match in re.finditer(pattern_multi, text):
+    group_counter = 1
+    
+    # 1. Match named groups (Name: t1, t2)
+    pattern_named = r'\(([^:\)]+):([^\)]+)\)'
+    for match in re.finditer(pattern_named, text):
         group_name = match.group(1).strip()
         components = [c.strip() for c in match.group(2).split(',') if c.strip()]
         if components:
             result[group_name] = components
             
-    text_clean = re.sub(pattern_multi, '', text)
-    regular_tags = [t.strip() for t in text_clean.split(',') if t.strip()]
-    for tag in regular_tags:
-        result[tag] = [tag]
+    text_clean = re.sub(pattern_named, '', text)
+    
+    # 2. Match unnamed groups (t1, t2)
+    pattern_unnamed = r'\(([^\)]+)\)'
+    for match in re.finditer(pattern_unnamed, text_clean):
+        components = [c.strip() for c in match.group(1).split(',') if c.strip()]
+        if components:
+            result[f"Группа {group_counter}"] = components
+            group_counter += 1
+            
+    text_clean = re.sub(pattern_unnamed, '', text_clean)
+    
+    # 3. Everything else outside parens is ONE group!
+    components = [c.strip() for c in text_clean.split(',') if c.strip()]
+    if components:
+        result[f"Группа {group_counter}"] = components
         
     return result
 

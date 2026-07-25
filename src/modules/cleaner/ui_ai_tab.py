@@ -1654,7 +1654,7 @@ class AiClassificationTab(QWidget):
                             else:
                                 pos.append(t)
                         if pos:
-                            text_queries_dict[group] = pos
+                            text_queries_dict[group] = [", ".join(pos)]
                         if neg:
                             negative_queries[group] = neg
             else:

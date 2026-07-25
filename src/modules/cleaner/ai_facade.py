@@ -379,23 +379,27 @@ class AiCoreWorker(QRunnable):
                             # Highest similarity score across positive queries for each image
                             max_sims = np.max(sim_matrix, axis=1)  # Shape: (N,)
                             
-                            # Scale to percentage 0..100
+                            # Scale positive score to percentage 0..100
                             mapped_scores = (max_sims - 0.14) / (0.28 - 0.14) * 100.0
-                            
-                            if neg_mean is not None:
-                                neg_mat = np.asarray(neg_mean, dtype=np.float32).flatten().reshape(1, -1)
-                                neg_sims = np.dot(img_mat, neg_mat.T).flatten()
-                                # Calculate negative score on the same scale, but shift it a bit higher
-                                # If an image matches the negative concept strongly (e.g. > 0.20), it gets penalized heavily.
-                                neg_mapped = (neg_sims - 0.14) / (0.28 - 0.14) * 100.0
-                                neg_mapped = np.clip(neg_mapped, 0, 100)
-                                # Subtract negative penalty from positive score
-                                mapped_scores -= (neg_mapped * 1.5)  # Penalize with a 1.5 multiplier to aggressively remove negatives
-                            
                             mapped_scores = np.clip(mapped_scores, 0, 100).astype(int)
                             
-                            # Filter indices exceeding similarity threshold
+                            # 1. Позитивная "пачка": отбираем те, что прошли порог пользователя
                             match_indices = np.where(mapped_scores >= self.request.threshold)[0]
+                            
+                            if len(match_indices) > 0 and neg_mean is not None:
+                                # 2. Негативный фильтр: проверяем только отобранные индексы
+                                neg_mat = np.asarray(neg_mean, dtype=np.float32).flatten().reshape(1, -1)
+                                neg_sims = np.dot(img_mat[match_indices], neg_mat.T).flatten()
+                                
+                                # Scale negative score
+                                neg_mapped = (neg_sims - 0.14) / (0.28 - 0.14) * 100.0
+                                neg_mapped = np.clip(neg_mapped, 0, 100)
+                                
+                                # 3. Исключаем фото, где сходство с антипаттерном превышает 50%
+                                # 50% - это уверенное присутствие объекта в кадре
+                                NEGATIVE_THRESHOLD = 50
+                                valid_mask = neg_mapped < NEGATIVE_THRESHOLD
+                                match_indices = match_indices[valid_mask]
                             
                             if len(match_indices) > 0:
                                 if group_name not in groups_dict:

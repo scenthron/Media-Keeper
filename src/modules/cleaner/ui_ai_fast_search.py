@@ -2,7 +2,7 @@ import os
 import tempfile
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, 
-    QMenu, QRadioButton, QButtonGroup, QAbstractItemView, QStyledItemDelegate, QStyle
+    QMenu, QPushButton, QButtonGroup, QAbstractItemView, QStyledItemDelegate
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QSize, QRect
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QPen, QPainter, QImage
@@ -42,7 +42,7 @@ class FastSearchDropArea(QListWidget):
         self.setAcceptDrops(True)
         self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setViewMode(QListWidget.ViewMode.IconMode)
-        self.setIconSize(QSize(96, 96))
+        self.setIconSize(QSize(48, 48))
         self.setSpacing(8)
         self.setResizeMode(QListWidget.ResizeMode.Adjust)
         self.setMouseTracking(True)
@@ -85,11 +85,11 @@ class FastSearchDropArea(QListWidget):
                 pass
                 
         if not pixmap.isNull():
-            scaled = pixmap.scaled(96, 96, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            square = QPixmap(96, 96)
+            scaled = pixmap.scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            square = QPixmap(48, 48)
             square.fill(Qt.GlobalColor.transparent)
             painter = QPainter(square)
-            painter.drawPixmap((96 - scaled.width()) // 2, (96 - scaled.height()) // 2, scaled)
+            painter.drawPixmap((48 - scaled.width()) // 2, (48 - scaled.height()) // 2, scaled)
             painter.end()
             return square
         return QPixmap()
@@ -187,11 +187,25 @@ class AiFastSearchWidget(QWidget):
         
         # Mode selector
         mode_layout = QHBoxLayout()
-        self.btn_mode_faces = QRadioButton("Искать Лица" if self.is_ru else "Search Faces")
-        self.btn_mode_general = QRadioButton("Общий контекст" if self.is_ru else "General Context")
+        self.btn_mode_faces = QPushButton("Искать Лица" if self.is_ru else "Search Faces")
+        self.btn_mode_general = QPushButton("Общий контекст" if self.is_ru else "General Context")
+        
+        mode_style = """
+            QPushButton { background-color: #2b2b2b; color: #888; border: 1px solid #444; border-radius: 4px; padding: 6px 12px; font-weight: bold; }
+            QPushButton:checked { background-color: #16a34a; color: white; border-color: #15803d; }
+            QPushButton:hover:!checked { background-color: #333; }
+        """
+        self.btn_mode_faces.setStyleSheet(mode_style)
+        self.btn_mode_general.setStyleSheet(mode_style)
+        self.btn_mode_faces.setCheckable(True)
+        self.btn_mode_general.setCheckable(True)
+        self.btn_mode_faces.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_mode_general.setCursor(Qt.CursorShape.PointingHandCursor)
+        
         self.btn_mode_general.setChecked(True)
         
         self.mode_group = QButtonGroup(self)
+        self.mode_group.setExclusive(True)
         self.mode_group.addButton(self.btn_mode_faces)
         self.mode_group.addButton(self.btn_mode_general)
         
@@ -200,23 +214,32 @@ class AiFastSearchWidget(QWidget):
         mode_layout.addStretch()
         layout.addLayout(mode_layout)
         
-        # Drop areas
+        # Drop areas (Horizontal layout: Pos on left, Neg on right)
+        areas_layout = QHBoxLayout()
+        
+        # Positive column
+        pos_col = QVBoxLayout()
+        lbl_pos = QLabel("Позитивные образцы:" if self.is_ru else "Positive Samples:")
+        lbl_pos.setStyleSheet("color: #aaa; font-weight: bold;")
         self.pos_area = FastSearchDropArea("Позитивные образцы" if self.is_ru else "Positive Samples")
+        pos_col.addWidget(lbl_pos)
+        pos_col.addWidget(self.pos_area)
+        
+        # Negative column
+        neg_col = QVBoxLayout()
+        lbl_neg = QLabel("Антипаттерны:" if self.is_ru else "Negative Samples:")
+        lbl_neg.setStyleSheet("color: #aaa; font-weight: bold;")
         self.neg_area = FastSearchDropArea("Антипаттерны" if self.is_ru else "Negative Samples")
+        neg_col.addWidget(lbl_neg)
+        neg_col.addWidget(self.neg_area)
+        
+        areas_layout.addLayout(pos_col)
+        areas_layout.addLayout(neg_col)
         
         self.pos_area.cleared_all.connect(self.clear_all)
         self.neg_area.cleared_all.connect(self.clear_all)
         
-        lbl_pos = QLabel("Позитивные образцы (что искать):" if self.is_ru else "Positive Samples:")
-        lbl_pos.setStyleSheet("color: #aaa; font-weight: bold;")
-        
-        lbl_neg = QLabel("Негативные образцы (антипаттерны):" if self.is_ru else "Negative Samples:")
-        lbl_neg.setStyleSheet("color: #aaa; font-weight: bold;")
-        
-        layout.addWidget(lbl_pos)
-        layout.addWidget(self.pos_area)
-        layout.addWidget(lbl_neg)
-        layout.addWidget(self.neg_area)
+        layout.addLayout(areas_layout)
 
     def clear_all(self):
         self.pos_area.clear_items()

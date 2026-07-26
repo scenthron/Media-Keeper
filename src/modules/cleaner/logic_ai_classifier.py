@@ -129,7 +129,8 @@ class AiClassifier:
             needs_upgrade = False
             
             dump_info = load_dump_info(dump_path)
-            g_type = dump_info.get("type", "face")
+            g_type = dump_info.get("search_type", dump_info.get("type", "face"))
+            pos_count = dump_info.get("pos_count", 0)
             self.group_types[name] = g_type
             
             # Check CLIP vectors length

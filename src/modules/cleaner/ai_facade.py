@@ -116,6 +116,7 @@ class AiCoreWorker(QRunnable):
         result_found = pyqtSignal(object) # AiSearchResponse
         finished = pyqtSignal()
         error = pyqtSignal(str)
+        defective_faces = pyqtSignal(list)  # список temp-путей картинок, на которых не найдены лица
 
     def __init__(self, request: AiSearchRequest, engine=None, cache=None, classifier=None):
         super().__init__()
@@ -189,14 +190,20 @@ class AiCoreWorker(QRunnable):
 
             if self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier:
                 import logging
-                if not self.classifier.load_active_references(fast_search_dump=self.request.fast_search_dump):
+                load_ok = self.classifier.load_active_references(fast_search_dump=self.request.fast_search_dump)
+                
+                # Всегда сообщаем UI о дефектных картинках (без лиц), даже при частичном успехе
+                if hasattr(self.classifier, 'last_defective_faces') and self.classifier.last_defective_faces:
+                    self.signals.defective_faces.emit(list(self.classifier.last_defective_faces))
+                
+                if not load_ok:
                     logging.warning("Нет активных эталонов для ИИ-поиска")
                     if self.request.fast_search_dump:
                         err_msg = "Внимание: На добавленных образцах не найдены лица для сканирования. Добавьте более качественные фото крупным планом."
-                        if hasattr(self.classifier, 'last_defective_faces') and self.classifier.last_defective_faces:
-                            err_msg = f"FACES_NOT_FOUND:{'|'.join(self.classifier.last_defective_faces)}"
-                        self.signals.error.emit(err_msg)
-                        return
+                    else:
+                        err_msg = "Нет активных эталонов для ИИ-поиска"
+                    self.signals.error.emit(err_msg)
+                    return
 
             self.signals.progress.emit(STAGE_ANALYSIS, 0.0, f"Анализ {total_files} файлов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
 
@@ -588,7 +595,8 @@ class AiServiceFacade(QObject):
                  progress_callback=None, 
                  result_callback=None, 
                  error_callback=None,
-                 classifier=None):
+                 classifier=None,
+                 defective_callback=None):
         
         self.cancel_search()
         
@@ -608,6 +616,8 @@ class AiServiceFacade(QObject):
             self.active_worker.signals.result_found.connect(result_callback)
         if error_callback:
             self.active_worker.signals.error.connect(error_callback)
+        if defective_callback:
+            self.active_worker.signals.defective_faces.connect(defective_callback)
             
         QThreadPool.globalInstance().start(self.active_worker)
         

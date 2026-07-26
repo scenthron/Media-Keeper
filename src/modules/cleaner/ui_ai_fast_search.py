@@ -32,6 +32,24 @@ class RemovableImageDelegate(QStyledItemDelegate):
             painter.drawLine(btn_rect.left() + 4, btn_rect.top() + 4, btn_rect.right() - 4, btn_rect.bottom() - 4)
             painter.drawLine(btn_rect.right() - 4, btn_rect.top() + 4, btn_rect.left() + 4, btn_rect.bottom() - 4)
             painter.restore()
+            
+        path = index.data(Qt.ItemDataRole.UserRole)
+        is_defective = hasattr(self, 'defective_paths') and path in self.defective_paths
+        
+        if is_defective:
+            rect = option.rect
+            painter.save()
+            painter.setBrush(QColor(255, 0, 0, 100))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRect(rect)
+            
+            painter.setPen(QPen(QColor(255, 0, 0, 200), 4))
+            center_x = rect.center().x()
+            center_y = rect.center().y()
+            sz = min(rect.width(), rect.height()) // 3
+            painter.drawLine(center_x - sz, center_y - sz, center_x + sz, center_y + sz)
+            painter.drawLine(center_x + sz, center_y - sz, center_x - sz, center_y + sz)
+            painter.restore()
 
 class FastSearchDropArea(QListWidget):
     cleared = pyqtSignal()
@@ -70,6 +88,10 @@ class FastSearchDropArea(QListWidget):
                 background-color: #3b82f6;
             }
         """)
+
+    def set_defective_paths(self, paths: list[str]):
+        self.delegate.defective_paths = paths
+        self.viewport().update()
 
     def _create_thumbnail(self, path: str) -> QPixmap:
         pixmap = QPixmap(path)
@@ -202,7 +224,7 @@ class AiFastSearchWidget(QWidget):
         self.btn_mode_faces.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_mode_general.setCursor(Qt.CursorShape.PointingHandCursor)
         
-        self.btn_mode_general.setChecked(True)
+        self.btn_mode_faces.setChecked(True)
         
         self.mode_group = QButtonGroup(self)
         self.mode_group.setExclusive(True)

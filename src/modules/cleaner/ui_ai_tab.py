@@ -1883,7 +1883,17 @@ class AiClassificationTab(QWidget):
 
     def on_scan_error(self, error_msg):
         from PyQt6.QtWidgets import QMessageBox
-        QMessageBox.critical(self, "Ошибка ИИ" if AppContext.is_ru() else "AI Error", error_msg)
+        
+        is_fast_search = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 0 and hasattr(self, 'page_ref') and getattr(self.page_ref, 'currentIndex', lambda: -1)() == 0
+        defective_paths = []
+        
+        display_msg = error_msg
+        if error_msg.startswith("FACES_NOT_FOUND:"):
+            paths_str = error_msg.split(":", 1)[1]
+            defective_paths = paths_str.split("|")
+            display_msg = "Внимание: На добавленных образцах не найдены лица для сканирования. Добавьте более качественные фото крупным планом."
+            
+        QMessageBox.critical(self, "Ошибка ИИ" if AppContext.is_ru() else "AI Error", display_msg)
         self.progress_bar.hide()
         self.btn_start_scan.setText(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
         self.btn_start_scan.setStyleSheet("""
@@ -1894,8 +1904,7 @@ class AiClassificationTab(QWidget):
         self.scan_finished.emit()
         
         # Подсветка зоны Быстрого поиска, если лица не найдены
-        if "На добавленных образцах не найдены лица" in error_msg:
-            is_fast_search = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 0 and hasattr(self, 'page_ref') and getattr(self.page_ref, 'currentIndex', lambda: -1)() == 0
+        if "На добавленных образцах не найдены лица" in display_msg:
             if is_fast_search:
                 self.fast_search_widget.pos_area.setStyleSheet("""
                     QListWidget { background-color: #3b1111; border: 2px dashed #ef4444; border-radius: 8px; padding: 10px; }
@@ -1906,6 +1915,11 @@ class AiClassificationTab(QWidget):
                     QListWidget::item { border-radius: 6px; background-color: #333; }
                     QListWidget::item:selected { background-color: #3b82f6; }
                 """))
+                if defective_paths:
+                    self.fast_search_widget.pos_area.set_defective_paths(defective_paths)
+                    self.fast_search_widget.neg_area.set_defective_paths(defective_paths)
+                    QTimer.singleShot(3000, lambda: self.fast_search_widget.pos_area.set_defective_paths([]))
+                    QTimer.singleShot(3000, lambda: self.fast_search_widget.neg_area.set_defective_paths([]))
 
     def on_scan_progress(self, stage, percent, text, scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, empty):
         self.progress_bar.setMaximum(100)

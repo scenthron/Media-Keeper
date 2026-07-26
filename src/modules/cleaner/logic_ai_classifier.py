@@ -75,6 +75,7 @@ class AiClassifier:
         self.general_negative_embeddings = {}
         self.face_negative_descriptors = {}
         self.group_types = {}
+        self.last_defective_faces = []
 
     def get_group_status(self, group_name: str) -> tuple:
         """
@@ -106,6 +107,7 @@ class AiClassifier:
         self.general_negative_embeddings.clear()
         self.face_negative_descriptors.clear()
         self.group_types.clear()
+        self.last_defective_faces.clear()
         
         active_groups = []
         if fast_search_dump and os.path.exists(fast_search_dump):
@@ -160,16 +162,20 @@ class AiClassifier:
                         if emb is not None: new_pos_features.append(emb)
                         # Extract Face
                         faces = self.ai.extract_faces(p)
-                        if faces is not None:
+                        if faces is not None and len(faces) > 0:
                             for f in faces: new_pos_faces.append(f["descriptor"])
+                        elif g_type in ("face", "mixed"):
+                            self.last_defective_faces.append(p)
                             
                     new_neg_features, new_neg_faces = [], []
                     for p in neg_paths:
                         emb = self.ai.extract_clip_embedding(p)
                         if emb is not None: new_neg_features.append(emb)
                         faces = self.ai.extract_faces(p)
-                        if faces is not None:
+                        if faces is not None and len(faces) > 0:
                             for f in faces: new_neg_faces.append(f["descriptor"])
+                        elif g_type in ("face", "mixed"):
+                            self.last_defective_faces.append(p)
                             
                     # Re-save dump with new vectors
                     save_dump(

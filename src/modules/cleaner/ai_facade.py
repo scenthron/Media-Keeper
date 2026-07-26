@@ -173,17 +173,7 @@ class AiCoreWorker(QRunnable):
                 self.signals.finished.emit()
                 return
 
-            if self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier:
-                import logging
-                if not self.classifier.load_active_references(fast_search_dump=self.request.fast_search_dump):
-                    logging.warning("Нет активных эталонов для ИИ-поиска")
-                    if self.request.fast_search_dump:
-                        self.signals.error.emit("Внимание: На добавленных образцах не найдены лица для сканирования. Добавьте более качественные фото крупным планом.")
-                        return
-
-            self.signals.progress.emit(STAGE_ANALYSIS, 0.0, f"Анализ {total_files} файлов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
-
-            # 2. Extract Features
+            # Initialize Engine BEFORE loading active references (which may need extraction)
             if self.engine is None:
                 from .logic_ai import AiEngine
                 self.engine = AiEngine()
@@ -191,6 +181,21 @@ class AiCoreWorker(QRunnable):
             if not self.engine.initialize_sessions(use_gpu=self.request.use_gpu):
                 self.signals.error.emit("Не удалось инициализировать нейросети.")
                 return
+
+            if self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier:
+                import logging
+                if not self.classifier.load_active_references(fast_search_dump=self.request.fast_search_dump):
+                    logging.warning("Нет активных эталонов для ИИ-поиска")
+                    if self.request.fast_search_dump:
+                        err_msg = "Внимание: На добавленных образцах не найдены лица для сканирования. Добавьте более качественные фото крупным планом."
+                        if hasattr(self.classifier, 'last_defective_faces') and self.classifier.last_defective_faces:
+                            err_msg = f"FACES_NOT_FOUND:{'|'.join(self.classifier.last_defective_faces)}"
+                        self.signals.error.emit(err_msg)
+                        return
+
+            self.signals.progress.emit(STAGE_ANALYSIS, 0.0, f"Анализ {total_files} файлов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
+
+            # 2. Extract Features
 
             # Initialize text embeddings if TEXT_TO_IMAGE
             text_embeddings = {}

@@ -559,9 +559,18 @@ class AiCoreWorker(QRunnable):
             
             logging.info(f"[AiCoreWorker] Выходные данные: найдено {len(response_groups)} групп, всего {total_matches} файлов-совпадений.")
             
+            # Подсчёт суммарного размера найденных файлов
+            total_matched_bytes = 0
+            for g in response_groups:
+                for mf in g.files:
+                    try:
+                        total_matched_bytes += os.path.getsize(mf.path)
+                    except:
+                        pass
+            
             response = AiSearchResponse(groups=response_groups)
             
-            self.signals.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, len(response_groups), 0, scanned_bytes, total_matches, 0)
+            self.signals.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, len(response_groups), total_matched_bytes, scanned_bytes, total_matches, 0)
             self.signals.result_found.emit(response)
             self.signals.finished.emit()
 

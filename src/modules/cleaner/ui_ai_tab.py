@@ -1945,9 +1945,10 @@ class AiClassificationTab(QWidget):
             self.progress_bar.setStyleSheet("QProgressBar { border: none; background-color: #151515; text-align: center; color: white; font-size: 11px; } QProgressBar::chunk { background-color: #22c55e; }")
             
         from utils_common import format_size
+        size_str = format_size(wasted_bytes) if wasted_bytes else "0 MB"
         self.lbl_stats.setText(
-            f"Найдено совпадений: {groups_found} групп, {files_found} файлов, {wasted_bytes // (1024*1024) if wasted_bytes else 0} MB (Время: {m:02d}:{s:02d})" if AppContext.is_ru()
-            else f"Matches found: {groups_found} groups, {files_found} files, {format_size(wasted_bytes)} (Time: {m:02d}:{s:02d})"
+            f"Найдено совпадений: {groups_found} групп, {files_found} файлов, {size_str} (Время: {m:02d}:{s:02d})" if AppContext.is_ru()
+            else f"Matches found: {groups_found} groups, {files_found} files, {size_str} (Time: {m:02d}:{s:02d})"
         )
 
     def on_scan_finished(self, response: AiSearchResponse):

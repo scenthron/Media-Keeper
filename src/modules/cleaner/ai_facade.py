@@ -55,6 +55,7 @@ class AiSearchRequest:
     text_queries: dict[str, list[dict]] = field(default_factory=dict)
     negative_queries: dict[str, list[dict]] = field(default_factory=dict)
     use_cache: bool = True
+    fast_search_dump: str = None
     use_gpu: bool = True
 
 @dataclass
@@ -174,8 +175,11 @@ class AiCoreWorker(QRunnable):
 
             if self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier:
                 import logging
-                if not self.classifier.load_active_references():
+                if not self.classifier.load_active_references(fast_search_dump=self.request.fast_search_dump):
                     logging.warning("Нет активных эталонов для ИИ-поиска")
+                    if self.request.fast_search_dump:
+                        self.signals.error.emit("Внимание: На добавленных образцах не найдены лица для сканирования. Добавьте более качественные фото крупным планом.")
+                        return
 
             self.signals.progress.emit(STAGE_ANALYSIS, 0.0, f"Анализ {total_files} файлов...", scanned_files, 0, 0, scanned_bytes, 0, 0)
 

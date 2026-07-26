@@ -97,7 +97,7 @@ class AiClassifier:
         status = "green" if count > 0 else "gray"
         return status, count
 
-    def load_active_references(self) -> bool:
+    def load_active_references(self, fast_search_dump: str = None) -> bool:
         """
         Загружает в память дескрипторы для всех ВКЛЮЧЕННЫХ групп из их дампов.
         """
@@ -107,13 +107,16 @@ class AiClassifier:
         self.face_negative_descriptors.clear()
         self.group_types.clear()
         
-        settings = load_ai_settings()
         active_groups = []
-        for name, info in settings.get("groups", {}).items():
-            if info.get("enabled", True):
-                dump_path = info.get("path")
-                if dump_path and os.path.exists(dump_path):
-                    active_groups.append((name, dump_path))
+        if fast_search_dump and os.path.exists(fast_search_dump):
+            active_groups.append(("FastSearch", fast_search_dump))
+        else:
+            settings = load_ai_settings()
+            for name, info in settings.get("groups", {}).items():
+                if info.get("enabled", True):
+                    dump_path = info.get("path")
+                    if dump_path and os.path.exists(dump_path):
+                        active_groups.append((name, dump_path))
                 
         if not active_groups:
             return False

@@ -31,6 +31,7 @@ from .ui_ai_references_panel import RefDropContainer, AiGroupChipWidget
 # Диалог настроек группы Образцов (вызывается при клике по шестеренке)
 # -----------------------------------------------------------------------------
 from .ui_ai_group_dialog import AiGroupSettingsDialog
+from .ui_ai_fast_search import AiFastSearchWidget
 
 from .ui_widgets import CleanSpinBox
 from PyQt6.QtWidgets import QStackedWidget
@@ -354,10 +355,22 @@ class AiClassificationTab(QWidget):
         self.mode_stack = QStackedWidget()
         col_ref.addWidget(self.mode_stack)
         
-        # Page 1: References
-        self.page_ref = QWidget()
-        page_ref_layout = QVBoxLayout(self.page_ref)
-        page_ref_layout.setContentsMargins(0, 0, 0, 0)
+        # Page 1: References (Tabbed)
+        self.page_ref = QTabWidget()
+        self.page_ref.setStyleSheet("""
+            QTabWidget::pane { border: 1px solid #444; border-radius: 4px; background: #1e1e1e; }
+            QTabBar::tab { background: #2b2b2b; color: #aaa; padding: 6px 12px; border: 1px solid #444; border-bottom: none; border-top-left-radius: 4px; border-top-right-radius: 4px; }
+            QTabBar::tab:selected { background: #3b82f6; color: white; border-color: #2563eb; }
+        """)
+        
+        # Tab 0: Fast Search
+        self.fast_search_widget = AiFastSearchWidget()
+        self.page_ref.addTab(self.fast_search_widget, "Быстрый поиск" if AppContext.is_ru() else "Fast Search")
+        
+        # Tab 1: Reference Manager (Old Layout)
+        self.ref_manager_widget = QWidget()
+        page_ref_layout = QVBoxLayout(self.ref_manager_widget)
+        page_ref_layout.setContentsMargins(0, 4, 0, 0)
         page_ref_layout.setSpacing(4)
 
         
@@ -403,6 +416,8 @@ class AiClassificationTab(QWidget):
         
         self.scroll_ref.setWidget(self.ref_container)
         page_ref_layout.addWidget(self.scroll_ref)
+        
+        self.page_ref.addTab(self.ref_manager_widget, "Менеджер образцов" if AppContext.is_ru() else "Reference Manager")
         self.mode_stack.addWidget(self.page_ref)
         
         # Page 2: Text Search
@@ -1698,7 +1713,22 @@ class AiClassificationTab(QWidget):
             widget.set_error_highlight(False)
             
         is_cluster = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 2
-        if not is_cluster and not text_query:
+        is_ref_mode = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 0
+        is_fast_search = is_ref_mode and hasattr(self, 'page_ref') and getattr(self.page_ref, 'currentIndex', lambda: -1)() == 0
+        
+        fast_search_dump = None
+        
+        if is_fast_search:
+            pos_paths = self.fast_search_widget.get_pos_paths()
+            if not pos_paths:
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Icon.NoIcon)
+                msg.setWindowTitle("Ошибка" if AppContext.is_ru() else "Error")
+                msg.setText("Добавьте хотя бы один позитивный образец для поиска!" if AppContext.is_ru() else "Add at least one positive sample for search!")
+                msg.exec()
+                return
+            fast_search_dump = self.fast_search_widget.generate_temp_dump()
+        elif is_ref_mode and not text_query:
             settings = load_ai_settings()
             enabled_groups = [name for name, info in settings.get("groups", {}).items() if info.get("enabled", True)]
             
@@ -1833,7 +1863,8 @@ class AiClassificationTab(QWidget):
             text_queries=text_queries_dict,
             negative_queries=negative_queries,
             use_cache=use_cache,
-            use_gpu=use_gpu
+            use_gpu=use_gpu,
+            fast_search_dump=fast_search_dump
         )
         
         if not hasattr(self, 'facade'):
@@ -1861,6 +1892,20 @@ class AiClassificationTab(QWidget):
             QPushButton:disabled { background-color: #222; color: #555; font-weight: 900; font-size: 14px; border: 1px solid #333; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
         """)
         self.scan_finished.emit()
+        
+        # Подсветка зоны Быстрого поиска, если лица не найдены
+        if "На добавленных образцах не найдены лица" in error_msg:
+            is_fast_search = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 0 and hasattr(self, 'page_ref') and getattr(self.page_ref, 'currentIndex', lambda: -1)() == 0
+            if is_fast_search:
+                self.fast_search_widget.pos_area.setStyleSheet("""
+                    QListWidget { background-color: #3b1111; border: 2px dashed #ef4444; border-radius: 8px; padding: 10px; }
+                """)
+                QTimer.singleShot(3000, lambda: self.fast_search_widget.pos_area.setStyleSheet("""
+                    QListWidget { background-color: #2b2b2b; border: 2px dashed #444; border-radius: 8px; padding: 10px; }
+                    QListWidget:hover { border-color: #3b82f6; }
+                    QListWidget::item { border-radius: 6px; background-color: #333; }
+                    QListWidget::item:selected { background-color: #3b82f6; }
+                """))
 
     def on_scan_progress(self, stage, percent, text, scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, empty):
         self.progress_bar.setMaximum(100)

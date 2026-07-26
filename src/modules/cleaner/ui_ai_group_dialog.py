@@ -830,6 +830,8 @@ class AiGroupSettingsDialog(QDialog):
             self.accept()
 
     def closeEvent(self, event):
+        if hasattr(self, 'hover_tooltip') and self.hover_tooltip:
+            self.hover_tooltip.hide()
         if self.temp_dir and os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir, ignore_errors=True)
         super().closeEvent(event)

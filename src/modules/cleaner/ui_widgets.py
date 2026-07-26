@@ -523,6 +523,7 @@ class ImageHoverToolTip(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent, Qt.WindowType.ToolTip | Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet("background-color: #2b2b2b; border: 2px solid #3b82f6; padding: 2px; border-radius: 6px;")
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.hide()
         
     def show_image(self, path: str, pos: QPoint, is_face: bool = False):

@@ -132,7 +132,7 @@ class AiClassifier:
             
             dump_info = load_dump_info(dump_path)
             g_type = dump_info.get("search_type", dump_info.get("type", "face"))
-            pos_count = dump_info.get("pos_count", 0)
+            pos_count = dump_info.get("pos_images_count", 0)
             self.group_types[name] = g_type
             
             # Check CLIP vectors length

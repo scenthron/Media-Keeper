@@ -75,7 +75,7 @@ class FastSearchDropArea(QListWidget):
                 background-color: #2b2b2b;
                 border: 2px dashed #444;
                 border-radius: 8px;
-                padding: 10px;
+                padding: 5px;
             }
             QListWidget:hover {
                 border-color: #3b82f6;
@@ -207,35 +207,6 @@ class AiFastSearchWidget(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         
-        # Mode selector
-        mode_layout = QHBoxLayout()
-        self.btn_mode_faces = QPushButton("Искать Лица" if self.is_ru else "Search Faces")
-        self.btn_mode_general = QPushButton("Общий контекст" if self.is_ru else "General Context")
-        
-        mode_style = """
-            QPushButton { background-color: #2b2b2b; color: #888; border: 1px solid #444; border-radius: 4px; padding: 6px 12px; font-weight: bold; }
-            QPushButton:checked { background-color: #16a34a; color: white; border-color: #15803d; }
-            QPushButton:hover:!checked { background-color: #333; }
-        """
-        self.btn_mode_faces.setStyleSheet(mode_style)
-        self.btn_mode_general.setStyleSheet(mode_style)
-        self.btn_mode_faces.setCheckable(True)
-        self.btn_mode_general.setCheckable(True)
-        self.btn_mode_faces.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_mode_general.setCursor(Qt.CursorShape.PointingHandCursor)
-        
-        self.btn_mode_faces.setChecked(True)
-        
-        self.mode_group = QButtonGroup(self)
-        self.mode_group.setExclusive(True)
-        self.mode_group.addButton(self.btn_mode_faces)
-        self.mode_group.addButton(self.btn_mode_general)
-        
-        mode_layout.addWidget(self.btn_mode_faces)
-        mode_layout.addWidget(self.btn_mode_general)
-        mode_layout.addStretch()
-        layout.addLayout(mode_layout)
-        
         # Drop areas (Horizontal layout: Pos on left, Neg on right)
         areas_layout = QHBoxLayout()
         
@@ -262,6 +233,36 @@ class AiFastSearchWidget(QWidget):
         self.neg_area.cleared_all.connect(self.clear_all)
         
         layout.addLayout(areas_layout)
+
+        # Mode selector
+        mode_layout = QHBoxLayout()
+        self.btn_mode_faces = QPushButton("Искать Лица" if self.is_ru else "Search Faces")
+        self.btn_mode_general = QPushButton("Общий контекст" if self.is_ru else "General Context")
+        
+        mode_style = """
+            QPushButton { background-color: #2b2b2b; color: #888; border: 1px solid #444; border-radius: 4px; padding: 6px 12px; font-weight: bold; }
+            QPushButton:checked { background-color: #16a34a; color: white; border-color: #15803d; }
+            QPushButton:hover:!checked { background-color: #333; }
+        """
+        self.btn_mode_faces.setStyleSheet(mode_style)
+        self.btn_mode_general.setStyleSheet(mode_style)
+        self.btn_mode_faces.setCheckable(True)
+        self.btn_mode_general.setCheckable(True)
+        self.btn_mode_faces.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_mode_general.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        self.btn_mode_faces.setChecked(True)
+        
+        self.mode_group = QButtonGroup(self)
+        self.mode_group.setExclusive(True)
+        self.mode_group.addButton(self.btn_mode_faces)
+        self.mode_group.addButton(self.btn_mode_general)
+        
+        mode_layout.addStretch()
+        mode_layout.addWidget(self.btn_mode_faces)
+        mode_layout.addWidget(self.btn_mode_general)
+        mode_layout.addStretch()
+        layout.addLayout(mode_layout)
 
     def clear_all(self):
         self.pos_area.clear_items()

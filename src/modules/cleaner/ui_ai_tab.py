@@ -1903,18 +1903,9 @@ class AiClassificationTab(QWidget):
         """)
         self.scan_finished.emit()
         
-        # Подсветка зоны Быстрого поиска, если лица не найдены
+        # Передача дефектных путей в виджет Быстрого поиска, если лица не найдены
         if "На добавленных образцах не найдены лица" in display_msg:
             if is_fast_search:
-                self.fast_search_widget.pos_area.setStyleSheet("""
-                    QListWidget { background-color: #3b1111; border: 2px dashed #ef4444; border-radius: 8px; padding: 10px; }
-                """)
-                QTimer.singleShot(3000, lambda: self.fast_search_widget.pos_area.setStyleSheet("""
-                    QListWidget { background-color: #2b2b2b; border: 2px dashed #444; border-radius: 8px; padding: 10px; }
-                    QListWidget:hover { border-color: #3b82f6; }
-                    QListWidget::item { border-radius: 6px; background-color: #333; }
-                    QListWidget::item:selected { background-color: #3b82f6; }
-                """))
                 if defective_paths:
                     self.fast_search_widget.pos_area.set_defective_paths(defective_paths)
                     self.fast_search_widget.neg_area.set_defective_paths(defective_paths)

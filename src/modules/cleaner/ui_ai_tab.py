@@ -1918,8 +1918,6 @@ class AiClassificationTab(QWidget):
                 if defective_paths:
                     self.fast_search_widget.pos_area.set_defective_paths(defective_paths)
                     self.fast_search_widget.neg_area.set_defective_paths(defective_paths)
-                    QTimer.singleShot(3000, lambda: self.fast_search_widget.pos_area.set_defective_paths([]))
-                    QTimer.singleShot(3000, lambda: self.fast_search_widget.neg_area.set_defective_paths([]))
 
     def on_scan_progress(self, stage, percent, text, scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, empty):
         self.progress_bar.setMaximum(100)

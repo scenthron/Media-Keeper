@@ -18,21 +18,6 @@ class RemovableImageDelegate(QStyledItemDelegate):
     def paint(self, painter: QPainter, option, index):
         super().paint(painter, option, index)
         
-        # If hovered, draw a close button overlay
-        if self.hovered_index is not None and self.hovered_index == index:
-            rect = option.rect
-            btn_rect = QRect(rect.right() - 20, rect.top() + 4, 16, 16)
-            
-            painter.save()
-            painter.setBrush(QColor(255, 0, 0, 200))
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(btn_rect)
-            
-            painter.setPen(QPen(Qt.GlobalColor.white, 2))
-            painter.drawLine(btn_rect.left() + 4, btn_rect.top() + 4, btn_rect.right() - 4, btn_rect.bottom() - 4)
-            painter.drawLine(btn_rect.right() - 4, btn_rect.top() + 4, btn_rect.left() + 4, btn_rect.bottom() - 4)
-            painter.restore()
-            
         path = index.data(Qt.ItemDataRole.UserRole)
         is_defective = hasattr(self, 'defective_paths') and path in self.defective_paths
         
@@ -49,6 +34,21 @@ class RemovableImageDelegate(QStyledItemDelegate):
             sz = min(rect.width(), rect.height()) // 3
             painter.drawLine(center_x - sz, center_y - sz, center_x + sz, center_y + sz)
             painter.drawLine(center_x + sz, center_y - sz, center_x - sz, center_y + sz)
+            painter.restore()
+
+        # If hovered, draw a close button overlay on top
+        if self.hovered_index is not None and self.hovered_index == index:
+            rect = option.rect
+            btn_rect = QRect(rect.right() - 20, rect.top() + 4, 16, 16)
+            
+            painter.save()
+            painter.setBrush(QColor(255, 0, 0, 200))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(btn_rect)
+            
+            painter.setPen(QPen(Qt.GlobalColor.white, 2))
+            painter.drawLine(btn_rect.left() + 4, btn_rect.top() + 4, btn_rect.right() - 4, btn_rect.bottom() - 4)
+            painter.drawLine(btn_rect.right() - 4, btn_rect.top() + 4, btn_rect.left() + 4, btn_rect.bottom() - 4)
             painter.restore()
 
 class FastSearchDropArea(QListWidget):

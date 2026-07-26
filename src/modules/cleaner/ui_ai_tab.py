@@ -1728,6 +1728,9 @@ class AiClassificationTab(QWidget):
                 msg.exec()
                 return
             fast_search_dump = self.fast_search_widget.generate_temp_dump()
+            # Сброс подсветки дефектных картинок от предыдущего запуска
+            self.fast_search_widget.pos_area.set_defective_paths([])
+            self.fast_search_widget.neg_area.set_defective_paths([])
         elif is_ref_mode and not text_query:
             settings = load_ai_settings()
             enabled_groups = [name for name, info in settings.get("groups", {}).items() if info.get("enabled", True)]
@@ -1906,10 +1909,30 @@ class AiClassificationTab(QWidget):
         
         # Передача дефектных путей в виджет Быстрого поиска, если лица не найдены
         if "На добавленных образцах не найдены лица" in display_msg:
-            if is_fast_search:
-                if defective_paths:
-                    self.fast_search_widget.pos_area.set_defective_paths(defective_paths)
-                    self.fast_search_widget.neg_area.set_defective_paths(defective_paths)
+            if is_fast_search and defective_paths:
+                # defective_paths содержит temp-пути (pos_xxx.jpg), маппим обратно на оригинальные
+                defective_basenames = set()
+                for dp in defective_paths:
+                    bn = os.path.basename(dp)
+                    # extract_images_to_temp добавляет префикс "pos_" или "neg_"
+                    if bn.startswith("pos_"):
+                        bn = bn[4:]
+                    elif bn.startswith("neg_"):
+                        bn = bn[4:]
+                    defective_basenames.add(bn.lower())
+                
+                original_defective = []
+                for orig_path in self.fast_search_widget.pos_area.paths + self.fast_search_widget.neg_area.paths:
+                    if os.path.basename(orig_path).lower() in defective_basenames:
+                        original_defective.append(orig_path)
+                
+                import logging
+                logging.info(f"[FastSearch] Defective temp basenames: {defective_basenames}")
+                logging.info(f"[FastSearch] Mapped to original paths: {original_defective}")
+                
+                if original_defective:
+                    self.fast_search_widget.pos_area.set_defective_paths(original_defective)
+                    self.fast_search_widget.neg_area.set_defective_paths(original_defective)
 
     def on_scan_progress(self, stage, percent, text, scanned_files, groups_found, wasted_bytes, scanned_bytes, files_found, empty):
         self.progress_bar.setMaximum(100)

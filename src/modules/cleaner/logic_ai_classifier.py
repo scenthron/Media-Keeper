@@ -283,8 +283,10 @@ class AiClassifier:
                                 max_sim = sim
                                 matched_bbox = file_face.get("bbox")
                             
-                    mapped_score = (max_sim - 0.35) / (0.85 - 0.35)
+                    # ArcFace cosine similarity: ~0.18 = разные люди, ~0.55+ = идентичный ракурс
+                    mapped_score = (max_sim - 0.18) / (0.55 - 0.18)
                     mapped_score = max(0.0, min(1.0, float(mapped_score)))
+                    logging.debug(f"[FACE-SIM] {os.path.basename(filepath)}: raw_cosine={max_sim:.4f} → mapped={mapped_score:.2%}")
                     
                     if neg_faces:
                         max_neg = 0.0
@@ -295,7 +297,7 @@ class AiClassifier:
                                 sim = self._cosine_similarity(file_face["descriptor"], ref_neg)
                                 if sim > max_neg: max_neg = sim
                                 
-                        neg_mapped = (max_neg - 0.35) / (0.85 - 0.35)
+                        neg_mapped = (max_neg - 0.18) / (0.55 - 0.18)
                         neg_mapped = max(0.0, min(1.0, float(neg_mapped)))
                         mapped_score = max(0.0, mapped_score - (neg_mapped * neg_weight))
                         

@@ -1870,6 +1870,7 @@ class AiClassificationTab(QWidget):
         if not hasattr(self, 'facade'):
             self.facade = AiServiceFacade()
             self.facade.cache = self.cache
+            self.facade.engine = self.ai
             
         self.scan_start_time = time.time()
             

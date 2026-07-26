@@ -152,16 +152,22 @@ class AiClassifier:
             if needs_upgrade:
                 import logging
                 logging.info(f"Upgrading legacy or incomplete AI dump vectors for group: {name}")
+                logging.info(f"  ai engine initialized: {self.ai._is_initialized if hasattr(self.ai, '_is_initialized') else 'unknown'}")
                 temp_dir, pos_paths, neg_paths = extract_images_to_temp(dump_path)
+                logging.info(f"  extracted pos_paths: {len(pos_paths)}, neg_paths: {len(neg_paths)}")
+                for pp in pos_paths:
+                    logging.info(f"    pos image: {pp} (exists={os.path.exists(pp)})")
                 
                 try:
                     new_pos_features, new_pos_faces = [], []
                     for p in pos_paths:
                         # Extract CLIP
                         emb = self.ai.extract_clip_embedding(p)
+                        logging.info(f"  CLIP for {os.path.basename(p)}: {'OK' if emb is not None else 'FAIL'}")
                         if emb is not None: new_pos_features.append(emb)
                         # Extract Face
                         faces = self.ai.extract_faces(p)
+                        logging.info(f"  Faces for {os.path.basename(p)}: {len(faces) if faces is not None else 'None (engine not ready?)'}")
                         if faces is not None and len(faces) > 0:
                             for f in faces: new_pos_faces.append(f["descriptor"])
                         elif g_type in ("face", "mixed"):
@@ -176,7 +182,9 @@ class AiClassifier:
                             for f in faces: new_neg_faces.append(f["descriptor"])
                         elif g_type in ("face", "mixed"):
                             self.last_defective_faces.append(p)
-                            
+                    
+                    logging.info(f"  Upgrade results: pos_features={len(new_pos_features)}, pos_faces={len(new_pos_faces)}, neg_features={len(new_neg_features)}, neg_faces={len(new_neg_faces)}")
+                    
                     # Re-save dump with new vectors
                     save_dump(
                         dump_path, g_type, pos_paths, neg_paths,
@@ -188,6 +196,7 @@ class AiClassifier:
                     # Reload the new features
                     pos_feat, neg_feat = load_features(dump_path, "features")
                     pos_faces, neg_faces = load_features(dump_path, "faces")
+                    logging.info(f"  After reload: pos_feat={len(pos_feat)}, pos_faces={len(pos_faces)}")
                 finally:
                     shutil.rmtree(temp_dir, ignore_errors=True)
             

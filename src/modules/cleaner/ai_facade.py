@@ -182,6 +182,11 @@ class AiCoreWorker(QRunnable):
                 self.signals.error.emit("Не удалось инициализировать нейросети.")
                 return
 
+            # CRITICAL: Подменяем AiEngine в классификаторе на уже инициализированный,
+            # иначе classifier.ai останется неинициализированным и extract_faces вернёт None
+            if self.classifier:
+                self.classifier.ai = self.engine
+
             if self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier:
                 import logging
                 if not self.classifier.load_active_references(fast_search_dump=self.request.fast_search_dump):

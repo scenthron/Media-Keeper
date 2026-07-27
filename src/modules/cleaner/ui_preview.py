@@ -460,10 +460,12 @@ class CleanerPreviewWidget(QWidget):
         
         from PyQt6.QtCore import QByteArray, QBuffer
         from utils_io import ensure_long_path
+        from PyQt6.QtCore import QBuffer
         try:
             with open(ensure_long_path(path), 'rb') as f:
                 data = f.read()
-            self._movie_buffer = QBuffer(QByteArray(data))
+            self._movie_buffer = QBuffer()
+            self._movie_buffer.setData(data)
             self._movie_buffer.open(QBuffer.OpenModeFlag.ReadOnly)
             ext = os.path.splitext(path)[1].lower().strip('.')
             fmt = ext.encode() if ext else b''

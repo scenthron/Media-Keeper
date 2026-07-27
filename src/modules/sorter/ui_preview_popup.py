@@ -642,11 +642,12 @@ class LargePreviewPopup(QDialog):
             
             self.content_layout.addWidget(self.lbl_media)
             
-            from PyQt6.QtCore import QByteArray, QBuffer
+            from PyQt6.QtCore import QBuffer
             try:
                 with open(ensure_long_path(filepath), 'rb') as f:
                     data = f.read()
-                self._movie_buffer = QBuffer(QByteArray(data))
+                self._movie_buffer = QBuffer()
+                self._movie_buffer.setData(data)
                 self._movie_buffer.open(QBuffer.OpenModeFlag.ReadOnly)
                 ext = os.path.splitext(filepath)[1].lower().strip('.')
                 fmt = ext.encode() if ext else b''

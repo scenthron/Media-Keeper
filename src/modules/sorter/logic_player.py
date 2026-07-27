@@ -246,17 +246,17 @@ class PlayerMixin:
                 is_animated = reader.supportsAnimation() and reader.imageCount() > 1
                 logging.info(f"[PlayerMixin] File: {filename}, supportsAnimation: {reader.supportsAnimation()}, imageCount: {reader.imageCount()}, resolved is_animated: {is_animated}")
             
-            # 1. Images (Static)
-            if ext in IMAGE_EXTS or (is_gif_or_webp and not is_animated):
-                self.video_controls.hide()
-                self.current_media_is_video = False
-                self.viewer.set_image(QPixmap(self.current_file_path))
-                
-            # 2. Animations (GIF, WebP)
-            elif is_gif_or_webp and is_animated:
+            # 1. Animations (GIF, WebP)
+            if is_gif_or_webp and is_animated:
                 self.video_controls.hide()
                 self.current_media_is_video = False
                 self.viewer.set_animated(self.current_file_path)
+                
+            # 2. Images (Static)
+            elif ext in IMAGE_EXTS:
+                self.video_controls.hide()
+                self.current_media_is_video = False
+                self.viewer.set_image(QPixmap(self.current_file_path))
                 
             # 3. Video
             elif ext in get_filtered_exts(VIDEO_EXTS, "logic_player_video"):

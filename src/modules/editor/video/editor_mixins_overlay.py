@@ -113,8 +113,8 @@ class EditorOverlayMixin:
                         data = file.read()
                     self._overlay_movie_buffer = QBuffer(QByteArray(data))
                     self._overlay_movie_buffer.open(QBuffer.OpenModeFlag.ReadOnly)
-                    movie = QMovie(self._overlay_movie_buffer)
-                    if ext: movie.setFormat(ext.strip('.').encode())
+                    fmt = ext.strip('.').encode() if ext else b''
+                    movie = QMovie(self._overlay_movie_buffer, fmt)
                     self.overlay_item.set_movie(movie)
                 except Exception:
                     self.overlay_item.set_movie(QMovie(f))

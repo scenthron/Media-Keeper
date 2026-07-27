@@ -648,9 +648,9 @@ class LargePreviewPopup(QDialog):
                     data = f.read()
                 self._movie_buffer = QBuffer(QByteArray(data))
                 self._movie_buffer.open(QBuffer.OpenModeFlag.ReadOnly)
-                self.movie = QMovie(self._movie_buffer)
                 ext = os.path.splitext(filepath)[1].lower().strip('.')
-                if ext: self.movie.setFormat(ext.encode())
+                fmt = ext.encode() if ext else b''
+                self.movie = QMovie(self._movie_buffer, fmt)
             except Exception:
                 self.movie = QMovie(filepath)
                 

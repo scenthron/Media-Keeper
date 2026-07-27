@@ -1137,7 +1137,6 @@ class ZoomableGraphicsView(QGraphicsView):
         
         from PyQt6.QtCore import QByteArray, QBuffer
         from utils_io import ensure_long_path
-        import os
         try:
             with open(ensure_long_path(filepath), 'rb') as f:
                 data = f.read()

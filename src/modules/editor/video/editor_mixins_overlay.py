@@ -108,7 +108,6 @@ class EditorOverlayMixin:
             if ext == '.gif':
                 from PyQt6.QtCore import QByteArray, QBuffer
                 from utils_io import ensure_long_path
-                import os
                 try:
                     with open(ensure_long_path(f), 'rb') as file:
                         data = file.read()

@@ -1134,7 +1134,21 @@ class ZoomableGraphicsView(QGraphicsView):
         self.current_is_video = False
         if self.time_overlay: self.time_overlay.hide()
         self.clear_scene_content()
-        self.current_movie = QMovie(filepath)
+        
+        from PyQt6.QtCore import QByteArray, QBuffer
+        from utils_io import ensure_long_path
+        import os
+        try:
+            with open(ensure_long_path(filepath), 'rb') as f:
+                data = f.read()
+            self._movie_buffer = QBuffer(QByteArray(data))
+            self._movie_buffer.open(QBuffer.OpenModeFlag.ReadOnly)
+            self.current_movie = QMovie(self._movie_buffer)
+            ext = os.path.splitext(filepath)[1].lower().strip('.')
+            if ext: self.current_movie.setFormat(ext.encode())
+        except Exception:
+            self.current_movie = QMovie(filepath)
+            
         self.current_movie.frameChanged.connect(lambda: self.pixmap_item.setPixmap(self.current_movie.currentPixmap()))
         self.current_movie.jumpToNextFrame()
         self.current_movie.start()

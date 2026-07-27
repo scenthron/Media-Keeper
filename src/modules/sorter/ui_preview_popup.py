@@ -642,7 +642,20 @@ class LargePreviewPopup(QDialog):
             
             self.content_layout.addWidget(self.lbl_media)
             
-            self.movie = QMovie(filepath)
+            from PyQt6.QtCore import QByteArray, QBuffer
+            from utils_io import ensure_long_path
+            import os
+            try:
+                with open(ensure_long_path(filepath), 'rb') as f:
+                    data = f.read()
+                self._movie_buffer = QBuffer(QByteArray(data))
+                self._movie_buffer.open(QBuffer.OpenModeFlag.ReadOnly)
+                self.movie = QMovie(self._movie_buffer)
+                ext = os.path.splitext(filepath)[1].lower().strip('.')
+                if ext: self.movie.setFormat(ext.encode())
+            except Exception:
+                self.movie = QMovie(filepath)
+                
             self.lbl_media.setMovie(self.movie)
             
             self._gif_size_initialized = False

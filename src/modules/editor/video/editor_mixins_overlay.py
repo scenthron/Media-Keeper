@@ -106,7 +106,19 @@ class EditorOverlayMixin:
             
             ext = os.path.splitext(f)[1].lower()
             if ext == '.gif':
-                self.overlay_item.set_movie(QMovie(f))
+                from PyQt6.QtCore import QByteArray, QBuffer
+                from utils_io import ensure_long_path
+                import os
+                try:
+                    with open(ensure_long_path(f), 'rb') as file:
+                        data = file.read()
+                    self._overlay_movie_buffer = QBuffer(QByteArray(data))
+                    self._overlay_movie_buffer.open(QBuffer.OpenModeFlag.ReadOnly)
+                    movie = QMovie(self._overlay_movie_buffer)
+                    if ext: movie.setFormat(ext.strip('.').encode())
+                    self.overlay_item.set_movie(movie)
+                except Exception:
+                    self.overlay_item.set_movie(QMovie(f))
             else:
                 self.overlay_item.set_pixmap(QPixmap(f))
             self._schedule_cc_preview()

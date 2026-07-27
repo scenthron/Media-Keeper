@@ -458,7 +458,20 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.set_playing_state(True)
         self.time_overlay.hide()
         
-        self.movie = QMovie(path)
+        from PyQt6.QtCore import QByteArray, QBuffer
+        from utils_io import ensure_long_path
+        import os
+        try:
+            with open(ensure_long_path(path), 'rb') as f:
+                data = f.read()
+            self._movie_buffer = QBuffer(QByteArray(data))
+            self._movie_buffer.open(QBuffer.OpenModeFlag.ReadOnly)
+            self.movie = QMovie(self._movie_buffer)
+            ext = os.path.splitext(path)[1].lower().strip('.')
+            if ext: self.movie.setFormat(ext.encode())
+        except Exception:
+            self.movie = QMovie(path)
+            
         self.movie.frameChanged.connect(self._on_movie_frame)
         self.movie.start()
         self.pixmap_item.show()

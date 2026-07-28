@@ -524,6 +524,21 @@ class FileOpsMixin:
         # Ensure we don't exceed the OS limit for QFileSystemWatcher
         paths_to_watch = list(set(paths_to_watch))[:max_total_paths]
         
+        # Initialize subdirs cache for these paths to avoid false positive reloads
+        known = getattr(self, '_known_subdirs_cache', {})
+        for p in paths_to_watch:
+            norm_p = os.path.normpath(p)
+            if norm_p not in known and os.path.exists(norm_p):
+                try:
+                    current_subdirs = set()
+                    for entry in os.scandir(norm_p):
+                        if entry.is_dir() and entry.name != ".mediakeeper":
+                            current_subdirs.add(entry.name)
+                    known[norm_p] = current_subdirs
+                except Exception:
+                    pass
+        self._known_subdirs_cache = known
+        
         if paths_to_watch:
             try:
                 self.fs_watcher.addPaths(paths_to_watch)

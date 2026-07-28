@@ -559,7 +559,24 @@ class FileOpsMixin:
             if norm_unsort and norm_p == norm_unsort:
                 unsort_changed = True
             else:
-                sort_changed = True
+                # To prevent rebuilding the entire category tree on simple file moves,
+                # we only trigger sort_changed if the subdirectories of the dirty path have changed.
+                try:
+                    if os.path.exists(norm_p):
+                        current_subdirs = set()
+                        for entry in os.scandir(norm_p):
+                            if entry.is_dir() and entry.name != ".mediakeeper":
+                                current_subdirs.add(entry.name)
+                        
+                        known = getattr(self, '_known_subdirs_cache', {})
+                        if norm_p not in known or known[norm_p] != current_subdirs:
+                            sort_changed = True
+                            known[norm_p] = current_subdirs
+                            self._known_subdirs_cache = known
+                    else:
+                        sort_changed = True # The watched directory itself was deleted
+                except Exception:
+                    sort_changed = True # Fallback if scandir fails
 
         if unsort_changed:
             logging.info("Watcher: Incoming directory changed. Quietly refreshing files list.")
@@ -601,6 +618,7 @@ class FileOpsMixin:
             if new_name == old_name: return
 
             new_path = os.path.join(parent_dir, new_name)
+            self._ignore_watcher = True
             self._stop_all_media_players()
             from PyQt6.QtCore import QThreadPool
             QThreadPool.globalInstance().waitForDone(1000)
@@ -641,7 +659,7 @@ class FileOpsMixin:
                 self.lbl_filename.setText(new_name)
                 
                 self.viewer.update_file_path_in_view(old_path, new_path)
-                if self.viewer.stack.currentIndex() == 0:
+                if hasattr(self, 'viewer') and getattr(self.viewer, 'current_view_mode', -1) == 0:
                     self.show_current_file()
                 else:
                     self.on_selection_changed()
@@ -818,6 +836,7 @@ class FileOpsMixin:
         except Exception as e:
             logging.debug(f"Failed to cancel thumbnail generation: {e}")
 
+        self._ignore_watcher = True
         self._stop_all_media_players(is_only_images=is_only_images, is_single_file=is_single_file)
 
         pairs = []
@@ -1016,7 +1035,7 @@ class FileOpsMixin:
                 
                 self.viewer.sync_active_index(self.current_index)
                 
-                if self.viewer.stack.currentIndex() == 0:
+                if getattr(self.viewer, 'current_view_mode', 0) == 0:
                     self.show_current_file()
                     logging.info(f"[PROFILER] Шаг 4: show_current_file (одиночный) завершен. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
                 else:
@@ -1031,7 +1050,7 @@ class FileOpsMixin:
                 else:
                     msg = error_msg if error_msg else AppContext.tr("msg_unknown_error")
                     QMessageBox.critical(self, AppContext.tr("err_title"), f"{AppContext.tr('msg_move_fail')}\n\n{msg}")
-                if self.isVisible() and self.viewer.stack.currentIndex() == 0:
+                if self.isVisible() and getattr(self.viewer, 'current_view_mode', 0) == 0:
                     self.show_current_file()
         except Exception as e:
             logging.error(f"Error handling finished move: {e}", exc_info=True)
@@ -1060,6 +1079,7 @@ class FileOpsMixin:
             if confirm_dlg.exec() != QDialog.DialogCode.Accepted:
                 return
 
+            self._ignore_watcher = True
             self._stop_all_media_players()
 
             deleted_paths = []
@@ -1137,7 +1157,7 @@ class FileOpsMixin:
             self.viewer.remove_files_from_view(deleted_paths)
             self.viewer.sync_active_index(self.current_index)
             
-            if hasattr(self, 'viewer') and hasattr(self.viewer, 'stack') and self.viewer.stack.currentIndex() == 0:
+            if hasattr(self, 'viewer') and getattr(self.viewer, 'current_view_mode', -1) == 0:
                 self.show_current_file()
             else:
                 self.on_selection_changed()
@@ -1181,13 +1201,12 @@ class FileOpsMixin:
             
         succeeded = []
         try:
+            # Блокируем watcher
+            self._ignore_watcher = True
             self._stop_all_media_players()
             from PyQt6.QtCore import QThreadPool
             QThreadPool.globalInstance().waitForDone(1000)
             QApplication.processEvents()
-
-            # Блокируем watcher
-            self._ignore_watcher = True
 
             resolved_pairs = []
             total_size = 0
@@ -1337,7 +1356,7 @@ class FileOpsMixin:
                 
                 if group_enabled:
                     self.viewer.sync_files_queue(self.UNSORT_DIR, self.files_queue, self.current_index, silent=True)
-                    if self.viewer.stack.currentIndex() == 0:
+                    if getattr(self.viewer, 'current_view_mode', -1) == 0:
                         self.show_current_file()
                     else:
                         self.on_selection_changed()
@@ -1353,7 +1372,7 @@ class FileOpsMixin:
                         files_to_insert.sort(key=lambda x: x[1])
                         self.viewer.insert_files_into_view(files_to_insert)
                         self.viewer.sync_active_index(self.current_index)
-                        if self.viewer.stack.currentIndex() == 0:
+                        if getattr(self.viewer, 'current_view_mode', -1) == 0:
                             self.show_current_file()
                         else:
                             self.on_selection_changed()
@@ -1370,7 +1389,7 @@ class FileOpsMixin:
         self.setFocus()
 
     def on_affix_click(self, btn_type: str, payload: str, btn_widget: object = None) -> None:
-        if self.viewer.stack.currentIndex() == 0:
+        if getattr(self.viewer, 'current_view_mode', -1) == 0:
             # Одиночный режим просмотра
             if not self.current_file_path or not os.path.exists(self.current_file_path):
                 return
@@ -1521,7 +1540,7 @@ class FileOpsMixin:
                 self.current_file_path = target_paths[self.current_file_path]
                 self.lbl_filename.setText(os.path.basename(self.current_file_path))
                 
-            if self.viewer.stack.currentIndex() == 0:
+            if getattr(self.viewer, 'current_view_mode', -1) == 0:
                 self.show_current_file()
             else:
                 self.on_selection_changed()
@@ -1535,7 +1554,7 @@ class FileOpsMixin:
                 except Exception:
                     pass
             QMessageBox.critical(self, AppContext.tr("err_title"), f"{AppContext.tr('msg_rename_affix_err')} {e}")
-            if self.viewer.stack.currentIndex() == 0:
+            if getattr(self.viewer, 'current_view_mode', -1) == 0:
                 self.show_current_file()
         finally:
             QTimer.singleShot(1000, lambda: setattr(self, '_ignore_watcher', False))
@@ -1719,7 +1738,7 @@ class FileOpsMixin:
                 self.current_file_path = target_paths[self.current_file_path]
                 self.lbl_filename.setText(os.path.basename(self.current_file_path))
                 
-            if self.viewer.stack.currentIndex() == 0:
+            if getattr(self.viewer, 'current_view_mode', -1) == 0:
                 self.show_current_file()
             else:
                 self.on_selection_changed()
@@ -1733,7 +1752,7 @@ class FileOpsMixin:
                 except Exception:
                     pass
             QMessageBox.critical(self, AppContext.tr("err_title"), f"{AppContext.tr('msg_rename_affix_err')} {e}")
-            if self.viewer.stack.currentIndex() == 0:
+            if getattr(self.viewer, 'current_view_mode', -1) == 0:
                 self.show_current_file()
         finally:
             QTimer.singleShot(1000, lambda: setattr(self, '_ignore_watcher', False))

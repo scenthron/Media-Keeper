@@ -1202,6 +1202,7 @@ class ZoomableGraphicsView(QGraphicsView):
         doc = self.text_item.document()
         option = QTextOption()
         option.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
         doc.setDefaultTextOption(option)
         
         base_w, base_h = 1280.0, 720.0
@@ -1225,6 +1226,7 @@ class ZoomableGraphicsView(QGraphicsView):
         doc = self.text_item.document()
         option = QTextOption()
         option.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
         doc.setDefaultTextOption(option)
         
         base_w, base_h = 1280.0, 720.0
@@ -1790,6 +1792,7 @@ class SorterBaseListView(QListWidget):
         
         video_widget = self.get_video_widget()
         video_widget.hide()
+        video_widget.setParent(None)
         
         self.current_hover_item = None
         self.current_hover_path = ""
@@ -2431,6 +2434,8 @@ class SorterListView(SorterBaseListView):
 class SorterPlaceholderWidget(QWidget):
     items_dropped = pyqtSignal(list, bool)
     browse_requested = pyqtSignal()
+    double_clicked = pyqtSignal()
+    middle_clicked = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -2444,6 +2449,7 @@ class SorterPlaceholderWidget(QWidget):
         self.lbl_message.setStyleSheet("color: #888888; font-size: 18px; font-weight: 500;")
         self.lbl_message.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_message.setWordWrap(True)
+        self.lbl_message.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         layout.addWidget(self.lbl_message)
         
         self.btn_browse = QPushButton()
@@ -2496,9 +2502,16 @@ class SorterPlaceholderWidget(QWidget):
         if paths:
             self.items_dropped.emit(paths, is_external)
             event.acceptProposedAction()
-        else:
-            event.ignore()
 
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.double_clicked.emit()
+        super().mouseDoubleClickEvent(event)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.middle_clicked.emit()
+        super().mousePressEvent(event)
 
 def find_main_app(widget):
     """Поднимается по дереву родителей до первого объекта с global_volume."""
@@ -2562,6 +2575,8 @@ class SorterViewerArea(QWidget):
         self.empty_placeholder_widget = SorterPlaceholderWidget(self)
         self.empty_placeholder_widget.items_dropped.connect(self.items_dropped.emit)
         self.empty_placeholder_widget.browse_requested.connect(self.browse_requested.emit)
+        self.empty_placeholder_widget.double_clicked.connect(self._on_placeholder_double_clicked)
+        self.empty_placeholder_widget.middle_clicked.connect(self._on_placeholder_middle_clicked)
         self.stack.addWidget(self.empty_placeholder_widget)
         
         self.current_view_mode = 0
@@ -3271,10 +3286,9 @@ class SorterViewerArea(QWidget):
         if getattr(self, 'current_view_mode', 0) == 0:
             self.loading_overlay.hide()
             self.selection_changed.emit()
-            if self.stack.currentIndex() == 0:
-                main_window = self.window()
-                if main_window and hasattr(main_window, 'show_current_file'):
-                    main_window.show_current_file()
+            main_window = self.window()
+            if main_window and hasattr(main_window, 'show_current_file'):
+                main_window.show_current_file()
             return
             
         # Сбор элементов для рендеринга с учетом группировки
@@ -3513,7 +3527,7 @@ class SorterViewerArea(QWidget):
                     
             self.selection_changed.emit()
             
-            if self.stack.currentIndex() == 0:
+            if getattr(self, 'current_view_mode', -1) == 0:
                 main_window = self.window()
                 if main_window and hasattr(main_window, 'show_current_file'):
                     main_window.show_current_file()
@@ -3957,3 +3971,11 @@ class SorterViewerArea(QWidget):
                 if widget and hasattr(widget, 'set_selected'):
                     widget.set_selected(item.isSelected())
         self.selection_changed.emit()
+
+    def _on_placeholder_double_clicked(self):
+        if self.single_view.double_click_callback:
+            self.single_view.double_click_callback()
+
+    def _on_placeholder_middle_clicked(self):
+        if self.single_view.middle_click_callback:
+            self.single_view.middle_click_callback()

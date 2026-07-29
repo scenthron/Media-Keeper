@@ -17,19 +17,12 @@ class ScanWorker(QRunnable):
         from utils_io import ensure_long_path
         long_folder = ensure_long_path(self.path)
         try:
-            try:
-                with os.scandir(long_folder) as it:
-                    for entry in it:
-                        if entry.is_file():
-                            file_count += 1
-            except:
-                pass
-                
             for root, dirs, files in os.walk(long_folder):
                 if '.mediakeeper' in dirs:
                     dirs.remove('.mediakeeper')
                 
                 for f in files:
+                    file_count += 1
                     try:
                         fp = os.path.join(root, f)
                         total_size += os.path.getsize(fp)

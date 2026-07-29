@@ -9,6 +9,9 @@ from PyQt6.QtGui import QIcon, QPixmap, QColor, QPen, QPainter, QImage
 
 from config import AppContext
 from .logic_ai_dump import save_dump
+from logic_paths import get_app_data_dir
+import shutil
+import uuid
 
 class RemovableImageDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
@@ -118,14 +121,30 @@ class FastSearchDropArea(QListWidget):
 
     def add_files(self, files: list[str]):
         valid_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.webp', '.avif'}
+        temp_dir = os.path.join(get_app_data_dir(), "Ai_assets", "Temp", "FastSearch")
+        os.makedirs(temp_dir, exist_ok=True)
+        
         for f in files:
             ext = os.path.splitext(f)[1].lower()
-            if ext in valid_exts and f not in self.paths:
-                self.paths.append(f)
-                item = QListWidgetItem()
-                item.setIcon(QIcon(self._create_thumbnail(f)))
-                item.setData(Qt.ItemDataRole.UserRole, f)
-                self.addItem(item)
+            if ext in valid_exts:
+                # To prevent duplicates in UI, we check if the ORIGINAL file was already added.
+                # But since we store temp paths in self.paths, we'll just check if a file with this original name was added?
+                # Actually, self.paths will contain temp paths, so `f not in self.paths` will always be true if they drop it again.
+                # To keep it simple, we'll just copy it.
+                
+                new_filename = f"{uuid.uuid4().hex}{ext}"
+                temp_path = os.path.join(temp_dir, new_filename)
+                
+                try:
+                    shutil.copy2(f, temp_path)
+                    self.paths.append(temp_path)
+                    item = QListWidgetItem()
+                    item.setIcon(QIcon(self._create_thumbnail(temp_path)))
+                    item.setData(Qt.ItemDataRole.UserRole, temp_path)
+                    self.addItem(item)
+                except Exception as e:
+                    import logging
+                    logging.error(f"Failed to copy {f} to temp for Fast Search: {e}")
                 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
@@ -174,7 +193,10 @@ class FastSearchDropArea(QListWidget):
                 rect = self.visualItemRect(item)
                 # Close button rect
                 if e.pos().x() >= rect.right() - 20 and e.pos().y() <= rect.top() + 20:
-                    self.paths.remove(item.data(Qt.ItemDataRole.UserRole))
+                    path_to_remove = item.data(Qt.ItemDataRole.UserRole)
+                    self.paths.remove(path_to_remove)
+                    try: os.remove(path_to_remove)
+                    except: pass
                     self.takeItem(self.row(item))
                     self.delegate.hovered_index = None
                     return
@@ -193,6 +215,9 @@ class FastSearchDropArea(QListWidget):
             self.cleared_all.emit()
             
     def clear_items(self):
+        for p in self.paths:
+            try: os.remove(p)
+            except: pass
         self.clear()
         self.paths = []
 
@@ -201,7 +226,15 @@ class AiFastSearchWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.is_ru = AppContext.is_ru()
+        self._init_temp_dir()
         self._init_ui()
+        
+    def _init_temp_dir(self):
+        temp_dir = os.path.join(get_app_data_dir(), "Ai_assets", "Temp", "FastSearch")
+        if os.path.exists(temp_dir):
+            try: shutil.rmtree(temp_dir)
+            except: pass
+        os.makedirs(temp_dir, exist_ok=True)
         
     def _init_ui(self):
         layout = QVBoxLayout(self)

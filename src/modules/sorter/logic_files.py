@@ -557,6 +557,11 @@ class FileOpsMixin:
         self.fs_debounce_timer.start()
 
     def on_fs_debounce_timeout(self):
+        if getattr(self, '_ignore_watcher', False):
+            # Откладываем обработку, пока идет внутренняя операция (перемещение и т.д.)
+            self.fs_debounce_timer.start()
+            return
+            
         dirty = getattr(self, '_dirty_watcher_paths', set())
         self._dirty_watcher_paths = set()
         if not dirty:

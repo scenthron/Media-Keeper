@@ -360,7 +360,8 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.quick_target_timeline.setLoopCount(0)  # бесконечно
         self.quick_target_timeline.valueChanged.connect(self._on_quick_target_pulse)
         
-        self.viewer.set_mode(1) # По умолчанию открываем в режиме плиток (Grid)
+        initial_mode = self.config.get("view_mode", 0)
+        self.viewer.set_mode(initial_mode)
         
         QTimer.singleShot(300, self.show_current_file)
         self.setFocus()

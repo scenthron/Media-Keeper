@@ -506,7 +506,11 @@ class UiSetupMixin:
             self.btn_del.setToolTip(tooltip_html)
             
         # Настройка кнопки отмены
-        txt = f"<b>Откат</b> <span style='font-weight: normal; font-size: 12px;'>+ журнал</span>"
+        display_undo_key = undo_key.replace("Return", "Enter") if undo_key else ""
+        if display_undo_key:
+            txt = f"<b>Откат</b> <span style='font-weight: normal; font-size: 12px;'>+ журнал</span><br><span style='font-size: 10px; font-weight: normal;'>({display_undo_key})</span>"
+        else:
+            txt = f"<b>Откат</b> <span style='font-weight: normal; font-size: 12px;'>+ журнал</span>"
         self.set_button_rich_text(self.btn_undo, txt)
         self.btn_undo.setStyleSheet(f"""
             QPushButton {{

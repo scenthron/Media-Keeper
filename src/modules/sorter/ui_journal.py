@@ -20,7 +20,8 @@ class JournalDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Журнал перемещений")
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        # Окно будет поверх родительского окна (Media Keeper), но не поверх других программ
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowStaysOnTopHint)
         self.resize(850, 500)
         self.journal = MoveJournal.inst()
         self._init_ui()

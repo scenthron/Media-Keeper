@@ -43,7 +43,7 @@ class MoveJournal:
     def add_entry(self, pairs):
         """
         Добавляет новую запись о перемещении.
-        pairs: список кортежей/списков [(src, dst), (src2, dst2), ...]
+        pairs: список кортежей/списков [(dst, src), (dst2, src2), ...]
         """
         if not pairs:
             return
@@ -51,7 +51,7 @@ class MoveJournal:
         entry = {
             "id": str(uuid.uuid4()),
             "timestamp": time.time(),
-            "pairs": [{"src": p[0], "dst": p[1]} for p in pairs],
+            "pairs": [{"dst": p[0], "src": p[1]} for p in pairs],
             "status": "valid" # 'valid', 'done'
         }
         
@@ -70,6 +70,11 @@ class MoveJournal:
             if entry.get("id") == entry_id:
                 entry["status"] = "done"
                 break
+        self._save()
+        
+    def clear(self):
+        """Полностью очищает журнал."""
+        self.entries = []
         self._save()
         
     def get_entries(self):

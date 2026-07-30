@@ -46,10 +46,13 @@ class JournalDialog(QDialog):
         btn_layout = QHBoxLayout()
         self.btn_refresh = QPushButton("Обновить проверку")
         self.btn_refresh.clicked.connect(self._load_data)
+        self.btn_clear = QPushButton("Очистить журнал")
+        self.btn_clear.clicked.connect(self._clear_journal)
         self.btn_close = QPushButton("Закрыть")
         self.btn_close.clicked.connect(self.close)
         
         btn_layout.addWidget(self.btn_refresh)
+        btn_layout.addWidget(self.btn_clear)
         btn_layout.addStretch()
         btn_layout.addWidget(self.btn_close)
         
@@ -101,17 +104,19 @@ class JournalDialog(QDialog):
             
             # 3. Откуда
             src_dir = os.path.dirname(pairs[0]["src"]) if pairs else ""
-            item_src = QTableWidgetItem(src_dir)
+            item_src = QTableWidgetItem(self._abbrev_path(src_dir))
+            item_src.setToolTip(src_dir)
             if not os.path.exists(src_dir):
                 item_src.setForeground(QColor("red"))
-                item_src.setToolTip("Папка отсутствует (будет создана при возврате)")
+                item_src.setToolTip(f"Папка отсутствует (будет создана при возврате)\n{src_dir}")
             else:
                 item_src.setForeground(QColor("green"))
             self.table.setItem(row, 2, item_src)
             
             # 4. Куда
             dst_dir = os.path.dirname(pairs[0]["dst"]) if pairs else ""
-            item_dst = QTableWidgetItem(dst_dir)
+            item_dst = QTableWidgetItem(self._abbrev_path(dst_dir))
+            item_dst.setToolTip(dst_dir)
             if not os.path.exists(dst_dir):
                 item_dst.setForeground(QColor("red"))
             else:
@@ -121,21 +126,37 @@ class JournalDialog(QDialog):
             # 5. Действие
             status = entry.get("status", "valid")
             if status == "done":
-                btn_action = QPushButton("Выполнено")
-                btn_action.setEnabled(False)
+                lbl = QLabel("Выполнено")
+                lbl.setStyleSheet("color: #4CAF50; font-weight: bold;")
+                lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.table.setCellWidget(row, 4, lbl)
             elif found_count == 0:
-                btn_action = QPushButton("Файлы не найдены")
-                btn_action.setEnabled(False)
+                lbl = QLabel("Файлы не найдены")
+                lbl.setStyleSheet("color: #F44336;")
+                lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.table.setCellWidget(row, 4, lbl)
             else:
                 text = "Вернуть файлы" if found_count == len(pairs) else f"Вернуть {found_count}/{len(pairs)}"
                 btn_action = QPushButton(text)
                 btn_action.clicked.connect(lambda checked, e=entry: self._trigger_undo(e))
-                
-            self.table.setCellWidget(row, 4, btn_action)
+                self.table.setCellWidget(row, 4, btn_action)
 
     def _trigger_undo(self, entry):
         self.do_undo_entry.emit(entry)
         self.close()
+
+    def _clear_journal(self):
+        self.journal.clear()
+        self._load_data()
+
+    def _abbrev_path(self, path):
+        if not path: return ""
+        from utils_io import strip_long_path_prefix
+        path = strip_long_path_prefix(path)
+        parts = path.replace("\\", "/").split("/")
+        if len(parts) > 2:
+            return f"{parts[0]}/.../{parts[-1]}"
+        return path
 
     def _show_context_menu(self, pos: QPoint):
         item = self.table.itemAt(pos)

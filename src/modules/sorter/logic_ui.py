@@ -336,6 +336,8 @@ class UiSetupMixin:
         self.btn_del.folder_dropped.connect(self.handle_trash_drop)
         
         self.btn_undo.clicked.connect(self.undo_action)
+        self.btn_undo.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.btn_undo.customContextMenuRequested.connect(self._show_journal)
         self.btn_next.clicked.connect(self.next_file)
         
         for btn in [self.btn_prev, self.btn_del, self.btn_undo, self.btn_next]:
@@ -504,7 +506,7 @@ class UiSetupMixin:
             self.btn_del.setToolTip(tooltip_html)
             
         # Настройка кнопки отмены
-        txt = self.format_button_text_with_hotkey(base_undo_text, undo_key)
+        txt = f"<b>Откат</b> <span style='font-weight: normal; font-size: 12px;'>+ журнал</span>"
         self.set_button_rich_text(self.btn_undo, txt)
         self.btn_undo.setStyleSheet(f"""
             QPushButton {{
@@ -524,7 +526,16 @@ class UiSetupMixin:
         undo_base_tip = AppContext.tr("tooltip_undo_action")
         if undo_key_display:
             undo_base_tip += f" ({undo_key_display})"
+        undo_base_tip += "\n(ПКМ для открытия журнала перемещений)"
         self.btn_undo.setToolTip(undo_base_tip)
+        
+    def _show_journal(self, pos):
+        from .ui_journal import JournalDialog
+        if not hasattr(self, '_journal_dialog') or not self._journal_dialog.isVisible():
+            self._journal_dialog = JournalDialog(self)
+            self._journal_dialog.do_undo_entry.connect(self.undo_action)
+        self._journal_dialog.show()
+        self._journal_dialog.activateWindow()
 
     def update_ui_text(self):
         self.lbl_unsort_count.text_prefix_key = "lbl_unsort"

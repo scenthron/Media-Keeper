@@ -17,6 +17,7 @@ from ui_dialogs_generic import ProgressDialog, SmartNameDialog, FileConflictDial
 from .ui_sidebar_category import CategoryWidget
 from .ui_sidebar_leaf import LeafNodeWidget
 from .workers import ScanThread, MoveThread
+from .logic_journal import MoveJournal
 from .logic_automation import AutomationConfig, TemplateEngine
 from utils_common import format_size, get_unique_filepath
 from logic_cache import DirCache
@@ -654,6 +655,7 @@ class FileOpsMixin:
                 os.rename(long_current, long_new_path)
                 
                 self.history.append([(new_path, self.current_file_path)])
+                MoveJournal.inst().add_entry([(new_path, self.current_file_path)])
                 
                 long_unsort = ensure_long_path(self.UNSORT_DIR)
                 rel_old = safe_relpath(long_current, long_unsort)
@@ -1004,6 +1006,7 @@ class FileOpsMixin:
                     history_entry.append((dst, src))
 
                 self.history.append(history_entry)
+                MoveJournal.inst().add_entry(history_entry)
 
                 # Перестраиваем files_queue
                 succeeded_src_rels = [safe_relpath(src, self.UNSORT_DIR) for src, dst in succeeded_pairs]
@@ -1210,14 +1213,20 @@ class FileOpsMixin:
             self.viewer.navigate_vertical(1)
         self.setFocus()
 
-    def undo_action(self) -> None:
-        if not self.history: return
-        action = self.history.pop()
-        
-        if isinstance(action, tuple) and len(action) == 2 and isinstance(action[0], str):
-            pairs = [action]
+    def undo_action(self, journal_entry=None) -> None:
+        if journal_entry:
+            action = None
+            pairs = [(p["dst"], p["src"]) for p in journal_entry.get("pairs", [])]
+            self._pending_undo_entry = journal_entry
         else:
-            pairs = action  # list of (dest_path, orig_path)
+            if not self.history: return
+            action = self.history.pop()
+            
+            if isinstance(action, tuple) and len(action) == 2 and isinstance(action[0], str):
+                pairs = [action]
+            else:
+                pairs = action  # list of (dest_path, orig_path)
+            self._pending_undo_entry = None
             
         if not pairs:
             return
@@ -1288,7 +1297,8 @@ class FileOpsMixin:
         except Exception as e:
             logging.error(f"Undo setup error: {e}", exc_info=True)
             QMessageBox.critical(self, AppContext.tr("err_title"), AppContext.tr("msg_undo_fail") + f"\n{e}")
-            self.history.append(action)
+            if action:
+                self.history.append(action)
             QTimer.singleShot(1000, lambda: setattr(self, '_ignore_watcher', False))
 
     def on_undo_finished(self, success, error_msg, succeeded_pairs, failed_pairs=None):
@@ -1296,6 +1306,10 @@ class FileOpsMixin:
             self.locked_files.clear()
             
         try:
+            if getattr(self, '_pending_undo_entry', None) and succeeded_pairs:
+                MoveJournal.inst().mark_done(self._pending_undo_entry["id"])
+                self._pending_undo_entry = None
+                
             if hasattr(self, 'undo_progress_timer') and self.undo_progress_timer and self.undo_progress_timer.isActive():
                 self.undo_progress_timer.stop()
             self._safe_close_dialog('undo_dlg')
@@ -1531,6 +1545,7 @@ class FileOpsMixin:
                 
             # Сохраняем в историю одной операцией
             self.history.append(rename_pairs)
+            MoveJournal.inst().add_entry(rename_pairs)
             self.session_counters = simulated_counters
             
             # Обновляем RAM-кэш и UI
@@ -1729,6 +1744,7 @@ class FileOpsMixin:
                 
             # Сохраняем в историю одной операцией
             self.history.append(rename_pairs)
+            MoveJournal.inst().add_entry(rename_pairs)
             self.session_counters = simulated_counters
             
             # Обновляем RAM-кэш и UI

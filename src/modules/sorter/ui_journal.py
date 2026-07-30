@@ -2,10 +2,10 @@ import os
 import datetime
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-    QTableWidget, QTableWidgetItem, QHeaderView, QMenu, QAbstractItemView
+    QTableWidget, QTableWidgetItem, QHeaderView, QMenu, QAbstractItemView, QApplication
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint
-from PyQt6.QtGui import QIcon, QPixmap, QColor, QClipboard, QApplication
+from PyQt6.QtGui import QIcon, QPixmap, QColor, QClipboard
 
 from config import AppContext
 from utils_common import format_size

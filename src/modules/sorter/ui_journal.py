@@ -270,7 +270,5 @@ class JournalDialog(QDialog):
             pass
 
     def _open_and_select_in_explorer(self, path):
-        try:
-            subprocess.Popen(f'explorer /select,"{path}"')
-        except Exception:
-            pass
+        from utils_common import reveal_in_explorer
+        reveal_in_explorer(path)

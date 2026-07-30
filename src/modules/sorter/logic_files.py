@@ -107,6 +107,7 @@ class FileOpsMixin:
         # Передаем пустые расширения в ScanThread, чтобы он сканировал все файлы без дисковой фильтрации
         self.scan_thread = ScanThread(self.UNSORT_DIR, recursive, [], "include", parent=self)
         self.scan_thread.finished_scan.connect(self.on_scan_finished)
+        self.scan_thread.finished.connect(self.scan_thread.deleteLater)
         self.scan_thread.start()
 
     def load_virtual_files(self, file_paths: list[str], source_name: str):
@@ -176,7 +177,6 @@ class FileOpsMixin:
             self.scan_thread.cancel()
             self._scan_was_cancelled = True
             self.scan_thread.wait()  # Гарантируем завершение потока до закрытия диалога
-            self.scan_thread.deleteLater()
             self.scan_thread = None
         self._safe_close_dialog('scan_dlg')
 
@@ -187,16 +187,14 @@ class FileOpsMixin:
                 self._scan_was_cancelled = False
                 self._safe_close_dialog('scan_dlg')
                 if hasattr(self, 'scan_thread') and self.scan_thread:
-                    self.scan_thread.deleteLater()
-                self.scan_thread = None
+                    self.scan_thread = None
                 return
 
             if hasattr(self, 'scan_thread') and self.scan_thread and getattr(self.scan_thread, '_is_cancelled', False):
                 logging.info("Результаты сканирования проигнорированы, так как оно было отменено.")
                 self._safe_close_dialog('scan_dlg')
                 if hasattr(self, 'scan_thread') and self.scan_thread:
-                    self.scan_thread.deleteLater()
-                self.scan_thread = None
+                    self.scan_thread = None
                 return
 
             current_set = set(f['rel_path'] for f in getattr(self, '_raw_dir_files', [])) if getattr(self, '_raw_dir_files', None) is not None else None
@@ -208,8 +206,7 @@ class FileOpsMixin:
                 logging.debug("Scan finished: No changes in file list, skipping UI refresh. Checking missing thumbnails...")
                 self._safe_close_dialog('scan_dlg')
                 if hasattr(self, 'scan_thread') and self.scan_thread:
-                    self.scan_thread.deleteLater()
-                self.scan_thread = None
+                    self.scan_thread = None
                 
                 if self.viewer.current_view_mode != 0:
                     from PyQt6.QtCore import QSize
@@ -264,8 +261,7 @@ class FileOpsMixin:
         self.lbl_unsort_count.update_info()
         self.lbl_todel_count.update_info()
         if hasattr(self, 'scan_thread') and self.scan_thread:
-            self.scan_thread.deleteLater()
-        self.scan_thread = None
+            self.scan_thread = None
 
     def apply_local_filters_and_sorting(self, trigger_sync=True):
         if not hasattr(self, '_raw_dir_files') or self._raw_dir_files is None:
@@ -962,6 +958,7 @@ class FileOpsMixin:
         self.move_thread.progress_update.connect(self.on_move_progress)
         self.move_thread.detailed_progress.connect(self.on_move_detailed_progress)
         self.move_thread.finished_move.connect(self.on_move_finished)
+        self.move_thread.finished.connect(self.move_thread.deleteLater)
         logging.info(f"[PROFILER] Запуск MoveThread. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
         self.move_thread.start()
 
@@ -1292,6 +1289,7 @@ class FileOpsMixin:
             self.undo_thread.progress_update.connect(lambda c, t, f: self.undo_dlg.set_current_file(c, f) if hasattr(self, 'undo_dlg') and self.undo_dlg else None)
             self.undo_thread.detailed_progress.connect(lambda c, t, o, ot: self.undo_dlg.update_bars(c, t, o, ot) if hasattr(self, 'undo_dlg') and self.undo_dlg else None)
             self.undo_thread.finished_move.connect(self.on_undo_finished)
+            self.undo_thread.finished.connect(self.undo_thread.deleteLater)
             self.undo_thread.start()
 
         except Exception as e:

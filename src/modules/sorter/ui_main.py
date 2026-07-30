@@ -118,6 +118,10 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         
         self.viewer.mode_changed.connect(self.on_view_mode_changed)
         self.viewer.selection_changed.connect(self.on_selection_changed)
+        
+        initial_mode = self.config.get("view_mode", 0)
+        self.viewer.set_mode(initial_mode)
+        
         self.viewer.grid_view.item_double_clicked.connect(self.on_item_double_clicked)
         self.viewer.list_view.item_double_clicked.connect(self.on_item_double_clicked)
         self.viewer.send_to_editor_requested.connect(self.on_send_to_editor_requested)
@@ -894,7 +898,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             self._incoming_dirty = False
 
         if self.current_file_path and os.path.exists(self.current_file_path):
-            if self.viewer.stack.currentIndex() == 0:
+            if getattr(self.viewer, 'current_view_mode', -1) == 0:
                 if self.media_player.source().isEmpty():
                     self.show_current_file()
             else:
@@ -975,7 +979,25 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
     def on_view_mode_changed(self, mode_idx):
         if hasattr(self, 'update_hotkeys_context'):
             self.update_hotkeys_context(mode_idx)
-            
+
+        self.pending_view_mode_idx = mode_idx
+
+        # Инициализируем таймер, если его еще нет
+        if not hasattr(self, 'view_mode_timer'):
+            from PyQt6.QtCore import QTimer
+            self.view_mode_timer = QTimer(self)
+            self.view_mode_timer.setSingleShot(True)
+            self.view_mode_timer.timeout.connect(self._apply_view_mode_changed)
+
+        # Перезапускаем таймер на 1000 мс (1 секунда)
+        self.view_mode_timer.start(1000)
+
+    def _apply_view_mode_changed(self):
+        mode_idx = getattr(self, 'pending_view_mode_idx', 0)
+        
+        self.config["view_mode"] = mode_idx
+        ConfigManager.save(self.config)
+        
         # Recalculate pagination size and queues
         if hasattr(self, 'apply_local_filters_and_sorting'):
             self.apply_local_filters_and_sorting(trigger_sync=False)
@@ -998,7 +1020,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             self.stop_playback()
             if hasattr(self, 'video_controls'):
                 self.video_controls.hide()
-            if self.current_index < len(self.files_queue):
+            if hasattr(self, 'files_queue') and self.current_index < len(self.files_queue):
                 # Ensure current file is selected
                 grid_item = self.viewer.get_grid_item(self.current_index)
                 list_item = self.viewer.get_list_item(self.current_index)

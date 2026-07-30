@@ -21,7 +21,8 @@ class ConfigManager:
         "session_loop": False,
         "session_segment_view": False,
         "auto_collapse_groups": True,
-        "pagination_size": 1000
+        "pagination_size": 1000,
+        "view_mode": 0
     }
     
     @staticmethod
@@ -49,12 +50,12 @@ class ConfigManager:
                         if k in config:
                             if k == "scan_subfolders":
                                 config[k] = (v.lower() == "true")
-                            elif k == "max_nesting_depth":
+                            elif k == "max_nesting_depth" or k == "pagination_size" or k == "view_mode":
                                 try: 
                                     config[k] = int(v)
                                 except ValueError: 
-                                    config[k] = 5
-                                    logging.warning(f"Некорректное значение для '{k}' в settings.ini: '{v}'. Используется значение по умолчанию 5.")
+                                    config[k] = ConfigManager.DEFAULT_CONFIG.get(k, 0)
+                                    logging.warning(f"Некорректное значение для '{k}' в settings.ini: '{v}'. Используется значение по умолчанию {config[k]}.")
                             elif k == "hover_delay":
                                 try:
                                     config[k] = float(v)

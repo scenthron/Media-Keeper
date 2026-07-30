@@ -88,12 +88,18 @@ class DummyMediaPlayer:
     def setSource(self, src: object) -> None:
         pass
 
+from unittest.mock import patch
+
 class TestBatchRename(unittest.TestCase):
     def setUp(self) -> None:
         self.test_dir = tempfile.mkdtemp()
         self.sorter = DummySorter(self.test_dir)
+        
+        self.patcher = patch('modules.sorter.logic_journal.MoveJournal.add_entry')
+        self.mock_add_entry = self.patcher.start()
 
     def tearDown(self) -> None:
+        self.patcher.stop()
         shutil.rmtree(self.test_dir)
 
     def test_validator_regex(self) -> None:

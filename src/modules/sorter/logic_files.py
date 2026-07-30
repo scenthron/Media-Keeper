@@ -56,9 +56,12 @@ class FileOpsMixin:
         """
         logging.info(f"Requesting file list refresh (show_progress={show_progress}).")
         
-        if hasattr(self, 'scan_thread') and self.scan_thread and self.scan_thread.isRunning():
-            logging.debug("Scan already in progress, skipping.")
-            return
+        try:
+            if hasattr(self, 'scan_thread') and self.scan_thread and self.scan_thread.isRunning():
+                logging.debug("Scan already in progress, skipping.")
+                return
+        except RuntimeError:
+            self.scan_thread = None
 
         if not self.UNSORT_DIR or not os.path.exists(self.UNSORT_DIR):
             if not getattr(self, 'virtual_folder_name', None):
@@ -813,9 +816,12 @@ class FileOpsMixin:
                 logging.error(f"Destination not found: {destination_dir}")
                 return
                 
-            if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
-                logging.debug("Move already in progress, skipping.")
-                return
+            try:
+                if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
+                    logging.debug("Move already in progress, skipping.")
+                    return
+            except RuntimeError:
+                self.move_thread = None
 
             # Определяем список файлов для перемещения
             if self.viewer.current_view_mode == 0:
@@ -1081,6 +1087,7 @@ class FileOpsMixin:
         finally:
             # Разблокируем watcher с задержкой
             QTimer.singleShot(1000, lambda: setattr(self, '_ignore_watcher', False))
+            self.move_thread = None
             self.setFocus()
 
     def delete_file(self):
@@ -1420,6 +1427,7 @@ class FileOpsMixin:
                     err_dlg.exec()
         finally:
             QTimer.singleShot(1000, lambda: setattr(self, '_ignore_watcher', False))
+            self.undo_thread = None
             
         self.setFocus()
 
@@ -1444,8 +1452,11 @@ class FileOpsMixin:
                 return
 
         # ЗАЩИТА: Если перемещение/переименование уже идет, игнорируем
-        if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
-            return
+        try:
+            if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
+                return
+        except RuntimeError:
+            self.move_thread = None
 
         template = payload
         errors = []
@@ -1643,8 +1654,11 @@ class FileOpsMixin:
 
 
         # ЗАЩИТА: Если перемещение/переименование уже идет, игнорируем
-        if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
-            return
+        try:
+            if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
+                return
+        except RuntimeError:
+            self.move_thread = None
 
         template = payload
         errors = []

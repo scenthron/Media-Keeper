@@ -77,5 +77,10 @@ class MoveJournal:
         self.entries = []
         self._save()
         
+    def remove_entry(self, entry_id):
+        """Удаляет конкретную запись по ID."""
+        self.entries = [e for e in self.entries if e.get("id") != entry_id]
+        self._save()
+        
     def get_entries(self):
         return self.entries

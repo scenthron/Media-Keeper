@@ -1,10 +1,12 @@
 import os
+import sys
+import subprocess
 import datetime
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
     QTableWidget, QTableWidgetItem, QHeaderView, QMenu, QAbstractItemView, QApplication
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint
+from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint, QEvent
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QClipboard
 
 from config import AppContext
@@ -13,13 +15,13 @@ from logic_paths import get_app_data_dir
 from .logic_journal import MoveJournal
 
 class JournalDialog(QDialog):
-    do_undo_entry = pyqtSignal(dict) # Эмитит весь словарь entry
+    do_undo_entry = pyqtSignal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Журнал перемещений")
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
-        self.resize(800, 500)
+        self.resize(850, 500)
         self.journal = MoveJournal.inst()
         self._init_ui()
         self._load_data()
@@ -27,21 +29,32 @@ class JournalDialog(QDialog):
     def _init_ui(self):
         layout = QVBoxLayout(self)
         
-        self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(["Дата/Время", "Файлы", "Откуда", "Куда", "Действие"])
+        self.table = QTableWidget(0, 6)
+        self.table.setHorizontalHeaderLabels(["Дата/Время", "Файлы", "Откуда", "Куда", "", "Действие"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents) # Кнопка удаления
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents) # Кнопка возврата
         
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
+        self.table.cellDoubleClicked.connect(self._handle_double_click)
+        self.table.viewport().installEventFilter(self)
         
         layout.addWidget(self.table)
+        
+        hint_lbl = QLabel(
+            "Подсказка: <b>Двойной клик</b> по зеленому файлу — открыть файл. "
+            "<b>Средняя кнопка (колесико)</b> по строке — открыть папку. "
+            "<b>ПКМ</b> — меню копирования."
+        )
+        hint_lbl.setStyleSheet("color: #aaa; font-size: 11px;")
+        layout.addWidget(hint_lbl)
         
         btn_layout = QHBoxLayout()
         self.btn_refresh = QPushButton("Обновить проверку")
@@ -85,9 +98,8 @@ class JournalDialog(QDialog):
                 
             item_files = QTableWidgetItem(file_text)
             item_files.setToolTip(tooltip)
-            item_files.setData(Qt.ItemDataRole.UserRole, entry) # сохраняем entry
+            item_files.setData(Qt.ItemDataRole.UserRole, entry)
             
-            # Проверка существования файлов по новому пути
             found_count = 0
             for p in pairs:
                 if os.path.exists(p["dst"]):
@@ -123,23 +135,30 @@ class JournalDialog(QDialog):
                 item_dst.setForeground(QColor("green"))
             self.table.setItem(row, 3, item_dst)
             
-            # 5. Действие
+            # 5. Кнопка удаления записи (Крестик)
+            btn_del = QPushButton("✖")
+            btn_del.setToolTip("Удалить запись из журнала (файлы останутся на местах)")
+            btn_del.setStyleSheet("QPushButton { color: #f44336; border: 1px solid #444; border-radius: 3px; max-width: 25px; min-width: 25px; padding: 2px; } QPushButton:hover { background-color: #f44336; color: white; }")
+            btn_del.clicked.connect(lambda checked, e_id=entry.get("id"): self._remove_entry(e_id))
+            self.table.setCellWidget(row, 4, btn_del)
+            
+            # 6. Действие
             status = entry.get("status", "valid")
             if status == "done":
                 lbl = QLabel("Выполнено")
                 lbl.setStyleSheet("color: #4CAF50; font-weight: bold;")
                 lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.table.setCellWidget(row, 4, lbl)
+                self.table.setCellWidget(row, 5, lbl)
             elif found_count == 0:
                 lbl = QLabel("Файлы не найдены")
                 lbl.setStyleSheet("color: #F44336;")
                 lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.table.setCellWidget(row, 4, lbl)
+                self.table.setCellWidget(row, 5, lbl)
             else:
                 text = "Вернуть файлы" if found_count == len(pairs) else f"Вернуть {found_count}/{len(pairs)}"
                 btn_action = QPushButton(text)
                 btn_action.clicked.connect(lambda checked, e=entry: self._trigger_undo(e))
-                self.table.setCellWidget(row, 4, btn_action)
+                self.table.setCellWidget(row, 5, btn_action)
 
     def _trigger_undo(self, entry):
         self.do_undo_entry.emit(entry)
@@ -147,6 +166,10 @@ class JournalDialog(QDialog):
 
     def _clear_journal(self):
         self.journal.clear()
+        self._load_data()
+        
+    def _remove_entry(self, entry_id):
+        self.journal.remove_entry(entry_id)
         self._load_data()
 
     def _abbrev_path(self, path):
@@ -175,3 +198,79 @@ class JournalDialog(QDialog):
             pairs = entry.get("pairs", [])
             text = "\n".join(p["dst"] for p in pairs)
             QApplication.clipboard().setText(text)
+
+    def eventFilter(self, source, event):
+        if source is self.table.viewport() and event.type() == QEvent.Type.MouseButtonRelease:
+            if event.button() == Qt.MouseButton.MiddleButton:
+                pos = event.pos()
+                item = self.table.itemAt(pos)
+                if item:
+                    self._handle_middle_click(item)
+        return super().eventFilter(source, event)
+        
+    def _handle_double_click(self, row, col):
+        item_files = self.table.item(row, 1)
+        entry = item_files.data(Qt.ItemDataRole.UserRole)
+        if not entry: return
+        
+        pairs = entry.get("pairs", [])
+        if len(pairs) != 1: return # Игнорируем двойной клик по группе
+        
+        path = pairs[0]["dst"]
+        if os.path.exists(path):
+            try:
+                os.startfile(path)
+            except Exception as e:
+                pass
+        else:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.information(self, "Файл не найден", "Этот файл физически отсутствует на диске или был удален/перемещен.")
+        
+    def _handle_middle_click(self, item):
+        row = item.row()
+        col = item.column()
+        item_files = self.table.item(row, 1)
+        entry = item_files.data(Qt.ItemDataRole.UserRole)
+        if not entry: return
+        
+        pairs = entry.get("pairs", [])
+        if not pairs: return
+        
+        # Если кликнули по колонке "Откуда" (2), открываем src папку
+        if col == 2:
+            src_dir = os.path.dirname(pairs[0]["src"])
+            if os.path.exists(src_dir):
+                self._open_in_explorer(src_dir)
+            return
+                
+        # Если кликнули по колонке "Куда" (3), открываем dst папку
+        if col == 3:
+            dst_dir = os.path.dirname(pairs[0]["dst"])
+            if os.path.exists(dst_dir):
+                self._open_in_explorer(dst_dir)
+            return
+            
+        # Иначе (например, клик по файлу)
+        if len(pairs) == 1:
+            path = pairs[0]["dst"]
+            if os.path.exists(path):
+                self._open_and_select_in_explorer(path)
+            else:
+                from PyQt6.QtWidgets import QMessageBox
+                QMessageBox.information(self, "Файл не найден", "Этот файл физически отсутствует на диске.")
+        else:
+            dst_dir = os.path.dirname(pairs[0]["dst"])
+            if os.path.exists(dst_dir):
+                self._open_in_explorer(dst_dir)
+                
+    def _open_in_explorer(self, path):
+        try:
+            os.startfile(path)
+        except Exception:
+            pass
+
+    def _open_and_select_in_explorer(self, path):
+        try:
+            subprocess.Popen(f'explorer /select,"{path}"')
+        except Exception:
+            pass

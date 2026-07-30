@@ -10,8 +10,8 @@ from utils_io import smart_move_file, ensure_long_path
 class ScanThread(QThread):
     finished_scan = pyqtSignal(list)
 
-    def __init__(self, folder, recursive, extensions=None, filter_mode="include"):
-        super().__init__()
+    def __init__(self, folder, recursive, extensions=None, filter_mode="include", parent=None):
+        super().__init__(parent)
         self.folder = folder
         self.recursive = recursive
         self.extensions = extensions if extensions is not None else []
@@ -107,8 +107,8 @@ class MoveThread(QThread):
     detailed_progress = pyqtSignal(object, object, object, object)
     finished_move = pyqtSignal(bool, str, list, list)
 
-    def __init__(self, src, dst=None, start_time=None):
-        super().__init__()
+    def __init__(self, src, dst=None, start_time=None, parent=None):
+        super().__init__(parent)
         self.start_time = start_time
         if isinstance(src, list):
             self.pairs = src

@@ -104,7 +104,7 @@ class FileOpsMixin:
 
         logging.info(f"Starting scan thread: {self.UNSORT_DIR}")
         # Передаем пустые расширения в ScanThread, чтобы он сканировал все файлы без дисковой фильтрации
-        self.scan_thread = ScanThread(self.UNSORT_DIR, recursive, [], "include")
+        self.scan_thread = ScanThread(self.UNSORT_DIR, recursive, [], "include", parent=self)
         self.scan_thread.finished_scan.connect(self.on_scan_finished)
         self.scan_thread.start()
 
@@ -256,6 +256,9 @@ class FileOpsMixin:
             else:
                 if hasattr(self, 'update_file_info_label'):
                     self.update_file_info_label()
+                if hasattr(self, 'video_controls'):
+                    active = AppContext.session_video_speed_active if getattr(self, 'current_media_is_video', False) else AppContext.session_audio_speed_active
+                    self.video_controls.update_speed_button(AppContext.session_fast_speed_val, active)
             
         self.lbl_unsort_count.update_info()
         self.lbl_todel_count.update_info()
@@ -953,7 +956,7 @@ class FileOpsMixin:
             self.locked_files = set()
         self.locked_files.update(os.path.normpath(strip_long_path_prefix(src)) for src, dst in pairs)
         
-        self.move_thread = MoveThread(pairs, start_time=start_time)
+        self.move_thread = MoveThread(pairs, start_time=start_time, parent=self)
         self.move_thread.progress_update.connect(self.on_move_progress)
         self.move_thread.detailed_progress.connect(self.on_move_detailed_progress)
         self.move_thread.finished_move.connect(self.on_move_finished)
@@ -1276,7 +1279,7 @@ class FileOpsMixin:
             self.locked_files.update(os.path.normpath(strip_long_path_prefix(src)) for src, dst in resolved_pairs)
 
             import time
-            self.undo_thread = MoveThread(resolved_pairs, start_time=time.perf_counter())
+            self.undo_thread = MoveThread(resolved_pairs, start_time=time.perf_counter(), parent=self)
             self.undo_thread.progress_update.connect(lambda c, t, f: self.undo_dlg.set_current_file(c, f) if hasattr(self, 'undo_dlg') and self.undo_dlg else None)
             self.undo_thread.detailed_progress.connect(lambda c, t, o, ot: self.undo_dlg.update_bars(c, t, o, ot) if hasattr(self, 'undo_dlg') and self.undo_dlg else None)
             self.undo_thread.finished_move.connect(self.on_undo_finished)

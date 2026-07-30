@@ -163,7 +163,7 @@ class JournalDialog(QDialog):
 
     def _trigger_undo(self, entry):
         self.do_undo_entry.emit(entry)
-        self.close()
+        # Окно больше не закрывается автоматически
 
     def _clear_journal(self):
         self.journal.clear()

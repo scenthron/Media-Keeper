@@ -14,7 +14,7 @@ if hasattr(sys, '__interactivehook__'):
 
 # --- Внедрение DirectML (если включено в настройках) ---
 try:
-    from modules.cleaner.utils_directml import DirectMLManager
+    from modules.cleaner.core_directml import DirectMLManager
     DirectMLManager.initialize()
 except Exception as e:
     print("DirectML Init Error:", e)

@@ -898,7 +898,7 @@ class AiClassificationTab(QWidget):
         self.chk_use_gpu.setCursor(Qt.CursorShape.PointingHandCursor)
         
         # Интеграция с DirectMLManager
-        from modules.cleaner.utils_directml import DirectMLManager
+        from modules.cleaner.core_directml import DirectMLManager
         from modules.sorter.logic_config import ConfigManager
         
         _use_dml = ConfigManager.load().get("use_directml", False)
@@ -2178,7 +2178,7 @@ class AiClassificationTab(QWidget):
         import configparser
         from logic_paths import get_app_data_dir
         import os
-        from modules.cleaner.utils_directml import get_directml_dir
+        from modules.cleaner.core_directml import get_directml_dir
         
         if not checked:
             path = os.path.join(get_app_data_dir(), "settings.ini")

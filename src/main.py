@@ -14,17 +14,8 @@ if hasattr(sys, '__interactivehook__'):
 
 # --- Внедрение DirectML (если включено в настройках) ---
 try:
-    import configparser
-    from logic_paths import get_app_data_dir
-    _cfg_path = os.path.join(get_app_data_dir(), "settings.ini")
-    if os.path.exists(_cfg_path):
-        _cp = configparser.ConfigParser()
-        _cp.read(_cfg_path, encoding='utf-8')
-        if "Main" in _cp and _cp.getboolean("Main", "use_directml", fallback=False):
-            _dml_path = os.path.join(get_app_data_dir(), "models", "onnx_directml")
-            if os.path.exists(_dml_path):
-                sys.path.insert(0, _dml_path)
-                import onnxruntime  # Импортируем ДО PyQt6, иначе конфликт DLL (DirectML vs QtDirect3D)
+    from modules.cleaner.utils_directml import DirectMLManager
+    DirectMLManager.initialize()
 except Exception as e:
     print("DirectML Init Error:", e)
 # --------------------------------------------------------

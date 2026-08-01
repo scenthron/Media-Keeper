@@ -894,36 +894,36 @@ class AiClassificationTab(QWidget):
         params_sub_layout.addLayout(neg_slider_layout)
         # -------------------------------
         
-        self.chk_use_gpu = QCheckBox("Аппаратное ускорение (GPU)" if AppContext.is_ru() else "Hardware Acceleration (GPU)")
+        self.chk_use_gpu = QCheckBox("Аппаратное ускорение (GPU DirectML)" if AppContext.is_ru() else "Hardware Acceleration (GPU DirectML)")
         self.chk_use_gpu.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.chk_use_gpu.setStyleSheet("""
-            QCheckBox { color: white; font-weight: bold; font-size: 13px; }
-            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
-            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
-        """)
-        self.chk_use_gpu.setToolTip("Разрешить ИИ-движку использовать видеокарту (если драйверы поддерживаются)." if AppContext.is_ru() else "Allow AI engine to use GPU (if supported by drivers).")
-        self.chk_use_gpu.setChecked(True)
-        params_sub_layout.addWidget(self.chk_use_gpu)
         
-        self.chk_use_directml = QCheckBox("Включить супер-ускорение (DirectML)" if AppContext.is_ru() else "Enable Super-Acceleration (DirectML)")
-        self.chk_use_directml.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.chk_use_directml.setStyleSheet("""
-            QCheckBox { color: #f59e0b; font-weight: bold; font-size: 13px; }
-            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
-            QCheckBox::indicator:checked { background-color: #f59e0b; border-color: #f59e0b; }
-        """)
-        self.chk_use_directml.setToolTip("Скачать библиотеку от Microsoft для честного аппаратного ускорения на любой видеокарте Windows." if AppContext.is_ru() else "Download Microsoft library for true hardware acceleration on any Windows GPU.")
+        # Интеграция с DirectMLManager
+        from modules.cleaner.utils_directml import DirectMLManager
+        from modules.sorter.logic_config import ConfigManager
         
-        # Загружаем сохраненное состояние из конфига
-        try:
-            from modules.sorter.logic_config import ConfigManager
-            _use_dml = ConfigManager.load().get("use_directml", False)
-            self.chk_use_directml.setChecked(_use_dml)
-        except Exception:
-            self.chk_use_directml.setChecked(False)
+        _use_dml = ConfigManager.load().get("use_directml", False)
+        
+        if _use_dml and not DirectMLManager.is_ready:
+            # Ошибка инициализации или падение теста
+            self.chk_use_gpu.setStyleSheet("""
+                QCheckBox { color: #ef4444; font-weight: bold; font-size: 13px; }
+                QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+                QCheckBox::indicator:checked { background-color: #ef4444; border-color: #ef4444; }
+            """)
+            err = DirectMLManager.error_msg or "Неизвестная ошибка совместимости."
+            self.chk_use_gpu.setToolTip(f"Включение отменено из-за ошибки:\n{err}")
+            self.chk_use_gpu.setChecked(False)
+        else:
+            self.chk_use_gpu.setStyleSheet("""
+                QCheckBox { color: white; font-weight: bold; font-size: 13px; }
+                QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+                QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
+            """)
+            self.chk_use_gpu.setToolTip("Использовать видеокарту для ускорения ИИ (потребуется скачать библиотеку DirectML)." if AppContext.is_ru() else "Use GPU for AI acceleration (requires DirectML library download).")
+            self.chk_use_gpu.setChecked(_use_dml and DirectMLManager.is_ready)
             
-        self.chk_use_directml.clicked.connect(self._on_directml_clicked)
-        params_sub_layout.addWidget(self.chk_use_directml)
+        self.chk_use_gpu.clicked.connect(self._on_directml_clicked)
+        params_sub_layout.addWidget(self.chk_use_gpu)
         
         self.chk_show_faces = QCheckBox("Показывать рамки на лицах" if AppContext.is_ru() else "Show face bounding boxes")
         self.chk_show_faces.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -2178,6 +2178,7 @@ class AiClassificationTab(QWidget):
         import configparser
         from logic_paths import get_app_data_dir
         import os
+        from modules.cleaner.utils_directml import get_directml_dir
         
         if not checked:
             path = os.path.join(get_app_data_dir(), "settings.ini")
@@ -2189,16 +2190,44 @@ class AiClassificationTab(QWidget):
             cp["Main"]["use_directml"] = "false"
             with open(path, "w", encoding="utf-8") as f:
                 cp.write(f)
+            # Сбрасываем стили на нормальные, если они были красными
+            self.chk_use_gpu.setStyleSheet("""
+                QCheckBox { color: white; font-weight: bold; font-size: 13px; }
+                QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+                QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
+            """)
+            self.chk_use_gpu.setToolTip("Использовать видеокарту для ускорения ИИ (потребуется скачать библиотеку DirectML)." if AppContext.is_ru() else "Use GPU for AI acceleration (requires DirectML library download).")
             return
 
+        # Если включили, проверяем, скачана ли библиотека
+        target_dir = get_directml_dir()
+        if os.path.exists(target_dir):
+            # Библиотека уже есть. Просто включаем и просим перезапустить (или тест сам пройдет при след запуске)
+            path = os.path.join(get_app_data_dir(), "settings.ini")
+            cp = configparser.ConfigParser(interpolation=None)
+            if os.path.exists(path):
+                cp.read(path, encoding='utf-8')
+            if "Main" not in cp:
+                cp["Main"] = {}
+            cp["Main"]["use_directml"] = "true"
+            # Сбрасываем флаг теста, чтобы при следующем запуске он прошел заново (по просьбе пользователя)
+            cp["Main"]["directml_tested_ok"] = "false"
+            with open(path, "w", encoding="utf-8") as f:
+                cp.write(f)
+            
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Аппаратное ускорение")
+            msg.setIcon(QMessageBox.Icon.NoIcon)
+            msg.setText("Настройка сохранена.\nПожалуйста, ПЕРЕЗАПУСТИТЕ ПРОГРАММУ для инициализации видеокарты.\nПри следующем запуске программа проведет быстрый тест совместимости." if AppContext.is_ru() else "Saved. Please RESTART THE APP.")
+            msg.exec()
+            return
+
+        # Библиотеки нет - предлагаем скачать
         msg = QMessageBox(self)
         msg.setWindowTitle("Ускорение ИИ через видеокарту (DirectML)")
         msg.setIcon(QMessageBox.Icon.NoIcon)
         
         text = ("Эта опция скачает библиотеку DirectML от Microsoft (~30МБ) в системную папку программы.\n\n"
-                "Отличие от обычной галочки 'Аппаратное ускорение': обычная настройка просто просит "
-                "стандартный движок использовать видеокарту, но без DirectML на Windows это часто "
-                "игнорируется, и всё считается на процессоре.\n"
                 "Установка DirectML гарантированно задействует вашу видеокарту (NVIDIA, AMD, Intel), "
                 "что может ускорить поиск в 5-10 раз!\n\n"
                 "Вы согласны скачать библиотеку и протестировать поддержку?")
@@ -2216,7 +2245,7 @@ class AiClassificationTab(QWidget):
         if msg.clickedButton() == yes_btn:
             self._start_directml_download()
         else:
-            self.chk_use_directml.setChecked(False)
+            self.chk_use_gpu.setChecked(False)
 
     def _start_directml_download(self):
         from modules.cleaner.utils_directml import DirectMLInstallerThread
@@ -2257,12 +2286,13 @@ class AiClassificationTab(QWidget):
             if "Main" not in cp:
                 cp["Main"] = {}
             cp["Main"]["use_directml"] = "true"
+            cp["Main"]["directml_tested_ok"] = "true"
             with open(path, "w", encoding="utf-8") as f:
                 cp.write(f)
         else:
             extra = "\n\nВключение отменено. ИИ продолжит работать на процессоре без сбоев." if AppContext.is_ru() else "\n\nCancelled. AI will continue running on CPU."
             msg.setText(message + extra)
-            self.chk_use_directml.setChecked(False)
+            self.chk_use_gpu.setChecked(False)
             
         msg.exec()
 

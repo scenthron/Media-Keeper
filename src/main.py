@@ -24,8 +24,9 @@ try:
             _dml_path = os.path.join(get_app_data_dir(), "models", "onnx_directml")
             if os.path.exists(_dml_path):
                 sys.path.insert(0, _dml_path)
-except Exception:
-    pass
+                import onnxruntime  # Импортируем ДО PyQt6, иначе конфликт DLL (DirectML vs QtDirect3D)
+except Exception as e:
+    print("DirectML Init Error:", e)
 # --------------------------------------------------------
 
 from PyQt6.QtWidgets import (

@@ -805,14 +805,16 @@ class LargePreviewPopup(QDialog):
             self.lbl_audio = QLabel()
             self.lbl_audio.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.lbl_audio.setWordWrap(True)
-            self.lbl_audio.setText(f"🎵\n{track_name}")
+            import html
+            track_name = html.escape(track_name)
+            self.lbl_audio.setTextFormat(Qt.TextFormat.RichText)
+            self.lbl_audio.setText(f"<div align='center'>🎵<br>{track_name}</div>")
             self.lbl_audio.setStyleSheet("""
                 color: #3b82f6;
                 font-size: 18px;
                 font-weight: bold;
                 margin: 20px;
                 background: transparent;
-                line-height: 1.4;
             """)
             self.lbl_audio.installEventFilter(self)
             self.content_layout.addWidget(self.lbl_audio)

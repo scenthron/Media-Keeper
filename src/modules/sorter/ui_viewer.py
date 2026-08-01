@@ -1189,21 +1189,14 @@ class ZoomableGraphicsView(QGraphicsView):
         if self.time_overlay: self.time_overlay.hide()
         self.clear_scene_content()
         
-        track_name = os.path.basename(text)
+        import html
+        track_name = html.escape(os.path.basename(text))
         
         self.text_item.setTextWidth(1000)
-        self.text_item.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
-        self.text_item.setDefaultTextColor(QColor("#3b82f6"))
-        
-        self.text_item.setPlainText(f"🎵\n{track_name}")
-        
-        # Настройка выравнивания по центру без HTML
-        from PyQt6.QtGui import QTextOption
-        doc = self.text_item.document()
-        option = QTextOption()
-        option.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
-        doc.setDefaultTextOption(option)
+        self.text_item.setHtml(
+            f"<div align='center' style='color:#3b82f6; font-family:\"Segoe UI\"; font-size:24pt; font-weight:bold;'>"
+            f"🎵<br>{track_name}</div>"
+        )
         
         base_w, base_h = 1280.0, 720.0
         text_rect = self.text_item.boundingRect()

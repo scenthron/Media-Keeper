@@ -22,7 +22,8 @@ class ConfigManager:
         "session_segment_view": False,
         "auto_collapse_groups": True,
         "pagination_size": 1000,
-        "view_mode": 0
+        "view_mode": 0,
+        "use_directml": False
     }
     
     @staticmethod
@@ -63,6 +64,8 @@ class ConfigManager:
                                     config[k] = 0.4
                                     logging.warning(f"Некорректное значение для '{k}' в settings.ini: '{v}'. Используется значение по умолчанию 0.4.")
                             elif k == "session_loop":
+                                config[k] = (v.lower() == "true")
+                            elif k == "use_directml":
                                 config[k] = (v.lower() == "true")
                             elif k == "session_all_videos_active":
                                 config[k] = (v.lower() == "true")

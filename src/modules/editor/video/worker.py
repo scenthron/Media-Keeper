@@ -144,12 +144,15 @@ class ConversionWorker(QThread):
         total_bitrate = total_bits / duration  # bps -> kbps
         
         audio_bitrate = 128 if not self.settings.get('mute') else 0
-        video_bitrate = total_bitrate - audio_bitrate
         
-        if video_bitrate < 150:
-            video_bitrate = 150 # Minimum viable bitrate for x264
+        if audio_bitrate > 0 and total_bitrate < 250:
+            audio_bitrate = max(32, min(128, int(total_bitrate * 0.3)))
             
-        return int(video_bitrate)
+        video_bitrate = total_bitrate - audio_bitrate
+        if video_bitrate < 10:
+            video_bitrate = 10 # Allow low bitrates for small target sizes
+            
+        return int(video_bitrate), int(audio_bitrate)
     
     def get_startupinfo(self):
         """Get startup info for Windows to hide console"""
@@ -327,8 +330,10 @@ class ConversionWorker(QThread):
                 v_args = ["-crf", str(crf)]
                 max_size = self.settings.get('max_size')
                 if max_size:
-                    target_bitrate = self.calculate_bitrate_for_size(max_size, item_info)
+                    target_bitrate, calc_audio_bitrate = self.calculate_bitrate_for_size(max_size, item_info)
                     v_args.extend(["-b:v", f"{target_bitrate}k"])
+                    if calc_audio_bitrate > 0 and "-an" not in audio_args:
+                        audio_args.extend(["-b:a", f"{calc_audio_bitrate}k"])
                     if not is_webm:
                         v_args.extend(["-maxrate", f"{target_bitrate}k", "-bufsize", f"{target_bitrate * 2}k"])
                 else:
@@ -348,7 +353,9 @@ class ConversionWorker(QThread):
             elif mode == '2pass' or mode == 'size': # Handle 'size' as 2pass if not copy
                 max_size = self.settings.get('max_size') or self.settings.get('target_mb')
                 if max_size:
-                    target_bitrate = self.calculate_bitrate_for_size(max_size, item_info)
+                    target_bitrate, calc_audio_bitrate = self.calculate_bitrate_for_size(max_size, item_info)
+                    if calc_audio_bitrate > 0 and "-an" not in audio_args:
+                        audio_args.extend(["-b:a", f"{calc_audio_bitrate}k"])
                 else:
                     percent = self.settings.get('percent', 50)
                     original_bitrate = item_info.get('bitrate', 0) // 1000

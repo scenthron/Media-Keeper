@@ -635,6 +635,9 @@ class VideoPlayerControls(QWidget):
         else:
             self.btn_speed.setText("x1")
         self.btn_speed.blockSignals(False)
+        self.btn_speed.style().unpolish(self.btn_speed)
+        self.btn_speed.style().polish(self.btn_speed)
+        self.btn_speed.update()
         self.popup.set_value(speed_val)
         
     def _on_loop_clicked(self):

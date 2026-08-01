@@ -901,9 +901,29 @@ class AiClassificationTab(QWidget):
             QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
             QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
         """)
-        self.chk_use_gpu.setToolTip("Использовать CUDA/DirectML для ускорения ИИ (если доступно)." if AppContext.is_ru() else "Use CUDA/DirectML to accelerate AI (if available).")
+        self.chk_use_gpu.setToolTip("Разрешить ИИ-движку использовать видеокарту (если драйверы поддерживаются)." if AppContext.is_ru() else "Allow AI engine to use GPU (if supported by drivers).")
         self.chk_use_gpu.setChecked(True)
         params_sub_layout.addWidget(self.chk_use_gpu)
+        
+        self.chk_use_directml = QCheckBox("Включить супер-ускорение (DirectML)" if AppContext.is_ru() else "Enable Super-Acceleration (DirectML)")
+        self.chk_use_directml.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_use_directml.setStyleSheet("""
+            QCheckBox { color: #f59e0b; font-weight: bold; font-size: 13px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+            QCheckBox::indicator:checked { background-color: #f59e0b; border-color: #f59e0b; }
+        """)
+        self.chk_use_directml.setToolTip("Скачать библиотеку от Microsoft для честного аппаратного ускорения на любой видеокарте Windows." if AppContext.is_ru() else "Download Microsoft library for true hardware acceleration on any Windows GPU.")
+        
+        # Загружаем сохраненное состояние из конфига
+        try:
+            from modules.sorter.logic_config import ConfigManager
+            _use_dml = ConfigManager.load().get("use_directml", False)
+            self.chk_use_directml.setChecked(_use_dml)
+        except Exception:
+            self.chk_use_directml.setChecked(False)
+            
+        self.chk_use_directml.clicked.connect(self._on_directml_clicked)
+        params_sub_layout.addWidget(self.chk_use_directml)
         
         self.chk_show_faces = QCheckBox("Показывать рамки на лицах" if AppContext.is_ru() else "Show face bounding boxes")
         self.chk_show_faces.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1043,7 +1063,7 @@ class AiClassificationTab(QWidget):
         self.action_bar.move_to_clicked.connect(self.cleaner.prompt_move_selected)
         self.action_bar.delete_clicked.connect(self.cleaner.delete_selected)
         self.action_bar.browse_clicked.connect(self.cleaner.browse_dest)
-        self.action_bar.drop_zone.path_changed.connect(self.cleaner.validate_move_state)
+        self.action_bar.drop_zone.path_changed.connect(self.update_cleaner_action_bar_info)
         bot_layout.addWidget(self.action_bar)
         
         self.right_splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -1727,6 +1747,16 @@ class AiClassificationTab(QWidget):
                 msg.setText("Добавьте хотя бы один позитивный образец для поиска!" if AppContext.is_ru() else "Add at least one positive sample for search!")
                 msg.exec()
                 return
+                
+            missing_files = [p for p in pos_paths if not os.path.exists(p)]
+            if len(missing_files) == len(pos_paths):
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Icon.Warning)
+                msg.setWindowTitle("Файлы не найдены" if AppContext.is_ru() else "Files not found")
+                msg.setText("Все добавленные образцы были перемещены или удалены с диска.\nПожалуйста, добавьте их заново из нового расположения." if AppContext.is_ru() else "All added samples were moved or deleted from disk.\nPlease re-add them from their new location.")
+                msg.exec()
+                return
+                
             fast_search_dump = self.fast_search_widget.generate_temp_dump()
             # Сброс подсветки дефектных картинок от предыдущего запуска
             self.fast_search_widget.pos_area.set_defective_paths([])
@@ -2141,6 +2171,100 @@ class AiClassificationTab(QWidget):
         # Если выбрана какая-то картинка, перерисовываем её превью (чтобы добавить или убрать рамки)
         if self.tree_results.selectedItems():
             self.on_tree_selection_changed()
+
+    def _on_directml_clicked(self, checked):
+        from PyQt6.QtWidgets import QMessageBox
+        from modules.sorter.logic_config import ConfigManager
+        import configparser
+        from logic_paths import get_app_data_dir
+        import os
+        
+        if not checked:
+            path = os.path.join(get_app_data_dir(), "settings.ini")
+            cp = configparser.ConfigParser(interpolation=None)
+            if os.path.exists(path):
+                cp.read(path, encoding='utf-8')
+            if "Main" not in cp:
+                cp["Main"] = {}
+            cp["Main"]["use_directml"] = "false"
+            with open(path, "w", encoding="utf-8") as f:
+                cp.write(f)
+            return
+
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Ускорение ИИ через видеокарту (DirectML)")
+        msg.setIcon(QMessageBox.Icon.NoIcon)
+        
+        text = ("Эта опция скачает библиотеку DirectML от Microsoft (~30МБ) в системную папку программы.\n\n"
+                "Отличие от обычной галочки 'Аппаратное ускорение': обычная настройка просто просит "
+                "стандартный движок использовать видеокарту, но без DirectML на Windows это часто "
+                "игнорируется, и всё считается на процессоре.\n"
+                "Установка DirectML гарантированно задействует вашу видеокарту (NVIDIA, AMD, Intel), "
+                "что может ускорить поиск в 5-10 раз!\n\n"
+                "Вы согласны скачать библиотеку и протестировать поддержку?")
+        
+        if AppContext.is_ru():
+            msg.setText(text)
+        else:
+            msg.setText("This will download the DirectML library from Microsoft (~30MB).\n\n"
+                        "Do you want to download and test GPU support?")
+                        
+        yes_btn = msg.addButton("Да, скачать и включить" if AppContext.is_ru() else "Yes, download", QMessageBox.ButtonRole.YesRole)
+        msg.addButton("Отмена" if AppContext.is_ru() else "Cancel", QMessageBox.ButtonRole.RejectRole)
+        
+        msg.exec()
+        if msg.clickedButton() == yes_btn:
+            self._start_directml_download()
+        else:
+            self.chk_use_directml.setChecked(False)
+
+    def _start_directml_download(self):
+        from modules.cleaner.utils_directml import DirectMLInstallerThread
+        from PyQt6.QtWidgets import QProgressDialog
+        
+        self.dml_progress = QProgressDialog("Скачивание библиотеки..." if AppContext.is_ru() else "Downloading...", 
+                                           "Отмена" if AppContext.is_ru() else "Cancel", 0, 0, self)
+        self.dml_progress.setWindowTitle("Установка DirectML" if AppContext.is_ru() else "Installing DirectML")
+        self.dml_progress.setWindowModality(Qt.WindowModality.WindowModal)
+        self.dml_progress.show()
+        
+        self.dml_thread = DirectMLInstallerThread()
+        self.dml_thread.progress_update.connect(self.dml_progress.setLabelText)
+        self.dml_thread.finished_install.connect(self._on_directml_finished)
+        self.dml_thread.start()
+
+    def _on_directml_finished(self, success, message):
+        if hasattr(self, 'dml_progress'):
+            self.dml_progress.close()
+            
+        from PyQt6.QtWidgets import QMessageBox
+        from logic_paths import get_app_data_dir
+        import configparser
+        import os
+        
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Icon.NoIcon)
+        msg.setWindowTitle("Результат установки" if AppContext.is_ru() else "Result")
+        
+        if success:
+            extra = "\n\nБиблиотека успешно установлена!\nПожалуйста, ПЕРЕЗАПУСТИТЕ ПРОГРАММУ для включения аппаратного ускорения." if AppContext.is_ru() else "\n\nSuccess! Please RESTART THE APP to enable hardware acceleration."
+            msg.setText(message + extra)
+            
+            path = os.path.join(get_app_data_dir(), "settings.ini")
+            cp = configparser.ConfigParser(interpolation=None)
+            if os.path.exists(path):
+                cp.read(path, encoding='utf-8')
+            if "Main" not in cp:
+                cp["Main"] = {}
+            cp["Main"]["use_directml"] = "true"
+            with open(path, "w", encoding="utf-8") as f:
+                cp.write(f)
+        else:
+            extra = "\n\nВключение отменено. ИИ продолжит работать на процессоре без сбоев." if AppContext.is_ru() else "\n\nCancelled. AI will continue running on CPU."
+            msg.setText(message + extra)
+            self.chk_use_directml.setChecked(False)
+            
+        msg.exec()
 
     def on_tree_item_changed(self, item, column):
         if column != 0:

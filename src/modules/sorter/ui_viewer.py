@@ -2274,7 +2274,7 @@ class SorterGridView(SorterBaseListView):
                     item.setSizeHint(widget.sizeHint())
                     
                     filepath = widget.filepath
-                    norm_path = os.path.normpath(filepath)
+                    norm_path = os.path.normpath(strip_long_path_prefix(filepath))
                     ext = os.path.splitext(filepath)[1].lower()
                     
                     if norm_path in ThumbnailLoader.inst().cache:
@@ -2334,7 +2334,7 @@ class SorterGridView(SorterBaseListView):
                     item.setSizeHint(widget.sizeHint())
                     
                     filepath = widget.filepath
-                    norm_path = os.path.normpath(filepath)
+                    norm_path = os.path.normpath(strip_long_path_prefix(filepath))
                     ext = os.path.splitext(filepath)[1].lower()
                     
                     if norm_path in ThumbnailLoader.inst().cache:
@@ -2411,7 +2411,7 @@ class SorterListView(SorterBaseListView):
                     
                     # Reload cached thumbnail if exists
                     filepath = widget.filepath
-                    norm_path = os.path.normpath(filepath)
+                    norm_path = os.path.normpath(strip_long_path_prefix(filepath))
                     if norm_path in ThumbnailLoader.inst().cache:
                         widget.set_preview_image(ThumbnailLoader.inst().cache[norm_path])
                     elif widget.placeholder_pixmap:
@@ -2850,14 +2850,14 @@ class SorterViewerArea(QWidget):
             return None
         rel_path = self.loading_files[idx]
         full_path = os.path.join(self.current_inbox_dir, rel_path)
-        return self.grid_items_map.get(os.path.normpath(full_path))
+        return self.grid_items_map.get(os.path.normpath(strip_long_path_prefix(full_path)))
 
     def get_list_item(self, idx):
         if not self.loading_files or idx >= len(self.loading_files):
             return None
         rel_path = self.loading_files[idx]
         full_path = os.path.join(self.current_inbox_dir, rel_path)
-        return self.list_items_map.get(os.path.normpath(full_path))
+        return self.list_items_map.get(os.path.normpath(strip_long_path_prefix(full_path)))
 
     def _center_loading_overlay(self):
         self.loading_overlay.setGeometry(self.rect())
@@ -3086,7 +3086,7 @@ class SorterViewerArea(QWidget):
         if self.stack.currentIndex() == 3:
             self.stack.setCurrentIndex(0)
         self.single_view.set_animated(filepath)
-        norm_path = os.path.normpath(filepath)
+        norm_path = os.path.normpath(strip_long_path_prefix(filepath))
         angle = self.file_rotations.get(norm_path, 0)
         if angle != 0:
             if hasattr(self.single_view, 'set_absolute_rotation'):
@@ -3095,7 +3095,7 @@ class SorterViewerArea(QWidget):
                 self.single_view.rotate(angle)
 
     def update_item_preview(self, filepath):
-        norm_path = os.path.normpath(filepath)
+        norm_path = os.path.normpath(strip_long_path_prefix(filepath))
         item_grid = self.grid_items_map.get(norm_path)
         if item_grid:
             widget = self.grid_view.itemWidget(item_grid)
@@ -3462,7 +3462,7 @@ class SorterViewerArea(QWidget):
                     self.grid_view.addItem(item_grid)
                     self.grid_view.setItemWidget(item_grid, widget_grid)
                     
-                    self.grid_items_map[os.path.normpath(full_path)] = item_grid
+                    self.grid_items_map[os.path.normpath(strip_long_path_prefix(full_path))] = item_grid
                     
                     # --- 2. List Item ---
                     item_list = QListWidgetItem()
@@ -3475,7 +3475,7 @@ class SorterViewerArea(QWidget):
                     self.list_view.addItem(item_list)
                     self.list_view.setItemWidget(item_list, widget_list)
                     
-                    self.list_items_map[os.path.normpath(full_path)] = item_list
+                    self.list_items_map[os.path.normpath(strip_long_path_prefix(full_path))] = item_list
                     
                     # Request async thumbnail generation
                     ext = os.path.splitext(rel_path)[1].lower()
@@ -3551,7 +3551,7 @@ class SorterViewerArea(QWidget):
 
     def _on_thumbnail_ready(self, filepath, image):
         # Update corresponding item icon in Grid and List views using O(1) map lookups
-        norm_path = os.path.normpath(filepath)
+        norm_path = os.path.normpath(strip_long_path_prefix(filepath))
         
         # Sync Grid
         item_grid = getattr(self, 'grid_items_map', {}).get(norm_path)

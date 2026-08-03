@@ -106,9 +106,10 @@ class SourceListItem(QWidget):
     def set_name_label_width(self, width):
         self.lbl_name.setFixedWidth(width)
 
-    def set_cached_state(self, cached):
+    def set_cached_state(self, cached: bool, face_cached: bool = False):
         self.is_cached = cached
-        self.lbl_cache.setVisible(cached)
+        self.is_face_cached = face_cached
+        self.lbl_cache.setVisible(cached or face_cached)
 
     def set_protected_state(self, protected):
         self.is_protected = protected

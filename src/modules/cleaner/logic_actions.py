@@ -51,59 +51,17 @@ class ActionMixin:
         self.source_folders[path] = {'protected': is_dump, 'color': color, 'is_system': is_system}
         
         current_tab = getattr(self, 'current_tab', 0)
-        
-        # We start with False to not block the UI. A background thread will check the cache state.
-        is_cached = False
         is_face_cached = False
-        
+        if current_tab == 3 and hasattr(self, 'page_ai'):
+            is_cached, is_face_cached = self.page_ai.classifier.cache.has_cached_files_for_folder(path)
+        elif current_tab == 0 and hasattr(self, 'db_helper_dupes'):
+            is_cached = self.db_helper_dupes.check_path_scanned(path)
+        elif current_tab == 1 and hasattr(self, 'db_helper_similar'):
+            is_cached = self.db_helper_similar.check_path_scanned(path)
+        else:
+            is_cached = False
+            
         item_widget = SourceListItem(path, color, is_protected=is_dump, is_cached=is_cached, is_face_cached=is_face_cached)
-        
-        # Async Cache Check
-        if not hasattr(self, '_cache_threads'):
-            self._cache_threads = set()
-            
-        class CacheCheckWorker(QThread):
-            finished_check = pyqtSignal(bool, bool)
-            
-            def __init__(self, p, tab, page_ai, db_dupes, db_similar):
-                super().__init__()
-                self.p = p
-                self.tab = tab
-                self.page_ai = page_ai
-                self.db_dupes = db_dupes
-                self.db_similar = db_similar
-                
-            def run(self):
-                c1, c2 = False, False
-                try:
-                    if self.tab == 3 and self.page_ai:
-                        c1, c2 = self.page_ai.classifier.cache.has_cached_files_for_folder(self.p)
-                    elif self.tab == 0 and self.db_dupes:
-                        c1 = self.db_dupes.check_path_scanned(self.p)
-                    elif self.tab == 1 and self.db_similar:
-                        c1 = self.db_similar.check_path_scanned(self.p)
-                except Exception: pass
-                self.finished_check.emit(c1, c2)
-                
-        worker = CacheCheckWorker(
-            path, 
-            current_tab, 
-            getattr(self, 'page_ai', None), 
-            getattr(self, 'db_helper_dupes', None), 
-            getattr(self, 'db_helper_similar', None)
-        )
-        self._cache_threads.add(worker)
-        
-        def on_cache_checked(c1, c2):
-            try:
-                item_widget.set_cached_state(c1, c2)
-            except RuntimeError:
-                pass
-            self._cache_threads.discard(worker)
-            
-        worker.finished_check.connect(on_cache_checked)
-        worker.start()
-        
         if is_system:
             item_widget.set_system_error_state()
             

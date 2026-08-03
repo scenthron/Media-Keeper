@@ -274,10 +274,12 @@ class AiCacheManager:
             prefix = os.path.normcase(os.path.normpath(clean_folder)) + os.sep
             with self._conn() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT 1 FROM image_embeddings WHERE filepath LIKE ? LIMIT 1", (prefix + "%",))
+                # Use index-friendly range query instead of LIKE (since paths are already normcase)
+                prefix_end = prefix + '\uffff'
+                cursor.execute("SELECT 1 FROM image_embeddings WHERE filepath >= ? AND filepath < ? LIMIT 1", (prefix, prefix_end))
                 if cursor.fetchone():
                     has_general = True
-                cursor.execute("SELECT 1 FROM face_embeddings WHERE filepath LIKE ? LIMIT 1", (prefix + "%",))
+                cursor.execute("SELECT 1 FROM face_embeddings WHERE filepath >= ? AND filepath < ? LIMIT 1", (prefix, prefix_end))
                 if cursor.fetchone():
                     has_faces = True
         except Exception as e:

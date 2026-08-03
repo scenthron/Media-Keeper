@@ -31,6 +31,7 @@ class CleanerDB:
                 )
             ''')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_size ON file_hashes(size)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_path_nocase ON file_hashes(path COLLATE NOCASE)')
             conn.commit()
             conn.close()
         except Exception as e: logging.error(f"DB Init Error: {e}")
@@ -108,6 +109,7 @@ class SimilarDB:
                     signature TEXT
                 )
             ''')
+            cursor.execute(f"CREATE INDEX IF NOT EXISTS idx_path_nocase ON {self.table_name}(path COLLATE NOCASE)")
             conn.commit()
             conn.close()
         except Exception as e: logging.error(f"Similar DB Init Error: {e}")

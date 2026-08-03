@@ -57,6 +57,7 @@ class RemovableImageDelegate(QStyledItemDelegate):
 class FastSearchDropArea(QListWidget):
     cleared = pyqtSignal()
     cleared_all = pyqtSignal()
+    paths_changed = pyqtSignal()
     
     def __init__(self, title_text, parent=None):
         super().__init__(parent)
@@ -145,6 +146,7 @@ class FastSearchDropArea(QListWidget):
                 except Exception as e:
                     import logging
                     logging.error(f"Failed to copy {f} to temp for Fast Search: {e}")
+        self.paths_changed.emit()
                 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
@@ -199,6 +201,7 @@ class FastSearchDropArea(QListWidget):
                     except: pass
                     self.takeItem(self.row(item))
                     self.delegate.hovered_index = None
+                    self.paths_changed.emit()
                     return
         super().mousePressEvent(e)
 
@@ -223,6 +226,8 @@ class FastSearchDropArea(QListWidget):
 
 
 class AiFastSearchWidget(QWidget):
+    paths_changed = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.is_ru = AppContext.is_ru()
@@ -264,6 +269,8 @@ class AiFastSearchWidget(QWidget):
         
         self.pos_area.cleared_all.connect(self.clear_all)
         self.neg_area.cleared_all.connect(self.clear_all)
+        self.pos_area.paths_changed.connect(self.paths_changed.emit)
+        self.neg_area.paths_changed.connect(self.paths_changed.emit)
         
         layout.addLayout(areas_layout)
 

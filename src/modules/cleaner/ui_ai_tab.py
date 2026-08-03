@@ -365,6 +365,7 @@ class AiClassificationTab(QWidget):
         
         # Tab 0: Fast Search
         self.fast_search_widget = AiFastSearchWidget()
+        self.fast_search_widget.paths_changed.connect(self.update_scan_button_state)
         self.page_ref.addTab(self.fast_search_widget, "Быстрый поиск" if AppContext.is_ru() else "Fast Search")
         
         # Tab 1: Reference Manager (Old Layout)
@@ -418,6 +419,7 @@ class AiClassificationTab(QWidget):
         page_ref_layout.addWidget(self.scroll_ref)
         
         self.page_ref.addTab(self.ref_manager_widget, "Менеджер образцов" if AppContext.is_ru() else "Reference Manager")
+        self.page_ref.currentChanged.connect(lambda: self.update_scan_button_state())
         self.mode_stack.addWidget(self.page_ref)
         
         # Page 2: Text Search
@@ -1682,7 +1684,16 @@ class AiClassificationTab(QWidget):
     def update_scan_button_state(self):
         folders = self.cleaner.get_active_source_folders() if hasattr(self, 'cleaner') else []
         has_folders = len(folders) > 0
-        has_enabled_groups = any(widget.chk.isChecked() for widget in self.chips_map.values())
+        
+        is_ref_mode = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 0
+        is_fast_search = is_ref_mode and hasattr(self, 'page_ref') and getattr(self.page_ref, 'currentIndex', lambda: -1)() == 0
+        is_ref_manager = is_ref_mode and hasattr(self, 'page_ref') and getattr(self.page_ref, 'currentIndex', lambda: -1)() == 1
+        
+        if is_fast_search and hasattr(self, 'fast_search_widget'):
+            has_enabled_groups = len(self.fast_search_widget.get_pos_paths()) > 0
+        else:
+            has_enabled_groups = any(widget.chk.isChecked() for widget in self.chips_map.values())
+            
         is_cluster = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 2
         is_text_mode = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 1
         

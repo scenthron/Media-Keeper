@@ -85,7 +85,7 @@ def _make_safe_dialog_method(orig_method, options_index):
         import os
         import logging
         
-        logging.warning(f"[SafeDialog] {orig_method.__name__} called with args={args}, kwargs={kwargs}")
+        logging.debug(f"[SafeDialog] {orig_method.__name__} called with args={args}, kwargs={kwargs}")
         
         args_list = list(args)
         
@@ -127,9 +127,9 @@ def _make_safe_dialog_method(orig_method, options_index):
             native_args = list(args_list)
             native_kwargs = dict(kwargs)
             
-            logging.warning(f"[SafeDialog] Attempting native {orig_method.__name__} with args={native_args}, kwargs={native_kwargs}")
+            logging.debug(f"[SafeDialog] Attempting native {orig_method.__name__} with args={native_args}, kwargs={native_kwargs}")
             res = orig_method(*native_args, **native_kwargs)
-            logging.warning(f"[SafeDialog] Native {orig_method.__name__} returned: {res!r}")
+            logging.debug(f"[SafeDialog] Native {orig_method.__name__} returned: {res!r}")
             return res
         except Exception as native_err:
             logging.error(f"[SafeDialog] Native dialog failed: {native_err}. Falling back to built-in Qt dialog.", exc_info=True)
@@ -151,10 +151,10 @@ def _make_safe_dialog_method(orig_method, options_index):
                             fallback_args.append(None)
                         fallback_args[options_index] = QFileDialog.Option.DontUseNativeDialog
             
-            logging.warning(f"[SafeDialog] Invoking fallback {orig_method.__name__} with args={fallback_args}, kwargs={fallback_kwargs}")
+            logging.debug(f"[SafeDialog] Invoking fallback {orig_method.__name__} with args={fallback_args}, kwargs={fallback_kwargs}")
             try:
                 res = orig_method(*fallback_args, **fallback_kwargs)
-                logging.warning(f"[SafeDialog] Fallback {orig_method.__name__} returned: {res!r}")
+                logging.debug(f"[SafeDialog] Fallback {orig_method.__name__} returned: {res!r}")
                 return res
             except Exception as e:
                 err_msg = f"[SafeDialog ERROR] Failed calling fallback {orig_method.__name__}: {e}"

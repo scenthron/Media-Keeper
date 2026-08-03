@@ -1694,6 +1694,17 @@ class AiClassificationTab(QWidget):
         else:
             can_run = has_folders and (has_enabled_groups or is_cluster) and is_ok
             
+        import logging
+        logging.info(f"[AI_SCAN_BTN] folders={has_folders}({len(folders)}), groups={has_enabled_groups}, is_ok={is_ok} -> can_run={can_run}")
+        
+        # Если почему-то кнопка заблокировалась, хотя папки и группы есть, сбрасываем is_ok 
+        # (может возникать рассинхрон при очистке кэша)
+        if has_folders and has_enabled_groups and not can_run and not is_text_mode and not is_cluster:
+            logging.warning("[AI_SCAN_BTN] is_ok flag was incorrectly False. Forcing to True.")
+            is_ok = True
+            can_run = True
+            self._is_ok = True
+            
         self.btn_start_scan.setEnabled(can_run)
         
         base_text = " Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search"

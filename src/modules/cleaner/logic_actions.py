@@ -52,7 +52,7 @@ class ActionMixin:
         
         current_tab = getattr(self, 'current_tab', 0)
         is_face_cached = False
-        if current_tab == 2 and hasattr(self, 'page_ai'):
+        if current_tab == 3 and hasattr(self, 'page_ai'):
             is_cached, is_face_cached = self.page_ai.classifier.cache.has_cached_files_for_folder(path)
         elif current_tab == 0 and hasattr(self, 'db_helper_dupes'):
             is_cached = self.db_helper_dupes.check_path_scanned(path)
@@ -68,8 +68,10 @@ class ActionMixin:
         item_widget.removed.connect(self.remove_folder)
         item_widget.context_menu_requested.connect(self.show_source_menu)
         
-        if hasattr(self, 'current_tab') and self.current_tab == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 3:
             self.page_ai.folder_list_layout_ai.addWidget(item_widget)
+        elif hasattr(self, 'current_tab') and self.current_tab == 2:
+            self.page_fragment.folder_list_layout_fragment.addWidget(item_widget)
         else:
             self.settings_panel.folder_list_layout.addWidget(item_widget)
             self.settings_panel.refresh_list_alignment()
@@ -78,8 +80,10 @@ class ActionMixin:
     def remove_folder(self, path: str) -> None:
         if path in self.source_folders:
             del self.source_folders[path]
-        if hasattr(self, 'current_tab') and self.current_tab == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 3:
             layout = self.page_ai.folder_list_layout_ai
+        elif hasattr(self, 'current_tab') and self.current_tab == 2:
+            layout = self.page_fragment.folder_list_layout_fragment
         else:
             layout = self.settings_panel.folder_list_layout
         for i in range(layout.count()):
@@ -92,8 +96,10 @@ class ActionMixin:
 
     def clear_folders(self) -> None:
         self.source_folders.clear()
-        if hasattr(self, 'current_tab') and self.current_tab == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 3:
             layout = self.page_ai.folder_list_layout_ai
+        elif hasattr(self, 'current_tab') and self.current_tab == 2:
+            layout = self.page_fragment.folder_list_layout_fragment
         else:
             layout = self.settings_panel.folder_list_layout
         while layout.count():
@@ -104,8 +110,10 @@ class ActionMixin:
     def revalidate_sources(self) -> None:
         has_error = False
         paths = list(self.source_folders.keys())
-        if hasattr(self, 'current_tab') and self.current_tab == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 3:
             layout = self.page_ai.folder_list_layout_ai
+        elif hasattr(self, 'current_tab') and self.current_tab == 2:
+            layout = self.page_fragment.folder_list_layout_fragment
         else:
             layout = self.settings_panel.folder_list_layout
         
@@ -136,8 +144,10 @@ class ActionMixin:
         is_scan_ok = bool(self.source_folders) and not has_error and not has_system_error and has_real_folders
         is_dump_ok = bool(self.source_folders) and not has_error and not has_system_error and (has_real_folders or len(paths) > 1)
         
-        if hasattr(self, 'current_tab') and self.current_tab == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 3:
             self.page_ai.set_scan_enabled(is_scan_ok)
+        elif hasattr(self, 'current_tab') and self.current_tab == 2:
+            self.page_fragment.set_scan_enabled(is_scan_ok)
         else:
             self.settings_panel.set_scan_enabled(is_scan_ok)
             self.settings_panel.btn_filter.setEnabled(is_scan_ok)
@@ -371,8 +381,12 @@ class ActionMixin:
 
         items_to_process: list[dict[str, Any]] = []
 
-        if hasattr(self, 'current_tab') and self.current_tab == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 3:
             files = self.page_ai.get_selected_files_paths()
+        elif hasattr(self, 'current_tab') and self.current_tab == 2:
+            files = self.page_fragment.get_selected_files_paths()
+            
+        if hasattr(self, 'current_tab') and self.current_tab in (2, 3):
             for idx, p in enumerate(files):
                 items_to_process.append({
                     'src': p,
@@ -466,9 +480,12 @@ class ActionMixin:
         file_paths: list[str] = []
         total_size_bytes = 0
 
-        if hasattr(self, 'current_tab') and self.current_tab == 2:
+        if hasattr(self, 'current_tab') and self.current_tab == 3:
             file_paths = self.page_ai.get_selected_files_paths()
             total_size_bytes = self.page_ai.get_selected_files_size() if hasattr(self.page_ai, 'get_selected_files_size') else None
+        elif hasattr(self, 'current_tab') and self.current_tab == 2:
+            file_paths = self.page_fragment.get_selected_files_paths()
+            total_size_bytes = None
         elif self.current_view_mode == 0:
             if hasattr(self, 'in_memory_selection'):
                 raw_items = self.in_memory_selection.get_marked_items()
@@ -538,8 +555,10 @@ class ActionMixin:
         try:
             deleted_set = set(deleted_paths)
 
-            if hasattr(self, 'page_ai') and self.current_tab == 2:
+            if hasattr(self, 'page_ai') and self.current_tab == 3:
                 self.page_ai.remove_processed_files(deleted_paths)
+            elif hasattr(self, 'page_fragment') and self.current_tab == 2:
+                self.page_fragment.remove_processed_files(deleted_paths)
             elif self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
                 moved_ids: set[int] = set()
                 for files in self.virtual_model._group_files_cache.values():
@@ -612,8 +631,10 @@ class ActionMixin:
         try:
             moved_set = set(moved)
 
-            if hasattr(self, 'page_ai') and self.current_tab == 2:
+            if hasattr(self, 'page_ai') and self.current_tab == 3:
                 self.page_ai.remove_processed_files(moved)
+            elif hasattr(self, 'page_fragment') and self.current_tab == 2:
+                self.page_fragment.remove_processed_files(moved)
             elif self.current_view_mode == 0 and hasattr(self, 'in_memory_selection'):
                 # Remove moved files from in-memory state
                 # Map paths to file_ids using group_files_cache

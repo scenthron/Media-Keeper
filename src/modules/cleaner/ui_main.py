@@ -17,6 +17,7 @@ from .ui_panels import CleanerSettingsPanel, CleanerActionBar, SimilarSettingsPa
 from .ui_preview import CleanerPreviewWidget
 from .ui_widgets import SourceListItem, GroupHeaderWidget
 from .ui_ai_tab import AiClassificationTab
+from .ui_fragment_tab import AiFragmentTab
 from .ui_dialogs import CleanerOverlay
 from .db_cache import CleanerDB
 from .db_session import SessionDB
@@ -123,6 +124,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.source_folders_dupes: dict[str, dict[str, Any]] = {}
         self.source_folders_similar: dict[str, dict[str, Any]] = {}
         self.source_folders_ai: dict[str, dict[str, Any]] = {}
+        self.source_folders_fragment: dict[str, dict[str, Any]] = {}
         self.filter_config: dict[str, Any] | None = None
         self.last_scanned_count: int = 0
         self.current_view_mode: int = VIEW_MODE_DUPLES
@@ -179,14 +181,18 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
     @property
     def source_folders(self) -> dict:
-        if self.current_tab == 2:
+        if self.current_tab == 3:
             return self.source_folders_ai
+        elif self.current_tab == 2:
+            return self.source_folders_fragment
         return self.source_folders_similar if self.current_tab == 1 else self.source_folders_dupes
 
     @source_folders.setter
     def source_folders(self, val: dict) -> None:
-        if self.current_tab == 2:
+        if self.current_tab == 3:
             self.source_folders_ai = val
+        elif self.current_tab == 2:
+            self.source_folders_fragment = val
         elif self.current_tab == 1:
             self.source_folders_similar = val
         else:
@@ -224,14 +230,18 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
     @property
     def action_bar(self):
-        if self.current_tab == 2:
+        if self.current_tab == 3:
             return self.page_ai.action_bar
+        elif self.current_tab == 2:
+            return self.page_fragment.action_bar
         return self.action_bar_similar if self.current_tab == 1 else self.action_bar_dupes
 
     @property
     def preview_widget(self):
-        if self.current_tab == 2:
+        if self.current_tab == 3:
             return self.page_ai.preview_widget
+        elif self.current_tab == 2:
+            return self.page_fragment.preview_widget
         return self.preview_widget_similar if self.current_tab == 1 else self.preview_widget_dupes
 
     @property
@@ -327,22 +337,24 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
     def lbl_groups_found(self):
         if self.current_tab == 1:
             return self.lbl_groups_found_similar
-        elif self.current_tab == 2:
+        elif self.current_tab == 3:
             return self.page_ai.lbl_stats
+        elif self.current_tab == 2:
+            return self.page_fragment.lbl_stats
         else:
             return self.lbl_groups_found_dupes
 
     def get_active_source_folders(self) -> list[str]:
-        if self.current_tab == 3:
-            return []
         return list(self.source_folders.keys())
 
     @property
     def lbl_selection_info(self):
         if self.current_tab == 1:
             return self.lbl_selection_info_similar
-        elif self.current_tab == 2:
+        elif self.current_tab == 3:
             return self.page_ai.action_bar.lbl_selection_info
+        elif self.current_tab == 2:
+            return self.page_fragment.action_bar.lbl_selection_info
         else:
             return self.lbl_selection_info_dupes
 
@@ -362,6 +374,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.tab_bar = QTabBar()
         self.tab_bar.addTab("Поиск дубликатов" if is_ru else "Duplicates Search")
         self.tab_bar.addTab("Поиск похожих" if is_ru else "Find Similar")
+        self.tab_bar.addTab("Поиск по фрагменту" if is_ru else "Fragment Search")
         self.tab_bar.addTab("ИИ поиск изображений" if is_ru else "AI Image Search")
         self.tab_bar.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.tab_bar.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -424,6 +437,9 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.stacked_widget.addWidget(self.page_similar)
         
         # Create AI Classifier Page
+        self.page_fragment = AiFragmentTab(self)
+        self.stacked_widget.addWidget(self.page_fragment)
+        
         self.page_ai = AiClassificationTab(self)
         self.stacked_widget.addWidget(self.page_ai)
         
@@ -744,8 +760,10 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         return QIcon(QPixmap.fromImage(mirrored_image))
 
     def update_toggle_settings_button(self) -> None:
-        if self.current_tab == 2:
+        if self.current_tab == 3:
             visible = not self.page_ai.top_settings.isHidden()
+        elif self.current_tab == 2:
+            visible = not self.page_fragment.top_settings.isHidden()
         else:
             visible = not self.settings_panel.isHidden()
             
@@ -788,11 +806,16 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.on_safe_scan_toggled()
 
     def toggle_settings(self) -> None:
-        if self.current_tab == 2:
+        if self.current_tab == 3:
             if not self.page_ai.top_settings.isHidden():
                 self.page_ai.top_settings.hide()
             else:
                 self.page_ai.top_settings.show()
+        elif self.current_tab == 2:
+            if not self.page_fragment.top_settings.isHidden():
+                self.page_fragment.top_settings.hide()
+            else:
+                self.page_fragment.top_settings.show()
         else:
             if not self.settings_panel.isHidden():
                 self.settings_panel.hide()

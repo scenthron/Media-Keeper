@@ -1184,7 +1184,7 @@ class AnalyzerWidget(QWidget):
         """Handle selection in detail tree for preview"""
         # Path is stored in UserRole + 1 in Column 1 (Name column)
         path = item.data(1, Qt.ItemDataRole.UserRole + 1)
-        if path and os.path.isfile(path):
+        if path and os.path.exists(path):
             self.preview_widget.load_file(path)
             self.update_file_info(path)
 
@@ -1200,7 +1200,7 @@ class AnalyzerWidget(QWidget):
             self.chart.highlight_file_on_chart(path)
             ext = os.path.splitext(path)[1]
             self.summary_table.highlight_ext_row(ext)
-            if os.path.isfile(path):
+            if os.path.exists(path):
                 self.preview_widget.load_file(path)
                 self.update_file_info(path)
         else:

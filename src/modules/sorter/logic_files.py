@@ -1029,6 +1029,19 @@ class FileOpsMixin:
                         if strip_long_path_prefix(os.path.normpath(f['rel_path'])) not in succeeded_src_rels_set
                     ]
                 
+                # ИНСТАНТНО обновляем глобальную очередь фильтров и размер, чтобы счетчики не зависали
+                if hasattr(self, '_all_filtered_files_queue') and self._all_filtered_files_queue:
+                    self._all_filtered_files_queue = [
+                        f for f in self._all_filtered_files_queue
+                        if strip_long_path_prefix(os.path.normpath(f)) not in succeeded_src_rels_set
+                    ]
+                
+                total_moved_size = 0
+                for _, dst in succeeded_pairs:
+                    try: total_moved_size += os.path.getsize(dst)
+                    except: pass
+                self._filtered_size = max(0, getattr(self, '_filtered_size', 0) - total_moved_size)
+                
                 new_queue = []
                 new_current_index = 0
                 found_next = False
@@ -1160,6 +1173,16 @@ class FileOpsMixin:
                     f for f in self._raw_dir_files 
                     if strip_long_path_prefix(os.path.normpath(f['rel_path'])) not in norm_deleted_set
                 ]
+                
+            # ИНСТАНТНО обновляем глобальную очередь фильтров и размер, чтобы счетчики не зависали
+            if hasattr(self, '_all_filtered_files_queue') and self._all_filtered_files_queue:
+                self._all_filtered_files_queue = [
+                    f for f in self._all_filtered_files_queue
+                    if strip_long_path_prefix(os.path.normpath(f)) not in norm_deleted_set
+                ]
+            
+            total_deleted_size = sum(sz for _, sz in deleted_cache_updates)
+            self._filtered_size = max(0, getattr(self, '_filtered_size', 0) - total_deleted_size)
             
             new_queue = []
             found_next = False

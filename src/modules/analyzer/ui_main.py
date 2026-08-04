@@ -61,6 +61,11 @@ class AnalyzerWidget(QWidget):
         self.full_stats = {} 
         self.full_root_node = None
         
+        # Debounce timer for previewing files in detail tree
+        self._preview_timer = QTimer(self)
+        self._preview_timer.setSingleShot(True)
+        self._preview_timer.setInterval(150)
+        
         # Search autocomplete
         self.completer = QCompleter()
         self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
@@ -1180,16 +1185,27 @@ class AnalyzerWidget(QWidget):
         if self.current_view_path and os.path.exists(self.current_view_path):
             QDesktopServices.openUrl(QUrl.fromLocalFile(self.current_view_path))
 
+    def _load_preview_delayed(self, path):
+        if path and safe_is_file(path):
+            self.preview_widget.load_file(path)
+            self.update_file_info(path)
+
     def on_detail_item_clicked(self, item, column):
         """Handle selection in detail tree for preview"""
         # Path is stored in UserRole + 1 in Column 1 (Name column)
         path = item.data(1, Qt.ItemDataRole.UserRole + 1)
+        # Clear any pending debounced preview load
+        try: self._preview_timer.disconnect()
+        except: pass
         if path and safe_is_file(path):
             self.preview_widget.load_file(path)
             self.update_file_info(path)
 
     def on_detail_selection_changed(self):
         selected_items = self.detail_table.selectedItems()
+        # Clear any pending debounced preview load
+        try: self._preview_timer.disconnect()
+        except: pass
         if not selected_items:
             self.chart.highlight_file_on_chart("")
             self.summary_table.highlight_ext_row("")
@@ -1201,8 +1217,8 @@ class AnalyzerWidget(QWidget):
             ext = os.path.splitext(path)[1]
             self.summary_table.highlight_ext_row(ext)
             if safe_is_file(path):
-                self.preview_widget.load_file(path)
-                self.update_file_info(path)
+                self._preview_timer.timeout.connect(lambda: self._load_preview_delayed(path))
+                self._preview_timer.start()
         else:
             self.chart.highlight_file_on_chart("")
             self.summary_table.highlight_ext_row("")

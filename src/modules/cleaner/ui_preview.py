@@ -541,10 +541,10 @@ class CleanerPreviewWidget(QWidget):
         self._play_timer.start(100)
 
     def clear_faces(self):
-        # Удаляем все прямоугольники лиц
+        # Удаляем все прямоугольники и полигоны
         for item in self.scene.items():
-            from PyQt6.QtWidgets import QGraphicsRectItem
-            if isinstance(item, QGraphicsRectItem):
+            from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsPolygonItem
+            if isinstance(item, (QGraphicsRectItem, QGraphicsPolygonItem)):
                 self.scene.removeItem(item)
 
     def draw_faces(self, bboxes, matched_bbox=None):
@@ -611,7 +611,7 @@ class CleanerPreviewWidget(QWidget):
 
     def load_file(self, path):
         self.clear_faces()
-        from utils_io import strip_long_path_prefix
+        from utils_io import strip_long_path_prefix, safe_path_exists
         path = strip_long_path_prefix(path)
         
         if self.current_path == path:
@@ -622,7 +622,7 @@ class CleanerPreviewWidget(QWidget):
             self._heartbeat_timer.start(100)
             
         self.stop_playback(True)
-        if not os.path.exists(path):
+        if not safe_path_exists(path):
             self.show_empty(AppContext.tr("msg_error_file"))
             return
             
@@ -771,3 +771,28 @@ class CleanerPreviewWidget(QWidget):
         if self.current_path and os.path.exists(self.current_path):
             from utils_common import reveal_in_explorer
             reveal_in_explorer(self.current_path)
+
+    def draw_polygon(self, pts):
+        if not self.scene or not self.pixmap_item: return
+        self.clear_faces()
+        if pts is None or len(pts) == 0: return
+        
+        from PyQt6.QtWidgets import QGraphicsPolygonItem
+        from PyQt6.QtGui import QPen, QColor, QPolygonF
+        from PyQt6.QtCore import Qt, QPointF
+        
+        poly = QPolygonF()
+        try:
+            for pt in pts:
+                x, y = pt[0][0], pt[0][1]
+                poly.append(QPointF(float(x), float(y)))
+        except:
+            return
+            
+        poly_item = QGraphicsPolygonItem(poly)
+        pen = QPen(QColor(34, 197, 94, 255)) # Modern green color
+        pen.setWidth(3)
+        pen.setCosmetic(True) # Ensures consistent thickness regardless of image resolution/zoom
+        poly_item.setPen(pen)
+        poly_item.setZValue(10)
+        self.scene.addItem(poly_item)

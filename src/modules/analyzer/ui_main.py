@@ -19,7 +19,7 @@ from .ui_chart import AnalyzerPieChart
 from .ui_tables import SummaryTable, FileDetailTree
 from modules.cleaner.ui_widgets import CompactDropZone
 from modules.cleaner.ui_preview import CleanerPreviewWidget
-from utils_io import smart_move_file
+from utils_io import smart_move_file, safe_is_file, safe_path_exists
 from utils_common import format_size
 import shutil
 from PyQt6.QtWidgets import QMessageBox
@@ -1184,7 +1184,7 @@ class AnalyzerWidget(QWidget):
         """Handle selection in detail tree for preview"""
         # Path is stored in UserRole + 1 in Column 1 (Name column)
         path = item.data(1, Qt.ItemDataRole.UserRole + 1)
-        if path and os.path.exists(path):
+        if path and safe_is_file(path):
             self.preview_widget.load_file(path)
             self.update_file_info(path)
 
@@ -1200,7 +1200,7 @@ class AnalyzerWidget(QWidget):
             self.chart.highlight_file_on_chart(path)
             ext = os.path.splitext(path)[1]
             self.summary_table.highlight_ext_row(ext)
-            if os.path.exists(path):
+            if safe_is_file(path):
                 self.preview_widget.load_file(path)
                 self.update_file_info(path)
         else:

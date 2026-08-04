@@ -20,6 +20,21 @@ def strip_long_path_prefix(path):
         return path[4:]
     return path
 
+def safe_path_exists(path: str) -> bool:
+    """Безопасная проверка существования пути (обход ограничения MAX_PATH на Windows)."""
+    if not path: return False
+    return os.path.exists(ensure_long_path(path))
+
+def safe_is_file(path: str) -> bool:
+    """Безопасная проверка, является ли путь файлом (обход ограничения MAX_PATH)."""
+    if not path: return False
+    return os.path.isfile(ensure_long_path(path))
+
+def safe_is_dir(path: str) -> bool:
+    """Безопасная проверка, является ли путь папкой (обход ограничения MAX_PATH)."""
+    if not path: return False
+    return os.path.isdir(ensure_long_path(path))
+
 def smart_move_file(src, dst, progress_callback=None, stop_event=None):
     """
     Moves a file intelligently:

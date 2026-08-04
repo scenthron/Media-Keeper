@@ -379,7 +379,7 @@ class FileOpsMixin:
             current_file = self.files_queue[self.current_index]
             
         self.files_queue = new_queue
-        self._filtered_size = getattr(self, '_filtered_size', 0)
+        self._filtered_size = filtered_size
         
         if hasattr(self, 'lbl_unsort_count'):
             self.lbl_unsort_count.filter_getter = lambda: (len(self._all_filtered_files_queue), self._filtered_size)

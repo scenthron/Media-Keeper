@@ -133,7 +133,7 @@ class SummaryTable(QTableWidget):
         self.setStyleSheet("""
             QTableWidget { background-color: transparent; border: none; }
             QTableWidget::item { padding: 4px; border-bottom: 1px solid #333; color: #ddd; }
-            QTableWidget::item:selected { background-color: #3b82f6; color: white; }
+            QTableWidget::item:selected { background-color: #4a6c8c; color: white; }
             QTableWidget::item:hover { background-color: #2a2a2a; }
             QHeaderView::section { background-color: #2b2b2b; color: #aaa; border: none; font-weight: bold; }
         """)
@@ -307,7 +307,7 @@ class FileDetailTree(QTreeWidget):
         self.setStyleSheet("""
             QTreeWidget { background-color: #1e1e1e; border: none; }
             QTreeWidget::item { padding: 4px; border-bottom: 1px solid #333; color: #ccc; }
-            QTreeWidget::item:selected { background-color: #3b82f6; color: white; }
+            QTreeWidget::item:selected { background-color: #4a6c8c; color: white; }
             QTreeWidget::item:hover { background-color: #2a2a2a; }
             QHeaderView::section { background-color: #333; color: white; padding: 4px; border: none; }
             

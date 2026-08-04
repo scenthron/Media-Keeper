@@ -1601,8 +1601,9 @@ class AnalyzerWidget(QWidget):
             errors = 0
             for path in selected:
                 try:
-                    if os.path.exists(path):
-                        os.remove(path)
+                    if safe_path_exists(path):
+                        from utils_io import ensure_long_path
+                        os.remove(ensure_long_path(path))
                         removed.append(path)
                 except Exception as e:
                     logging.error(f"Failed to delete {path}: {e}")
@@ -1647,7 +1648,7 @@ class AnalyzerWidget(QWidget):
 
     def on_move_clicked(self):
         dest_dir = self.drop_zone.get_path()
-        if not dest_dir or not os.path.exists(dest_dir):
+        if not dest_dir or not safe_path_exists(dest_dir):
             self.silent_info(AppContext.tr("anl_toolbar_title"), AppContext.tr("anl_msg_select_dest"))
             return
             
@@ -1658,15 +1659,16 @@ class AnalyzerWidget(QWidget):
             
         moved = []
         errors = 0
+        from utils_io import ensure_long_path
         for path in selected:
-            if not os.path.exists(path): continue
+            if not safe_path_exists(path): continue
             dest_path = self.get_safe_dest_path(dest_dir, path)
                 
             try:
                 if smart_move_file(path, dest_path):
                     moved.append(path)
                 else:
-                    shutil.move(path, dest_path)
+                    shutil.move(ensure_long_path(path), ensure_long_path(dest_path))
                     moved.append(path)
             except Exception as e:
                 logging.error(f"Failed to move {path} to {dest_path}: {e}")

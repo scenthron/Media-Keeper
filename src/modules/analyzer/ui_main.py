@@ -1184,9 +1184,30 @@ class AnalyzerWidget(QWidget):
         """Handle selection in detail tree for preview"""
         # Path is stored in UserRole + 1 in Column 1 (Name column)
         path = item.data(1, Qt.ItemDataRole.UserRole + 1)
+        logging.info(f"[Analyzer] on_detail_item_clicked: path={path}")
         if path and os.path.isfile(path):
             self.preview_widget.load_file(path)
             self.update_file_info(path)
+
+    def on_detail_selection_changed(self):
+        selected_items = self.detail_table.selectedItems()
+        if not selected_items:
+            self.chart.highlight_file_on_chart("")
+            self.summary_table.highlight_ext_row("")
+            return
+        item = selected_items[0]
+        path = item.data(1, Qt.ItemDataRole.UserRole + 1)
+        logging.info(f"[Analyzer] on_detail_selection_changed: path={path}")
+        if path:
+            self.chart.highlight_file_on_chart(path)
+            ext = os.path.splitext(path)[1]
+            self.summary_table.highlight_ext_row(ext)
+            if os.path.isfile(path):
+                self.preview_widget.load_file(path)
+                self.update_file_info(path)
+        else:
+            self.chart.highlight_file_on_chart("")
+            self.summary_table.highlight_ext_row("")
 
     def toggle_info_panel(self, checked):
         self.info_panel.setVisible(checked)

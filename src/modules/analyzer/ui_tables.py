@@ -265,6 +265,17 @@ class FileDetailTree(QTreeWidget):
     move_requested = pyqtSignal(str)   # path
     item_hovered = pyqtSignal(str)     # path
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Space:
+            item = self.currentItem()
+            if item and (item.flags() & Qt.ItemFlag.ItemIsUserCheckable):
+                state = item.checkState(0)
+                new_state = Qt.CheckState.Unchecked if state == Qt.CheckState.Checked else Qt.CheckState.Checked
+                item.setCheckState(0, new_state)
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setColumnCount(4)

@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import QTreeWidget, QTreeWidgetItem, QMenu, QWidget, QVBoxL
 from PyQt6.QtCore import Qt, pyqtSignal
 from config import AppContext
 from utils_common import format_size
+from .ui_widgets import CleanerTreeWidget
 
 class AiResultsTreeWidget(QWidget):
     """
@@ -24,7 +25,7 @@ class AiResultsTreeWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.tree = QTreeWidget()
+        self.tree = CleanerTreeWidget()
         self.tree.setHeaderHidden(True)
         self.tree.setColumnCount(1)
         self.tree.setStyleSheet("""

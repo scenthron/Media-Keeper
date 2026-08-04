@@ -284,6 +284,18 @@ class GroupHeaderWidget(QWidget):
 
 class CleanerTreeWidget(QTreeWidget):
     itemMiddleClicked = pyqtSignal(QTreeWidgetItem)
+    
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Space:
+            item = self.currentItem()
+            if item and (item.flags() & Qt.ItemFlag.ItemIsUserCheckable):
+                state = item.checkState(0)
+                new_state = Qt.CheckState.Unchecked if state == Qt.CheckState.Checked else Qt.CheckState.Checked
+                item.setCheckState(0, new_state)
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.MiddleButton:
             item = self.itemAt(event.pos())

@@ -219,6 +219,11 @@ class FolderLabel(QLabel):
             # Use Non-Blocking Cache
             count, size = DirCache.inst().get_data(path)
             
+            if hasattr(self, 'filter_getter') and self.filter_getter:
+                f_info = self.filter_getter()
+                if f_info:
+                    count, size = f_info
+            
             size_str = format_size(size)
             display_text = f"{truncate_text(folder_name)}: {count} ({size_str})"
             self.setText(display_text)

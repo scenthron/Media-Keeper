@@ -158,8 +158,8 @@ class FileOpsMixin:
 
     def _get_virtual_folder_text(self):
         if not getattr(self, 'virtual_folder_name', None): return None
-        count = len(self._raw_dir_files) if hasattr(self, '_raw_dir_files') else 0
-        total_size = sum(f.get('size', 0) for f in self._raw_dir_files) if hasattr(self, '_raw_dir_files') else 0
+        count = len(self.files_queue) if hasattr(self, 'files_queue') else 0
+        total_size = getattr(self, '_filtered_size', 0)
         from utils_common import format_size
         size_str = format_size(total_size)
         return f"{self.virtual_folder_name} ({count} файлов, {size_str})"
@@ -281,6 +281,7 @@ class FileOpsMixin:
             
         # 1. Фильтрация
         filtered_files = []
+        filtered_size = 0
         min_mb = self.config.get("filter_min_size", 0.0)
         max_mb = self.config.get("filter_max_size", 0.0)
         min_bytes = int(min_mb * 1024 * 1024) if min_mb > 0 else 0
@@ -306,6 +307,7 @@ class FileOpsMixin:
                 
             if match:
                 filtered_files.append(f_info)
+                filtered_size += size
                 
         # 2. Сортировка
         sort_type = self.config.get("sort_type", "name_asc")
@@ -377,7 +379,12 @@ class FileOpsMixin:
             current_file = self.files_queue[self.current_index]
             
         self.files_queue = new_queue
+        self._filtered_size = getattr(self, '_filtered_size', 0)
         
+        if hasattr(self, 'lbl_unsort_count'):
+            self.lbl_unsort_count.filter_getter = lambda: (len(self._all_filtered_files_queue), self._filtered_size)
+            self.lbl_unsort_count.update_info()
+            
         if current_file in self.files_queue:
             self.current_index = self.files_queue.index(current_file)
         else:

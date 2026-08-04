@@ -1793,23 +1793,6 @@ class AnalyzerWidget(QWidget):
             self.summary_table.highlight_ext_row(ext)
         else:
             self.summary_table.highlight_ext_row("")
-
-    def on_detail_selection_changed(self):
-        selected_items = self.detail_table.selectedItems()
-        if not selected_items:
-            self.chart.highlight_file_on_chart("")
-            self.summary_table.highlight_ext_row("")
-            return
-        item = selected_items[0]
-        path = item.data(1, Qt.ItemDataRole.UserRole + 1)
-        if path:
-            self.chart.highlight_file_on_chart(path)
-            ext = os.path.splitext(path)[1]
-            self.summary_table.highlight_ext_row(ext)
-        else:
-            self.chart.highlight_file_on_chart("")
-            self.summary_table.highlight_ext_row("")
-
     def move_single_file_to(self, path):
         if not path or not os.path.exists(path):
             return

@@ -131,11 +131,10 @@ class ConfigManager:
             except Exception as e:
                 logging.error(f"Ошибка чтения settings.ini перед сохранением: {e}")
                 
-        # Если входящая папка изменилась (выбрана новая или обнулена), принудительно сбрасываем рекурсию
+        # Пользователь попросил не сбрасывать галочку "учитывать подпапки" при смене папки
         new_path_unsort = config.get("path_unsort", "")
         if old_path_unsort != new_path_unsort:
-            logging.info(f"Входящая папка изменилась ('{old_path_unsort}' -> '{new_path_unsort}'). Сбрасываем scan_subfolders в False.")
-            config["scan_subfolders"] = False
+            logging.info(f"Входящая папка изменилась ('{old_path_unsort}' -> '{new_path_unsort}'). Настройка scan_subfolders сохранена по запросу пользователя.")
         
         # Разделяем основные настройки и секции горячих клавиш
         main_settings = {}

@@ -577,7 +577,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                             all_files.append(os.path.join(root, f))
             
             if all_files:
-                self.load_virtual_files(all_files, source_name="Dropped Files" if AppContext.LANG != "RU" else "Сборка из перетащенных файлов")
+                self.load_virtual_files(all_files, source_name="Dropped Files" if AppContext.LANG != "RU" else "Список файлов")
 
     def update_paths_from_config(self):
         if self.session_inbox_path and os.path.exists(self.session_inbox_path):

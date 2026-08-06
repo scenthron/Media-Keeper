@@ -348,8 +348,12 @@ class ActionMixin:
             QCoreApplication.processEvents()
 
             self.overlay.start_process(1)
+            is_flat_move = False
+            if hasattr(self, 'current_tab') and self.current_tab in [1, 2, 3]:
+                is_flat_move = True
+                
             rename_idx = self.action_bar.combo_collision.currentIndex()
-            preserve_struct = self.action_bar.chk_preserve.isChecked()
+            preserve_struct = self.action_bar.chk_preserve.isChecked() if not is_flat_move else False
             self.move_timer.start()
 
             self.mover = SessionMoveWorker(items_to_process, d, rename_idx, preserve_struct)
@@ -413,7 +417,7 @@ class ActionMixin:
         self.overlay.start_process(len(items_to_process))
         
         is_flat_move = False
-        if hasattr(self, 'current_tab') and self.current_tab in [1, 2]:
+        if hasattr(self, 'current_tab') and self.current_tab in [1, 2, 3]:
             is_flat_move = True
             
         rename_idx = self.action_bar.combo_collision.currentIndex()

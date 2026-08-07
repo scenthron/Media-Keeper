@@ -105,6 +105,11 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.left_layout.setSpacing(0)
         
         self.create_toolbar()
+        
+        # Setup context menu for filename label
+        self.lbl_filename.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.lbl_filename.customContextMenuRequested.connect(self.show_filename_context_menu)
+        
         self.update_filter_ui()
         
         self.viewer = SorterViewerArea(self)
@@ -1111,6 +1116,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         elif mode == "image_conv":
             if hasattr(win, "send_to_image_converter"):
                 win.send_to_image_converter(filepaths)
+        elif mode == "ai_search":
+            if hasattr(win, "send_to_ai_search"):
+                win.send_to_ai_search(filepaths)
 
     def on_item_double_clicked(self, filepath):
         if filepath:
@@ -1305,3 +1313,81 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                 collapse_recursive(widget)
         
         self.save_tree_state_if_enabled()
+
+    def show_filename_context_menu(self, pos):
+        if not getattr(self, 'current_file_path', None):
+            return
+        path = self.current_file_path
+        if not os.path.exists(path):
+            return
+            
+        from PyQt6.QtWidgets import QMenu
+        from PyQt6.QtGui import QAction
+        from utils_common import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS
+            
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu { background-color: #252525; border: 1px solid #444; border-radius: 6px; padding: 4px; }
+            QMenu::item { color: #dddddd; padding: 6px 20px 6px 12px; border-radius: 4px; font-size: 12px; }
+            QMenu::item:selected { background-color: #3b82f6; color: white; }
+            QMenu::separator { height: 1px; background: #444; margin: 3px 8px; }
+        """)
+
+        ext = os.path.splitext(path)[1].lower()
+        
+        act_open = QAction(AppContext.tr("srt_ctx_open_file"), self)
+        act_open.triggered.connect(lambda Checked: self.viewer.grid_view._open_file(path))
+        menu.addAction(act_open)
+
+        act_folder = QAction(AppContext.tr("srt_ctx_open_folder"), self)
+        act_folder.triggered.connect(lambda Checked: self.viewer.grid_view._open_folder_with_focus(path))
+        menu.addAction(act_folder)
+        
+        if ext in VIDEO_EXTS:
+            menu.addSeparator()
+            act_vconv = QAction(AppContext.tr("srt_ctx_convert_video"), self)
+            act_vconv.triggered.connect(lambda Checked: self.on_send_to_editor_requested("video_conv", [path]))
+            menu.addAction(act_vconv)
+            
+            act_aconv = QAction(AppContext.tr("srt_ctx_convert_audio_to"), self)
+            act_aconv.triggered.connect(lambda Checked: self.on_send_to_editor_requested("audio_conv", [path]))
+            menu.addAction(act_aconv)
+            
+            act_vedit = QAction(AppContext.tr("srt_ctx_edit_video"), self)
+            act_vedit.triggered.connect(lambda Checked: self.on_send_to_editor_requested("video_edit", [path]))
+            menu.addAction(act_vedit)
+            
+        elif ext in AUDIO_EXTS:
+            menu.addSeparator()
+            act_aconv = QAction(AppContext.tr("srt_ctx_convert_audio"), self)
+            act_aconv.triggered.connect(lambda Checked: self.on_send_to_editor_requested("audio_conv", [path]))
+            menu.addAction(act_aconv)
+            
+            act_aedit = QAction(AppContext.tr("srt_ctx_edit_audio"), self)
+            act_aedit.triggered.connect(lambda Checked: self.on_send_to_editor_requested("audio_edit", [path]))
+            menu.addAction(act_aedit)
+            
+        elif ext in IMAGE_EXTS:
+            menu.addSeparator()
+            act_iconv = QAction(AppContext.tr("srt_ctx_convert_image"), self)
+            act_iconv.triggered.connect(lambda Checked: self.on_send_to_editor_requested("image_conv", [path]))
+            menu.addAction(act_iconv)
+            
+            act_ai = QAction("Сделать эталоном ИИ поиска" if AppContext.LANG == "RU" else "Use as AI Search Reference", self)
+            act_ai.triggered.connect(lambda Checked: self.on_send_to_editor_requested("ai_search", [path]))
+            menu.addAction(act_ai)
+            
+            if ext == '.gif':
+                from PyQt6.QtGui import QImageReader
+                reader = QImageReader(path)
+                if reader.supportsAnimation() and reader.imageCount() > 1:
+                    act_vconv = QAction(AppContext.tr("srt_ctx_convert_video"), self)
+                    act_vconv.triggered.connect(lambda Checked: self.on_send_to_editor_requested("video_conv", [path]))
+                    menu.addAction(act_vconv)
+                    
+        menu.addSeparator()
+        act_delete = QAction(AppContext.tr("srt_ctx_delete_files"), self)
+        act_delete.triggered.connect(lambda Checked: self.viewer.grid_view.delete_files_requested([path]))
+        menu.addAction(act_delete)
+        
+        menu.exec(self.lbl_filename.mapToGlobal(pos))

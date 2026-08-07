@@ -2096,6 +2096,10 @@ class SorterBaseListView(QListWidget):
                 act_iconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("image_conv", p))
                 menu.addAction(act_iconv)
                 
+                act_ai = QAction("Сделать эталоном ИИ поиска" if AppContext.LANG == "RU" else "Use as AI Search Reference", self)
+                act_ai.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("ai_search", p))
+                menu.addAction(act_ai)
+                
                 if ext == '.gif':
                     from PyQt6.QtGui import QImageReader
                     reader = QImageReader(path)
@@ -2126,6 +2130,10 @@ class SorterBaseListView(QListWidget):
                 act_iconv = QAction(AppContext.tr("srt_ctx_convert_image_count").format(len(paths)), self)
                 act_iconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("image_conv", p))
                 menu.addAction(act_iconv)
+                
+                act_ai = QAction("Сделать эталоном ИИ поиска" if AppContext.LANG == "RU" else "Use as AI Search Reference", self)
+                act_ai.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("ai_search", p))
+                menu.addAction(act_ai)
 
         menu.addSeparator()
         if len(paths) <= 1:

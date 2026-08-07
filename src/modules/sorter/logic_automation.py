@@ -43,7 +43,7 @@ class AutomationConfig:
         target_path = AutomationConfig.get_cfg_path(folder_path)
         
         if not os.path.exists(target_path):
-            logging.debug(f"Файл конфигурации автоматизации не найден в {target_path}")
+            pass
             AutomationConfig._config_cache[folder_path] = None
             return None 
 

@@ -373,6 +373,12 @@ class MediaKeeperShell(QMainWindow):
         self.switch_tab(1)
         self.editor_tab.open_image_converter(filepaths)
 
+    def send_to_ai_search(self, filepaths):
+        logging.info(f"Отправка {len(filepaths)} файлов в ИИ поиск как эталоны.")
+        self.switch_tab(2)
+        if hasattr(self.cleaner_tab, 'add_ai_search_references'):
+            self.cleaner_tab.add_ai_search_references(filepaths)
+
     def show_about_dialog(self):
         logging.debug("Открытие диалога 'О программе'.")
         dlg = InfoDialog(self)

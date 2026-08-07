@@ -990,3 +990,12 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         super().resizeEvent(event)
         if hasattr(self, 'overlay') and self.overlay:
             self.overlay.resize(self.size())
+
+    def add_ai_search_references(self, filepaths: list[str]) -> None:
+        """Добавляет файлы как эталоны в Быстрый ИИ поиск."""
+        self.stacked_widget.setCurrentWidget(self.page_ai)
+        self.tab_bar.setCurrentIndex(3)
+        if hasattr(self.page_ai, 'page_ref'):
+            self.page_ai.page_ref.setCurrentIndex(0)
+            if hasattr(self.page_ai, 'fast_search_widget'):
+                self.page_ai.fast_search_widget.pos_area.add_files(filepaths)

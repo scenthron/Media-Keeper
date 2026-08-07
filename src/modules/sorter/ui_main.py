@@ -1323,7 +1323,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             
         from PyQt6.QtWidgets import QMenu
         from PyQt6.QtGui import QAction
-        from utils_common import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS
+        from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS
             
         menu = QMenu(self)
         menu.setStyleSheet("""

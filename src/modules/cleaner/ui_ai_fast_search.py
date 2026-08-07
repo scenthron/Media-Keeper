@@ -93,6 +93,37 @@ class FastSearchDropArea(QListWidget):
             }
         """)
 
+        self.btn_clear = QPushButton(self)
+        self.btn_clear.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear.setToolTip("Очистить зону" if AppContext.is_ru() else "Clear area")
+        self.btn_clear.setFixedSize(28, 28)
+        
+        icons_dir = AppContext.find_resource_dir("icons")
+        if icons_dir:
+            self.btn_clear.setIcon(QIcon(os.path.join(icons_dir, "trash-color.svg")))
+            self.btn_clear.setIconSize(QSize(16, 16))
+            
+        self.btn_clear.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(0, 0, 0, 0.5);
+                border: 1px solid transparent;
+                border-radius: 14px;
+            }
+            QPushButton:hover {
+                background-color: rgba(239, 68, 68, 0.9);
+                border: 1px solid rgba(255,255,255,0.3);
+            }
+        """)
+        self.btn_clear.clicked.connect(self.clear_items)
+        self.btn_clear.hide() # hide if empty
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        if hasattr(self, 'btn_clear'):
+            x = self.width() - self.btn_clear.width() - 6
+            y = self.height() - self.btn_clear.height() - 6
+            self.btn_clear.move(x, y)
+
     def set_defective_paths(self, paths: list[str]):
         self.delegate.defective_paths = paths
         self.viewport().update()
@@ -146,6 +177,7 @@ class FastSearchDropArea(QListWidget):
                 except Exception as e:
                     import logging
                     logging.error(f"Failed to copy {f} to temp for Fast Search: {e}")
+        self.btn_clear.setVisible(len(self.paths) > 0)
         self.paths_changed.emit()
                 
     def dragEnterEvent(self, e):
@@ -223,6 +255,8 @@ class FastSearchDropArea(QListWidget):
             except: pass
         self.clear()
         self.paths = []
+        self.btn_clear.hide()
+        self.paths_changed.emit()
 
 
 class AiFastSearchWidget(QWidget):
@@ -298,10 +332,25 @@ class AiFastSearchWidget(QWidget):
         self.mode_group.addButton(self.btn_mode_faces)
         self.mode_group.addButton(self.btn_mode_general)
         
-        mode_layout.addStretch()
+        self.btn_clear_all = QPushButton("Очистить" if self.is_ru else "Clear")
+        self.btn_clear_all.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear_all.setStyleSheet("""
+            QPushButton { background-color: #ef4444; color: white; border: none; border-radius: 4px; padding: 6px 16px; font-weight: bold; }
+            QPushButton:hover { background-color: #dc2626; }
+        """)
+        self.btn_clear_all.clicked.connect(self.clear_all)
+        
+        mode_layout.addWidget(self.btn_clear_all)
+        mode_layout.addStretch(1)
         mode_layout.addWidget(self.btn_mode_faces)
         mode_layout.addWidget(self.btn_mode_general)
-        mode_layout.addStretch()
+        mode_layout.addStretch(1)
+        
+        # Add a dummy widget to perfectly center the toggle buttons
+        dummy = QWidget()
+        dummy.setFixedWidth(self.btn_clear_all.sizeHint().width())
+        mode_layout.addWidget(dummy)
+        
         layout.addLayout(mode_layout)
 
     def clear_all(self):

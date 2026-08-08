@@ -498,7 +498,7 @@ class CleanerPreviewWidget(QWidget):
             doc = self.text_item.document()
             option = QTextOption()
             option.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+            option.setWrapMode(QTextOption.WrapMode.WrapAnywhere)
             doc.setDefaultTextOption(option)
             
             self.text_item.show()

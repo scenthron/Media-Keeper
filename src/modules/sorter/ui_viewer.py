@@ -1194,16 +1194,17 @@ class ZoomableGraphicsView(QGraphicsView):
         self.text_item.setPlainText(f"🎵\n{track_name}")
         self.text_item.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
         self.text_item.setDefaultTextColor(QColor("#3b82f6"))
-        self.text_item.setTextWidth(1000)
         
         from PyQt6.QtGui import QTextOption
         doc = self.text_item.document()
         option = QTextOption()
         option.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        option.setWrapMode(QTextOption.WrapMode.WrapAnywhere)
         doc.setDefaultTextOption(option)
         
         base_w, base_h = 1280.0, 720.0
+        self.text_item.setTextWidth(base_w - 40)
+        
         text_rect = self.text_item.boundingRect()
         x_text = (base_w - text_rect.width()) / 2
         y_text = (base_h - text_rect.height()) / 2
@@ -1224,10 +1225,12 @@ class ZoomableGraphicsView(QGraphicsView):
         doc = self.text_item.document()
         option = QTextOption()
         option.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        option.setWrapMode(QTextOption.WrapMode.WrapAnywhere)
         doc.setDefaultTextOption(option)
         
         base_w, base_h = 1280.0, 720.0
+        self.text_item.setTextWidth(base_w - 40)
+        
         text_rect = self.text_item.boundingRect()
         x_text = (base_w - text_rect.width()) / 2
         y_text = (base_h - text_rect.height()) / 2

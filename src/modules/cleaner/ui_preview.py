@@ -489,19 +489,28 @@ class CleanerPreviewWidget(QWidget):
         if is_audio:
             track_name = os.path.splitext(os.path.basename(path))[0]
             
+            self.text_item.setTextWidth(-1)
+            
             from PyQt6.QtGui import QTextOption
             doc = self.text_item.document()
             option = QTextOption()
             option.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            option.setWrapMode(QTextOption.WrapMode.WrapAnywhere)
             doc.setDefaultTextOption(option)
             
             self.text_item.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
             self.text_item.setDefaultTextColor(QColor("#3b82f6"))
-            self.text_item.setTextWidth(400)
             
             self.text_item.setPlainText(f"🎵\n{track_name}")
             doc.adjustSize()
+            
+            max_w = 400
+            natural_width = doc.idealWidth()
+            
+            if natural_width > max_w:
+                self.text_item.setTextWidth(max_w)
+                option.setWrapMode(QTextOption.WrapMode.WrapAnywhere)
+                doc.setDefaultTextOption(option)
+                doc.adjustSize()
             
             self.text_item.show()
             QTimer.singleShot(50, self.reset_view)

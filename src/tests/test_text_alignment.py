@@ -12,20 +12,27 @@ class TestTextAlignment(unittest.TestCase):
         text_item = QGraphicsTextItem()
         track_name = '2_54632125309544.mp3'
         
+        text_item.setTextWidth(-1)
         doc = text_item.document()
         option = QTextOption()
         option.setAlignment(__import__('PyQt6.QtCore').QtCore.Qt.AlignmentFlag.AlignCenter)
-        option.setWrapMode(QTextOption.WrapMode.WrapAnywhere)
         doc.setDefaultTextOption(option)
         
         text_item.setFont(QFont('Segoe UI', 24, QFont.Weight.Bold))
-        text_item.setTextWidth(1240)
         
         text_item.setPlainText(f'🎵\n{track_name}')
-        doc.adjustSize()  # Force layout recalculation
+        doc.adjustSize()
+        
+        natural_width = doc.idealWidth()
+        max_w = 1240
+        if natural_width > max_w:
+            text_item.setTextWidth(max_w)
+            option.setWrapMode(QTextOption.WrapMode.WrapAnywhere)
+            doc.setDefaultTextOption(option)
+            doc.adjustSize()
         
         rect = text_item.boundingRect()
-        self.assertLess(rect.width(), 1240)  # Actual text width should be less than the container width
+        self.assertLess(rect.width(), 1240)
         self.assertGreater(rect.width(), 50)
         self.assertLess(rect.height(), 200, 'Height is absurdly large, lazy layout bug is present!')
 

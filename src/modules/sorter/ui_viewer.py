@@ -854,11 +854,11 @@ class ZoomableGraphicsView(QGraphicsView):
         
         # Overlay states
         self.hover_buttons_active = False
-        self.text_item = QGraphicsTextItem()
-        self.text_item.setDefaultTextColor(QColor(VIEWER_DESIGN['audio_text_color']))
-        self.text_item.setFont(QFont(VIEWER_DESIGN['audio_font'], VIEWER_DESIGN['audio_font_size']))
-        self.scene.addItem(self.text_item)
-        self.text_item.hide()
+        self.lbl_center_text = QLabel(self)
+        self.lbl_center_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_center_text.setWordWrap(True)
+        self.lbl_center_text.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.lbl_center_text.hide()
         
         self.current_movie = None
         self.double_click_callback = None
@@ -984,6 +984,15 @@ class ZoomableGraphicsView(QGraphicsView):
             self.time_overlay.move(x, y)
             self.time_overlay.raise_()
             
+        if hasattr(self, 'lbl_center_text') and self.lbl_center_text.isVisible():
+            max_w = self.width() - 40
+            if max_w > 0:
+                self.lbl_center_text.setMaximumWidth(max_w)
+                self.lbl_center_text.adjustSize()
+                x_text = (self.width() - self.lbl_center_text.width()) // 2
+                y_text = (self.height() - self.lbl_center_text.height()) // 2
+                self.lbl_center_text.move(x_text, y_text)
+                
         if hasattr(self, 'btn_seg_prev'):
             y_center = (self.height() - self.btn_seg_prev.height()) // 2
             self.btn_seg_prev.move(80, y_center)
@@ -1191,95 +1200,38 @@ class ZoomableGraphicsView(QGraphicsView):
         
         track_name = os.path.basename(text)
         
-        self.text_item.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
-        self.text_item.setDefaultTextColor(QColor("#3b82f6"))
+        self.lbl_center_text.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
+        self.lbl_center_text.setStyleSheet("color: #3b82f6;")
+        self.lbl_center_text.setText(f"🎵\n{track_name}")
+        self.lbl_center_text.show()
         
-        # Reset any previous text width to allow natural sizing
-        self.text_item.setTextWidth(-1)
+        self.update_overlay_positions()
         
-        from PyQt6.QtGui import QTextOption
-        doc = self.text_item.document()
-        option = QTextOption()
-        option.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        doc.setDefaultTextOption(option)
-        
-        self.text_item.setPlainText(f"🎵\n{track_name}")
-        doc.adjustSize()
-        
-        base_w, base_h = 1280.0, 720.0
-        max_w = base_w - 40
-        natural_width = doc.idealWidth()
-        
-        if natural_width > max_w:
-            self.text_item.setTextWidth(max_w)
-            option.setWrapMode(QTextOption.WrapMode.WrapAnywhere)
-            doc.setDefaultTextOption(option)
-            doc.adjustSize()
-            text_rect = self.text_item.boundingRect()
-            x_text = (base_w - max_w) / 2
-            y_text = (base_h - text_rect.height()) / 2
-        else:
-            text_rect = self.text_item.boundingRect()
-            x_text = (base_w - text_rect.width()) / 2
-            y_text = (base_h - text_rect.height()) / 2
-            
-        self.text_item.setPos(x_text, y_text)
-        self.text_item.show()
-        
-        self.scene.setSceneRect(0, 0, base_w, base_h)
+        self.scene.setSceneRect(0, 0, 100, 100) # dummy rect since we use overlay
         self.reset_view()
 
     def show_empty_state(self, message):
         self.current_is_video = False
         if self.time_overlay: self.time_overlay.hide()
         self.clear_scene_content()
-        self.text_item.setTextWidth(-1)
         
-        from PyQt6.QtGui import QTextOption
-        doc = self.text_item.document()
-        option = QTextOption()
-        option.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        doc.setDefaultTextOption(option)
+        self.lbl_center_text.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
+        self.lbl_center_text.setStyleSheet("color: white;")
+        self.lbl_center_text.setText(message)
+        self.lbl_center_text.show()
         
-        self.text_item.setPlainText(message)
-        doc.adjustSize()
+        self.update_overlay_positions()
         
-        base_w, base_h = 1280.0, 720.0
-        max_w = base_w - 40
-        natural_width = doc.idealWidth()
-        
-        if natural_width > max_w:
-            self.text_item.setTextWidth(max_w)
-            option.setWrapMode(QTextOption.WrapMode.WrapAnywhere)
-            doc.setDefaultTextOption(option)
-            doc.adjustSize()
-            text_rect = self.text_item.boundingRect()
-            x_text = (base_w - max_w) / 2
-            y_text = (base_h - text_rect.height()) / 2
-        else:
-            text_rect = self.text_item.boundingRect()
-            x_text = (base_w - text_rect.width()) / 2
-            y_text = (base_h - text_rect.height()) / 2
-            
-        self.text_item.setPos(x_text, y_text)
-        self.text_item.show()
-        
-        self.scene.setSceneRect(0, 0, base_w, base_h)
+        self.scene.setSceneRect(0, 0, 100, 100) # dummy rect
         self.reset_view()
         
-        # Проверяем, выбрана ли папка входящих и не пуста ли она
+        # Empty state button setup
         show_btn = True
         viewer_area = self.parent()  # SorterViewerArea
         if viewer_area and hasattr(viewer_area, 'get_main_app'):
             main_app = viewer_area.get_main_app()
             if main_app and getattr(main_app, 'UNSORT_DIR', None) and getattr(main_app, 'files_queue', None):
                 show_btn = False
-                
-        base_w, base_h = 1280.0, 720.0
-        text_rect = self.text_item.boundingRect()
-        x_text = (base_w - (base_w - 40)) / 2
-        y_text = (base_h - text_rect.height()) / 2 - 40
-        self.text_item.setPos(x_text, y_text)
         
         if show_btn:
             btn = QPushButton("Выбрать папку" if AppContext.LANG == "RU" else "Browse Folder")
@@ -1309,7 +1261,7 @@ class ZoomableGraphicsView(QGraphicsView):
             self.current_movie = None
         self.pixmap_item.hide()
         self.video_item.hide()
-        self.text_item.hide()
+        self.lbl_center_text.hide()
         self.pixmap_item.setPixmap(QPixmap())
         for item in self.scene.items():
             if isinstance(item, QGraphicsProxyWidget):
@@ -1328,6 +1280,8 @@ class ZoomableGraphicsView(QGraphicsView):
         self.resetTransform()
         if getattr(self, '_current_rotation', 0) != 0:
             super().rotate(self._current_rotation)
+        if self.video_item.isVisible() or self.lbl_center_text.isVisible():
+            self.setDragMode(QGraphicsView.DragMode.NoDrag)
             
         self.horizontalScrollBar().setValue(0)
         self.verticalScrollBar().setValue(0)
@@ -1337,10 +1291,10 @@ class ZoomableGraphicsView(QGraphicsView):
             active_item = self.video_item
         elif self.pixmap_item.isVisible() and not self.pixmap_item.pixmap().isNull():
             active_item = self.pixmap_item
-        elif self.text_item.isVisible():
-            active_item = self.text_item
+        elif self.lbl_center_text.isVisible():
+            active_item = None # text is now a floating widget, doesn't need scene centering
             
-        if active_item and active_item != self.text_item:
+        if active_item:
             active_item.setPos(0, 0)
             if hasattr(active_item, 'setTransform'):
                 from PyQt6.QtGui import QTransform
@@ -1368,7 +1322,7 @@ class ZoomableGraphicsView(QGraphicsView):
                 self.centerOn(content_rect.center())
 
     def change_rotation(self, angle):
-        if self.video_item.isVisible() or self.text_item.isVisible():
+        if self.video_item.isVisible() or self.lbl_center_text.isVisible():
             return
         if not hasattr(self, '_current_rotation'):
             self._current_rotation = 0

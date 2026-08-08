@@ -53,9 +53,11 @@ class CleanerPreviewWidget(QWidget):
         self.pixmap_item = self.scene.addPixmap(QPixmap())
         self.pixmap_item.hide()
         
-        self.text_item = QGraphicsTextItem()
-        self.scene.addItem(self.text_item)
-        self.text_item.hide()
+        self.lbl_center_text = QLabel(self.view)
+        self.lbl_center_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_center_text.setWordWrap(True)
+        self.lbl_center_text.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.lbl_center_text.hide()
         
         self.video_item = QGraphicsVideoItem()
         self.scene.addItem(self.video_item)
@@ -177,8 +179,8 @@ class CleanerPreviewWidget(QWidget):
         arrow = " ▼" if self.btn_toggle_info.isChecked() else " ▲"
         self.btn_toggle_info.setText(base_text + arrow)
         
-        if self.text_item.isVisible() and not self.current_path:
-            self.text_item.setPlainText(AppContext.tr("preview_hint"))
+        if self.lbl_center_text.isVisible() and not self.current_path:
+            self.lbl_center_text.setText(AppContext.tr("preview_hint"))
         
         if self.current_path:
              self.update_meta(self.current_path)
@@ -191,14 +193,8 @@ class CleanerPreviewWidget(QWidget):
         QTimer.singleShot(10, self.reset_view)
         
         self._position_ai_scores()
+        self.update_overlay_positions()
         
-        if self.time_overlay.isVisible():
-            padding = 10
-            controls_h = self.video_controls.height() if self.video_controls.isVisible() else 0
-            x = self.media_container.width() - self.time_overlay.width() - padding
-            y = self.media_container.height() - controls_h - self.time_overlay.height() - padding
-            self.time_overlay.move(x, y)
-            
         y_center = (self.media_container.height() - self.btn_seg_prev.height()) // 2
         self.btn_seg_prev.move(20, y_center)
         self.btn_seg_next.move(self.media_container.width() - self.btn_seg_next.width() - 20, y_center)
@@ -309,6 +305,25 @@ class CleanerPreviewWidget(QWidget):
         pos = self.player.position()
         self.time_overlay.set_time(pos, dur)
 
+    def update_overlay_positions(self):
+        if not hasattr(self, 'view'): return
+        
+        if hasattr(self, 'lbl_center_text') and self.lbl_center_text.isVisible():
+            max_w = self.view.width() - 40
+            if max_w > 0:
+                self.lbl_center_text.setMaximumWidth(max_w)
+                self.lbl_center_text.adjustSize()
+                x_text = (self.view.width() - self.lbl_center_text.width()) // 2
+                y_text = (self.view.height() - self.lbl_center_text.height()) // 2
+                self.lbl_center_text.move(x_text, y_text)
+                
+        if self.time_overlay and self.time_overlay.isVisible():
+            padding = 10
+            controls_h = self.video_controls.height() if self.video_controls.isVisible() else 0
+            x = self.media_container.width() - self.time_overlay.width() - padding
+            y = self.media_container.height() - controls_h - self.time_overlay.height() - padding
+            self.time_overlay.move(x, y)
+
     def change_volume(self, val):
         self.audio_output.setVolume(val / 100.0)
 
@@ -329,7 +344,7 @@ class CleanerPreviewWidget(QWidget):
         self.smart_preview_mgr = None
         if hasattr(self, 'pixmap_item'): self.pixmap_item.hide()
         if hasattr(self, 'video_item'): self.video_item.hide()
-        if hasattr(self, 'text_item'): self.text_item.hide()
+        if hasattr(self, 'lbl_center_text'): self.lbl_center_text.hide()
 
     def show_empty(self, msg):
         self.stop_playback(True)
@@ -340,16 +355,17 @@ class CleanerPreviewWidget(QWidget):
         self.video_controls.hide()
         self.time_overlay.hide()
         
-        self.text_item.setDefaultTextColor(QColor("#555555"))
-        self.text_item.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        self.text_item.setTextWidth(-1)
+        self.lbl_center_text.setStyleSheet("color: #555555;")
+        self.lbl_center_text.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         
-        if msg == "..." or not msg:
-            self.text_item.setPlainText(AppContext.tr("preview_hint"))
+        if self.current_path:
+            msg = AppContext.tr("preview_hint") + f"\n\n({self.current_path})"
+            self.lbl_center_text.setText(msg)
         else:
-            self.text_item.setPlainText(msg)
+            self.lbl_center_text.setText(AppContext.tr("preview_hint"))
             
-        self.text_item.show()
+        self.lbl_center_text.show()
+        self.update_overlay_positions()
         self.reset_view()
         self.meta_table.clear()
         self.meta_table.setRowCount(0)
@@ -489,30 +505,13 @@ class CleanerPreviewWidget(QWidget):
         if is_audio:
             track_name = os.path.splitext(os.path.basename(path))[0]
             
-            self.text_item.setTextWidth(-1)
+            self.lbl_center_text.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
+            self.lbl_center_text.setStyleSheet("color: #3b82f6;")
+            self.lbl_center_text.setText(f"🎵\n{track_name}")
+            self.lbl_center_text.show()
             
-            from PyQt6.QtGui import QTextOption
-            doc = self.text_item.document()
-            option = QTextOption()
-            option.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            doc.setDefaultTextOption(option)
+            self.update_overlay_positions()
             
-            self.text_item.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-            self.text_item.setDefaultTextColor(QColor("#3b82f6"))
-            
-            self.text_item.setPlainText(f"🎵\n{track_name}")
-            doc.adjustSize()
-            
-            max_w = 400
-            natural_width = doc.idealWidth()
-            
-            if natural_width > max_w:
-                self.text_item.setTextWidth(max_w)
-                option.setWrapMode(QTextOption.WrapMode.WrapAnywhere)
-                doc.setDefaultTextOption(option)
-                doc.adjustSize()
-            
-            self.text_item.show()
             QTimer.singleShot(50, self.reset_view)
         else:
             self.video_item.show()
@@ -689,8 +688,8 @@ class CleanerPreviewWidget(QWidget):
             active_item = self.video_item
         elif self.pixmap_item.isVisible() and not self.pixmap_item.pixmap().isNull(): 
             active_item = self.pixmap_item
-        elif self.text_item.isVisible():
-            active_item = self.text_item
+        elif self.lbl_center_text.isVisible():
+            active_item = None
             
         if not active_item: return
 

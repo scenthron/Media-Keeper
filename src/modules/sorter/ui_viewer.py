@@ -1191,10 +1191,6 @@ class ZoomableGraphicsView(QGraphicsView):
         
         track_name = os.path.basename(text)
         
-        self.text_item.setPlainText(f"🎵\n{track_name}")
-        self.text_item.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
-        self.text_item.setDefaultTextColor(QColor("#3b82f6"))
-        
         from PyQt6.QtGui import QTextOption
         doc = self.text_item.document()
         option = QTextOption()
@@ -1204,9 +1200,18 @@ class ZoomableGraphicsView(QGraphicsView):
         
         base_w, base_h = 1280.0, 720.0
         self.text_item.setTextWidth(base_w - 40)
+        self.text_item.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
+        self.text_item.setDefaultTextColor(QColor("#3b82f6"))
+        
+        # Set text AFTER options so layout is calculated correctly instantly
+        self.text_item.setPlainText(f"🎵\n{track_name}")
+        doc.adjustSize()
         
         text_rect = self.text_item.boundingRect()
-        x_text = (base_w - text_rect.width()) / 2
+        
+        # textWidth is fixed, so the item itself should be placed at the center offset
+        # The internal text is centered within the fixed textWidth
+        x_text = (base_w - (base_w - 40)) / 2
         y_text = (base_h - text_rect.height()) / 2
         
         self.text_item.setPos(x_text, y_text)
@@ -1219,8 +1224,6 @@ class ZoomableGraphicsView(QGraphicsView):
         self.current_is_video = False
         if self.time_overlay: self.time_overlay.hide()
         self.clear_scene_content()
-        self.text_item.setPlainText(message)
-        
         from PyQt6.QtGui import QTextOption
         doc = self.text_item.document()
         option = QTextOption()
@@ -1231,8 +1234,11 @@ class ZoomableGraphicsView(QGraphicsView):
         base_w, base_h = 1280.0, 720.0
         self.text_item.setTextWidth(base_w - 40)
         
+        self.text_item.setPlainText(message)
+        doc.adjustSize()
+        
         text_rect = self.text_item.boundingRect()
-        x_text = (base_w - text_rect.width()) / 2
+        x_text = (base_w - (base_w - 40)) / 2
         y_text = (base_h - text_rect.height()) / 2
         self.text_item.setPos(x_text, y_text)
         self.text_item.show()
@@ -1250,7 +1256,7 @@ class ZoomableGraphicsView(QGraphicsView):
                 
         base_w, base_h = 1280.0, 720.0
         text_rect = self.text_item.boundingRect()
-        x_text = (base_w - text_rect.width()) / 2
+        x_text = (base_w - (base_w - 40)) / 2
         y_text = (base_h - text_rect.height()) / 2 - 40
         self.text_item.setPos(x_text, y_text)
         

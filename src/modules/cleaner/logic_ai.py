@@ -166,6 +166,13 @@ class AiEngine:
                 "urls": [
                     "https://huggingface.co/sentence-transformers/clip-ViT-B-32-multilingual-v1/resolve/main/tokenizer.json"
                 ]
+            },
+            {
+                "name": "DirectML GPU Driver (onnxruntime_directml.whl)",
+                "dest": os.path.join(self.models_dir, "onnx_directml", "onnxruntime_directml.whl"),
+                "urls": [
+                    "https://files.pythonhosted.org/packages/1e/23/2a92ebfe9059b4dfa2c0d2f2327d0e3bbdae02188e1d826f15e6560f9fbb/onnxruntime_directml-1.15.1-cp310-cp310-win_amd64.whl"
+                ]
             }
         ]
 
@@ -220,6 +227,18 @@ class AiEngine:
                                 if os.path.exists(dest):
                                     os.remove(dest)
                                 os.rename(tmp_dest, dest)
+                                
+                                # Распаковка архива, если это .whl (для DirectML)
+                                if dest.endswith(".whl"):
+                                    try:
+                                        import zipfile
+                                        extract_dir = os.path.dirname(dest)
+                                        with zipfile.ZipFile(dest, 'r') as zip_ref:
+                                            zip_ref.extractall(extract_dir)
+                                        logging.info(f"Архив {item['name']} успешно распакован в {extract_dir}")
+                                    except Exception as e:
+                                        logging.error(f"Ошибка при распаковке {item['name']}: {e}")
+                                
                                 download_success = True
                                 logging.info(f"Успешно скачан файл {item['name']}")
                                 break

@@ -139,11 +139,17 @@ class AiEngine:
         """Скачивает реальные ИИ-модели по прямым интернет-ссылкам."""
         import requests
         import urllib3
+        import sys
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
+
+        py_ver = f"cp{sys.version_info.major}{sys.version_info.minor}"
+        dml_url = "https://files.pythonhosted.org/packages/09/17/82ba888edc50392660c84f88f3d001a8ad9048a2cff43b03bf4bc0658f7a/onnxruntime_directml-1.15.1-cp311-cp311-win_amd64.whl"
+        if py_ver == "cp310":
+            dml_url = "https://files.pythonhosted.org/packages/1e/23/2a92ebfe9059b4dfa2c0d2f2327d0e3bbdae02188e1d826f15e6560f9fbb/onnxruntime_directml-1.15.1-cp310-cp310-win_amd64.whl"
 
         models_to_download = [
             {
@@ -189,11 +195,9 @@ class AiEngine:
                 ]
             },
             {
-                "name": "DirectML GPU Driver (onnxruntime_directml.whl)",
-                "dest": os.path.join(self.models_dir, "onnx_directml", "onnxruntime_directml.whl"),
-                "urls": [
-                    "https://files.pythonhosted.org/packages/1e/23/2a92ebfe9059b4dfa2c0d2f2327d0e3bbdae02188e1d826f15e6560f9fbb/onnxruntime_directml-1.15.1-cp310-cp310-win_amd64.whl"
-                ]
+                "name": f"DirectML GPU Driver (onnxruntime_directml_{py_ver}.whl)",
+                "dest": os.path.join(self.models_dir, "onnx_directml", f"onnxruntime_directml_{py_ver}.whl"),
+                "urls": [dml_url]
             }
         ]
 
@@ -253,7 +257,14 @@ class AiEngine:
                                 if dest.endswith(".whl"):
                                     try:
                                         import zipfile
+                                        import shutil
                                         extract_dir = os.path.dirname(dest)
+                                        ort_dir = os.path.join(extract_dir, "onnxruntime")
+                                        if os.path.exists(ort_dir):
+                                            try:
+                                                shutil.rmtree(ort_dir)
+                                            except Exception:
+                                                pass
                                         with zipfile.ZipFile(dest, 'r') as zip_ref:
                                             zip_ref.extractall(extract_dir)
                                         logging.info(f"Архив {item['name']} успешно распакован в {extract_dir}")

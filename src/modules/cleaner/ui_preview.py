@@ -190,14 +190,17 @@ class CleanerPreviewWidget(QWidget):
     def resizeEvent(self, event):
         if event is not None:
             super().resizeEvent(event)
-        QTimer.singleShot(10, self.reset_view)
-        
-        self._position_ai_scores()
-        self.update_overlay_positions()
-        
-        y_center = (self.media_container.height() - self.btn_seg_prev.height()) // 2
-        self.btn_seg_prev.move(20, y_center)
-        self.btn_seg_next.move(self.media_container.width() - self.btn_seg_next.width() - 20, y_center)
+            
+        def _delayed_resize():
+            self.reset_view()
+            self._position_ai_scores()
+            self.update_overlay_positions()
+            
+            y_center = (self.media_container.height() - self.btn_seg_prev.height()) // 2
+            self.btn_seg_prev.move(20, y_center)
+            self.btn_seg_next.move(self.media_container.width() - self.btn_seg_next.width() - 20, y_center)
+            
+        QTimer.singleShot(10, _delayed_resize)
         self.btn_seg_prev.raise_()
         self.btn_seg_next.raise_()
         self.segment_indicator.move(10, 10)

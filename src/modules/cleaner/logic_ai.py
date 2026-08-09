@@ -316,7 +316,8 @@ class AiEngine:
             face_img = cv2.warpAffine(img_rgb, M, (112, 112), borderValue=0.0)
             
             logging.debug(f"[DEBUG-AI] Запускаем ArcFace onnxruntime для {image_path} (face {i})")
-            blob = cv2.dnn.blobFromImage(face_img, 1.0 / 127.5, (112, 112), (127.5, 127.5, 127.5), swapRB=False)
+            # ArcFace (w600k/buffalo_l) ожидает BGR формат на входе! Поскольку face_img у нас RGB, делаем swapRB=True
+            blob = cv2.dnn.blobFromImage(face_img, 1.0 / 127.5, (112, 112), (127.5, 127.5, 127.5), swapRB=True)
             blob = np.ascontiguousarray(blob, dtype=np.float32)
             net_out = self.arcface_session.run(None, {self.arcface_session.get_inputs()[0].name: blob})[0]
             logging.debug(f"[DEBUG-AI] Успешно получен ArcFace вектор для {image_path} (face {i})")

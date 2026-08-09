@@ -62,8 +62,8 @@ class AiSearchRequest:
 class AiSearchResponse:
     groups: list[AiGroup] = field(default_factory=list)
 
-def _dbscan_numpy(X: np.ndarray, eps: float, min_samples: int = 2) -> np.ndarray:
-    """Чистый NumPy DBSCAN алгоритм кластеризации с косинусным расстоянием без внешних зависимостей."""
+def _agglomerative_clustering_numpy(X: np.ndarray, eps: float, min_samples: int = 2) -> np.ndarray:
+    """Иерархическая агломеративная кластеризация (Average Linkage) с косинусным расстоянием без внешних зависимостей."""
     n = len(X)
     if n == 0:
         return np.array([], dtype=int)
@@ -74,33 +74,46 @@ def _dbscan_numpy(X: np.ndarray, eps: float, min_samples: int = 2) -> np.ndarray
     
     sims = np.dot(X_norm, X_norm.T)
     dists = np.clip(1.0 - sims, 0.0, None)
+    np.fill_diagonal(dists, np.inf)
     
-    labels = np.full(n, -1, dtype=int)
-    cluster_id = 0
+    labels = np.arange(n)
+    sizes = np.ones(n, dtype=int)
     
-    for i in range(n):
-        if labels[i] != -1:
-            continue
+    while True:
+        if dists.shape[0] < 2:
+            break
             
-        neighbors = np.where(dists[i] <= eps)[0]
-        if len(neighbors) < min_samples:
-            labels[i] = -1
-        else:
-            labels[i] = cluster_id
-            seeds = list(neighbors)
-            while seeds:
-                curr = seeds.pop(0)
-                if labels[curr] == -1:
-                    labels[curr] = cluster_id
-                elif labels[curr] != -1:
-                    continue
-                labels[curr] = cluster_id
-                curr_neighbors = np.where(dists[curr] <= eps)[0]
-                if len(curr_neighbors) >= min_samples:
-                    seeds.extend(curr_neighbors)
+        min_idx = np.argmin(dists)
+        i, j = np.unravel_index(min_idx, dists.shape)
+        
+        if dists[i, j] > eps:
+            break
+            
+        # Average Linkage: взвешенное среднее расстояний
+        new_dists = (sizes[i] * dists[i, :] + sizes[j] * dists[j, :]) / (sizes[i] + sizes[j])
+        
+        dists[i, :] = new_dists
+        dists[:, i] = new_dists
+        dists[i, i] = np.inf
+        
+        dists[j, :] = np.inf
+        dists[:, j] = np.inf
+        
+        sizes[i] += sizes[j]
+        sizes[j] = 0
+        
+        labels[labels == labels[j]] = labels[i]
+        
+    unique_labels, counts = np.unique(labels, return_counts=True)
+    
+    final_labels = np.full(n, -1, dtype=int)
+    cluster_id = 0
+    for ul, count in zip(unique_labels, counts):
+        if count >= min_samples:
+            final_labels[labels == ul] = cluster_id
             cluster_id += 1
             
-    return labels
+    return final_labels
 
 # -----------------------------------------------------------------------------
 # Core Worker
@@ -482,7 +495,16 @@ class AiCoreWorker(QRunnable):
                 if all_embs:
                     X = np.array(all_embs, dtype=np.float32)
                     eps = 1.0 - (self.request.threshold / 100.0)
-                    labels = _dbscan_numpy(X, eps=eps, min_samples=2)
+                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2)
+                    
+                    # Вычисляем центроиды кластеров для определения % сходства
+                    cluster_centroids = {}
+                    for c_id in set(labels):
+                        if c_id == -1: continue
+                        cluster_points = X[labels == c_id]
+                        centroid = np.mean(cluster_points, axis=0)
+                        centroid /= np.clip(np.linalg.norm(centroid), 1e-9, None)
+                        cluster_centroids[c_id] = centroid
                     
                     for i, label in enumerate(labels):
                         if label == -1: continue # noise
@@ -494,7 +516,13 @@ class AiCoreWorker(QRunnable):
                         # Avoid duplicates in same group
                         if not any(f.path == fp for f in groups_dict[group_name]):
                             rect = Rect(face["bbox"][0], face["bbox"][1], face["bbox"][2], face["bbox"][3])
-                            match_file = AiMatchFile(path=fp, score=100.0, matched_bbox=rect)
+                            
+                            # Реальное сходство вместо жесткого 100.0
+                            sim = float(np.dot(X[i] / np.clip(np.linalg.norm(X[i]), 1e-9, None), cluster_centroids[label]))
+                            mapped_score = (sim - 0.3) / (0.8 - 0.3) * 100.0
+                            score = int(np.clip(mapped_score, 0, 100))
+                            
+                            match_file = AiMatchFile(path=fp, score=score, matched_bbox=rect)
                             groups_dict[group_name].append(match_file)
 
             elif self.request.task_type == AiTaskType.AUTO_CLUSTER and self.request.analysis_target == AiTarget.IMAGES:
@@ -512,7 +540,15 @@ class AiCoreWorker(QRunnable):
                 if all_embs:
                     X = np.array(all_embs, dtype=np.float32)
                     eps = 1.0 - (self.request.threshold / 100.0)
-                    labels = _dbscan_numpy(X, eps=eps, min_samples=2)
+                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2)
+                    
+                    cluster_centroids = {}
+                    for c_id in set(labels):
+                        if c_id == -1: continue
+                        cluster_points = X[labels == c_id]
+                        centroid = np.mean(cluster_points, axis=0)
+                        centroid /= np.clip(np.linalg.norm(centroid), 1e-9, None)
+                        cluster_centroids[c_id] = centroid
                     
                     for i, label in enumerate(labels):
                         if label == -1: continue 
@@ -521,7 +557,12 @@ class AiCoreWorker(QRunnable):
                             groups_dict[group_name] = []
                             
                         fp = file_map[i]
-                        match_file = AiMatchFile(path=fp, score=100.0)
+                        
+                        sim = float(np.dot(X[i] / np.clip(np.linalg.norm(X[i]), 1e-9, None), cluster_centroids[label]))
+                        mapped_score = (sim - 0.6) / (0.95 - 0.6) * 100.0
+                        score = int(np.clip(mapped_score, 0, 100))
+                        
+                        match_file = AiMatchFile(path=fp, score=score)
                         groups_dict[group_name].append(match_file)
 
             elif self.request.task_type == AiTaskType.FIND_BY_REFERENCES and self.classifier is not None:

@@ -302,7 +302,7 @@ class AiClassificationTab(QWidget):
         # Верхняя панель настроек (со свободным изменением высоты от 130 до 280)
         # Верхняя панель настроек (со свободным изменением высоты от 220 до 600)
         self.top_settings = QFrame()
-        self.top_settings.setMinimumHeight(260)
+        self.top_settings.setMinimumHeight(220)
         self.top_settings.setMaximumHeight(600)
         self.top_settings.setStyleSheet("background-color: #1e1e1e; border-bottom: 1px solid #2d2d2d;")
         top_layout = QHBoxLayout(self.top_settings)
@@ -679,10 +679,28 @@ class AiClassificationTab(QWidget):
         params_main_layout = QVBoxLayout(params_container)
         params_main_layout.setContentsMargins(8, 8, 8, 8)
         
-        params_sub_layout = QVBoxLayout()
-        params_sub_layout.setContentsMargins(0, 0, 0, 0)
-        params_sub_layout.setSpacing(8)
-        params_main_layout.addLayout(params_sub_layout)
+        # Создаем QTabWidget для параметров
+        self.params_tabs = QTabWidget()
+        self.params_tabs.setStyleSheet("""
+            QTabWidget::pane { border: 1px solid #333; background: #111; border-radius: 4px; }
+            QTabBar::tab { background: #222; color: #888; border: 1px solid #333; border-bottom: none; padding: 4px 8px; border-top-left-radius: 4px; border-top-right-radius: 4px; }
+            QTabBar::tab:selected { background: #111; color: white; font-weight: bold; }
+        """)
+        
+        tab_general = QWidget()
+        tab_general_layout = QVBoxLayout(tab_general)
+        tab_general_layout.setContentsMargins(8, 8, 8, 8)
+        tab_general_layout.setSpacing(8)
+        
+        tab_advanced = QWidget()
+        tab_advanced_layout = QVBoxLayout(tab_advanced)
+        tab_advanced_layout.setContentsMargins(8, 8, 8, 8)
+        tab_advanced_layout.setSpacing(8)
+        
+        self.params_tabs.addTab(tab_general, "Общие настройки" if AppContext.is_ru() else "General")
+        self.params_tabs.addTab(tab_advanced, "Продвинутые" if AppContext.is_ru() else "Advanced")
+        
+        params_main_layout.addWidget(self.params_tabs)
         
         # Панель размера и очистки кэша
         cache_layout = QHBoxLayout()
@@ -726,7 +744,7 @@ class AiClassificationTab(QWidget):
         self.btn_clear_cache_ai.clicked.connect(self.clear_ai_cache_ui)
         cache_layout.addWidget(self.btn_clear_cache_ai)
         
-        params_sub_layout.addLayout(cache_layout)
+        tab_general_layout.addLayout(cache_layout)
         
         # (Разделитель удален по просьбе пользователя)
         self.lbl_threshold = QLabel("Схожесть:" if AppContext.is_ru() else "Similarity:")
@@ -736,7 +754,7 @@ class AiClassificationTab(QWidget):
                           "Большие значения (90%+): В группу попадают только почти идентичные фото.")
         self.lbl_threshold.setToolTip(tooltip_thresh)
         self.lbl_threshold.setStyleSheet("color: #ccc; font-weight: bold; font-size: 11px; border: none; background: transparent;")
-        params_sub_layout.addWidget(self.lbl_threshold)
+        tab_general_layout.addWidget(self.lbl_threshold)
         
         slider_layout = QHBoxLayout()
         self.slider_threshold = QSlider(Qt.Orientation.Horizontal)
@@ -812,7 +830,7 @@ class AiClassificationTab(QWidget):
         
         slider_layout.addWidget(self.slider_threshold)
         slider_layout.addWidget(spin_container)
-        params_sub_layout.addLayout(slider_layout)
+        tab_general_layout.addLayout(slider_layout)
         
         # --- Negative Threshold Slider ---
         self.lbl_neg_threshold = QLabel("Толерантность антипаттернов:" if AppContext.is_ru() else "Negative Tolerance:")
@@ -822,7 +840,7 @@ class AiClassificationTab(QWidget):
                        "Большие значения (70%+): Удаляет только те фото, где нейросеть абсолютно уверена в наличии антипаттерна.")
         self.lbl_neg_threshold.setToolTip(tooltip_neg)
         self.lbl_neg_threshold.setStyleSheet("color: #ccc; font-weight: bold; font-size: 11px; border: none; background: transparent; margin-top: 8px;")
-        params_sub_layout.addWidget(self.lbl_neg_threshold)
+        tab_general_layout.addWidget(self.lbl_neg_threshold)
         
         neg_slider_layout = QHBoxLayout()
         self.slider_neg_threshold = QSlider(Qt.Orientation.Horizontal)
@@ -893,7 +911,7 @@ class AiClassificationTab(QWidget):
         
         neg_slider_layout.addWidget(self.slider_neg_threshold)
         neg_slider_layout.addWidget(neg_spin_container)
-        params_sub_layout.addLayout(neg_slider_layout)
+        tab_general_layout.addLayout(neg_slider_layout)
         # -------------------------------
         
         self.chk_use_gpu = QCheckBox("Аппаратное ускорение (GPU DirectML)" if AppContext.is_ru() else "Hardware Acceleration (GPU DirectML)")
@@ -925,7 +943,7 @@ class AiClassificationTab(QWidget):
             self.chk_use_gpu.setChecked(_use_dml and DirectMLManager.is_ready)
             
         self.chk_use_gpu.clicked.connect(self._on_directml_clicked)
-        params_sub_layout.addWidget(self.chk_use_gpu)
+        tab_advanced_layout.addWidget(self.chk_use_gpu)
         
         self.chk_show_faces = QCheckBox("Показывать рамки на лицах" if AppContext.is_ru() else "Show face bounding boxes")
         self.chk_show_faces.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -936,7 +954,7 @@ class AiClassificationTab(QWidget):
         """)
         self.chk_show_faces.setChecked(True)
         self.chk_show_faces.toggled.connect(self._on_chk_show_faces_toggled)
-        params_sub_layout.addWidget(self.chk_show_faces)
+        tab_advanced_layout.addWidget(self.chk_show_faces)
         
         self.face_conf_layout = QHBoxLayout()
         self.face_conf_layout.setContentsMargins(0, 0, 0, 0)
@@ -978,10 +996,10 @@ class AiClassificationTab(QWidget):
         face_conf_wrapper.addWidget(lbl_face_conf_title)
         face_conf_wrapper.addLayout(self.face_conf_layout)
         
-        params_sub_layout.addLayout(face_conf_wrapper)
+        tab_advanced_layout.addLayout(face_conf_wrapper)
         
-        # Пружинка для выравнивания настроек по верхнему краю и прижатия кнопки вниз
-        params_sub_layout.addStretch()
+        tab_general_layout.addStretch()
+        tab_advanced_layout.addStretch()
         
         # Инициализируем размер кэша
         QTimer.singleShot(100, self.update_cache_info_ai)
@@ -995,7 +1013,7 @@ class AiClassificationTab(QWidget):
             QPushButton:disabled { background-color: #222; color: #555; font-weight: 900; font-size: 14px; border: 1px solid #333; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
         """)
         self.btn_start_scan.clicked.connect(self.on_btn_start_scan_clicked)
-        params_sub_layout.addWidget(self.btn_start_scan)
+        params_main_layout.addWidget(self.btn_start_scan)
         
 
         

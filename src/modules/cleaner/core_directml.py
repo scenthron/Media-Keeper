@@ -39,11 +39,26 @@ class DirectMLManager:
                     DirectMLManager.error_msg = "Библиотека не установлена."
                     return
 
-                # Просто добавляем путь и импортируем, без subprocess тестирования
-                sys.path.insert(0, target_dir)
+                # Добавляем путь и импортируем, используя кастомный загрузчик
+                # чтобы обойти FrozenImporter от PyInstaller, который иначе загрузит CPU-версию
+                import importlib.machinery
+                class OverrideImporter:
+                    def find_spec(self, fullname, path, target=None):
+                        if fullname.startswith('onnxruntime'):
+                            return importlib.machinery.PathFinder.find_spec(fullname, [target_dir] + (path or []))
+                        return None
+                
+                # Вставляем наш загрузчик первым
+                sys.meta_path.insert(0, OverrideImporter())
+                
                 try:
                     import onnxruntime
-                    DirectMLManager.is_ready = True
+                    # Проверяем, действительно ли загрузился DirectML провайдер
+                    if 'DmlExecutionProvider' in onnxruntime.get_available_providers():
+                        DirectMLManager.is_ready = True
+                    else:
+                        DirectMLManager.is_ready = False
+                        DirectMLManager.error_msg = "Провайдер DML не найден. Возможно, видеокарта не поддерживает DirectML."
                 except Exception as e:
                     DirectMLManager.is_ready = False
                     DirectMLManager.error_msg = f"Ошибка загрузки библиотеки DirectML: {e}"

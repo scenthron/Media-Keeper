@@ -64,7 +64,28 @@ class AiEngine:
         clip_txt_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "model.onnx")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "model.onnx")) > 1000
         dense_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "dense.safetensors")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "dense.safetensors")) > 100
         tok_ok = os.path.exists(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) and os.path.getsize(os.path.join(self.clip_dir, "text_multi", "tokenizer.json")) > 100
-        return arcface_ok and scrfd_ok and clip_vis_ok and clip_txt_ok and tok_ok and dense_ok
+        
+        # Проверка наличия библиотеки DirectML, если она включена в настройках
+        dml_ok = True
+        try:
+            import configparser
+            from logic_paths import get_app_data_dir
+            cfg_path = os.path.join(get_app_data_dir(), "settings.ini")
+            cp = configparser.ConfigParser()
+            if os.path.exists(cfg_path):
+                cp.read(cfg_path, encoding='utf-8')
+            
+            use_dml = True
+            if "Main" in cp:
+                use_dml = cp.getboolean("Main", "use_directml", fallback=True)
+                
+            if use_dml:
+                dml_path = os.path.join(self.models_dir, "onnx_directml", "onnxruntime")
+                dml_ok = os.path.exists(dml_path)
+        except Exception:
+            pass
+            
+        return arcface_ok and scrfd_ok and clip_vis_ok and clip_txt_ok and tok_ok and dense_ok and dml_ok
 
     def check_legacy_models(self) -> list:
         """Проверяет наличие старых (неиспользуемых) моделей и возвращает список путей к ним."""

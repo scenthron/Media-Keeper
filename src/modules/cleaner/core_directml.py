@@ -72,14 +72,18 @@ class DirectMLManager:
                         
                     # Если инициализация провалилась, откатываем импортер, чтобы не сломать остальную программу
                     if not DirectMLManager.is_ready:
-                        sys.meta_path.remove(override_importer)
-                        if 'onnxruntime' in sys.modules:
-                            del sys.modules['onnxruntime']
+                        if override_importer in sys.meta_path:
+                            sys.meta_path.remove(override_importer)
+                        for k in list(sys.modules.keys()):
+                            if k == 'onnxruntime' or k.startswith('onnxruntime.'):
+                                del sys.modules[k]
                             
                 except Exception as e:
-                    sys.meta_path.remove(override_importer)
-                    if 'onnxruntime' in sys.modules:
-                        del sys.modules['onnxruntime']
+                    if override_importer in sys.meta_path:
+                        sys.meta_path.remove(override_importer)
+                    for k in list(sys.modules.keys()):
+                        if k == 'onnxruntime' or k.startswith('onnxruntime.'):
+                            del sys.modules[k]
                     DirectMLManager.is_ready = False
                     DirectMLManager.error_msg = f"Ошибка загрузки библиотеки DirectML: {e}"
         except Exception as e:

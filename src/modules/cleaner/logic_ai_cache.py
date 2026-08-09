@@ -95,6 +95,23 @@ class AiCacheManager:
         except Exception as e:
             logging.error(f"Ошибка инициализации базы данных ИИ-кэша: {e}", exc_info=True)
 
+    def check_and_clear_faces_if_threshold_changed(self, current_thresh: float):
+        """Проверяет, изменился ли порог обнаружения лиц. Если да — очищает кэш лиц."""
+        try:
+            with self._conn() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT value FROM sys_meta WHERE key = 'last_face_conf_thresh'")
+                row = cursor.fetchone()
+                last_thresh = float(row[0]) if row and row[0] else None
+                
+                if last_thresh is None or abs(last_thresh - current_thresh) > 0.001:
+                    logging.info(f"Порог детекции лиц изменен ({last_thresh} -> {current_thresh}). Сброс кэша лиц...")
+                    cursor.execute("DELETE FROM face_embeddings")
+                    cursor.execute("INSERT OR REPLACE INTO sys_meta (key, value) VALUES ('last_face_conf_thresh', ?)", (str(current_thresh),))
+                    conn.commit()
+        except Exception as e:
+            logging.error(f"Ошибка при проверке порога детекции лиц: {e}")
+
     def get_image_embedding(self, filepath: str, current_mtime: float, current_size: int) -> np.ndarray | None:
         """
         Возвращает сохраненный вектор изображения (CLIP) из кэша.

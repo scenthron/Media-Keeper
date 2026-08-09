@@ -57,7 +57,7 @@ class AiSearchRequest:
     use_cache: bool = True
     fast_search_dump: str = None
     use_gpu: bool = True
-    strict_clustering: bool = False
+    face_conf_thresh: float = 0.70
 
 
 @dataclass
@@ -148,6 +148,9 @@ class AiCoreWorker(QRunnable):
         try:
             from .workers import ensure_win_path
             import re
+            
+            if self.cache and hasattr(self.request, 'face_conf_thresh'):
+                self.cache.check_and_clear_faces_if_threshold_changed(self.request.face_conf_thresh)
             
             # 1. Gather valid files
             self.signals.progress.emit(STAGE_SCANNING, 0.0, "Поиск медиафайлов...", 0, 0, 0, 0, 0, 0)
@@ -341,7 +344,7 @@ class AiCoreWorker(QRunnable):
                         if faces is not None: hit_cache = True
                         
                     if faces is None:
-                        faces = self.engine.extract_faces(fp, img_rgb)
+                        faces = self.engine.extract_faces(fp, img_rgb, conf_thresh=self.request.face_conf_thresh)
                         if self.request.use_cache and self.cache and faces is not None:
                             faces_cache_batch.append((fp, mtime, size, faces))
                             if len(faces_cache_batch) >= 50:
@@ -499,8 +502,7 @@ class AiCoreWorker(QRunnable):
                 if all_embs:
                     X = np.array(all_embs, dtype=np.float32)
                     eps = 1.0 - (self.request.threshold / 100.0)
-                    linkage_type = "complete" if getattr(self.request, 'strict_clustering', False) else "average"
-                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2, linkage=linkage_type)
+                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2, linkage="average")
                     
                     # Вычисляем центроиды кластеров для определения % сходства
                     cluster_centroids = {}
@@ -545,8 +547,7 @@ class AiCoreWorker(QRunnable):
                 if all_embs:
                     X = np.array(all_embs, dtype=np.float32)
                     eps = 1.0 - (self.request.threshold / 100.0)
-                    linkage_type = "complete" if getattr(self.request, 'strict_clustering', False) else "average"
-                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2, linkage=linkage_type)
+                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2, linkage="average")
                     
                     cluster_centroids = {}
                     for c_id in set(labels):

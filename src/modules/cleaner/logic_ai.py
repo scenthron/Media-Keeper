@@ -271,7 +271,7 @@ class AiEngine:
             logging.error(f"Ошибка инициализации моделей: {e}")
             return False
 
-    def extract_faces(self, image_path: str, img_rgb: np.ndarray = None) -> list | None:
+    def extract_faces(self, image_path: str, img_rgb: np.ndarray = None, conf_thresh: float = 0.70) -> list | None:
         """Находит все лица на фото и возвращает список словарей {"bbox": [...], "descriptor": np.ndarray}. Возвращает None если файл битый."""
         if not self._is_initialized:
             return None
@@ -286,8 +286,8 @@ class AiEngine:
                 img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 
             logging.debug(f"[DEBUG-AI] Запускаем SCRFD для {image_path} (shape: {img_rgb.shape})")
-            # Увеличиваем порог уверенности (conf_thresh) до 0.80, чтобы отсечь ложные срабатывания (одежда, текстуры, и т.д.)
-            bboxes, kpss = self.detector.detect(img_rgb, conf_thresh=0.80, input_size=(640, 640))
+            # Используем динамический порог уверенности (по умолчанию 0.70)
+            bboxes, kpss = self.detector.detect(img_rgb, conf_thresh=conf_thresh, input_size=(640, 640))
             logging.debug(f"[DEBUG-AI] SCRFD успешно завершен для {image_path}, найдено {len(bboxes) if bboxes is not None else 0} лиц.")
         except Exception as e:
             logging.error(f"[DEBUG-AI] Ошибка во время детекции лиц для {image_path}: {e}", exc_info=True)

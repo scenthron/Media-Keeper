@@ -938,16 +938,43 @@ class AiClassificationTab(QWidget):
         self.chk_show_faces.toggled.connect(self._on_chk_show_faces_toggled)
         params_sub_layout.addWidget(self.chk_show_faces)
         
-        self.chk_strict_clustering = QCheckBox("Строгий режим (Полное связывание)" if AppContext.is_ru() else "Strict mode (Complete Linkage)")
-        self.chk_strict_clustering.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.chk_strict_clustering.setToolTip("Использует алгоритм полного связывания, чтобы гарантированно исключить разных людей в одной группе, но может чаще разбивать одного человека." if AppContext.is_ru() else "Uses Complete Linkage algorithm to guarantee no different people in one group, but might split same person more often.")
-        self.chk_strict_clustering.setStyleSheet("""
-            QCheckBox { color: white; font-weight: bold; font-size: 13px; }
-            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
-            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
-        """)
-        self.chk_strict_clustering.setChecked(False)
-        params_sub_layout.addWidget(self.chk_strict_clustering)
+        self.face_conf_layout = QHBoxLayout()
+        self.face_conf_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Left label
+        self.lbl_face_conf_left = QLabel("Больше лиц" if AppContext.is_ru() else "More faces")
+        self.lbl_face_conf_left.setStyleSheet("color: #aaa; font-size: 11px;")
+        
+        self.slider_face_conf = QSlider(Qt.Orientation.Horizontal)
+        self.slider_face_conf.setRange(50, 95)
+        self.slider_face_conf.setValue(70)
+        self.slider_face_conf.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        # Right label
+        self.lbl_face_conf_right = QLabel("Идеальные лица" if AppContext.is_ru() else "Perfect faces")
+        self.lbl_face_conf_right.setStyleSheet("color: #aaa; font-size: 11px;")
+        
+        self.lbl_face_conf_val = QLabel("70%")
+        self.lbl_face_conf_val.setFixedWidth(35)
+        self.lbl_face_conf_val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_face_conf_val.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
+        
+        self.slider_face_conf.valueChanged.connect(lambda v: self.lbl_face_conf_val.setText(f"{v}%"))
+        
+        self.face_conf_layout.addWidget(self.lbl_face_conf_left)
+        self.face_conf_layout.addWidget(self.slider_face_conf)
+        self.face_conf_layout.addWidget(self.lbl_face_conf_right)
+        self.face_conf_layout.addWidget(self.lbl_face_conf_val)
+        
+        # Wrapper for slider
+        face_conf_wrapper = QVBoxLayout()
+        face_conf_wrapper.setSpacing(2)
+        lbl_face_conf_title = QLabel("Порог обнаружения лиц (уверенность)" if AppContext.is_ru() else "Face detection confidence threshold")
+        lbl_face_conf_title.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
+        face_conf_wrapper.addWidget(lbl_face_conf_title)
+        face_conf_wrapper.addLayout(self.face_conf_layout)
+        
+        params_sub_layout.addLayout(face_conf_wrapper)
         
         # Пружинка для выравнивания настроек по верхнему краю и прижатия кнопки вниз
         params_sub_layout.addStretch()
@@ -1931,7 +1958,7 @@ class AiClassificationTab(QWidget):
             use_cache=use_cache,
             use_gpu=use_gpu,
             fast_search_dump=fast_search_dump,
-            strict_clustering=self.chk_strict_clustering.isChecked()
+            face_conf_thresh=self.slider_face_conf.value() / 100.0
         )
         
 

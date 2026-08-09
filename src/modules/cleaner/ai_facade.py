@@ -57,13 +57,15 @@ class AiSearchRequest:
     use_cache: bool = True
     fast_search_dump: str = None
     use_gpu: bool = True
+    strict_clustering: bool = False
+
 
 @dataclass
 class AiSearchResponse:
     groups: list[AiGroup] = field(default_factory=list)
 
-def _agglomerative_clustering_numpy(X: np.ndarray, eps: float, min_samples: int = 2) -> np.ndarray:
-    """Иерархическая агломеративная кластеризация (Average Linkage) с косинусным расстоянием без внешних зависимостей."""
+def _agglomerative_clustering_numpy(X: np.ndarray, eps: float, min_samples: int = 2, linkage: str = "average") -> np.ndarray:
+    """Иерархическая агломеративная кластеризация (Average/Complete Linkage) с косинусным расстоянием без внешних зависимостей."""
     n = len(X)
     if n == 0:
         return np.array([], dtype=int)
@@ -89,8 +91,10 @@ def _agglomerative_clustering_numpy(X: np.ndarray, eps: float, min_samples: int 
         if dists[i, j] > eps:
             break
             
-        # Average Linkage: взвешенное среднее расстояний
-        new_dists = (sizes[i] * dists[i, :] + sizes[j] * dists[j, :]) / (sizes[i] + sizes[j])
+        if linkage == "complete":
+            new_dists = np.maximum(dists[i, :], dists[j, :])
+        else:
+            new_dists = (sizes[i] * dists[i, :] + sizes[j] * dists[j, :]) / (sizes[i] + sizes[j])
         
         dists[i, :] = new_dists
         dists[:, i] = new_dists
@@ -495,7 +499,8 @@ class AiCoreWorker(QRunnable):
                 if all_embs:
                     X = np.array(all_embs, dtype=np.float32)
                     eps = 1.0 - (self.request.threshold / 100.0)
-                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2)
+                    linkage_type = "complete" if getattr(self.request, 'strict_clustering', False) else "average"
+                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2, linkage=linkage_type)
                     
                     # Вычисляем центроиды кластеров для определения % сходства
                     cluster_centroids = {}
@@ -540,7 +545,8 @@ class AiCoreWorker(QRunnable):
                 if all_embs:
                     X = np.array(all_embs, dtype=np.float32)
                     eps = 1.0 - (self.request.threshold / 100.0)
-                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2)
+                    linkage_type = "complete" if getattr(self.request, 'strict_clustering', False) else "average"
+                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2, linkage=linkage_type)
                     
                     cluster_centroids = {}
                     for c_id in set(labels):

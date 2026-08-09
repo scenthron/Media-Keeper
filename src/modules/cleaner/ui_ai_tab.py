@@ -938,6 +938,17 @@ class AiClassificationTab(QWidget):
         self.chk_show_faces.toggled.connect(self._on_chk_show_faces_toggled)
         params_sub_layout.addWidget(self.chk_show_faces)
         
+        self.chk_strict_clustering = QCheckBox("Строгий режим (Полное связывание)" if AppContext.is_ru() else "Strict mode (Complete Linkage)")
+        self.chk_strict_clustering.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_strict_clustering.setToolTip("Использует алгоритм полного связывания, чтобы гарантированно исключить разных людей в одной группе, но может чаще разбивать одного человека." if AppContext.is_ru() else "Uses Complete Linkage algorithm to guarantee no different people in one group, but might split same person more often.")
+        self.chk_strict_clustering.setStyleSheet("""
+            QCheckBox { color: white; font-weight: bold; font-size: 13px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
+            QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        """)
+        self.chk_strict_clustering.setChecked(False)
+        params_sub_layout.addWidget(self.chk_strict_clustering)
+        
         # Пружинка для выравнивания настроек по верхнему краю и прижатия кнопки вниз
         params_sub_layout.addStretch()
         
@@ -1919,9 +1930,11 @@ class AiClassificationTab(QWidget):
             negative_queries=negative_queries,
             use_cache=use_cache,
             use_gpu=use_gpu,
-            fast_search_dump=fast_search_dump
+            fast_search_dump=fast_search_dump,
+            strict_clustering=self.chk_strict_clustering.isChecked()
         )
         
+
         if not hasattr(self, 'facade'):
             self.facade = AiServiceFacade()
             self.facade.cache = self.cache

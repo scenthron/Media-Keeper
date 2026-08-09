@@ -220,21 +220,22 @@ class AiFragmentTab(QWidget):
         frag_layout = QHBoxLayout()
         frag_layout.addStretch()
         self.drop_zone = SingleFileDropZone(self)
-        self.drop_zone.lbl_text.setText("Перетащите 1 фото\nдля поиска фрагмента")
+        self.drop_zone.lbl_text.setText("Перетащите 1 фото\nдля поиска фрагмента" if AppContext.is_ru() else "Drop 1 photo\nto search for fragment")
         self.drop_zone.file_dropped.connect(self.on_file_dropped)
+        self.drop_zone.clicked.connect(self.browse_fragment_image)
         frag_layout.addWidget(self.drop_zone)
         frag_layout.addStretch()
         col_ref.addLayout(frag_layout)
         
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        self.btn_crop = QPushButton("Выбрать фрагмент")
+        self.btn_crop = QPushButton("Выбрать фрагмент" if AppContext.is_ru() else "Select fragment")
         self.btn_crop.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_crop.setStyleSheet("QPushButton { background-color: #2b2b2b; color: white; border: 1px solid #444; border-radius: 4px; padding: 4px 8px; } QPushButton:hover { background-color: #333; }")
         self.btn_crop.clicked.connect(self.open_crop_dialog)
         self.btn_crop.setEnabled(False)
         
-        self.btn_clear_frag = QPushButton("Очистить")
+        self.btn_clear_frag = QPushButton("Очистить" if AppContext.is_ru() else "Clear")
         self.btn_clear_frag.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.btn_clear_frag.setStyleSheet("QPushButton { background-color: #2b2b2b; color: #ef4444; border: 1px solid #444; border-radius: 4px; padding: 4px 8px; } QPushButton:hover { background-color: #333; }")
         self.btn_clear_frag.clicked.connect(self.clear_fragment)
@@ -297,7 +298,7 @@ class AiFragmentTab(QWidget):
         from .ui_panels import load_svg_icon
         icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
         
-        self.btn_filter = QPushButton("Сканировать типы файлов")
+        self.btn_filter = QPushButton("Сканировать типы файлов" if AppContext.is_ru() else "Scan file types")
         self.btn_filter.setIcon(load_svg_icon(os.path.join(icons_dir, "loupe-color.svg"), QSize(16, 16)))
         self.btn_filter.setIconSize(QSize(16, 16))
         self.btn_filter.setFixedHeight(36)
@@ -305,7 +306,7 @@ class AiFragmentTab(QWidget):
         self.btn_filter.setStyleSheet("QPushButton { background-color: #444; color: #fff; border: 1px solid #666; padding: 0 10px; border-radius: 4px; font-weight: bold; } QPushButton:hover { background-color: #555; color: white; border-color: #888; }")
         self.btn_filter.clicked.connect(self.open_filter_dialog)
         
-        self.lbl_filter_status = QLabel("Фильтр: Все файлы")
+        self.lbl_filter_status = QLabel("Фильтр: Все файлы" if AppContext.is_ru() else "Filter: All files")
         self.lbl_filter_status.setStyleSheet("color: #aaa; font-size: 11px;")
         self.lbl_filter_status.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         
@@ -369,7 +370,7 @@ class AiFragmentTab(QWidget):
         desc_pixel.setWordWrap(True)
         tab_pixel_layout.addWidget(desc_pixel)
         
-        self.chk_pixel_bw = QCheckBox("Черно-белый режим (Ускорение x3)")
+        self.chk_pixel_bw = QCheckBox("Черно-белый режим (Ускорение x3)" if AppContext.is_ru() else "Grayscale mode (3x speedup)")
         self.chk_pixel_bw.setStyleSheet("QCheckBox { color: #ccc; font-weight: bold; font-size: 11px; margin-top: 5px; } QCheckBox::indicator { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #555; background: #111; } QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }")
         self.chk_pixel_bw.setChecked(False)
         tab_pixel_layout.addWidget(self.chk_pixel_bw)
@@ -516,7 +517,7 @@ class AiFragmentTab(QWidget):
         
         self.tree_results = CleanerTreeWidget()
         self.tree_results.setColumnCount(4)
-        self.tree_results.setHeaderLabels(["Файл", "Сходство (%)", "Размер", "Путь"])
+        self.tree_results.setHeaderLabels(["Файл", "Сходство (%)", "Размер", "Путь"] if AppContext.is_ru() else ["File", "Similarity (%)", "Size", "Path"])
         self.tree_results.setColumnWidth(0, 240)
         self.tree_results.setColumnWidth(1, 100)
         self.tree_results.setColumnWidth(2, 90)
@@ -594,6 +595,13 @@ class AiFragmentTab(QWidget):
         except Exception as e:
             self.lbl_cache_info_fragment.setText("0 B")
 
+    def browse_fragment_image(self):
+        from PyQt6.QtWidgets import QFileDialog
+        title = "Выберите изображение" if AppContext.is_ru() else "Select Image"
+        f, _ = QFileDialog.getOpenFileName(self, title, "", "Images (*.jpg *.jpeg *.png *.webp *.bmp *.tif *.tiff)")
+        if f:
+            self.on_file_dropped(f)
+
     def on_file_dropped(self, filepath):
         ext = os.path.splitext(filepath)[1]
         temp_name = f"frag_{int(time.time())}{ext}"
@@ -609,7 +617,7 @@ class AiFragmentTab(QWidget):
     def update_dropzone_preview(self):
         if not self.target_image_path:
             self.drop_zone.has_image = False
-            self.drop_zone.lbl_text.setText("Перетащите 1 фото\nдля поиска фрагмента")
+            self.drop_zone.lbl_text.setText("Перетащите 1 фото\nдля поиска фрагмента" if AppContext.is_ru() else "Drop 1 photo\nto search for fragment")
             self.drop_zone.lbl_text.show()
             self.drop_zone.btn_add.show()
             self.drop_zone.setStyleSheet(self.drop_zone.styleSheet().replace("border-color: #3b82f6;", ""))
@@ -684,7 +692,7 @@ class AiFragmentTab(QWidget):
         self.btn_clear_frag.setEnabled(False)
 
     def clear_orb_cache(self):
-        reply = QMessageBox.question(self, "Очистить кэш", "Очистить кэш-дескрипторов?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        reply = QMessageBox.question(self, "Очистить кэш" if AppContext.is_ru() else "Clear Cache", "Очистить кэш-дескрипторов?" if AppContext.is_ru() else "Clear descriptor cache?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             OrbCacheManager().clear_disk_cache()
             self.update_cache_info_fragment()
@@ -694,7 +702,7 @@ class AiFragmentTab(QWidget):
             
         if not dirs:
             from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Ошибка", "Сначала добавьте папки для сканирования.")
+            QMessageBox.warning(self, "Ошибка" if AppContext.is_ru() else "Error", "Сначала добавьте папки для сканирования." if AppContext.is_ru() else "Please add folders to scan first.")
             return
             
         self.btn_filter.setEnabled(False)
@@ -736,18 +744,18 @@ class AiFragmentTab(QWidget):
             
         dirs = list(self.cleaner.source_folders.keys()) if hasattr(self.cleaner, 'source_folders') else []
         if not dirs:
-            QMessageBox.warning(self, "Ошибка", "Добавьте папки для поиска.")
+            QMessageBox.warning(self, "Ошибка" if AppContext.is_ru() else "Error", "Добавьте папки для поиска." if AppContext.is_ru() else "Please add folders to search.")
             return
             
         if not self.target_image_path:
-            QMessageBox.warning(self, "Ошибка", "Добавьте изображение-фрагмент.")
+            QMessageBox.warning(self, "Ошибка" if AppContext.is_ru() else "Error", "Добавьте изображение-фрагмент." if AppContext.is_ru() else "Please add a fragment image.")
             return
             
         self.tree_results.clear()
         self.action_bar.lbl_selection_info.setText("Выбрано: 0" if AppContext.is_ru() else "Selected: 0")
         self.lbl_stats.hide()
         self.progress_bar.show()
-        self.progress_bar.setFormat("Подготовка к сканированию...")
+        self.progress_bar.setFormat("Подготовка к сканированию..." if AppContext.is_ru() else "Preparing for scan...")
         self.btn_start.setText(" Остановить" if AppContext.is_ru() else " Stop")
         self.preview_widget.show_empty("Сканирование..." if AppContext.is_ru() else "Scanning...")
         
@@ -778,7 +786,7 @@ class AiFragmentTab(QWidget):
             percent = (current / total) * 100
             self.progress_bar.setMaximum(total)
             self.progress_bar.setValue(current)
-            self.progress_bar.setFormat(f"Сканирование: {current}/{total} файлов ({int(percent)}%) - {text}")
+            self.progress_bar.setFormat(f"Сканирование: {current}/{total} файлов ({int(percent)}%) - {text}" if AppContext.is_ru() else f"Scanning: {current}/{total} files ({int(percent)}%) - {text}")
             
 
 

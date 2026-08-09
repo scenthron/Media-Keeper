@@ -121,9 +121,7 @@ class JournalDialog(QDialog):
             item_src.setToolTip(src_dir)
             if not os.path.exists(src_dir):
                 item_src.setForeground(QColor("red"))
-                item_src.setToolTip(f"Папка отсутствует (будет создана при возврате)
-{src_dir}" if AppContext.is_ru() else f"Folder is missing (will be created on return)
-{src_dir}")
+                item_src.setToolTip(f"Папка отсутствует (будет создана при возврате)\\n{src_dir}" if AppContext.is_ru() else f"Folder is missing (will be created on return)\\n{src_dir}")
             else:
                 item_src.setForeground(QColor("green"))
             self.table.setItem(row, 2, item_src)

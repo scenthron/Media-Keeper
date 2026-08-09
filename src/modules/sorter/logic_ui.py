@@ -508,9 +508,13 @@ class UiSetupMixin:
         # Настройка кнопки отмены
         display_undo_key = undo_key.replace("Return", "Enter") if undo_key else ""
         if display_undo_key:
-            txt = f"<b>Откат</b> <span style='font-weight: normal; font-size: 12px;'>+ Журнал ПКМ</span><br><span style='font-size: 10px; font-weight: normal;'>({display_undo_key})</span>"
+            txt_ru = f"<b>Откат</b> <span style='font-weight: normal; font-size: 12px;'>+ Журнал ПКМ</span><br><span style='font-size: 10px; font-weight: normal;'>({display_undo_key})</span>"
+            txt_en = f"<b>Undo</b> <span style='font-weight: normal; font-size: 12px;'>+ Log RMB</span><br><span style='font-size: 10px; font-weight: normal;'>({display_undo_key})</span>"
+            txt = txt_ru if AppContext.is_ru() else txt_en
         else:
-            txt = f"<b>Откат</b> <span style='font-weight: normal; font-size: 12px;'>+ Журнал ПКМ</span>"
+            txt_ru = f"<b>Откат</b> <span style='font-weight: normal; font-size: 12px;'>+ Журнал ПКМ</span>"
+            txt_en = f"<b>Undo</b> <span style='font-weight: normal; font-size: 12px;'>+ Log RMB</span>"
+            txt = txt_ru if AppContext.is_ru() else txt_en
         self.set_button_rich_text(self.btn_undo, txt)
         self.btn_undo.setStyleSheet(f"""
             QPushButton {{
@@ -530,7 +534,7 @@ class UiSetupMixin:
         undo_base_tip = AppContext.tr("tooltip_undo_action")
         if undo_key_display:
             undo_base_tip += f" ({undo_key_display})"
-        undo_base_tip += "\n(ПКМ для открытия журнала перемещений)"
+        undo_base_tip += "\n(ПКМ для открытия журнала перемещений)" if AppContext.is_ru() else "\n(RMB to open move journal)"
         self.btn_undo.setToolTip(undo_base_tip)
         
     def _show_journal(self, pos):

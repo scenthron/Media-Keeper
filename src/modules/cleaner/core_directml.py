@@ -52,6 +52,15 @@ class DirectMLManager:
                 sys.meta_path.insert(0, OverrideImporter())
                 
                 try:
+                    # В Python 3.8+ на Windows необходимо явно добавлять пути к DLL
+                    if hasattr(os, "add_dll_directory"):
+                        try:
+                            os.add_dll_directory(os.path.join(target_dir, "onnxruntime", "capi"))
+                        except Exception:
+                            pass
+                    else:
+                        os.environ["PATH"] = os.path.join(target_dir, "onnxruntime", "capi") + os.pathsep + os.environ.get("PATH", "")
+
                     import onnxruntime
                     # Проверяем, действительно ли загрузился DirectML провайдер
                     if 'DmlExecutionProvider' in onnxruntime.get_available_providers():

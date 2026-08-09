@@ -2051,41 +2051,46 @@ class AiClassificationTab(QWidget):
 
 
     def populate_results(self, results):
-        self.tree_results.clear()
-        msg = "Файл не выбран" if AppContext.is_ru() else "No file selected"
-        self.preview_widget.show_empty(msg)
-        self.file_selected.emit("")
-        if not results:
-            self.post_filter_widget.hide()
-            return
-            
-        from utils_common import format_size
-        
-        self.is_cluster_results = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 2
-        
-        unique_sizes = set()
-        
-        for group_name, files in results.items():
-            if not files:
-                continue
+        self.tree_results.setUpdatesEnabled(False)
+        self.tree_results.blockSignals(True)
+        try:
+            self.tree_results.clear()
+            msg = "Файл не выбран" if AppContext.is_ru() else "No file selected"
+            self.preview_widget.show_empty(msg)
+            self.file_selected.emit("")
+            if not results:
+                self.post_filter_widget.hide()
+                return
                 
-            group_size = sum(f["size"] for f in files)
-            num_files = len(files)
-            unique_sizes.add(num_files)
+            from utils_common import format_size
             
-            group_item = QTreeWidgetItem(self.tree_results)
-            group_item.setText(0, f"Группа: {group_name} ({num_files} файлов)" if AppContext.is_ru() else f"Group: {group_name} ({num_files} files)")
-            group_item.setText(2, format_size(group_size))
-            group_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": True, "name": group_name})
+            self.is_cluster_results = hasattr(self, 'mode_stack') and self.mode_stack.currentIndex() == 2
             
-            font = group_item.font(0)
-            font.setBold(True)
-            group_item.setFont(0, font)
-            group_item.setFont(2, font)
+            unique_sizes = set()
+            top_level_items = []
             
-            for f in files:
-                file_item = QTreeWidgetItem(group_item)
-                file_item.setCheckState(0, Qt.CheckState.Unchecked)
+            for group_name, files in results.items():
+                if not files:
+                    continue
+                    
+                group_size = sum(f["size"] for f in files)
+                num_files = len(files)
+                unique_sizes.add(num_files)
+                
+                group_item = QTreeWidgetItem()
+                group_item.setText(0, f"Группа: {group_name} ({num_files} файлов)" if AppContext.is_ru() else f"Group: {group_name} ({num_files} files)")
+                group_item.setText(2, format_size(group_size))
+                group_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": True, "name": group_name})
+                
+                font = group_item.font(0)
+                font.setBold(True)
+                group_item.setFont(0, font)
+                group_item.setFont(2, font)
+                
+                child_items = []
+                for f in files:
+                    file_item = QTreeWidgetItem()
+                    file_item.setCheckState(0, Qt.CheckState.Unchecked)
                 file_item.setText(0, os.path.basename(f["path"]))
                 file_item.setText(1, f"{f['confidence']:.1f}%")
                 file_item.setText(2, format_size(f["size"]))

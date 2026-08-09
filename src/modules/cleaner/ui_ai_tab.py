@@ -2091,50 +2091,70 @@ class AiClassificationTab(QWidget):
                 for f in files:
                     file_item = QTreeWidgetItem()
                     file_item.setCheckState(0, Qt.CheckState.Unchecked)
-                file_item.setText(0, os.path.basename(f["path"]))
-                file_item.setText(1, f"{f['confidence']:.1f}%")
-                file_item.setText(2, format_size(f["size"]))
-                file_item.setText(3, f["path"])
-                file_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": False, "path": f["path"], "size": f["size"], "confidence": f.get("confidence", 0.0) / 100.0, "matched_bbox": f.get("matched_bbox"), "type": f.get("type", "face"), "tag_scores": f.get("tag_scores", {})})
+                    file_item.setText(0, os.path.basename(f["path"]))
+                    file_item.setText(1, f"{f['confidence']:.1f}%")
+                    file_item.setText(2, format_size(f["size"]))
+                    file_item.setText(3, f["path"])
+                    file_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": False, "path": f["path"], "size": f["size"], "confidence": f.get("confidence", 0.0) / 100.0, "matched_bbox": f.get("matched_bbox"), "type": f.get("type", "face"), "tag_scores": f.get("tag_scores", {})})
+                    child_items.append(file_item)
+                    
+                group_item.addChildren(child_items)
+                group_item.setExpanded(True)
+                top_level_items.append(group_item)
                 
-            group_item.setExpanded(True)
+            self.tree_results.addTopLevelItems(top_level_items)
+                
+            self.spin_post_filter.blockSignals(True)
+            self.slider_post_filter.blockSignals(True)
+            if self.is_cluster_results:
+                sizes = sorted(list(unique_sizes))
+                self.cluster_unique_sizes = sizes
+                min_size = min(sizes) if sizes else 1
+                max_size = max(sizes) if sizes else 100
+                self.spin_post_filter.setSuffix(" ф." if AppContext.is_ru() else " f.")
+                self.spin_post_filter.setDecimals(0)
+                self.spin_post_filter.setSingleStep(1.0)
+                self.spin_post_filter.setRange(float(min_size), float(max_size))
+                self.slider_post_filter.setRange(0, len(sizes) - 1 if sizes else 0)
+                default_val = 2.0
+                if max_size < 2:
+                    default_val = float(max_size)
+                self.spin_post_filter.setValue(default_val)
+                try:
+                    idx = min(range(len(sizes)), key=lambda i: abs(sizes[i] - default_val))
+                    self.slider_post_filter.setValue(idx)
+                except ValueError:
+                    pass
+            else:
+                self.spin_post_filter.setSuffix("%")
+                self.spin_post_filter.setDecimals(2)
+                self.spin_post_filter.setSingleStep(0.01)
+                scan_threshold = self.spin_threshold.value()
+                self.spin_post_filter.setRange(scan_threshold, 100.0)
+                self.slider_post_filter.setRange(int(scan_threshold * 100), 10000)
+                self.spin_post_filter.setValue(scan_threshold)
+                
+            self.spin_post_filter.blockSignals(False)
+            self.slider_post_filter.blockSignals(False)
             
-        self.spin_post_filter.blockSignals(True)
-        self.slider_post_filter.blockSignals(True)
-        if self.is_cluster_results:
-            sizes = sorted(list(unique_sizes))
-            self.cluster_unique_sizes = sizes
-            min_size = min(sizes) if sizes else 1
-            max_size = max(sizes) if sizes else 100
-            self.spin_post_filter.setSuffix(" ф." if AppContext.is_ru() else " f.")
-            self.spin_post_filter.setDecimals(0)
-            self.spin_post_filter.setSingleStep(1.0)
-            self.spin_post_filter.setRange(float(min_size), float(max_size))
-            self.slider_post_filter.setRange(0, len(sizes) - 1 if sizes else 0)
-            default_val = 2.0
-            if max_size < 2:
-                default_val = float(max_size)
-            self.spin_post_filter.setValue(default_val)
+            self.post_filter_widget.show()
+            # Always apply initial post filter so it actually filters the view
+            self.on_post_filter_changed(self.spin_post_filter.value())
+            
+            self.update_action_buttons()
+            
+            # Обновляем статистику в сайдбаре
             try:
-                idx = min(range(len(sizes)), key=lambda i: abs(sizes[i] - default_val))
-                self.slider_post_filter.setValue(idx)
-            except ValueError:
-                pass
-        else:
-            self.spin_post_filter.setSuffix("%")
-            self.spin_post_filter.setDecimals(2)
-            self.spin_post_filter.setSingleStep(0.01)
-            scan_threshold = self.spin_threshold.value()
-            self.spin_post_filter.setRange(scan_threshold, 100.0)
-            self.slider_post_filter.setRange(int(scan_threshold * 100), 10000)
-            self.spin_post_filter.setValue(scan_threshold)
-            
-        self.spin_post_filter.blockSignals(False)
-        self.slider_post_filter.blockSignals(False)
-        
-        self.post_filter_widget.show()
-        # Always apply initial post filter so it actually filters the view
-        self.on_post_filter_changed(self.spin_post_filter.value())
+                stats = self.tree_results.get_visible_stats()
+                if hasattr(self, 'label_stats'):
+                    self.label_stats.setText(stats["text"])
+            except Exception as e:
+                import logging
+                logging.warning(f"Failed to update stats on populate: {e}")
+                
+        finally:
+            self.tree_results.blockSignals(False)
+            self.tree_results.setUpdatesEnabled(True)
 
     def on_tree_selection_changed(self):
         selected_items = self.tree_results.selectedItems()

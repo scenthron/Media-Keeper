@@ -80,8 +80,11 @@ class AiEngine:
                 use_dml = cp.getboolean("Main", "use_directml", fallback=True)
                 
             if use_dml:
+                import sys
+                py_ver = f"cp{sys.version_info.major}{sys.version_info.minor}"
+                dml_whl = os.path.join(self.models_dir, "onnx_directml", f"onnxruntime_directml_{py_ver}.whl")
                 dml_path = os.path.join(self.models_dir, "onnx_directml", "onnxruntime")
-                dml_ok = os.path.exists(dml_path)
+                dml_ok = os.path.exists(dml_whl) and os.path.exists(dml_path)
         except Exception:
             pass
             

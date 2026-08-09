@@ -34,7 +34,8 @@ class DirectMLManager:
                 target_dir = get_directml_dir()
                 # Проверяем наличие onnxruntime внутри папки загрузок
                 ort_dir = os.path.join(target_dir, "onnxruntime")
-                if not os.path.exists(ort_dir):
+                dml_ok = os.path.exists(ort_dir)
+                if not dml_ok:
                     DirectMLManager.is_ready = False
                     DirectMLManager.error_msg = "Библиотека не установлена."
                     return
@@ -48,8 +49,8 @@ class DirectMLManager:
                             return importlib.machinery.PathFinder.find_spec(fullname, [target_dir] + (path or []))
                         return None
                 
-                # Вставляем наш загрузчик первым
-                sys.meta_path.insert(0, OverrideImporter())
+                override_importer = OverrideImporter()
+                sys.meta_path.insert(0, override_importer)
                 
                 try:
                     # В Python 3.8+ на Windows необходимо явно добавлять пути к DLL
@@ -68,7 +69,17 @@ class DirectMLManager:
                     else:
                         DirectMLManager.is_ready = False
                         DirectMLManager.error_msg = "Провайдер DML не найден. Возможно, видеокарта не поддерживает DirectML."
+                        
+                    # Если инициализация провалилась, откатываем импортер, чтобы не сломать остальную программу
+                    if not DirectMLManager.is_ready:
+                        sys.meta_path.remove(override_importer)
+                        if 'onnxruntime' in sys.modules:
+                            del sys.modules['onnxruntime']
+                            
                 except Exception as e:
+                    sys.meta_path.remove(override_importer)
+                    if 'onnxruntime' in sys.modules:
+                        del sys.modules['onnxruntime']
                     DirectMLManager.is_ready = False
                     DirectMLManager.error_msg = f"Ошибка загрузки библиотеки DirectML: {e}"
         except Exception as e:

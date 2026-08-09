@@ -302,7 +302,7 @@ class AiClassificationTab(QWidget):
         # Верхняя панель настроек (со свободным изменением высоты от 130 до 280)
         # Верхняя панель настроек (со свободным изменением высоты от 220 до 600)
         self.top_settings = QFrame()
-        self.top_settings.setMinimumHeight(220)
+        self.top_settings.setMinimumHeight(260)
         self.top_settings.setMaximumHeight(600)
         self.top_settings.setStyleSheet("background-color: #1e1e1e; border-bottom: 1px solid #2d2d2d;")
         top_layout = QHBoxLayout(self.top_settings)
@@ -949,6 +949,10 @@ class AiClassificationTab(QWidget):
         self.slider_face_conf.setRange(50, 95)
         self.slider_face_conf.setValue(70)
         self.slider_face_conf.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.slider_face_conf.setStyleSheet("""
+            QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
+            QSlider::handle:horizontal { background: #3b82f6; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
+        """)
         
         # Right label
         self.lbl_face_conf_right = QLabel("Идеальные лица" if AppContext.is_ru() else "Perfect faces")

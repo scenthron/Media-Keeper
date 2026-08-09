@@ -379,7 +379,7 @@ class SpeedSettingsPopup(QWidget):
         top_row = QHBoxLayout()
         top_row.setSpacing(5)
         
-        self.lbl_speed = QLabel("Скорость: 2.0x")
+        self.lbl_speed = QLabel("Скорость: 2.0x" if AppContext.is_ru() else "Speed: 2.0x")
         self.btn_reset = QPushButton("x2")
         self.btn_reset.setFixedSize(24, 18)
         self.btn_reset.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -418,7 +418,7 @@ class SpeedSettingsPopup(QWidget):
                 
         self.last_val = val
         self.current_speed_val = val / 10.0
-        self.lbl_speed.setText(f"Скорость: {self.current_speed_val:.1f}x")
+        self.lbl_speed.setText(f"Скорость: {self.current_speed_val:.1f}x" if AppContext.is_ru() else f"Speed: {self.current_speed_val:.1f}x")
         self.speed_changed.emit(self.current_speed_val)
 
     def set_value(self, val):
@@ -428,7 +428,7 @@ class SpeedSettingsPopup(QWidget):
         self.slider_speed.setValue(v)
         self.last_val = v
         self.current_speed_val = val
-        self.lbl_speed.setText(f"Скорость: {self.current_speed_val:.1f}x")
+        self.lbl_speed.setText(f"Скорость: {self.current_speed_val:.1f}x" if AppContext.is_ru() else f"Speed: {self.current_speed_val:.1f}x")
         self.slider_speed.blockSignals(False)
 
 

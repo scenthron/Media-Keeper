@@ -2548,7 +2548,7 @@ class AiClassificationTab(QWidget):
         size_str = format_size(size)
         
         self.action_bar.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
-        self.action_bar.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}")
+        self.action_bar.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}" if AppContext.is_ru() else f"Selected: {count} files • {size_str}")
         self.action_bar.lbl_selection_info.setToolTip(f"Выбрано файлов: {count}\nРазмер: {size_str}")
         
         has_selection = (count > 0)

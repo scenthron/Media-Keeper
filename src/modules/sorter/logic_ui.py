@@ -376,7 +376,7 @@ class UiSetupMixin:
                  ConfigManager.save(self.config)
             self.files_queue = []
             self.current_file_path = None
-            self.lbl_filename.setText("Входящие сброшены")
+            self.lbl_filename.setText("Входящие сброшены" if AppContext.is_ru() else "Inbox reset")
             self.viewer.show_empty_state("Входящие не выбраны")
             self.lbl_unsort_count.update_info()
 

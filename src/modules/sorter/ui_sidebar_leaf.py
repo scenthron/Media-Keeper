@@ -261,13 +261,13 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
             if is_enabled:
                 if template:
                     self.btn_settings.setStyleSheet("QPushButton { background-color: #16a34a; border: 1px solid rgba(0,0,0,0.8); border-radius: 4px; padding: 0px; } QPushButton:hover { background-color: #15803d; border: 1px solid white; }")
-                    self.btn_settings.setToolTip("Автоматизация: Включена")
+                    self.btn_settings.setToolTip("Автоматизация: Включена" if AppContext.is_ru() else "Automation: Enabled")
                 else:
                     self.btn_settings.setStyleSheet("QPushButton { background-color: #dc2626; border: 1px solid rgba(0,0,0,0.8); border-radius: 4px; padding: 0px; } QPushButton:hover { background-color: #b91c1c; border: 1px solid white; }")
-                    self.btn_settings.setToolTip("Ошибка: Шаблон пуст!")
+                    self.btn_settings.setToolTip("Ошибка: Шаблон пуст!" if AppContext.is_ru() else "Error: Pattern is empty!")
             else:
                 self.btn_settings.setStyleSheet("QPushButton { background-color: #d97706; border: 1px solid rgba(0,0,0,0.8); border-radius: 4px; padding: 0px; } QPushButton:hover { background-color: #b45309; border: 1px solid white; }")
-                self.btn_settings.setToolTip("Автоматизация: На паузе")
+                self.btn_settings.setToolTip("Автоматизация: На паузе" if AppContext.is_ru() else "Automation: Paused")
         else:
             self.btn_settings.setStyleSheet(base_style)
             self.btn_settings.setToolTip(AppContext.tr("tooltip_folder_settings"))

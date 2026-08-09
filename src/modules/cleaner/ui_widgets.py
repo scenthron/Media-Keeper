@@ -268,10 +268,10 @@ class GroupHeaderWidget(QWidget):
     def set_visual_state(self, state):
         if state == "done":
             self.setStyleSheet("background-color: #323B4D; border-radius: 4px;")
-            self.setToolTip("Группа обработана")
+            self.setToolTip("Группа обработана" if AppContext.is_ru() else "Group processed")
         elif state == "warning":
             self.setStyleSheet("background-color: #3B1C1C; border-radius: 4px;")
-            self.setToolTip("Есть необработанные дубли")
+            self.setToolTip("Есть необработанные дубли" if AppContext.is_ru() else "Unprocessed duplicates exist")
         else:
             self.setStyleSheet("background: transparent;")
             self.setToolTip("")
@@ -370,7 +370,7 @@ class CompactDropZone(QFrame):
         self.btn_clear.setFixedSize(24, 24)
         self.btn_clear.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_clear.clicked.connect(self.clear_path)
-        self.btn_clear.setToolTip("Очистить путь")
+        self.btn_clear.setToolTip("Очистить путь" if AppContext.is_ru() else "Clear path")
         self.btn_clear.setStyleSheet("QPushButton { background: transparent; border: none; } QPushButton:hover { background-color: rgba(239, 68, 68, 0.1); border-radius: 4px; }")
         self.btn_clear.hide()
         layout.addWidget(self.btn_clear)
@@ -382,7 +382,7 @@ class CompactDropZone(QFrame):
         self.btn_browse.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_browse.setFixedSize(50, 24)
         self.btn_browse.clicked.connect(self.clicked.emit)
-        self.btn_browse.setToolTip("Выбрать папку (Обзор)")
+        self.btn_browse.setToolTip("Выбрать папку (Обзор)" if AppContext.is_ru() else "Browse Folder")
         self.btn_browse.setStyleSheet("QPushButton { background-color: transparent; color: #888; border: 1px solid #555; border-radius: 12px; font-size: 12px; font-weight: bold; margin-left: 5px; } QPushButton:hover { background-color: rgba(234, 179, 8, 0.1); color: white; border-color: #eab308; }")
         layout.addWidget(self.btn_browse)
         self.reset_style()

@@ -300,13 +300,13 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         tree_ctrl_layout.setContentsMargins(5, 5, 5, 5)
         tree_ctrl_layout.setSpacing(5)
         
-        self.btn_collapse_all = QPushButton("Свернуть все")
+        self.btn_collapse_all = QPushButton("Свернуть все" if AppContext.is_ru() else "Collapse All")
         self.btn_collapse_all.setFixedHeight(30)
         self.btn_collapse_all.setStyleSheet("background-color: #333; color: #ccc; border: 1px solid #555; border-radius: 4px;")
         self.btn_collapse_all.clicked.connect(self.collapse_all_folders)
         self.btn_collapse_all.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         
-        self.btn_remember_tree = QPushButton("📌 Сохранять вид")
+        self.btn_remember_tree = QPushButton("📌 Сохранять вид" if AppContext.is_ru() else "📌 Remember view")
         self.btn_remember_tree.setCheckable(True)
         self.btn_remember_tree.setChecked(getattr(self, '_tree_remember_enabled', False))
         self.btn_remember_tree.setFixedHeight(30)
@@ -314,7 +314,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             QPushButton { background-color: #333; color: #ccc; border: 1px solid #555; border-radius: 4px; font-size: 14px;}
             QPushButton:checked { background-color: #3b82f6; color: white; border: 1px solid #60a5fa; }
         """)
-        self.btn_remember_tree.setToolTip("Запоминать состояние дерева (Фокус или Общий вид)")
+        self.btn_remember_tree.setToolTip("Запоминать состояние дерева (Фокус или Общий вид)" if AppContext.is_ru() else "Remember tree state (Focus or Overall view)")
         self.btn_remember_tree.clicked.connect(self.toggle_remember_tree)
         self.btn_remember_tree.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         
@@ -1052,7 +1052,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                     self.affix_window.setEnabled(True)
                 
                 if AppContext.LANG == "RU":
-                    self.lbl_filename.setText(f"Выбрано файлов: {count}")
+                    self.lbl_filename.setText(f"Выбрано файлов: {count}" if AppContext.is_ru() else f"Selected files: {count}")
                 else:
                     self.lbl_filename.setText(f"Selected files: {count}")
             else:
@@ -1062,7 +1062,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                     self.affix_window.setEnabled(False)
                 
                 if AppContext.LANG == "RU":
-                    self.lbl_filename.setText(f"Выбрано файлов: {count} (макс. 40 для аффиксов)")
+                    self.lbl_filename.setText(f"Выбрано файлов: {count} (макс. 40 для аффиксов)" if AppContext.is_ru() else f"Selected files: {count} (max 40 for affixes)")
                 else:
                     self.lbl_filename.setText(f"Selected files: {count} (max 40 for affixes)")
         else:

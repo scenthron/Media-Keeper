@@ -19,7 +19,7 @@ class JournalDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Журнал перемещений")
+        self.setWindowTitle("Журнал перемещений" if AppContext.is_ru() else "Move Journal")
         # Окно будет поверх родительского окна (Media Keeper), но не поверх других программ
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowStaysOnTopHint)
         self.resize(850, 500)
@@ -58,11 +58,11 @@ class JournalDialog(QDialog):
         layout.addWidget(hint_lbl)
         
         btn_layout = QHBoxLayout()
-        self.btn_refresh = QPushButton("Обновить проверку")
+        self.btn_refresh = QPushButton("Обновить проверку" if AppContext.is_ru() else "Refresh Check")
         self.btn_refresh.clicked.connect(self._load_data)
-        self.btn_clear = QPushButton("Очистить журнал")
+        self.btn_clear = QPushButton("Очистить журнал" if AppContext.is_ru() else "Clear Journal")
         self.btn_clear.clicked.connect(self._clear_journal)
-        self.btn_close = QPushButton("Закрыть")
+        self.btn_close = QPushButton("Закрыть" if AppContext.is_ru() else "Close")
         self.btn_close.clicked.connect(self.close)
         
         btn_layout.addWidget(self.btn_refresh)
@@ -121,7 +121,9 @@ class JournalDialog(QDialog):
             item_src.setToolTip(src_dir)
             if not os.path.exists(src_dir):
                 item_src.setForeground(QColor("red"))
-                item_src.setToolTip(f"Папка отсутствует (будет создана при возврате)\n{src_dir}")
+                item_src.setToolTip(f"Папка отсутствует (будет создана при возврате)
+{src_dir}" if AppContext.is_ru() else f"Folder is missing (will be created on return)
+{src_dir}")
             else:
                 item_src.setForeground(QColor("green"))
             self.table.setItem(row, 2, item_src)
@@ -138,7 +140,7 @@ class JournalDialog(QDialog):
             
             # 5. Кнопка удаления записи (Крестик)
             btn_del = QPushButton("✖")
-            btn_del.setToolTip("Удалить запись из журнала (файлы останутся на местах)")
+            btn_del.setToolTip("Удалить запись из журнала (файлы останутся на местах)" if AppContext.is_ru() else "Delete log entry (files will remain in place)")
             btn_del.setStyleSheet("QPushButton { color: #f44336; border: 1px solid #444; border-radius: 3px; max-width: 25px; min-width: 25px; padding: 2px; } QPushButton:hover { background-color: #f44336; color: white; }")
             btn_del.clicked.connect(lambda checked, e_id=entry.get("id"): self._remove_entry(e_id))
             self.table.setCellWidget(row, 4, btn_del)
@@ -146,12 +148,12 @@ class JournalDialog(QDialog):
             # 6. Действие
             status = entry.get("status", "valid")
             if status == "done":
-                lbl = QLabel("Выполнено")
+                lbl = QLabel("Выполнено" if AppContext.is_ru() else "Completed")
                 lbl.setStyleSheet("color: #4CAF50; font-weight: bold;")
                 lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.table.setCellWidget(row, 5, lbl)
             elif found_count == 0:
-                lbl = QLabel("Файлы не найдены")
+                lbl = QLabel("Файлы не найдены" if AppContext.is_ru() else "Files not found")
                 lbl.setStyleSheet("color: #F44336;")
                 lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.table.setCellWidget(row, 5, lbl)

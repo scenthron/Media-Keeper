@@ -211,7 +211,7 @@ class AudioConverterWidget(QWidget):
             for c in range(4): self.table.item(i, c).setBackground(QColor(0,0,0,0))
 
         settings = self.settings_panel.get_settings()
-        self.btn_start.setText("СТОП")
+        self.btn_start.setText("СТОП" if AppContext.is_ru() else "STOP")
         self.btn_start.setStyleSheet("background: #ef4444; color: white; font-weight: bold; border-radius: 4px;")
         
         self.worker_convert = AudioConverterWorker(self.files, settings)

@@ -200,7 +200,7 @@ class ImageConverterWidget(QWidget):
             for c in range(4): 
                 item = self.table.item(i, c)
                 if item: item.setBackground(QColor(0,0,0,0))
-        self.btn_start.setText("СТОП")
+        self.btn_start.setText("СТОП" if AppContext.is_ru() else "STOP")
         self.btn_start.setStyleSheet("background: #ef4444; color: white; font-weight: bold; border-radius: 4px;")
         self.start_time = time.time()
         

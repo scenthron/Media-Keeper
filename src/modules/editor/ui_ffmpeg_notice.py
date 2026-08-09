@@ -152,7 +152,7 @@ class FFmpegNoticeWidget(QWidget):
         self.downloader_worker.finished.connect(self.on_download_finished)
         
         # Обновляем UI
-        self.btn_download.setText("Стоп")
+        self.btn_download.setText("Стоп" if AppContext.is_ru() else "Stop")
         self.btn_download.setStyleSheet(f"""
             QPushButton {{
                 background-color: #ef4444;
@@ -168,7 +168,7 @@ class FFmpegNoticeWidget(QWidget):
         self.progress_bar.show()
         self.progress_bar.setValue(0)
         self.status_label.show()
-        self.status_label.setText("Подготовка...")
+        self.status_label.setText("Подготовка..." if AppContext.is_ru() else "Preparing...")
         
         # Запускаем воркер
         self.downloader_worker.start()
@@ -188,7 +188,7 @@ class FFmpegNoticeWidget(QWidget):
     
     def reset_ui(self):
         """Сброс UI в исходное состояние"""
-        self.btn_download.setText("Скачать")
+        self.btn_download.setText("Скачать" if AppContext.is_ru() else "Download")
         self.btn_download.setStyleSheet(f"""
             QPushButton {{
                 background-color: {APP_DESIGN['accent_color']};
@@ -220,7 +220,7 @@ class FFmpegNoticeWidget(QWidget):
         """Обработка завершения загрузки"""
         if success:
             logging.info("FFmpeg успешно загружен и установлен")
-            self.status_label.setText("FFmpeg успешно установлен!")
+            self.status_label.setText("FFmpeg успешно установлен!" if AppContext.is_ru() else "FFmpeg successfully installed!")
             self.status_label.setStyleSheet("""
                 QLabel {
                     color: #10b981;
@@ -232,7 +232,7 @@ class FFmpegNoticeWidget(QWidget):
             QTimer.singleShot(1500, lambda: self.download_finished.emit(True))
         else:
             logging.error(f"Ошибка загрузки FFmpeg: {error_message}")
-            self.status_label.setText(f"Ошибка: {error_message}")
+            self.status_label.setText(f"Ошибка: {error_message}" if AppContext.is_ru() else f"Error: {error_message}")
             self.status_label.setStyleSheet("""
                 QLabel {
                     color: #ef4444;
@@ -253,7 +253,7 @@ class FFmpegNoticeWidget(QWidget):
 
     def update_ui_text(self):
         if AppContext.LANG == "RU":
-            self.title_lbl.setText("⚙️ Требуются библиотеки обработки медиа FFmpeg")
+            self.title_lbl.setText("⚙️ Требуются библиотеки обработки медиа FFmpeg" if AppContext.is_ru() else "⚙️ FFmpeg media processing libraries required")
             self.desc_lbl.setText(
                 "FFmpeg — это свободная библиотека с открытым исходным кодом для обработки видео и аудио "
                 "(<a href='https://ffmpeg.org' style='color: #3b82f6;'>официальный сайт</a>).<br><br>"
@@ -263,9 +263,9 @@ class FFmpegNoticeWidget(QWidget):
                 "<b>ffmpeg.exe</b> и <b>ffprobe.exe</b> и скопировать их в каталог приложения по пути: <b>.mediakeeper/bin/</b>"
             )
             if not self.downloader_worker or not self.downloader_worker.isRunning():
-                self.btn_download.setText("Скачать")
+                self.btn_download.setText("Скачать" if AppContext.is_ru() else "Download")
             else:
-                self.btn_download.setText("Стоп")
+                self.btn_download.setText("Стоп" if AppContext.is_ru() else "Stop")
         else:
             self.title_lbl.setText("⚙️ FFmpeg Media Libraries Required")
             self.desc_lbl.setText(

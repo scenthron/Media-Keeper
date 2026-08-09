@@ -547,7 +547,7 @@ class AiFragmentTab(QWidget):
         
         from .ui_preview import CleanerPreviewWidget
         self.preview_widget = CleanerPreviewWidget()
-        self.preview_widget.show_empty("Выберите файл для предпросмотра")
+        self.preview_widget.show_empty("Выберите файл для предпросмотра" if AppContext.is_ru() else "Select a file for preview")
         self.right_splitter.addWidget(self.preview_widget)
         
         self.right_splitter.setSizes([650, 350])
@@ -698,7 +698,7 @@ class AiFragmentTab(QWidget):
             return
             
         self.btn_filter.setEnabled(False)
-        self.btn_filter.setText("Сканирование...")
+        self.btn_filter.setText("Сканирование..." if AppContext.is_ru() else "Scanning...")
         from PyQt6.QtCore import QTimer
         QTimer.singleShot(100, lambda: self._run_extension_scan(dirs))
 
@@ -710,7 +710,7 @@ class AiFragmentTab(QWidget):
 
     def _on_ext_scan_finished(self, stats: dict):
         self.btn_filter.setEnabled(True)
-        self.btn_filter.setText("Фильтр файлов")
+        self.btn_filter.setText("Фильтр файлов" if AppContext.is_ru() else "File Filter")
         
         from .ui_dialogs import MatrixFilterDialog
         dlg = MatrixFilterDialog(stats, self)
@@ -719,19 +719,19 @@ class AiFragmentTab(QWidget):
             self.fragment_filter_config = {'mode': res['mode'], 'exts': res['exts']}
             
             if res['mode'] == 'all':
-                self.lbl_filter_status.setText("Все картинки")
+                self.lbl_filter_status.setText("Все картинки" if AppContext.is_ru() else "All Images")
                 self.lbl_filter_status.setStyleSheet("color: #aaa; font-size: 11px;")
             elif res['mode'] == 'include':
-                self.lbl_filter_status.setText(f"Только: {', '.join(res['exts'])}")
+                self.lbl_filter_status.setText(f"Только: {', '.join(res['exts'])}" if AppContext.is_ru() else f"Only: {', '.join(res['exts'])}")
                 self.lbl_filter_status.setStyleSheet("color: #4ade80; font-size: 11px;")
             else:
-                self.lbl_filter_status.setText(f"Кроме: {', '.join(res['exts'])}")
+                self.lbl_filter_status.setText(f"Кроме: {', '.join(res['exts'])}" if AppContext.is_ru() else f"Except: {', '.join(res['exts'])}")
                 self.lbl_filter_status.setStyleSheet("color: #f87171; font-size: 11px;")
 
     def start_scan(self):
         if self.active_worker and self.active_worker.isRunning():
             self.active_worker.is_running = False
-            self.btn_start.setText(" Начать Поиск")
+            self.btn_start.setText(" Начать Поиск" if AppContext.is_ru() else " Start Search")
             return
             
         dirs = list(self.cleaner.source_folders.keys()) if hasattr(self.cleaner, 'source_folders') else []
@@ -744,12 +744,12 @@ class AiFragmentTab(QWidget):
             return
             
         self.tree_results.clear()
-        self.action_bar.lbl_selection_info.setText("Выбрано: 0")
+        self.action_bar.lbl_selection_info.setText("Выбрано: 0" if AppContext.is_ru() else "Selected: 0")
         self.lbl_stats.hide()
         self.progress_bar.show()
         self.progress_bar.setFormat("Подготовка к сканированию...")
-        self.btn_start.setText(" Остановить")
-        self.preview_widget.show_empty("Сканирование...")
+        self.btn_start.setText(" Остановить" if AppContext.is_ru() else " Stop")
+        self.preview_widget.show_empty("Сканирование..." if AppContext.is_ru() else "Scanning...")
         
         alg = "pixel" if self.settings_tabs.currentIndex() == 0 else "vector"
         tol = self.slider_pixel.value() if alg == "pixel" else self.slider_tolerance.value()
@@ -783,13 +783,13 @@ class AiFragmentTab(QWidget):
 
 
     def _on_scan_finished(self, success, results):
-        self.btn_start.setText(" Начать Поиск")
+        self.btn_start.setText(" Начать Поиск" if AppContext.is_ru() else " Start Search")
         self.update_cache_info_fragment()
         
         if success:
             self.progress_bar.hide()
             self.lbl_stats.show()
-            self.lbl_stats.setText(f"Поиск завершен. Найдено файлов: {len(results)}")
+            self.lbl_stats.setText(f"Поиск завершен. Найдено файлов: {len(results)}" if AppContext.is_ru() else f"Search completed. Found files: {len(results)}")
             for filepath, score, bbox in results:
                 size_str = format_size(os.path.getsize(filepath)) if os.path.exists(filepath) else "0 B"
                 item = QTreeWidgetItem([os.path.basename(filepath), f"{score}%", size_str, filepath])
@@ -800,7 +800,7 @@ class AiFragmentTab(QWidget):
         else:
             self.progress_bar.hide()
             self.lbl_stats.show()
-            self.lbl_stats.setText("Поиск остановлен или произошла ошибка.")
+            self.lbl_stats.setText("Поиск остановлен или произошла ошибка." if AppContext.is_ru() else "Search stopped or an error occurred.")
         self.scan_finished.emit()
 
     def on_tree_item_changed(self, item, column):
@@ -857,7 +857,7 @@ class AiFragmentTab(QWidget):
         self.update_action_bar_info()
         items = self.tree_results.selectedItems()
         if not items:
-            self.preview_widget.show_empty("Выберите файл для предпросмотра")
+            self.preview_widget.show_empty("Выберите файл для предпросмотра" if AppContext.is_ru() else "Select a file for preview")
             self.file_selected.emit("")
             return
             
@@ -890,7 +890,7 @@ class AiFragmentTab(QWidget):
         size_str = format_size(size)
         
         self.action_bar.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
-        self.action_bar.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}")
+        self.action_bar.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}" if AppContext.is_ru() else f"Selected: {count} files • {size_str}")
         
         has_selection = (count > 0)
         self.action_bar.btn_delete.setEnabled(has_selection)
@@ -918,7 +918,7 @@ class AiFragmentTab(QWidget):
             if data and data.get("path") and os.path.normpath(data["path"]) in paths_set:
                 root.removeChild(item)
                 
-        self.preview_widget.show_empty("Выберите файл для предпросмотра")
+        self.preview_widget.show_empty("Выберите файл для предпросмотра" if AppContext.is_ru() else "Select a file for preview")
         self.update_action_bar_info()
 
     def set_scan_enabled(self, enabled: bool):

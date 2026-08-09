@@ -388,7 +388,7 @@ class VideoConverterWidget(QWidget):
         settings = self.settings_panel.get_settings()
         settings['output_dir'] = self.output_dir # Ensure output_dir is passed
         
-        self.btn_start.setText("СТОП")
+        self.btn_start.setText("СТОП" if AppContext.is_ru() else "STOP")
         self.btn_start.setStyleSheet("QPushButton { background-color: #ef4444; color: white; font-weight: bold; border-radius: 4px; } QPushButton:hover { background-color: #dc2626; }")
         
         self.progress_bar_global.setValue(0)

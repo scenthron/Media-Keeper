@@ -453,7 +453,7 @@ class ActionMixin:
             if conflicts:
                 dlg = MovePreviewDialog(conflicts, self)
                 if dlg.exec() != QDialog.DialogCode.Accepted:
-                    self.overlay.stop_process()
+                    self.overlay.hide()
                     self.preview_widget.show_empty(AppContext.tr("cln_preview_title"))
                     return
             

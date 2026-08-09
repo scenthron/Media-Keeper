@@ -1330,7 +1330,7 @@ class ZoomableGraphicsView(QGraphicsView):
         self.reset_view()
 
     def set_absolute_rotation(self, angle):
-        if self.video_item.isVisible() or self.text_item.isVisible():
+        if self.video_item.isVisible() or self.lbl_center_text.isVisible():
             return
         self._current_rotation = angle % 360
         self.reset_view()

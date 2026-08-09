@@ -2141,8 +2141,6 @@ class AiClassificationTab(QWidget):
             # Always apply initial post filter so it actually filters the view
             self.on_post_filter_changed(self.spin_post_filter.value())
             
-            self.update_action_buttons()
-            
             # Обновляем статистику в сайдбаре
             try:
                 stats = self.tree_results.get_visible_stats()

@@ -31,7 +31,7 @@ class JournalDialog(QDialog):
         layout = QVBoxLayout(self)
         
         self.table = QTableWidget(0, 6)
-        self.table.setHorizontalHeaderLabels(["Дата/Время", "Файлы", "Откуда", "Куда", "", "Действие"])
+        self.table.setHorizontalHeaderLabels(["Дата/Время", "Файлы", "Откуда", "Куда", "", "Действие"] if AppContext.is_ru() else ["Date/Time", "Files", "From", "To", "", "Action"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -50,9 +50,7 @@ class JournalDialog(QDialog):
         layout.addWidget(self.table)
         
         hint_lbl = QLabel(
-            "Подсказка: <b>Двойной клик</b> по зеленому файлу — открыть файл. "
-            "<b>Средняя кнопка (колесико)</b> по строке — открыть папку. "
-            "<b>ПКМ</b> — меню копирования."
+            "Подсказка: <b>Двойной клик</b> по зеленому файлу — открыть файл. <b>Средняя кнопка (колесико)</b> по строке — открыть папку. <b>ПКМ</b> — меню копирования." if AppContext.is_ru() else "Hint: <b>Double click</b> on green file to open it. <b>Middle click</b> on row to open folder. <b>RMB</b> for copy menu."
         )
         hint_lbl.setStyleSheet("color: #aaa; font-size: 11px;")
         layout.addWidget(hint_lbl)
@@ -90,11 +88,11 @@ class JournalDialog(QDialog):
             pairs = entry.get("pairs", [])
             is_group = len(pairs) > 1
             if is_group:
-                file_text = f"Группа файлов ({len(pairs)} шт.)"
-                tooltip = "Перемещена группа файлов:\n" + "\n".join(os.path.basename(p["src"]) for p in pairs[:5])
+                file_text = f"Группа файлов ({len(pairs)} шт.)" if AppContext.is_ru() else f"File group ({len(pairs)} items)"
+                tooltip = ("Перемещена группа файлов:\n" if AppContext.is_ru() else "Moved file group:\n") + "\n".join(os.path.basename(p["src"]) for p in pairs[:5])
                 if len(pairs) > 5: tooltip += "\n..."
             else:
-                file_text = os.path.basename(pairs[0]["src"]) if pairs else "Неизвестно"
+                file_text = os.path.basename(pairs[0]["src"]) if pairs else ("Неизвестно" if AppContext.is_ru() else "Unknown")
                 tooltip = file_text
                 
             item_files = QTableWidgetItem(file_text)
@@ -156,7 +154,7 @@ class JournalDialog(QDialog):
                 lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.table.setCellWidget(row, 5, lbl)
             else:
-                text = "Вернуть файлы" if found_count == len(pairs) else f"Вернуть {found_count}/{len(pairs)}"
+                text = ("Вернуть файлы" if AppContext.is_ru() else "Return files") if found_count == len(pairs) else (f"Вернуть {found_count}/{len(pairs)}" if AppContext.is_ru() else f"Return {found_count}/{len(pairs)}")
                 btn_action = QPushButton(text)
                 btn_action.clicked.connect(lambda checked, e=entry: self._trigger_undo(e))
                 self.table.setCellWidget(row, 5, btn_action)
@@ -192,7 +190,7 @@ class JournalDialog(QDialog):
         if not entry: return
         
         menu = QMenu(self)
-        action_copy = menu.addAction("Копировать пути (новое расположение)")
+        action_copy = menu.addAction("Копировать пути (новое расположение)" if AppContext.is_ru() else "Copy paths (new location)")
         
         action = menu.exec(self.table.viewport().mapToGlobal(pos))
         if action == action_copy:
@@ -225,7 +223,7 @@ class JournalDialog(QDialog):
                 pass
         else:
             from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.information(self, "Файл не найден", "Этот файл физически отсутствует на диске или был удален/перемещен.")
+            QMessageBox.information(self, "Файл не найден" if AppContext.is_ru() else "File not found", "Этот файл физически отсутствует на диске или был удален/перемещен." if AppContext.is_ru() else "This file is physically missing on disk or has been deleted/moved.")
         
     def _handle_middle_click(self, item):
         row = item.row()
@@ -258,7 +256,7 @@ class JournalDialog(QDialog):
                 self._open_and_select_in_explorer(path)
             else:
                 from PyQt6.QtWidgets import QMessageBox
-                QMessageBox.information(self, "Файл не найден", "Этот файл физически отсутствует на диске.")
+                QMessageBox.information(self, "Файл не найден" if AppContext.is_ru() else "File not found", "Этот файл физически отсутствует на диске." if AppContext.is_ru() else "This file is physically missing on disk.")
         else:
             dst_dir = os.path.dirname(pairs[0]["dst"])
             if os.path.exists(dst_dir):

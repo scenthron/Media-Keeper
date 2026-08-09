@@ -2078,6 +2078,7 @@ class AiClassificationTab(QWidget):
                 unique_sizes.add(num_files)
                 
                 group_item = QTreeWidgetItem()
+                group_item.setCheckState(0, Qt.CheckState.Unchecked)
                 group_item.setText(0, f"Группа: {group_name} ({num_files} файлов)" if AppContext.is_ru() else f"Group: {group_name} ({num_files} files)")
                 group_item.setText(2, format_size(group_size))
                 group_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": True, "name": group_name})
@@ -2096,6 +2097,25 @@ class AiClassificationTab(QWidget):
                     file_item.setText(2, format_size(f["size"]))
                     file_item.setText(3, f["path"])
                     file_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": False, "path": f["path"], "size": f["size"], "confidence": f.get("confidence", 0.0) / 100.0, "matched_bbox": f.get("matched_bbox"), "type": f.get("type", "face"), "tag_scores": f.get("tag_scores", {})})
+                    
+                    color_hex = "#555"
+                    if hasattr(self, 'cleaner') and hasattr(self.cleaner, 'source_folders'):
+                        for src_path, data in self.cleaner.source_folders.items():
+                            if f["path"].startswith(src_path):
+                                color_hex = data.get('color', "#555")
+                                break
+                                
+                    if color_hex:
+                        pixmap = QPixmap(12, 12)
+                        pixmap.fill(Qt.GlobalColor.transparent)
+                        painter = QPainter(pixmap)
+                        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+                        painter.setPen(Qt.PenStyle.NoPen)
+                        painter.setBrush(QColor(color_hex))
+                        painter.drawEllipse(1, 1, 10, 10)
+                        painter.end()
+                        file_item.setIcon(0, QIcon(pixmap))
+                        
                     child_items.append(file_item)
                     
                 group_item.addChildren(child_items)

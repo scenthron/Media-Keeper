@@ -273,6 +273,10 @@ class AiEngine:
                                         logging.info(f"Архив {item['name']} успешно распакован в {extract_dir}")
                                     except Exception as e:
                                         logging.error(f"Ошибка при распаковке {item['name']}: {e}")
+                                        if os.path.exists(ort_dir):
+                                            try: shutil.rmtree(ort_dir)
+                                            except: pass
+                                        return False
                                 
                                 download_success = True
                                 logging.info(f"Успешно скачан файл {item['name']}")

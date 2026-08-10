@@ -430,6 +430,11 @@ class DropZoneWidget(QFrame):
         """)
         super().dragLeaveEvent(event)
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
     def dropEvent(self, event):
         # Reset style manually instead of calling dragLeaveEvent with wrong event type
         self.setStyleSheet("""

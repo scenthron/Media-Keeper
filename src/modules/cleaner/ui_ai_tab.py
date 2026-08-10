@@ -964,7 +964,7 @@ class AiClassificationTab(QWidget):
         self.lbl_face_conf_left.setStyleSheet("color: #aaa; font-size: 11px;")
         
         self.slider_face_conf = QSlider(Qt.Orientation.Horizontal)
-        self.slider_face_conf.setRange(50, 95)
+        self.slider_face_conf.setRange(10, 100)
         self.slider_face_conf.setValue(70)
         self.slider_face_conf.setCursor(Qt.CursorShape.PointingHandCursor)
         self.slider_face_conf.setStyleSheet("""

@@ -64,7 +64,7 @@ class AiSearchRequest:
 class AiSearchResponse:
     groups: list[AiGroup] = field(default_factory=list)
 
-def _agglomerative_clustering_numpy(X: np.ndarray, eps: float, min_samples: int = 2, linkage: str = "average") -> np.ndarray:
+def _agglomerative_clustering_numpy(X: np.ndarray, eps: float, min_samples: int = 1, linkage: str = "average") -> np.ndarray:
     """Иерархическая агломеративная кластеризация (Average/Complete Linkage) с косинусным расстоянием без внешних зависимостей."""
     n = len(X)
     if n == 0:
@@ -502,7 +502,7 @@ class AiCoreWorker(QRunnable):
                 if all_embs:
                     X = np.array(all_embs, dtype=np.float32)
                     eps = 1.0 - (self.request.threshold / 100.0)
-                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2, linkage="average")
+                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=1, linkage="average")
                     
                     # Вычисляем центроиды кластеров для определения % сходства
                     cluster_centroids = {}
@@ -547,7 +547,7 @@ class AiCoreWorker(QRunnable):
                 if all_embs:
                     X = np.array(all_embs, dtype=np.float32)
                     eps = 1.0 - (self.request.threshold / 100.0)
-                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=2, linkage="average")
+                    labels = _agglomerative_clustering_numpy(X, eps=eps, min_samples=1, linkage="average")
                     
                     cluster_centroids = {}
                     for c_id in set(labels):

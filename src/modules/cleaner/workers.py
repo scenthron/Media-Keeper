@@ -17,7 +17,7 @@ LARGE_FILE_THRESHOLD = 30 * 1024 * 1024
 EXT_GROUPS = {
     "Images": {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.avif', '.tiff', '.webp', '.avif', '.raw', '.heic', '.heif', '.svg', '.ico', '.tga', '.psd', '.apng'},
     "Video": VIDEO_EXTS,
-    "Audio": {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a', '.opus', '.aiff', '.amr', '.mid', '.midi'},
+    "Audio": {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.oga', '.wma', '.m4a', '.opus', '.aiff', '.amr', '.mid', '.midi'},
     "Documents": {'.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.rtf'},
     "Archives": {'.zip', '.rar', '.7z', '.tar', '.gz', '.iso'},
     "Code": {'.html', '.mhtml', '.css', '.js', '.py', '.json', '.xml', '.cpp', '.h', '.java', '.php'},
@@ -534,7 +534,7 @@ class SimilarScanWorker(QThread):
         if self.media_type == 0:
             allowed_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.avif', '.tiff', '.webp', '.avif', '.heic', '.heif'}
         elif self.media_type == 1:
-            allowed_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma'}
+            allowed_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.oga', '.m4a', '.wma'}
         else:
             allowed_exts = VIDEO_EXTS
             

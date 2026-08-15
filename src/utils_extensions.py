@@ -8,7 +8,7 @@ import os
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".ico", ".tiff", ".tif", ".psd", ".raw", ".heic", ".heif", ".avif", ".apng", ".jfif"}
 VIDEO_EXTS = {".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".mpeg", ".mpg", ".3gp", ".ts", ".m2ts", ".vob", ".m2v", ".asf", ".rm", ".rmvb", ".divx", ".ogv", ".f4v", ".vro"}
-AUDIO_EXTS = {".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a", ".opus", ".aiff", ".ape", ".mka", ".alac"}
+AUDIO_EXTS = {".mp3", ".wav", ".flac", ".aac", ".ogg", ".oga", ".wma", ".m4a", ".opus", ".aiff", ".ape", ".mka", ".alac"}
 DOC_EXTS   = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".rtf", ".odt", ".ods", ".odp", ".epub", ".mobi"}
 ARCH_EXTS  = {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz", ".iso"}
 CODE_EXTS  = {".py", ".js", ".html", ".css", ".json", ".xml", ".java", ".cpp", ".c", ".h", ".cs", ".php", ".rb", ".go", ".vue", ".jsx"}

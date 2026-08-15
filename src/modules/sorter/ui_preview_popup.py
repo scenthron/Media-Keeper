@@ -800,7 +800,7 @@ class LargePreviewPopup(QDialog):
             self.media_player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
             self.media_player.play()
             
-        elif ext in ['.mp3', '.wav', '.ogg', '.flac', '.m4a', '.wma']:
+        elif ext in ['.mp3', '.wav', '.ogg', '.oga', '.flac', '.m4a', '.wma']:
             track_name = os.path.splitext(os.path.basename(filepath))[0]
             self.lbl_audio = QLabel()
             self.lbl_audio.setAlignment(Qt.AlignmentFlag.AlignCenter)

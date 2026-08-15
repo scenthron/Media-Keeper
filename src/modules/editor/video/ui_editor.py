@@ -1090,7 +1090,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         
         # Audio Detection
         ext = os.path.splitext(path)[1].lower()
-        is_audio = ext in {'.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.opus', '.wma'}
+        is_audio = ext in {'.mp3', '.wav', '.ogg', '.oga', '.flac', '.aac', '.m4a', '.opus', '.wma'}
         self.is_audio_only = is_audio
         
         logging.info(f"Загрузка {'аудио' if is_audio else 'видео'}: {path}")

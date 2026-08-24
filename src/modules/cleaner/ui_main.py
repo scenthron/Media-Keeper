@@ -615,31 +615,38 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         tt_layout.addSpacing(15)
         
         # Compound widget for directory filter
-        self.wg_dir_filter = QFrame()
-        self.wg_dir_filter.hide()
-        hl_dir = QHBoxLayout(self.wg_dir_filter)
+        wg_dir_filter = QFrame()
+        wg_dir_filter.hide()
+        hl_dir = QHBoxLayout(wg_dir_filter)
         hl_dir.setContentsMargins(0, 0, 0, 0)
         hl_dir.setSpacing(0)
         
-        self.btn_dir_filter_close = QPushButton("×")
-        self.btn_dir_filter_close.setFixedSize(24, 24)
-        self.btn_dir_filter_close.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_dir_filter_close.setStyleSheet("""
+        btn_dir_filter_close = QPushButton("×")
+        btn_dir_filter_close.setFixedSize(24, 24)
+        btn_dir_filter_close.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_dir_filter_close.setStyleSheet("""
             QPushButton { background-color: #7f1d1d; color: white; font-weight: bold; font-size: 14px; border: none; border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
             QPushButton:hover { background-color: #991b1b; }
         """)
-        self.btn_dir_filter_close.clicked.connect(self.clear_directory_filter)
+        btn_dir_filter_close.clicked.connect(self.clear_directory_filter)
         
-        self.btn_dir_filter_name = QPushButton()
-        self.btn_dir_filter_name.setFixedHeight(24)
-        self.btn_dir_filter_name.setIcon(QIcon(os.path.join(icons_dir, "folder-color.svg")))
-        self.btn_dir_filter_name.setStyleSheet("""
+        btn_dir_filter_name = QPushButton()
+        btn_dir_filter_name.setFixedHeight(24)
+        btn_dir_filter_name.setIcon(QIcon(os.path.join(icons_dir, "folder-color.svg")))
+        btn_dir_filter_name.setStyleSheet("""
             QPushButton { background-color: #166534; color: white; font-size: 12px; font-weight: bold; padding-left: 6px; padding-right: 10px; border: none; border-top-right-radius: 4px; border-bottom-right-radius: 4px; text-align: left; }
         """)
         
-        hl_dir.addWidget(self.btn_dir_filter_close)
-        hl_dir.addWidget(self.btn_dir_filter_name)
-        tt_layout.addWidget(self.wg_dir_filter)
+        hl_dir.addWidget(btn_dir_filter_close)
+        hl_dir.addWidget(btn_dir_filter_name)
+        tt_layout.addWidget(wg_dir_filter)
+
+        if is_similar:
+            self.wg_dir_filter_similar = wg_dir_filter
+            self.btn_dir_filter_name_similar = btn_dir_filter_name
+        else:
+            self.wg_dir_filter_dupes = wg_dir_filter
+            self.btn_dir_filter_name_dupes = btn_dir_filter_name
 
         tt_layout.addStretch()
 
@@ -998,11 +1005,16 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
             if len(display_name) > 15:
                 display_name = display_name[:12] + "..."
                 
-            self.btn_dir_filter_name.setText(" " + display_name)
-            self.btn_dir_filter_name.setToolTip(f"Фильтр по директории:\n{dir_path}")
-            self.wg_dir_filter.show()
+            self.btn_dir_filter_name_dupes.setText(" " + display_name)
+            self.btn_dir_filter_name_dupes.setToolTip(f"Фильтр по директории:\n{dir_path}")
+            self.wg_dir_filter_dupes.show()
+            
+            self.btn_dir_filter_name_similar.setText(" " + display_name)
+            self.btn_dir_filter_name_similar.setToolTip(f"Фильтр по директории:\n{dir_path}")
+            self.wg_dir_filter_similar.show()
         else:
-            self.wg_dir_filter.hide()
+            self.wg_dir_filter_dupes.hide()
+            self.wg_dir_filter_similar.hide()
             
         # Заставляем обе виртуальные модели пересчитаться
         self.virtual_model_dupes.expand_all()

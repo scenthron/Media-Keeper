@@ -1,8 +1,8 @@
-
 import sys
 import os
 import ctypes
 import subprocess
+import logging
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, 
     QPushButton, QFrame, QSplitter, QScrollArea, QStyle, QLabel, QFileDialog, QMessageBox, QComboBox
@@ -542,8 +542,19 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         if not paths: return
         
         # If exactly one directory is dropped, handle it as traditional inbox drop
-        if len(paths) == 1 and os.path.isdir(paths[0]):
-            path = paths[0]
+        is_single_dir = False
+        single_dir_path = ""
+        if len(paths) == 1:
+            try:
+                long_p = ensure_long_path(paths[0])
+                if os.path.isdir(long_p):
+                    is_single_dir = True
+                    single_dir_path = paths[0] # keep original for settings
+            except Exception as e:
+                logging.error(f"Ошибка проверки папки {paths[0]}: {e}")
+
+        if is_single_dir:
+            path = single_dir_path
             norm_path = os.path.normpath(path)
             
             current_trash = getattr(self, 'session_trash_path', None) or self.config.get("path_todel")
@@ -573,14 +584,29 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         else:
             # Handle as multiple files / mixed files and folders drop
             all_files = []
+            logging.info(f"[DragDrop] Начало обработки {len(paths)} путей.")
             for p in paths:
-                if os.path.isfile(p):
-                    all_files.append(p)
-                elif os.path.isdir(p):
-                    for root, _, files in os.walk(p):
-                        for f in files:
-                            all_files.append(os.path.join(root, f))
+                try:
+                    long_p = ensure_long_path(p)
+                    logging.info(f"[DragDrop] Проверяем путь: {p} (long: {long_p})")
+                    if os.path.isfile(long_p):
+                        all_files.append(long_p)
+                        logging.info(f"[DragDrop] Добавлен файл: {long_p}")
+                    elif os.path.isdir(long_p):
+                        logging.info(f"[DragDrop] Добавлена папка, сканируем: {long_p}")
+                        for root, _, files in os.walk(long_p):
+                            for f in files:
+                                try:
+                                    long_f = ensure_long_path(os.path.join(root, f))
+                                    all_files.append(long_f)
+                                except Exception as e:
+                                    logging.error(f"[DragDrop] Ошибка при обработке вложенного файла {f}: {e}")
+                    else:
+                        logging.warning(f"[DragDrop] Путь не является ни файлом, ни папкой (пропущен): {long_p}")
+                except Exception as e:
+                    logging.error(f"[DragDrop] Ошибка при проверке пути {p}: {e}")
             
+            logging.info(f"[DragDrop] Итого собрано файлов: {len(all_files)}")
             if all_files:
                 self.load_virtual_files(all_files, source_name="Dropped Files" if AppContext.LANG != "RU" else "Список файлов")
 

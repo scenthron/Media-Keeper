@@ -30,6 +30,7 @@ class SmartPreviewManager:
         
         # We also need to know when user manually seeks to pause it
         self.last_known_pos = 0
+        self.pending_seek_pos = -1
 
     def calculate_segments(self, duration_ms):
         dur_sec = duration_ms / 1000.0
@@ -90,6 +91,7 @@ class SmartPreviewManager:
         try:
             self.media_player.setPosition(target_pos)
             self.last_known_pos = target_pos
+            self.pending_seek_pos = target_pos
             self.segment_start_real_time = self.media_player.position()
         except RuntimeError:
             pass
@@ -111,6 +113,14 @@ class SmartPreviewManager:
             speed = 1.0
         if speed <= 0: speed = 1.0
         
+        # Check if we are waiting for a seek to complete
+        if self.pending_seek_pos >= 0:
+            if abs(current_pos - self.pending_seek_pos) < 1500:
+                self.pending_seek_pos = -1
+                self.last_known_pos = current_pos
+            else:
+                return # Still waiting for seek to finish
+        
         # Check how much we played in this segment
         chunk_len = self.total_duration_ms / self.num_segments
         segment_start_pos = int(self.current_segment_idx * chunk_len)
@@ -129,7 +139,7 @@ class SmartPreviewManager:
         
         # In segment view, we play a fixed amount of media time (segment_play_time_ms)
         # We also ensure we don't play past the chunk length.
-        if time_played_ms >= self.segment_play_time_ms or time_played_ms >= chunk_len or time_played_ms < 0:
+        if time_played_ms >= self.segment_play_time_ms or time_played_ms >= chunk_len:
             # jump to next
             next_idx = self.current_segment_idx + 1
             if next_idx >= self.num_segments:

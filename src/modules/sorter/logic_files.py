@@ -134,17 +134,21 @@ class FileOpsMixin:
         self._raw_dir_files = []
         
         for p in file_paths:
-            if not os.path.exists(p):
-                continue
             try:
-                stat = os.stat(p)
+                long_p = ensure_long_path(p)
+                if not os.path.exists(long_p):
+                    logging.warning(f"Файл не найден или недоступен, пропущен: {p}")
+                    continue
+                
+                stat = os.stat(long_p)
                 self._raw_dir_files.append({
-                    'rel_path': ensure_long_path(p),
+                    'rel_path': long_p,
                     'size': stat.st_size,
                     'mtime': stat.st_mtime,
                     'ctime': stat.st_ctime
                 })
-            except Exception:
+            except Exception as e:
+                logging.error(f"Ошибка при добавлении файла {p}: {e}")
                 pass
                 
         self.virtual_folder_name = source_name

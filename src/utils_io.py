@@ -12,7 +12,11 @@ def ensure_long_path(path):
     if not path:
         return path
     if os.name == 'nt' and not path.startswith('\\\\?\\'):
-        return '\\\\?\\' + os.path.abspath(path)
+        abs_path = os.path.abspath(path)
+        if abs_path.startswith('\\\\'):
+            # Это сетевой путь (UNC)
+            return '\\\\?\\UNC\\' + abs_path[2:]
+        return '\\\\?\\' + abs_path
     return path
 
 def strip_long_path_prefix(path):

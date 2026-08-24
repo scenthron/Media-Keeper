@@ -284,8 +284,8 @@ class PlayerMixin:
                 self.current_media_is_video = True
                 
                 # Check if we should override fast speed
-                is_fast_active = AppContext.session_fast_speed_active
-                speed = AppContext.session_fast_speed_val if is_fast_active else 1.0
+                is_fast_active = getattr(AppContext, "session_video_speed_active", False)
+                speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
                 loop = AppContext.session_loop
                 segment_view = AppContext.session_segment_view
                 

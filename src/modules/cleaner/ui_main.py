@@ -635,7 +635,10 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         btn_dir_filter_name.setIcon(QIcon(os.path.join(icons_dir, "folder-color.svg")))
         btn_dir_filter_name.setStyleSheet("""
             QPushButton { background-color: #166534; color: white; font-size: 12px; font-weight: bold; padding-left: 6px; padding-right: 10px; border: none; border-top-right-radius: 4px; border-bottom-right-radius: 4px; text-align: left; }
+            QPushButton:hover { background-color: #15803d; }
         """)
+        btn_dir_filter_name.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_dir_filter_name.clicked.connect(self.show_directory_filter_menu)
         
         hl_dir.addWidget(btn_dir_filter_close)
         hl_dir.addWidget(btn_dir_filter_name)
@@ -987,6 +990,63 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
     # =========================================================================
     def on_tree_checkbox_clicked(self, index, checked):
         pass
+
+    def show_directory_filter_menu(self):
+        if not self.current_dir_filter:
+            return
+            
+        import os
+        from PyQt6.QtWidgets import QMenu
+        from PyQt6.QtGui import QAction
+        
+        menu = QMenu(self)
+        menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; } QMenu::separator { height: 1px; background: #666; margin: 4px 8px; }")
+        
+        current_path = os.path.normpath(self.current_dir_filter)
+        
+        # Находим изначальную папку сканирования, к которой принадлежит текущий путь
+        scan_root = None
+        for root in self.source_folders.keys():
+            norm_root = os.path.normpath(root)
+            if current_path.lower().startswith(norm_root.lower()):
+                scan_root = norm_root
+                break
+                
+        # Собираем иерархию снизу вверх
+        paths = []
+        temp_path = current_path
+        while temp_path:
+            paths.append(temp_path)
+            if scan_root and temp_path.lower() == scan_root.lower():
+                break
+            parent = os.path.dirname(temp_path)
+            if parent == temp_path:  # достигли корня диска
+                break
+            temp_path = parent
+            
+        # Добавляем в меню (сверху вниз)
+        for i, p in enumerate(reversed(paths)):
+            is_scan_root = (scan_root and p.lower() == scan_root.lower())
+            name = os.path.basename(p) or p
+            
+            # Для корня сканирования добавляем спец-символ или оставляем как есть
+            display_name = name
+            
+            act = QAction(display_name, self)
+            
+            if is_scan_root:
+                # Клик по корню сканирования эквивалентен сбросу фильтра
+                act.triggered.connect(self.clear_directory_filter)
+            else:
+                act.triggered.connect(lambda checked, path=p: self.set_directory_filter(path))
+                
+            menu.addAction(act)
+            if is_scan_root and len(paths) > 1:
+                menu.addSeparator()
+                
+        # Показываем меню под зеленой кнопкой
+        btn = self.btn_dir_filter_name_similar if self.current_tab == 1 else self.btn_dir_filter_name_dupes
+        menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
 
     def clear_directory_filter(self):
         self.set_directory_filter(None)

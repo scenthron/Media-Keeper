@@ -742,6 +742,17 @@ class LargePreviewPopup(QDialog):
             bottom_layout.addStretch(1)
             
         elif ext in VIDEO_EXTS:
+            from utils_io import is_video_safe_for_qt, strip_long_path_prefix
+            clean_path = strip_long_path_prefix(filepath)
+            
+            if not is_video_safe_for_qt(clean_path):
+                self.lbl_image = QLabel(AppContext.tr("msg_unsupported") + " (Extreme SAR / Invalid Scaling)")
+                self.lbl_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.lbl_image.setStyleSheet("color: white; font-size: 16px; background: transparent;")
+                self.lbl_image.installEventFilter(self)
+                self.content_layout.addWidget(self.lbl_image)
+                return
+                
             self.video_viewer = PopupVideoViewer()
             self.video_viewer.double_clicked.connect(self.open_file_system)
             self.video_viewer.middle_clicked.connect(self.open_folder_with_file)
@@ -791,8 +802,6 @@ class LargePreviewPopup(QDialog):
             self.controls.update_loop_button(loop)
             
             self.media_player.stop()
-            from utils_io import strip_long_path_prefix
-            clean_path = strip_long_path_prefix(filepath)
             self.media_player.setSource(QUrl.fromLocalFile(clean_path))
             self.audio_output.setVolume(volume_pct / 100.0)
             self.controls.vol_slider.setValue(volume_pct)

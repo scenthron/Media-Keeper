@@ -269,13 +269,25 @@ class PlayerMixin:
                 self.viewer.set_image(QPixmap(self.current_file_path))
                 
             # 3. Video
-            elif ext in get_filtered_exts(VIDEO_EXTS, "logic_player_video"):
+            elif ext in VIDEO_EXTS:
+                from utils_io import is_video_safe_for_qt, strip_long_path_prefix
+                clean_path = strip_long_path_prefix(self.current_file_path)
+                
+                # Защита от видео с экстремальным SAR, которые крашат QGraphicsVideoItem (swscaler crash)
+                if not is_video_safe_for_qt(clean_path):
+                    self.video_controls.hide()
+                    self.current_media_is_video = False
+                    self.viewer.show_empty_state(AppContext.tr("msg_unsupported") + " (Extreme SAR / Invalid Scaling)")
+                    return
+                
                 self.video_controls.show()
                 self.current_media_is_video = True
+                
+                # Check if we should override fast speed
+                is_fast_active = AppContext.session_fast_speed_active
+                speed = AppContext.session_fast_speed_val if is_fast_active else 1.0
                 loop = AppContext.session_loop
                 segment_view = AppContext.session_segment_view
-                is_fast_active = AppContext.session_video_speed_active
-                speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
                 
                 self.media_player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
                 self.video_controls.set_playing_state(False)
@@ -288,8 +300,6 @@ class PlayerMixin:
                         self.viewer.single_view.update_segment_indicator()
                 
                 self.media_player.stop()
-                from utils_io import strip_long_path_prefix
-                clean_path = strip_long_path_prefix(self.current_file_path)
                 self.media_player.setSource(QUrl.fromLocalFile(clean_path))
                 self.media_player.setPlaybackRate(speed)
                 

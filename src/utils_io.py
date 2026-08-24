@@ -239,3 +239,39 @@ def safe_cv2_imwrite(path: str, img) -> bool:
     except Exception as e:
         logging.error(f"Ошибка безопасной записи изображения {path}: {e}")
         return False
+
+def is_video_safe_for_qt(filepath: str) -> bool:
+    """
+    Проверяет видео на наличие экстремальных значений Sample Aspect Ratio (SAR), 
+    которые приводят к падению QGraphicsVideoItem (ошибка swscaler invalid scaling dimension) 
+    из-за переполнения 32-битного int при расчете разрешения внутри PyQt6.
+    """
+    if not filepath:
+        return False
+    try:
+        import subprocess
+        from logic_paths import get_ffprobe_exe
+        ffprobe_exe = get_ffprobe_exe()
+        if not os.path.exists(ffprobe_exe):
+            return True # fallback if no ffprobe
+            
+        cmd = [ffprobe_exe, '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=sample_aspect_ratio', '-of', 'default=noprint_wrappers=1:nokey=1', filepath]
+        
+        startupinfo = None
+        if os.name == 'nt':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, startupinfo=startupinfo)
+        stdout, _ = proc.communicate(timeout=2)
+        sar = stdout.strip()
+        if sar and ':' in sar:
+            num, den = sar.split(':')
+            num, den = int(num), int(den)
+            # If SAR values are larger than 10000, it's very suspicious and will likely cause integer overflow in Qt's swscaler
+            if num > 10000 or den > 10000:
+                logging.error(f"Блокировка видео с экстремальным SAR {sar} для защиты QMediaPlayer: {filepath}")
+                return False
+    except Exception as e:
+        logging.debug(f"Ошибка проверки is_video_safe_for_qt для {filepath}: {e}")
+    return True

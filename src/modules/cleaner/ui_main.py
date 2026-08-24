@@ -632,7 +632,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         
         self.btn_dir_filter_name = QPushButton()
         self.btn_dir_filter_name.setFixedHeight(24)
-        self.btn_dir_filter_name.setIcon(load_svg_icon(os.path.join(icons_dir, "folder-color.svg"), QSize(14, 14)))
+        self.btn_dir_filter_name.setIcon(QIcon(os.path.join(icons_dir, "folder-color.svg")))
         self.btn_dir_filter_name.setStyleSheet("""
             QPushButton { background-color: #166534; color: white; font-size: 12px; font-weight: bold; padding-left: 6px; padding-right: 10px; border: none; border-top-right-radius: 4px; border-bottom-right-radius: 4px; text-align: left; }
         """)

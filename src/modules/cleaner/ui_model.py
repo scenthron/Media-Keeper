@@ -57,14 +57,30 @@ class DuplicateVirtualModel(QAbstractListModel):
         self.endResetModel()
 
     def rebuild_flat_items(self) -> None:
+        import os
+        current_dir_filter = getattr(self.parent_widget(), 'current_dir_filter', None)
+        
+        allowed_group_ids = None
+        if current_dir_filter:
+            allowed_group_ids = set()
+            for item in self._all_items:
+                if item['type'] == 'file':
+                    path = item.get('path', '')
+                    if path and path.startswith(current_dir_filter):
+                        allowed_group_ids.add(item['group_id'])
+                        
         new_flat: list[dict[str, Any]] = []
         current_group_visible = True
+        current_group_allowed = True
+        
         for item in self._all_items:
             if item['type'] == 'group':
-                new_flat.append(item)
+                current_group_allowed = (allowed_group_ids is None) or (item['id'] in allowed_group_ids)
+                if current_group_allowed:
+                    new_flat.append(item)
                 current_group_visible = item['id'] in self._expanded_groups
             elif item['type'] == 'file':
-                if current_group_visible:
+                if current_group_allowed and current_group_visible:
                     new_flat.append(item)
             elif item['type'] == 'empty_folder':
                 new_flat.append(item)

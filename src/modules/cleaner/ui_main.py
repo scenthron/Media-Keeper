@@ -152,6 +152,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         self.session_db_similar = SimilarSessionDB()
         self.session_db_similar.clear_db()
 
+        self.current_dir_filter = None
         self.virtual_model_dupes = DuplicateVirtualModel(self)
         self.virtual_model_dupes.is_similar_mode = False
         self.virtual_delegate_dupes = DuplicateDelegate(self, is_similar_mode=False)
@@ -611,6 +612,35 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
             btn_types.customContextMenuRequested.connect(self.on_types_context_menu)
             tt_layout.addWidget(btn_types)
 
+        tt_layout.addSpacing(15)
+        
+        # Compound widget for directory filter
+        self.wg_dir_filter = QFrame()
+        self.wg_dir_filter.hide()
+        hl_dir = QHBoxLayout(self.wg_dir_filter)
+        hl_dir.setContentsMargins(0, 0, 0, 0)
+        hl_dir.setSpacing(0)
+        
+        self.btn_dir_filter_close = QPushButton("×")
+        self.btn_dir_filter_close.setFixedSize(24, 24)
+        self.btn_dir_filter_close.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_dir_filter_close.setStyleSheet("""
+            QPushButton { background-color: #7f1d1d; color: white; font-weight: bold; font-size: 14px; border: none; border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+            QPushButton:hover { background-color: #991b1b; }
+        """)
+        self.btn_dir_filter_close.clicked.connect(self.clear_directory_filter)
+        
+        self.btn_dir_filter_name = QPushButton()
+        self.btn_dir_filter_name.setFixedHeight(24)
+        self.btn_dir_filter_name.setIcon(load_svg_icon(os.path.join(icons_dir, "folder-color.svg"), QSize(14, 14)))
+        self.btn_dir_filter_name.setStyleSheet("""
+            QPushButton { background-color: #166534; color: white; font-size: 12px; font-weight: bold; padding-left: 6px; padding-right: 10px; border: none; border-top-right-radius: 4px; border-bottom-right-radius: 4px; text-align: left; }
+        """)
+        
+        hl_dir.addWidget(self.btn_dir_filter_close)
+        hl_dir.addWidget(self.btn_dir_filter_name)
+        tt_layout.addWidget(self.wg_dir_filter)
+
         tt_layout.addStretch()
 
         lbl_groups_found = QLabel(AppContext.tr("cln_lbl_groups").format("0 (0)"))
@@ -948,6 +978,36 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
     # Нельзя удалять, обходить или дублировать эту логику в другом месте.
     # Все операции — только в оперативной памяти, БД не затрагивается.
     # =========================================================================
+    def on_tree_checkbox_clicked(self, index, checked):
+        pass
+
+    def clear_directory_filter(self):
+        self.set_directory_filter(None)
+
+    def set_directory_filter(self, dir_path: str):
+        self.current_dir_filter = dir_path
+        
+        if dir_path:
+            import os
+            dir_name = os.path.basename(dir_path.rstrip('\\/'))
+            if not dir_name:
+                dir_name = dir_path
+            
+            # Обрезаем длинное имя папки
+            display_name = dir_name
+            if len(display_name) > 15:
+                display_name = display_name[:12] + "..."
+                
+            self.btn_dir_filter_name.setText(" " + display_name)
+            self.btn_dir_filter_name.setToolTip(f"Фильтр по директории:\n{dir_path}")
+            self.wg_dir_filter.show()
+        else:
+            self.wg_dir_filter.hide()
+            
+        # Заставляем обе виртуальные модели пересчитаться
+        self.virtual_model_dupes.expand_all()
+        self.virtual_model_similar.expand_all()
+
     def _on_tree_checkbox_clicked(self, item: Any, new_state: bool) -> None:
         logging.debug(f"[IRON] checkbox_clicked: type={item.get('type')} new={new_state} path={item.get('path','?')}")
 

@@ -246,8 +246,11 @@ class CleanerSelectionMixin:
             if not hasattr(self, 'in_memory_selection'):
                 logging.warning("[Selection] in_memory_selection not initialised, skipping.")
                 return
-            logging.debug(f"[Selection] apply_smart_filter mode={mode}, groups={len(self.in_memory_selection.get_group_files())}")
-            self.in_memory_selection.apply_smart_filter(mode)
+                
+            allowed_group_ids = {item['id'] for item in self.virtual_model._source_flat_items if item['type'] == 'group'}
+            
+            logging.debug(f"[Selection] apply_smart_filter mode={mode}, allowed_groups={len(allowed_group_ids)}")
+            self.in_memory_selection.apply_smart_filter(mode, allowed_group_ids=allowed_group_ids)
             marked_count = self.in_memory_selection.get_marked_count()
             logging.info(f"[Selection] after apply_smart_filter: marked={marked_count}")
             self.refresh_selection_from_memory()
@@ -272,7 +275,8 @@ class CleanerSelectionMixin:
             current_mode = getattr(self, 'current_view_mode', 0)
             if current_mode == 0:
                 if not hasattr(self, 'in_memory_selection'): return
-                self.in_memory_selection.select_all_except_survivor()
+                allowed_group_ids = {item['id'] for item in self.virtual_model._source_flat_items if item['type'] == 'group'}
+                self.in_memory_selection.select_all_except_survivor(allowed_group_ids=allowed_group_ids)
                 self.refresh_selection_from_memory()
             elif current_mode == 1:
                 self.session_db.mark_all_zero_files(1)

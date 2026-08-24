@@ -139,11 +139,13 @@ class InMemorySelection:
     # ------------------------------------------------------------------
     # Bulk operations – used by UI filters (cumulative)
     # ------------------------------------------------------------------
-    def select_all_except_survivor(self) -> None:
+    def select_all_except_survivor(self, allowed_group_ids: set[int] = None) -> None:
         """Select all files except the survivor(s) of each group.
         Iron Rule 2: cumulative – will not mark the last file in a group.
         """
         for gid, files in self._group_files.items():
+            if allowed_group_ids is not None and gid not in allowed_group_ids:
+                continue
             survivors = self._survivors(gid)
             for f in files:
                 fid = f['id']
@@ -165,7 +167,7 @@ class InMemorySelection:
         for f in files:
             self._marked.discard(f['id'])
 
-    def apply_smart_filter(self, mode: str, target_group_id: int = None) -> None:
+    def apply_smart_filter(self, mode: str, target_group_id: int = None, allowed_group_ids: set[int] = None) -> None:
         """Apply one of the named smart-select strategies (cumulative).
 
         Each call preserves already-marked files and marks additional ones
@@ -188,6 +190,8 @@ class InMemorySelection:
         import os
 
         for gid, files in self._group_files.items():
+            if allowed_group_ids is not None and gid not in allowed_group_ids:
+                continue
             if target_group_id is not None and gid != target_group_id:
                 continue
             if not self._can_mark_more(gid):

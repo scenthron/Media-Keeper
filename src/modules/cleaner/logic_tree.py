@@ -121,14 +121,6 @@ class CleanerTreeMixin:
         menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; } QMenu::separator { height: 1px; background: #666; margin: 4px 8px; }")
         
         if is_empty_mode == False and 'group_id' in item:
-            import os
-            dir_path = os.path.dirname(path) if path else ""
-            if dir_path:
-                act_filter_dir = QAction("Показать группы с файлами из этой папки" if AppContext.LANG == "RU" else "Show groups with files from this folder", self)
-                act_filter_dir.triggered.connect(lambda checked, dp=dir_path: self.main_window.set_directory_filter(dp))
-                menu.addAction(act_filter_dir)
-                menu.addSeparator()
-
             group_item = {'id': item['group_id']}
             
             if getattr(self, 'current_tab', 0) == 1:
@@ -237,6 +229,15 @@ class CleanerTreeMixin:
         act_delete.setEnabled(has_sel)
         act_delete.triggered.connect(self.delete_selected)
         menu.addAction(act_delete)
+
+        if is_empty_mode == False and 'group_id' in item:
+            import os
+            dir_path = os.path.dirname(path) if path else ""
+            if dir_path:
+                menu.addSeparator()
+                act_filter_dir = QAction("Показать группы с файлами из этой папки" if AppContext.LANG == "RU" else "Show groups with files from this folder", self)
+                act_filter_dir.triggered.connect(lambda checked, dp=dir_path: self.set_directory_filter(dp))
+                menu.addAction(act_filter_dir)
 
         menu.exec(self.tree.mapToGlobal(pos))
 

@@ -2,11 +2,51 @@
 import os
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, 
                               QCheckBox, QGroupBox, QSlider, QSpinBox, QComboBox, QStyle, QMenu)
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QIntValidator, QCursor, QColor, QFont
 
 from config import AppContext, APP_DESIGN
 from .ui_widgets import OutputFolderDropZone
+
+class HWDetectWorker(QThread):
+    finished = pyqtSignal(bool, str) # success, encoder_name or error_msg
+    
+    def run(self):
+        import subprocess
+        import os
+        from logic_paths import get_ffmpeg_exe
+        
+        ffmpeg_exe = get_ffmpeg_exe()
+        if not ffmpeg_exe or not os.path.exists(ffmpeg_exe):
+            self.finished.emit(False, "FFmpeg не найден")
+            return
+            
+        encoders_to_test = [
+            ("h264_nvenc", "NVIDIA NVENC"),
+            ("h264_amf", "AMD AMF"),
+            ("h264_qsv", "Intel QSV")
+        ]
+        
+        for enc, name in encoders_to_test:
+            cmd = [
+                ffmpeg_exe, "-y", "-v", "error", 
+                "-f", "lavfi", "-i", "color=c=black:s=128x128:r=1:d=1", 
+                "-c:v", enc, "-t", "1", "-f", "null", "-"
+            ]
+            try:
+                # hide console window on windows
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                
+                result = subprocess.run(cmd, startupinfo=startupinfo, capture_output=True, text=True)
+                if result.returncode == 0:
+                    self.finished.emit(True, f"{enc}|{name}")
+                    return
+            except Exception as e:
+                pass
+                
+        self.finished.emit(False, "Не найдены совместимые видеокарты (NVIDIA/AMD/Intel)")
+
 
 class VideoSettingsWidget(QWidget):
     settings_changed = pyqtSignal()
@@ -54,10 +94,20 @@ class VideoSettingsWidget(QWidget):
         grp_format = self.create_group_box(AppContext.tr("settings_output_format"))
         fmt_layout = QVBoxLayout(grp_format)
         self.combo_format = QComboBox()
-        self.combo_format.addItems(["MP4 (H.264)", "MKV", "MOV", "AVI", "WebM"])
+        self.combo_format.addItems(["MP4 (H.264)", "MP4 (H.265)", "MKV", "MOV", "AVI", "WebM"])
         self.combo_format.setStyleSheet(APP_DESIGN['nativelike_combo'])
         self.combo_format.setFixedHeight(28)
         fmt_layout.addWidget(self.combo_format)
+        
+        self.chk_hw_accel = QCheckBox("Аппаратное ускорение (GPU)")
+        self.chk_hw_accel.setStyleSheet(cb_style)
+        self.chk_hw_accel.setToolTip("Ускоряет кодирование с помощью видеокарты")
+        self.chk_hw_accel.clicked.connect(self.on_hw_accel_clicked)
+        fmt_layout.addWidget(self.chk_hw_accel)
+        
+        # Переменные для хранения информации о видеокарте
+        self.hw_encoder = None
+        self.hw_name = None
         layout.addWidget(grp_format)
 
         # Section 2: Quality / Compression
@@ -495,7 +545,37 @@ class VideoSettingsWidget(QWidget):
         self.btn_postfix.setChecked(ntype == 'postfix')
         self.settings_changed.emit()
 
-    def get_settings(self):
+    def on_hw_accel_clicked(self):
+        if self.chk_hw_accel.isChecked():
+            self.chk_hw_accel.setEnabled(False)
+            self.chk_hw_accel.setText("Аппаратное ускорение (Поиск видеокарты...)")
+            self.hw_worker = HWDetectWorker()
+            self.hw_worker.finished.connect(self.on_hw_detect_finished)
+            self.hw_worker.start()
+        else:
+            self.hw_encoder = None
+            self.hw_name = None
+            self.chk_hw_accel.setToolTip("Ускоряет кодирование с помощью видеокарты")
+            self.settings_changed.emit()
+
+    def on_hw_detect_finished(self, success, result):
+        self.chk_hw_accel.setEnabled(True)
+        if success:
+            enc, name = result.split('|')
+            self.hw_encoder = enc
+            self.hw_name = name
+            self.chk_hw_accel.setText("Аппаратное ускорение (GPU)")
+            self.chk_hw_accel.setToolTip(f"Доступно аппаратное ускорение: {name}")
+            self.chk_hw_accel.setChecked(True)
+        else:
+            self.hw_encoder = None
+            self.hw_name = None
+            self.chk_hw_accel.setText("Аппаратное ускорение (GPU)")
+            self.chk_hw_accel.setChecked(False)
+            self.chk_hw_accel.setToolTip(f"Ошибка: {result}")
+        self.settings_changed.emit()
+
+    def get_settings(self) -> dict:
         if self.btn_mode_crf.isChecked(): mode = 'crf'
         elif self.btn_mode_crf_percent.isChecked(): mode = 'crf_percent'
         else: mode = '2pass'
@@ -515,12 +595,16 @@ class VideoSettingsWidget(QWidget):
             'percent': self.slider_crf_percent.value() if mode == 'crf_percent' else self.slider_2pass.value(),
             'max_size': self.inp_max_size.value() if self.chk_max_size.isChecked() else None,
             'extension': self.combo_format.currentText().split(' ')[0].lower(),
+            'codec': self.combo_format.currentText(),
             'postfix': self.inp_name_template.text(),
             'is_prefix': self.btn_prefix.isChecked(),
             'add_info': self.chk_add_info.isChecked(),
             'output_dir': self.output_dir,
             'mute': self.chk_mute.isChecked(),
-            'copy_stream': self.chk_copy_stream.isChecked()
+            'copy_stream': self.chk_copy_stream.isChecked(),
+            'hw_accel': self.chk_hw_accel.isChecked(),
+            'hw_encoder': self.hw_encoder,
+            'hw_name': self.hw_name
         }
 
         if self.chk_scale_video.isChecked():

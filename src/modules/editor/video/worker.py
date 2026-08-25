@@ -305,21 +305,43 @@ class ConversionWorker(QThread):
             return self.run_ffmpeg_with_progress(cmd, duration, 0, 100, inp)
         else:
             # Re-encode
+            codec_name = self.settings.get('codec', '')
+            is_hevc = 'H.265' in codec_name
+            hw_accel = self.settings.get('hw_accel', False)
+            hw_encoder = self.settings.get('hw_encoder', None)
+            
+            use_gpu = hw_accel and hw_encoder and not is_webm
+            
             if is_webm:
                 base_v_args = ["-c:v", "libvpx-vp9", "-pix_fmt", "yuv420p"]
+            elif use_gpu:
+                actual_hw_enc = hw_encoder.replace('h264', 'hevc') if is_hevc else hw_encoder
+                base_v_args = ["-c:v", actual_hw_enc, "-pix_fmt", "yuv420p"]
+                if self.settings.get('extension') == 'mp4':
+                    base_v_args.extend(["-movflags", "+faststart"])
             else:
-                base_v_args = ["-c:v", "libx264", "-preset", "medium", "-pix_fmt", "yuv420p"]
+                actual_enc = "libx265" if is_hevc else "libx264"
+                base_v_args = ["-c:v", actual_enc, "-preset", "medium", "-pix_fmt", "yuv420p"]
                 if self.settings.get('extension') == 'mp4':
                     base_v_args.extend(["-movflags", "+faststart"])
             
             if inp.lower().endswith('.gif'):
                 # Force constant frame rate of 25 fps for GIF inputs.
-                # This guarantees valid timestamps and duration in containers like MP4/WebM.
                 base_v_args.extend(["-r", "25", "-vsync", "cfr"])
+            
+            def get_crf_args(crf_val):
+                if use_gpu:
+                    if 'nvenc' in hw_encoder:
+                        return ["-rc", "vbr", "-cq", str(crf_val)]
+                    elif 'amf' in hw_encoder:
+                        return ["-rc", "cqp", "-qp_i", str(crf_val), "-qp_p", str(crf_val)]
+                    elif 'qsv' in hw_encoder:
+                        return ["-global_quality", str(crf_val)]
+                return ["-crf", str(crf_val)]
             
             if mode == 'crf':
                 crf = self.settings.get('crf', 23)
-                v_args = ["-crf", str(crf)]
+                v_args = get_crf_args(crf)
                 if is_webm:
                     v_args.extend(["-b:v", "0"])
                 cmd = input_args + base_v_args + v_args + filter_args + audio_args + [out]
@@ -327,7 +349,7 @@ class ConversionWorker(QThread):
             
             elif mode == 'crf_percent':
                 crf = 23
-                v_args = ["-crf", str(crf)]
+                v_args = get_crf_args(crf)
                 max_size = self.settings.get('max_size')
                 if max_size:
                     target_bitrate, calc_audio_bitrate = self.calculate_bitrate_for_size(max_size, item_info)
@@ -350,7 +372,7 @@ class ConversionWorker(QThread):
                 cmd = input_args + base_v_args + v_args + filter_args + audio_args + [out]
                 return self.run_ffmpeg_with_progress(cmd, duration, 0, 100, inp)
             
-            elif mode == '2pass' or mode == 'size': # Handle 'size' as 2pass if not copy
+            elif mode == '2pass' or mode == 'size':
                 max_size = self.settings.get('max_size') or self.settings.get('target_mb')
                 if max_size:
                     target_bitrate, calc_audio_bitrate = self.calculate_bitrate_for_size(max_size, item_info)
@@ -361,56 +383,60 @@ class ConversionWorker(QThread):
                     original_bitrate = item_info.get('bitrate', 0) // 1000
                     target_bitrate = int(original_bitrate * (percent / 100)) if original_bitrate > 0 else 1000
                 
-                import tempfile
-                import uuid
-                import glob
-                
-                # Создаем уникальный префикс для временных логов FFmpeg в системной папке Temp
-                temp_log_prefix = os.path.join(tempfile.gettempdir(), f"ffmpeg2pass_{uuid.uuid4().hex}")
-                
-                # Pass 1: Analysis (30% of total progress)
-                # Note: pass 1 needs to output to NUL/null
-                pass1_out = "NUL" if os.name == 'nt' else "/dev/null"
-                pass1_args = [
-                    "-b:v", f"{target_bitrate}k", 
-                    "-pass", "1", 
-                    "-passlogfile", temp_log_prefix, 
-                    "-an", "-f", "null"
-                ]
-                cmd1 = input_args + base_v_args + pass1_args + filter_args + [pass1_out]
-                
-                print(f"[DEBUG] Starting Pass 1: {target_bitrate}k")
-                pass1_ok = False
-                try:
-                    pass1_ok = self.run_ffmpeg_with_progress(cmd1, duration, 0, 30, inp)
-                finally:
+                if use_gpu:
+                    # GPU Single-pass encoding for size constraints
+                    gpu_v_args = ["-b:v", f"{target_bitrate}k", "-maxrate", f"{target_bitrate}k", "-bufsize", f"{target_bitrate * 2}k"]
+                    if 'nvenc' in hw_encoder:
+                        gpu_v_args.extend(["-multipass", "2"])
+                    
+                    cmd = input_args + base_v_args + gpu_v_args + filter_args + audio_args + [out]
+                    print(f"[DEBUG] Starting GPU Single-Pass encoding for {target_bitrate}k")
+                    return self.run_ffmpeg_with_progress(cmd, duration, 0, 100, inp)
+                else:
+                    import tempfile
+                    import uuid
+                    import glob
+                    
+                    temp_log_prefix = os.path.join(tempfile.gettempdir(), f"ffmpeg2pass_{uuid.uuid4().hex}")
+                    
+                    pass1_out = "NUL" if os.name == 'nt' else "/dev/null"
+                    pass1_args = [
+                        "-b:v", f"{target_bitrate}k", 
+                        "-pass", "1", 
+                        "-passlogfile", temp_log_prefix, 
+                        "-an", "-f", "null"
+                    ]
+                    cmd1 = input_args + base_v_args + pass1_args + filter_args + [pass1_out]
+                    
+                    print(f"[DEBUG] Starting Pass 1: {target_bitrate}k")
+                    pass1_ok = False
+                    try:
+                        pass1_ok = self.run_ffmpeg_with_progress(cmd1, duration, 0, 30, inp)
+                    finally:
+                        if not pass1_ok:
+                            for f in glob.glob(temp_log_prefix + "*"):
+                                try: os.remove(f)
+                                except: pass
+                    
                     if not pass1_ok:
-                        # Если первый проход упал, очищаем за собой
+                        return False
+                    
+                    pass2_args = [
+                        "-b:v", f"{target_bitrate}k", 
+                        "-pass", "2", 
+                        "-passlogfile", temp_log_prefix
+                    ]
+                    cmd2 = input_args + base_v_args + pass2_args + filter_args + audio_args + [out]
+                    
+                    print(f"[DEBUG] Starting Pass 2: {target_bitrate}k")
+                    pass2_ok = False
+                    try:
+                        pass2_ok = self.run_ffmpeg_with_progress(cmd2, duration, 30, 100, inp)
+                        return pass2_ok
+                    finally:
                         for f in glob.glob(temp_log_prefix + "*"):
                             try: os.remove(f)
                             except: pass
-                
-                if not pass1_ok:
-                    return False
-                
-                # Pass 2: Encoding (30% -> 100%)
-                pass2_args = [
-                    "-b:v", f"{target_bitrate}k", 
-                    "-pass", "2", 
-                    "-passlogfile", temp_log_prefix
-                ]
-                cmd2 = input_args + base_v_args + pass2_args + filter_args + audio_args + [out]
-                
-                print(f"[DEBUG] Starting Pass 2: {target_bitrate}k")
-                pass2_ok = False
-                try:
-                    pass2_ok = self.run_ffmpeg_with_progress(cmd2, duration, 30, 100, inp)
-                    return pass2_ok
-                finally:
-                    # В любом случае (успех или ошибка) стираем временные логи FFmpeg
-                    for f in glob.glob(temp_log_prefix + "*"):
-                        try: os.remove(f)
-                        except: pass
         
         return False
 

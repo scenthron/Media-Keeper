@@ -27,6 +27,8 @@ class HWDetectWorker(QThread):
             ("h264_qsv", "Intel QSV")
         ]
         
+        last_error = "Не найдены совместимые видеокарты"
+        
         for enc, name in encoders_to_test:
             cmd = [
                 ffmpeg_exe, "-y", "-v", "error", 
@@ -42,10 +44,19 @@ class HWDetectWorker(QThread):
                 if result.returncode == 0:
                     self.finished.emit(True, f"{enc}|{name}")
                     return
+                else:
+                    if result.stderr:
+                        # Берем первую значимую строку ошибки из FFmpeg
+                        err_lines = [line.strip() for line in result.stderr.split('\n') if line.strip() and not line.startswith('[out')]
+                        if err_lines:
+                            last_error = err_lines[0]
+                            # Очищаем от технических префиксов FFmpeg
+                            if "]" in last_error:
+                                last_error = last_error.split("]", 1)[-1].strip()
             except Exception as e:
                 pass
                 
-        self.finished.emit(False, "Не найдены совместимые видеокарты (NVIDIA/AMD/Intel)")
+        self.finished.emit(False, last_error)
 
 
 class VideoSettingsWidget(QWidget):

@@ -32,7 +32,7 @@ class HWDetectWorker(QThread):
         for enc, name in encoders_to_test:
             cmd = [
                 ffmpeg_exe, "-y", "-v", "error", 
-                "-f", "lavfi", "-i", "color=c=black:s=128x128:r=1:d=1", 
+                "-f", "lavfi", "-i", "color=c=black:s=256x256:r=1:d=1", 
                 "-c:v", enc, "-t", "1", "-f", "null", "-"
             ]
             try:
@@ -42,6 +42,7 @@ class HWDetectWorker(QThread):
                 
                 result = subprocess.run(cmd, startupinfo=startupinfo, capture_output=True, text=True)
                 if result.returncode == 0:
+                    print(f"[HWDetect] Успешно инициализирован: {name} ({enc})")
                     self.finished.emit(True, f"{enc}|{name}")
                     return
                 else:
@@ -53,8 +54,9 @@ class HWDetectWorker(QThread):
                             # Очищаем от технических префиксов FFmpeg
                             if "]" in last_error:
                                 last_error = last_error.split("]", 1)[-1].strip()
+                        print(f"[HWDetect] Ошибка для {name}: {last_error}")
             except Exception as e:
-                pass
+                print(f"[HWDetect] Критическая ошибка запуска для {name}: {e}")
                 
         self.finished.emit(False, last_error)
 

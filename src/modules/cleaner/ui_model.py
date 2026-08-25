@@ -394,9 +394,18 @@ class DuplicateDelegate(QStyledItemDelegate):
         elif item['type'] == 'file':
             # --- Paint File Row ---
             is_protected = item.get('is_protected', False)
+            is_marked = item.get('is_marked', 0) == 1
+            
             bg_color = QColor("#2d2d2d") if not is_protected else QColor("#3a3420")
+            if is_marked:
+                bg_color = QColor("#3a1c1c") if not is_protected else QColor("#442820")
+                
             if is_hovered:
-                bg_color = QColor("#363636") if not is_protected else QColor("#443c25")
+                if is_marked:
+                    bg_color = QColor("#4c2a2a") if not is_protected else QColor("#543125")
+                else:
+                    bg_color = QColor("#363636") if not is_protected else QColor("#443c25")
+                    
             if is_selected:
                 bg_color = QColor("#3b82f6") if not is_protected else QColor("#544b30")
                 
@@ -455,7 +464,10 @@ class DuplicateDelegate(QStyledItemDelegate):
             folder = os.path.dirname(item['path'])
             
             # Draw file name
-            painter.drawText(rect.left() + 75, rect.top(), 230, rect.height(), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, filename)
+            metrics = QFontMetrics(name_font)
+            elided_filename = metrics.elidedText(filename, Qt.TextElideMode.ElideMiddle, 230)
+            
+            painter.drawText(rect.left() + 75, rect.top(), 230, rect.height(), Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, elided_filename)
             current_x = rect.left() + 315
             
             # Draw similarity percentage (if in similar mode)

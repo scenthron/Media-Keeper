@@ -29,8 +29,9 @@ class FFmpegDownloaderWorker(QThread):
     
     # Прямая ссылка на стабильную сборку FFmpeg для Windows
     # Используем gyan.dev - официальный источник стабильных сборок
+    # Используем версию 6.1.1 для максимальной совместимости со старыми драйверами NVIDIA
     # Альтернатива: https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip
-    FFMPEG_DOWNLOAD_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+    FFMPEG_DOWNLOAD_URL = "https://github.com/GyanD/codexffmpeg/releases/download/6.1.1/ffmpeg-6.1.1-essentials_build.zip"
     
     def __init__(self):
         super().__init__()

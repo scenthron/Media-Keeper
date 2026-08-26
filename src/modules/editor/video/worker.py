@@ -319,6 +319,8 @@ class ConversionWorker(QThread):
                 base_v_args = ["-c:v", actual_hw_enc, "-pix_fmt", "yuv420p"]
                 if self.settings.get('extension') == 'mp4':
                     base_v_args.extend(["-movflags", "+faststart"])
+                # Fix VFR audio desync for GPU encoders by forcing constant frame rate timestamping
+                base_v_args.extend(["-vsync", "1"])
             else:
                 actual_enc = "libx265" if is_hevc else "libx264"
                 base_v_args = ["-c:v", actual_enc, "-preset", "medium", "-pix_fmt", "yuv420p"]
@@ -397,15 +399,25 @@ class ConversionWorker(QThread):
                     import uuid
                     import glob
                     
-                    temp_log_prefix = os.path.join(tempfile.gettempdir(), f"ffmpeg2pass_{uuid.uuid4().hex}")
+                    # Имя файла без слэшей, чтобы x265 не ругался на пути
+                    temp_log_name = f"ffmpeg2pass_{uuid.uuid4().hex}"
+                    temp_log_prefix = os.path.join(tempfile.gettempdir(), temp_log_name)
                     
                     pass1_out = "NUL" if os.name == 'nt' else "/dev/null"
-                    pass1_args = [
-                        "-b:v", f"{target_bitrate}k", 
-                        "-pass", "1", 
-                        "-passlogfile", temp_log_prefix, 
-                        "-an", "-f", "null"
-                    ]
+                    
+                    pass1_args = ["-b:v", f"{target_bitrate}k", "-an", "-f", "null"]
+                    pass2_args = ["-b:v", f"{target_bitrate}k"]
+                    
+                    if not is_webm and actual_enc == "libx265":
+                        # libx265 требует явной передачи параметров для записи лога
+                        # Путь должен быть экранирован или использовать форвардные слэши
+                        safe_log_path = temp_log_prefix.replace('\\', '/')
+                        pass1_args.extend(["-x265-params", f"pass=1:stats={safe_log_path}.log"])
+                        pass2_args.extend(["-x265-params", f"pass=2:stats={safe_log_path}.log"])
+                    else:
+                        pass1_args.extend(["-pass", "1", "-passlogfile", temp_log_prefix])
+                        pass2_args.extend(["-pass", "2", "-passlogfile", temp_log_prefix])
+                    
                     cmd1 = input_args + base_v_args + pass1_args + filter_args + [pass1_out]
                     
                     print(f"[DEBUG] Starting Pass 1: {target_bitrate}k")
@@ -421,11 +433,6 @@ class ConversionWorker(QThread):
                     if not pass1_ok:
                         return False
                     
-                    pass2_args = [
-                        "-b:v", f"{target_bitrate}k", 
-                        "-pass", "2", 
-                        "-passlogfile", temp_log_prefix
-                    ]
                     cmd2 = input_args + base_v_args + pass2_args + filter_args + audio_args + [out]
                     
                     print(f"[DEBUG] Starting Pass 2: {target_bitrate}k")

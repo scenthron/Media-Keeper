@@ -185,6 +185,10 @@ class CleanerTreeMixin:
             act_select_path = QAction(AppContext.tr("cln_ctx_select_same_path"), self)
             act_select_path.triggered.connect(lambda: self.select_by_same_path(path))
             menu.addAction(act_select_path)
+            
+            act_protect_path = QAction("Сохранить файлы из этой папки" if AppContext.LANG == "RU" else "Keep files from this folder", self)
+            act_protect_path.triggered.connect(lambda: getattr(self, 'protect_by_same_path', lambda p: None)(path))
+            menu.addAction(act_protect_path)
             if hasattr(self, 'source_folders') and len(self.source_folders) > 1:
                 act_select_source = QAction(AppContext.tr("cln_ctx_select_all_from_source"), self)
                 act_select_source.triggered.connect(lambda: self.select_by_source_root(path))

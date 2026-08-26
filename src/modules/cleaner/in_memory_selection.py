@@ -152,6 +152,36 @@ class InMemorySelection:
                 if fid not in survivors and fid not in self._protected_files:
                     self._marked.add(fid)
 
+    def protect_directory(self, target_dir_path: str, allowed_group_ids: set[int] = None) -> None:
+        """Finds groups containing files in target_dir_path.
+        For those groups, protects files from target_dir_path and marks all others.
+        """
+        import os
+        import platform
+        is_win = platform.system() == 'Windows'
+        
+        def norm_path(p: str) -> str:
+            return os.path.normpath(p).lower() if is_win else os.path.normpath(p)
+            
+        norm_target = norm_path(target_dir_path)
+        
+        for gid, files in self._group_files.items():
+            if allowed_group_ids is not None and gid not in allowed_group_ids:
+                continue
+                
+            files_in_target = [f for f in files if norm_path(os.path.dirname(f['path'])) == norm_target]
+            if not files_in_target:
+                continue # Group doesn't have files from this directory
+                
+            target_ids = {f['id'] for f in files_in_target}
+            
+            for f in files:
+                fid = f['id']
+                if fid in target_ids or fid in self._protected_files:
+                    self._marked.discard(fid) # Unmark the protected ones
+                else:
+                    self._marked.add(fid) # Mark all others
+
     def select_group_except_survivor(self, group_id: int) -> None:
         """Select all files in a single group except its survivor."""
         files = self._group_files.get(group_id, [])

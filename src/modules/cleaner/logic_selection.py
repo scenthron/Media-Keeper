@@ -383,6 +383,21 @@ class CleanerSelectionMixin:
         target_dir = os.path.dirname(reference_path)
         self._batch_select(lambda p: os.path.dirname(p) == target_dir)
 
+    def protect_by_same_path(self, reference_path: str) -> None:
+        if not reference_path or not os.path.exists(reference_path):
+            return
+        target_dir = os.path.dirname(reference_path)
+        
+        # We need to run this through the same UI updates as batch select
+        allowed_group_ids = self._get_visible_group_ids()
+        self.in_memory_selection.protect_directory(target_dir, allowed_group_ids)
+        
+        self.apply_in_memory_selection_to_ui()
+        # Ensure we sync with DB if needed
+        self.sync_in_memory_with_db()
+        self.selection_changed.emit()
+        self.update_stats()
+
     def select_by_source_root(self, reference_path: str) -> None:
         found_root = None
         for src in self.source_folders.keys():

@@ -56,12 +56,9 @@ class FileOpsMixin:
         """
         logging.info(f"Requesting file list refresh (show_progress={show_progress}).")
         
-        try:
-            if hasattr(self, 'scan_thread') and self.scan_thread and self.scan_thread.isRunning():
-                logging.debug("Scan already in progress, skipping.")
-                return
-        except RuntimeError:
-            self.scan_thread = None
+        if hasattr(self, 'scan_thread') and self.scan_thread and self.scan_thread.isRunning():
+            logging.debug("Scan already in progress, skipping.")
+            return
 
         if not self.UNSORT_DIR or not os.path.exists(self.UNSORT_DIR):
             if not getattr(self, 'virtual_folder_name', None):
@@ -110,7 +107,6 @@ class FileOpsMixin:
         # Передаем пустые расширения в ScanThread, чтобы он сканировал все файлы без дисковой фильтрации
         self.scan_thread = ScanThread(self.UNSORT_DIR, recursive, [], "include", parent=self)
         self.scan_thread.finished_scan.connect(self.on_scan_finished)
-        self.scan_thread.finished.connect(self.scan_thread.deleteLater)
         self.scan_thread.start()
 
     def load_virtual_files(self, file_paths: list[str], source_name: str):
@@ -134,21 +130,17 @@ class FileOpsMixin:
         self._raw_dir_files = []
         
         for p in file_paths:
+            if not os.path.exists(p):
+                continue
             try:
-                long_p = ensure_long_path(p)
-                if not os.path.exists(long_p):
-                    logging.warning(f"Файл не найден или недоступен, пропущен: {p}")
-                    continue
-                
-                stat = os.stat(long_p)
+                stat = os.stat(p)
                 self._raw_dir_files.append({
-                    'rel_path': long_p,
+                    'rel_path': ensure_long_path(p),
                     'size': stat.st_size,
                     'mtime': stat.st_mtime,
                     'ctime': stat.st_ctime
                 })
-            except Exception as e:
-                logging.error(f"Ошибка при добавлении файла {p}: {e}")
+            except Exception:
                 pass
                 
         self.virtual_folder_name = source_name
@@ -162,8 +154,8 @@ class FileOpsMixin:
 
     def _get_virtual_folder_text(self):
         if not getattr(self, 'virtual_folder_name', None): return None
-        count = len(self.files_queue) if hasattr(self, 'files_queue') else 0
-        total_size = getattr(self, '_filtered_size', 0)
+        count = len(self._raw_dir_files) if hasattr(self, '_raw_dir_files') else 0
+        total_size = sum(f.get('size', 0) for f in self._raw_dir_files) if hasattr(self, '_raw_dir_files') else 0
         from utils_common import format_size
         size_str = format_size(total_size)
         return f"{self.virtual_folder_name} ({count} файлов, {size_str})"
@@ -184,6 +176,7 @@ class FileOpsMixin:
             self.scan_thread.cancel()
             self._scan_was_cancelled = True
             self.scan_thread.wait()  # Гарантируем завершение потока до закрытия диалога
+            self.scan_thread.deleteLater()
             self.scan_thread = None
         self._safe_close_dialog('scan_dlg')
 
@@ -194,14 +187,16 @@ class FileOpsMixin:
                 self._scan_was_cancelled = False
                 self._safe_close_dialog('scan_dlg')
                 if hasattr(self, 'scan_thread') and self.scan_thread:
-                    self.scan_thread = None
+                    self.scan_thread.deleteLater()
+                self.scan_thread = None
                 return
 
             if hasattr(self, 'scan_thread') and self.scan_thread and getattr(self.scan_thread, '_is_cancelled', False):
                 logging.info("Результаты сканирования проигнорированы, так как оно было отменено.")
                 self._safe_close_dialog('scan_dlg')
                 if hasattr(self, 'scan_thread') and self.scan_thread:
-                    self.scan_thread = None
+                    self.scan_thread.deleteLater()
+                self.scan_thread = None
                 return
 
             current_set = set(f['rel_path'] for f in getattr(self, '_raw_dir_files', [])) if getattr(self, '_raw_dir_files', None) is not None else None
@@ -213,7 +208,8 @@ class FileOpsMixin:
                 logging.debug("Scan finished: No changes in file list, skipping UI refresh. Checking missing thumbnails...")
                 self._safe_close_dialog('scan_dlg')
                 if hasattr(self, 'scan_thread') and self.scan_thread:
-                    self.scan_thread = None
+                    self.scan_thread.deleteLater()
+                self.scan_thread = None
                 
                 if self.viewer.current_view_mode != 0:
                     from PyQt6.QtCore import QSize
@@ -268,7 +264,8 @@ class FileOpsMixin:
         self.lbl_unsort_count.update_info()
         self.lbl_todel_count.update_info()
         if hasattr(self, 'scan_thread') and self.scan_thread:
-            self.scan_thread = None
+            self.scan_thread.deleteLater()
+        self.scan_thread = None
 
     def apply_local_filters_and_sorting(self, trigger_sync=True):
         if not hasattr(self, '_raw_dir_files') or self._raw_dir_files is None:
@@ -285,7 +282,6 @@ class FileOpsMixin:
             
         # 1. Фильтрация
         filtered_files = []
-        filtered_size = 0
         min_mb = self.config.get("filter_min_size", 0.0)
         max_mb = self.config.get("filter_max_size", 0.0)
         min_bytes = int(min_mb * 1024 * 1024) if min_mb > 0 else 0
@@ -311,7 +307,6 @@ class FileOpsMixin:
                 
             if match:
                 filtered_files.append(f_info)
-                filtered_size += size
                 
         # 2. Сортировка
         sort_type = self.config.get("sort_type", "name_asc")
@@ -383,12 +378,7 @@ class FileOpsMixin:
             current_file = self.files_queue[self.current_index]
             
         self.files_queue = new_queue
-        self._filtered_size = filtered_size
         
-        if hasattr(self, 'lbl_unsort_count'):
-            self.lbl_unsort_count.filter_getter = lambda: (len(self._all_filtered_files_queue), self._filtered_size)
-            self.lbl_unsort_count.update_info()
-            
         if current_file in self.files_queue:
             self.current_index = self.files_queue.index(current_file)
         else:
@@ -827,12 +817,9 @@ class FileOpsMixin:
                 logging.error(f"Destination not found: {destination_dir}")
                 return
                 
-            try:
-                if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
-                    logging.debug("Move already in progress, skipping.")
-                    return
-            except RuntimeError:
-                self.move_thread = None
+            if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
+                logging.debug("Move already in progress, skipping.")
+                return
 
             # Определяем список файлов для перемещения
             if self.viewer.current_view_mode == 0:
@@ -850,6 +837,20 @@ class FileOpsMixin:
 
             if not selected_paths:
                 return
+
+            if self.viewer.current_view_mode in (1, 2) and selected_paths:
+                # Найдём максимальный индекс среди выделенных файлов, чтобы переместить фокус на файл после них
+                max_idx = -1
+                for p in selected_paths:
+                    rel = safe_relpath(p, getattr(self, 'UNSORT_DIR', ''))
+                    norm_rel = strip_long_path_prefix(os.path.normpath(rel))
+                    for idx, f in enumerate(getattr(self, 'files_queue', [])):
+                        if strip_long_path_prefix(os.path.normpath(f)) == norm_rel:
+                            if idx > max_idx:
+                                max_idx = idx
+                            break
+                if max_idx >= 0:
+                    self.current_index = max_idx
 
             # Проверяем, все ли перемещаемые файлы являются изображениями
             is_only_images = True
@@ -966,7 +967,7 @@ class FileOpsMixin:
         self._ignore_watcher = True
         
         # Запоминаем список перемещаемых файлов, чтобы блокировать предпросмотр
-        from utils_io import strip_long_path_prefix
+
         if not hasattr(self, 'locked_files'):
             self.locked_files = set()
         self.locked_files.update(os.path.normpath(strip_long_path_prefix(src)) for src, dst in pairs)
@@ -975,7 +976,6 @@ class FileOpsMixin:
         self.move_thread.progress_update.connect(self.on_move_progress)
         self.move_thread.detailed_progress.connect(self.on_move_detailed_progress)
         self.move_thread.finished_move.connect(self.on_move_finished)
-        self.move_thread.finished.connect(self.move_thread.deleteLater)
         logging.info(f"[PROFILER] Запуск MoveThread. Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
         self.move_thread.start()
 
@@ -1032,19 +1032,6 @@ class FileOpsMixin:
                         f for f in self._raw_dir_files 
                         if strip_long_path_prefix(os.path.normpath(f['rel_path'])) not in succeeded_src_rels_set
                     ]
-                
-                # ИНСТАНТНО обновляем глобальную очередь фильтров и размер, чтобы счетчики не зависали
-                if hasattr(self, '_all_filtered_files_queue') and self._all_filtered_files_queue:
-                    self._all_filtered_files_queue = [
-                        f for f in self._all_filtered_files_queue
-                        if strip_long_path_prefix(os.path.normpath(f)) not in succeeded_src_rels_set
-                    ]
-                
-                total_moved_size = 0
-                for _, dst in succeeded_pairs:
-                    try: total_moved_size += os.path.getsize(dst)
-                    except: pass
-                self._filtered_size = max(0, getattr(self, '_filtered_size', 0) - total_moved_size)
                 
                 new_queue = []
                 new_current_index = 0
@@ -1111,7 +1098,6 @@ class FileOpsMixin:
         finally:
             # Разблокируем watcher с задержкой
             QTimer.singleShot(1000, lambda: setattr(self, '_ignore_watcher', False))
-            self.move_thread = None
             self.setFocus()
 
     def delete_file(self):
@@ -1177,16 +1163,6 @@ class FileOpsMixin:
                     f for f in self._raw_dir_files 
                     if strip_long_path_prefix(os.path.normpath(f['rel_path'])) not in norm_deleted_set
                 ]
-                
-            # ИНСТАНТНО обновляем глобальную очередь фильтров и размер, чтобы счетчики не зависали
-            if hasattr(self, '_all_filtered_files_queue') and self._all_filtered_files_queue:
-                self._all_filtered_files_queue = [
-                    f for f in self._all_filtered_files_queue
-                    if strip_long_path_prefix(os.path.normpath(f)) not in norm_deleted_set
-                ]
-            
-            total_deleted_size = sum(sz for _, sz in deleted_cache_updates)
-            self._filtered_size = max(0, getattr(self, '_filtered_size', 0) - total_deleted_size)
             
             new_queue = []
             found_next = False
@@ -1320,7 +1296,7 @@ class FileOpsMixin:
                 self.undo_progress_timer.timeout.connect(self.undo_dlg.show)
                 self.undo_progress_timer.start()
 
-            from utils_io import strip_long_path_prefix
+
             if not hasattr(self, 'locked_files'):
                 self.locked_files = set()
             self.locked_files.update(os.path.normpath(strip_long_path_prefix(src)) for src, dst in resolved_pairs)
@@ -1330,7 +1306,6 @@ class FileOpsMixin:
             self.undo_thread.progress_update.connect(lambda c, t, f: self.undo_dlg.set_current_file(c, f) if hasattr(self, 'undo_dlg') and self.undo_dlg else None)
             self.undo_thread.detailed_progress.connect(lambda c, t, o, ot: self.undo_dlg.update_bars(c, t, o, ot) if hasattr(self, 'undo_dlg') and self.undo_dlg else None)
             self.undo_thread.finished_move.connect(self.on_undo_finished)
-            self.undo_thread.finished.connect(self.undo_thread.deleteLater)
             self.undo_thread.start()
 
         except Exception as e:
@@ -1461,7 +1436,6 @@ class FileOpsMixin:
                     err_dlg.exec()
         finally:
             QTimer.singleShot(1000, lambda: setattr(self, '_ignore_watcher', False))
-            self.undo_thread = None
             
         self.setFocus()
 
@@ -1471,7 +1445,7 @@ class FileOpsMixin:
             if not self.current_file_path or not os.path.exists(self.current_file_path):
                 return
             
-            from utils_io import strip_long_path_prefix
+
             norm_path = os.path.normpath(strip_long_path_prefix(self.current_file_path))
             if hasattr(self, 'locked_files') and norm_path in self.locked_files:
                 return
@@ -1486,11 +1460,8 @@ class FileOpsMixin:
                 return
 
         # ЗАЩИТА: Если перемещение/переименование уже идет, игнорируем
-        try:
-            if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
-                return
-        except RuntimeError:
-            self.move_thread = None
+        if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
+            return
 
         template = payload
         errors = []
@@ -1688,11 +1659,8 @@ class FileOpsMixin:
 
 
         # ЗАЩИТА: Если перемещение/переименование уже идет, игнорируем
-        try:
-            if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
-                return
-        except RuntimeError:
-            self.move_thread = None
+        if hasattr(self, 'move_thread') and self.move_thread and self.move_thread.isRunning():
+            return
 
         template = payload
         errors = []

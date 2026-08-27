@@ -60,6 +60,8 @@ class ScanMixin:
         if not self.source_folders: return
         self.settings_panel.scan_stale = False
         self.settings_panel.validate_size_inputs()
+        if hasattr(self, 'clear_directory_filter'):
+            self.clear_directory_filter()
         self.virtual_model.set_items([], {})
         self.session_db.clear_db() 
         self.preview_widget.show_empty("...") 

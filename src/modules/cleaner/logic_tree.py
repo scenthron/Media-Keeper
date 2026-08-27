@@ -340,6 +340,13 @@ class CleanerTreeMixin:
             self.update_selection_info()
 
     def _header_group_action(self, item: dict, action: str) -> None:
+        if getattr(self, 'current_view_mode', 0) == 0:
+            if hasattr(self, '_header_group_action_ram'):
+                self._header_group_action_ram(item, action)
+            return
+        self._header_group_action_db(item, action)
+
+    def _header_group_action_db(self, item: dict, action: str) -> None:
         group_id = item.get('id')
         if not group_id: return
         for fi in self.virtual_model._all_items:

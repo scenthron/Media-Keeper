@@ -135,7 +135,7 @@ class ConversionWorker(QThread):
         """Calculate video bitrate to achieve target file size with 7% safety margin"""
         duration = item_info.get('duration', 0)
         if duration <= 0:
-            return 1000  # Fallback
+            return 1000, 128  # Fallback
         
         # 1 MB = 8192 Kilobits. 
         # We use 0.93 coefficient to account for container overhead (headers, index) and minor codec fluctuations.
@@ -219,9 +219,16 @@ class ConversionWorker(QThread):
             success = self.convert_file(ffmpeg_exe, input_path, output_path, item, use_copy_stream)
             
             if not self.is_running:
+                if not success and os.path.exists(output_path):
+                    try: os.remove(output_path)
+                    except: pass
                 # If stopped during conversion, we might have a corrupt part - but for now just emit finished
                 self.file_finished.emit(input_path, False, "Stopped")
                 break
+
+            if not success and os.path.exists(output_path):
+                try: os.remove(output_path)
+                except: pass
 
             msg = output_path if success else "Error"
             self.file_finished.emit(input_path, success, msg)
@@ -254,6 +261,8 @@ class ConversionWorker(QThread):
                 audio_args.extend(["-c:a", "libvorbis"])
             else:
                 audio_args.extend(["-c:a", "aac"]) 
+            # Fix audio desync and prevent muxer queue overflow for corrupted streams
+            audio_args.extend(["-async", "1"]) 
 
         # Video filters (scaling)
         filter_args = []
@@ -490,8 +499,22 @@ class ConversionWorker(QThread):
                         self.progress_updated.emit(file_path, global_pct)
                     
                     elif "Error" in line or "Invalid" in line:
-                        logging.warning(f"[VideoWorker] FFmpeg log output error: {line.strip()}")
-                        print(f"[FFMPEG LOG] {line.strip()}")
+                        msg = line.strip()
+                        if not hasattr(self, '_last_err_msg'):
+                            self._last_err_msg = ""
+                            self._err_count = 0
+                            
+                        if msg == self._last_err_msg:
+                            self._err_count += 1
+                            if self._err_count % 100 == 0:
+                                print(f"[FFMPEG LOG] ... suppressed {self._err_count} similar errors ...")
+                        else:
+                            if getattr(self, '_err_count', 0) > 0:
+                                print(f"[FFMPEG LOG] ... suppressed {self._err_count} previous similar errors.")
+                            logging.warning(f"[VideoWorker] FFmpeg log output error: {msg}")
+                            print(f"[FFMPEG LOG] {msg}")
+                            self._last_err_msg = msg
+                            self._err_count = 0
 
             if not self.is_running:
                 if self.current_process.poll() is None:

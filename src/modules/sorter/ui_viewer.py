@@ -1397,6 +1397,9 @@ class SorterBaseListView(QListWidget):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._on_context_menu)
         
+        # Синхронизация текущего индекса при клике мышью (смена активной строки)
+        self.currentRowChanged.connect(self._notify_viewer_area)
+        
         # Debounce timer to prevent rapid hover player rebuilding
         self.hover_timer = QTimer(self)
         self.hover_timer.setSingleShot(True)
@@ -1999,6 +2002,7 @@ class SorterBaseListView(QListWidget):
         if item and item not in selected_items:
             self.clearSelection()
             item.setSelected(True)
+            self.setCurrentItem(item)
             selected_items = [item]
             
         if not selected_items:
@@ -3594,8 +3598,16 @@ class SorterViewerArea(QWidget):
         self.grid_view._stop_hover_playback(force=True)
         self.list_view._stop_hover_playback(force=True)
         
+        # Запоминаем текущую позицию прокрутки
+        grid_scroll = self.grid_view.verticalScrollBar().value()
+        list_scroll = self.list_view.verticalScrollBar().value()
+        
         self.grid_view.setUpdatesEnabled(False)
         self.list_view.setUpdatesEnabled(False)
+        
+        # Блокируем сигналы, чтобы не сбить main_app.current_index при удалении элементов
+        grid_blocked = self.grid_view.blockSignals(True)
+        list_blocked = self.list_view.blockSignals(True)
         try:
             items_to_remove_grid = set()
             items_to_remove_list = set()
@@ -3645,11 +3657,17 @@ class SorterViewerArea(QWidget):
                         new_loading_files.append(f)
                 self.loading_files = new_loading_files
         finally:
+            self.grid_view.blockSignals(grid_blocked)
+            self.list_view.blockSignals(list_blocked)
             self.grid_view.setUpdatesEnabled(True)
             self.list_view.setUpdatesEnabled(True)
             
         self.grid_view.doItemsLayout()
         self.list_view.doItemsLayout()
+        
+        # Восстанавливаем позицию прокрутки
+        self.grid_view.verticalScrollBar().setValue(grid_scroll)
+        self.list_view.verticalScrollBar().setValue(list_scroll)
         
         # Schedule hover check after files are removed
         from PyQt6.QtCore import QTimer

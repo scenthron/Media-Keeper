@@ -336,7 +336,7 @@ class CleanerSelectionMixin:
     # ------------------------------------------------------------------
     # Group header context menu actions
     # ------------------------------------------------------------------
-    def _header_group_action(self, item: dict[str, Any], action: str) -> None:
+    def _header_group_action_ram(self, item: dict[str, Any], action: str) -> None:
         """Handle group header context menu actions (per-group, not global)."""
         group_id = item['id']
         current_mode = getattr(self, 'current_view_mode', 0)
@@ -389,14 +389,9 @@ class CleanerSelectionMixin:
         target_dir = os.path.dirname(reference_path)
         
         # We need to run this through the same UI updates as batch select
-        allowed_group_ids = self._get_visible_group_ids()
-        self.in_memory_selection.protect_directory(target_dir, allowed_group_ids)
+        self.in_memory_selection.protect_directory(target_dir, None)
         
-        self.apply_in_memory_selection_to_ui()
-        # Ensure we sync with DB if needed
-        self.sync_in_memory_with_db()
-        self.selection_changed.emit()
-        self.update_stats()
+        self.refresh_selection_from_memory()
 
     def select_by_source_root(self, reference_path: str) -> None:
         found_root = None

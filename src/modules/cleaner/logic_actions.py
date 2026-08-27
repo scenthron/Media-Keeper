@@ -298,7 +298,7 @@ class ActionMixin:
         self.action_bar.set_delete_button_enabled(has_selection)
         self.action_bar.set_deselect_button_enabled(has_selection)
 
-        if self.current_view_mode == 2:
+        if getattr(self, 'current_tab', 0) not in (2, 3) and getattr(self, 'current_view_mode', 0) == 2:
             self.action_bar.set_move_button_enabled(has_selection, AppContext.tr("cln_act_delete_folders"))
             return
 
@@ -309,7 +309,7 @@ class ActionMixin:
         self.action_bar.btn_move_to.setEnabled(has_selection)
 
     def prompt_move_selected(self) -> None:
-        if self.current_view_mode == 2: return
+        if getattr(self, 'current_tab', 0) not in (2, 3) and getattr(self, 'current_view_mode', 0) == 2: return
         title = "Переместить в..." if AppContext.LANG == "RU" else "Move to..."
         start = getattr(self, 'last_moved_dir', getattr(AppContext, 'last_moved_dir', ""))
         if not start:
@@ -327,7 +327,7 @@ class ActionMixin:
             self.move_selected(dest_folder=d)
 
     def move_single_file_to_dir_from_context(self, path: str, group_index: int = -1) -> None:
-        if self.current_view_mode == 2: return
+        if getattr(self, 'current_tab', 0) not in (2, 3) and getattr(self, 'current_view_mode', 0) == 2: return
         title = "Переместить в..." if AppContext.LANG == "RU" else "Move to..."
         start = getattr(self, 'last_moved_dir', getattr(AppContext, 'last_moved_dir', ""))
         if not start:
@@ -371,7 +371,7 @@ class ActionMixin:
             self.mover.start()
 
     def move_selected(self, dest_folder: str = None) -> None:
-        if self.current_view_mode == 2:
+        if getattr(self, 'current_tab', 0) not in (2, 3) and getattr(self, 'current_view_mode', 0) == 2:
             self.delete_empty_folders()
             return
 
@@ -477,7 +477,7 @@ class ActionMixin:
         self.mover.start()
 
     def delete_selected(self) -> None:
-        if self.current_view_mode == 2:
+        if getattr(self, 'current_tab', 0) not in (2, 3) and getattr(self, 'current_view_mode', 0) == 2:
             self.delete_empty_folders()
             return
 

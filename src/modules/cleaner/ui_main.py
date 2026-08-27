@@ -1024,18 +1024,23 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
                 break
             temp_path = parent
             
+        multiple_sources = len(self.source_folders) > 1
+        if multiple_sources:
+            act_reset = QAction("Сбросить фильтр" if AppContext.is_ru() else "Reset filter", self)
+            act_reset.triggered.connect(self.clear_directory_filter)
+            menu.addAction(act_reset)
+            menu.addSeparator()
+            
         # Добавляем в меню (сверху вниз)
         for i, p in enumerate(reversed(paths)):
             is_scan_root = (scan_root and p.lower() == scan_root.lower())
             name = os.path.basename(p) or p
-            
-            # Для корня сканирования добавляем спец-символ или оставляем как есть
             display_name = name
             
             act = QAction(display_name, self)
             
-            if is_scan_root:
-                # Клик по корню сканирования эквивалентен сбросу фильтра
+            if is_scan_root and not multiple_sources:
+                # Клик по корню сканирования эквивалентен сбросу фильтра только если источник один
                 act.triggered.connect(self.clear_directory_filter)
             else:
                 act.triggered.connect(lambda checked, path=p: self.set_directory_filter(path))

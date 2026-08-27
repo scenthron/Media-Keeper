@@ -957,6 +957,8 @@ class UiSetupMixin:
         self.update_paths_from_config()
         self.manual_full_refresh(reset_position=True)
         self.refresh_sidebar_styling()
+        if hasattr(self, 'lbl_unsort_count'):
+            self.lbl_unsort_count.update_info()
 
     def show_trash_context_menu(self, pos) -> None:
         session_tp = getattr(self, 'session_trash_path', None)

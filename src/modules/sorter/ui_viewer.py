@@ -1282,6 +1282,8 @@ class ZoomableGraphicsView(QGraphicsView):
             super().rotate(self._current_rotation)
         if self.video_item.isVisible() or self.lbl_center_text.isVisible():
             self.setDragMode(QGraphicsView.DragMode.NoDrag)
+        else:
+            self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
             
         self.horizontalScrollBar().setValue(0)
         self.verticalScrollBar().setValue(0)

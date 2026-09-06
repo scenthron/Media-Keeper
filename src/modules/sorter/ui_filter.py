@@ -434,7 +434,7 @@ class SorterFilterDialog(QDialog):
             self.update_extensions_matrix()
 
     def scan_directory_extensions(self, directory, recursive):
-        found_exts = set()
+        found_exts = {}
         if directory:
             from utils_io import ensure_long_path
             long_dir = ensure_long_path(directory)
@@ -445,13 +445,13 @@ class SorterFilterDialog(QDialog):
                             for f in files:
                                 ext = os.path.splitext(f)[1].lower()
                                 if ext:
-                                    found_exts.add(ext)
+                                    found_exts[ext] = found_exts.get(ext, 0) + 1
                     else:
                         for f in os.listdir(long_dir):
                             if os.path.isfile(os.path.join(long_dir, f)):
                                 ext = os.path.splitext(f)[1].lower()
                                 if ext:
-                                    found_exts.add(ext)
+                                    found_exts[ext] = found_exts.get(ext, 0) + 1
                 except Exception as e:
                     logging.error(f"Error scanning directory extensions: {e}", exc_info=True)
         return found_exts
@@ -459,7 +459,8 @@ class SorterFilterDialog(QDialog):
     def update_extensions_matrix(self):
         # 1. Сканируем новые расширения
         new_exts = self.scan_directory_extensions(self.unsort_dir, self.chk_recursive.isChecked())
-        self.found_extensions = new_exts
+        self.extension_counts = new_exts
+        self.found_extensions = set(new_exts.keys())
         
         # 2. Очищаем выбранные расширения, которых нет в новой папке
         self.selected_exts = self.selected_exts.intersection(self.found_extensions)

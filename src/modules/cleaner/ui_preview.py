@@ -342,6 +342,8 @@ class CleanerPreviewWidget(QWidget):
             self.player.stop()
             from PyQt6.QtCore import QUrl
             self.player.setSource(QUrl())
+            self.player.setVideoOutput(None)
+            self._video_output_set = False
         if self.movie:
             self.movie.stop()
             self.movie = None

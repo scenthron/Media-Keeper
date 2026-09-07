@@ -1224,6 +1224,8 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
     def reset_editor_to_default(self) -> None:
         self.player.stop()
         self.player.setSource(QUrl())
+        self.player.setVideoOutput(None)
+        self._video_output_set = False
         self.is_video_loaded = False
         self.current_file = ""
         self.orig_bitrate = 5000000

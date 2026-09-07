@@ -915,6 +915,8 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         if hasattr(self, 'media_player'):
             self.media_player.stop()
             self.media_player.setSource(QUrl())
+            self.media_player.setVideoOutput(None)
+            self._video_output_set = False
         if hasattr(self, 'viewer'):
             self.viewer.clear_scene_content()
         if hasattr(self, 'video_controls'):

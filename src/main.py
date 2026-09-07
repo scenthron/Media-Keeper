@@ -38,7 +38,8 @@ def qt_message_handler(mode, context, message):
         "Could not update timestamps for skipped samples",
         "Failed setup for format d3d11",
         "hwaccel initialisation returned error",
-        "Invalid SOS parameters for sequential JPEG"
+        "Invalid SOS parameters for sequential JPEG",
+        "QWindowsBackingStore::flush: GetDC failed"
     ]
     if any(phrase in message for phrase in ignore_phrases):
         return

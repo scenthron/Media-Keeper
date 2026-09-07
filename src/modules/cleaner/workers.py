@@ -974,10 +974,10 @@ class CreateDumpWorker(QThread):
             all_files = []
             
             self.progress.emit(STAGE_SCANNING, 0.0, "Поиск файлов...", 0, 0, 0, 0, 0, 0)
-            from utils_io import ensure_win_path
+            from utils_io import ensure_long_path
             for folder in real_folders:
                 if not self.is_running: break
-                scan_path = ensure_win_path(os.path.normpath(folder))
+                scan_path = ensure_long_path(os.path.normpath(folder))
                 if not os.path.exists(scan_path): continue
                 for root, _, files in os.walk(scan_path):
                     if not self.is_running: break

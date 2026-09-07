@@ -322,7 +322,7 @@ class ConversionWorker(QThread):
             use_gpu = hw_accel and hw_encoder and not is_webm
             
             if is_webm:
-                base_v_args = ["-c:v", "libvpx-vp9", "-pix_fmt", "yuv420p"]
+                base_v_args = ["-c:v", "libvpx-vp9", "-pix_fmt", "yuv420p", "-vsync", "1"]
             elif use_gpu:
                 actual_hw_enc = hw_encoder.replace('h264', 'hevc') if is_hevc else hw_encoder
                 base_v_args = ["-c:v", actual_hw_enc, "-pix_fmt", "yuv420p"]
@@ -335,6 +335,7 @@ class ConversionWorker(QThread):
                 base_v_args = ["-c:v", actual_enc, "-preset", "medium", "-pix_fmt", "yuv420p"]
                 if self.settings.get('extension') == 'mp4':
                     base_v_args.extend(["-movflags", "+faststart"])
+                base_v_args.extend(["-vsync", "1"])
             
             if inp.lower().endswith('.gif'):
                 # Force constant frame rate of 25 fps for GIF inputs.
@@ -410,7 +411,7 @@ class ConversionWorker(QThread):
                     
                     # Имя файла без слэшей, чтобы x265 не ругался на пути
                     temp_log_name = f"ffmpeg2pass_{uuid.uuid4().hex}"
-                    temp_log_prefix = os.path.join(tempfile.gettempdir(), temp_log_name)
+                    temp_log_prefix = os.path.join(tempfile.gettempdir(), temp_log_name).replace('\\', '/')
                     
                     pass1_out = "NUL" if os.name == 'nt' else "/dev/null"
                     
@@ -418,11 +419,8 @@ class ConversionWorker(QThread):
                     pass2_args = ["-b:v", f"{target_bitrate}k"]
                     
                     if not is_webm and actual_enc == "libx265":
-                        # libx265 требует явной передачи параметров для записи лога
-                        # Путь должен быть экранирован или использовать форвардные слэши
-                        safe_log_path = temp_log_prefix.replace('\\', '/')
-                        pass1_args.extend(["-x265-params", f"pass=1:stats={safe_log_path}.log"])
-                        pass2_args.extend(["-x265-params", f"pass=2:stats={safe_log_path}.log"])
+                        pass1_args.extend(["-x265-params", f"pass=1:stats={temp_log_prefix}.log"])
+                        pass2_args.extend(["-x265-params", f"pass=2:stats={temp_log_prefix}.log"])
                     else:
                         pass1_args.extend(["-pass", "1", "-passlogfile", temp_log_prefix])
                         pass2_args.extend(["-pass", "2", "-passlogfile", temp_log_prefix])

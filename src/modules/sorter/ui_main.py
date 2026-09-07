@@ -134,7 +134,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         self.media_player = QMediaPlayer()
         self.audio_output = QAudioOutput()
         self.media_player.setAudioOutput(self.audio_output)
-        self.media_player.setVideoOutput(self.viewer.video_item)
+        self._video_output_set = False
         self.audio_output.setVolume(self.global_volume)
         self.media_player.mediaStatusChanged.connect(self._fit_video)
         

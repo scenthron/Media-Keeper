@@ -192,7 +192,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         
         self.video_item = QGraphicsVideoItem()
         self.scene.addItem(self.video_item)
-        self.player.setVideoOutput(self.video_item)
+        self._video_output_set = False
         
         self.preview_item = QGraphicsPixmapItem(self.video_item)
         self.preview_item.setZValue(5) 
@@ -1094,6 +1094,9 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.is_audio_only = is_audio
         
         logging.info(f"Загрузка {'аудио' if is_audio else 'видео'}: {path}")
+        if not getattr(self, "_video_output_set", False):
+            self.player.setVideoOutput(self.video_item)
+            self._video_output_set = True
         self.player.setSource(QUrl.fromLocalFile(path))
         self._generate_waveform(path)
         self.orig_bitrate = 5000000 

@@ -299,6 +299,9 @@ class PlayerMixin:
                     if hasattr(self.viewer.single_view, 'update_segment_indicator'):
                         self.viewer.single_view.update_segment_indicator()
                 
+                if not getattr(self, "_video_output_set", False):
+                    self.media_player.setVideoOutput(self.viewer.video_item)
+                    self._video_output_set = True
                 self.media_player.stop()
                 self.media_player.setSource(QUrl.fromLocalFile(clean_path))
                 self.media_player.setPlaybackRate(speed)

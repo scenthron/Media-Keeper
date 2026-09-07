@@ -141,7 +141,7 @@ class CleanerPreviewWidget(QWidget):
         self.player = QMediaPlayer()
         self.audio_output = QAudioOutput()
         self.player.setAudioOutput(self.audio_output)
-        self.player.setVideoOutput(self.video_item)
+        self._video_output_set = False
         
         self.player.positionChanged.connect(self.video_controls.update_position)
         self.player.positionChanged.connect(self._update_overlay_time)
@@ -517,6 +517,9 @@ class CleanerPreviewWidget(QWidget):
             
             QTimer.singleShot(50, self.reset_view)
         else:
+            if not getattr(self, "_video_output_set", False):
+                self.player.setVideoOutput(self.video_item)
+                self._video_output_set = True
             self.video_item.show()
             
         self.video_controls.show()

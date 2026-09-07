@@ -116,6 +116,7 @@ class VideoSettingsWidget(QWidget):
         self.chk_hw_accel.setStyleSheet(cb_style)
         self.chk_hw_accel.setToolTip("Ускоряет кодирование с помощью видеокарты")
         self.chk_hw_accel.clicked.connect(self.on_hw_accel_clicked)
+        self.chk_hw_accel.clicked.connect(self.save_config)
         fmt_layout.addWidget(self.chk_hw_accel)
         
         # Переменные для хранения информации о видеокарте
@@ -365,6 +366,42 @@ class VideoSettingsWidget(QWidget):
         
         # Устанавливаем режим Размер (2pass) по умолчанию
         self.switch_compression_mode('2pass')
+        self.load_config()
+        self.inp_max_size.valueChanged.connect(self.save_config)
+
+    def load_config(self):
+        import json, os
+        from logic_paths import get_app_data_dir
+        cfg_path = os.path.join(get_app_data_dir(), "converter_video.json")
+        if os.path.exists(cfg_path):
+            try:
+                with open(cfg_path, 'r', encoding='utf-8') as f:
+                    cfg = json.load(f)
+                    if 'hw_accel' in cfg and cfg['hw_accel']:
+                        self.chk_hw_accel.setChecked(True)
+                        self.on_hw_accel_clicked()
+                    elif 'hw_accel' in cfg:
+                        self.chk_hw_accel.setChecked(False)
+                    if 'max_size' in cfg:
+                        self.inp_max_size.setValue(int(cfg['max_size']))
+            except Exception as e:
+                import logging
+                logging.error(f"Failed to load converter_video.json: {e}")
+
+    def save_config(self, *args):
+        import json, os
+        from logic_paths import get_app_data_dir
+        cfg_path = os.path.join(get_app_data_dir(), "converter_video.json")
+        cfg = {
+            'hw_accel': self.chk_hw_accel.isChecked(),
+            'max_size': self.inp_max_size.value()
+        }
+        try:
+            with open(cfg_path, 'w', encoding='utf-8') as f:
+                json.dump(cfg, f)
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to save converter_video.json: {e}")
 
     def select_output_folder(self):
         from PyQt6.QtWidgets import QFileDialog
@@ -587,6 +624,7 @@ class VideoSettingsWidget(QWidget):
             self.chk_hw_accel.setChecked(False)
             self.chk_hw_accel.setToolTip(f"Ошибка: {result}")
         self.settings_changed.emit()
+        self.save_config()
 
     def get_settings(self) -> dict:
         if self.btn_mode_crf.isChecked(): mode = 'crf'

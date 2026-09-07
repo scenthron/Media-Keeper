@@ -313,7 +313,7 @@ class PlayerMixin:
                     
                 self.viewer.set_video_mode()
                 is_loading = hasattr(self, 'viewer') and hasattr(self.viewer, 'loading_overlay') and not self.viewer.loading_overlay.isHidden()
-                if not is_loading:
+                if not is_loading and self.isVisible():
                     self.media_player.play()
                 
             # 4. Audio
@@ -337,7 +337,7 @@ class PlayerMixin:
                 self.media_player.setSource(QUrl.fromLocalFile(clean_path))
                 self.viewer.set_audio_mode(filename)
                 is_loading = hasattr(self, 'viewer') and hasattr(self.viewer, 'loading_overlay') and not self.viewer.loading_overlay.isHidden()
-                if not is_loading:
+                if not is_loading and self.isVisible():
                     self.media_player.play()
                 
             else:

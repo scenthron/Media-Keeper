@@ -332,7 +332,8 @@ class CleanerPreviewWidget(QWidget):
 
     def _do_play(self):
         if self.current_media_type in ['video', 'audio'] and hasattr(self, 'player') and self.player:
-            self.player.play()
+            if self.isVisible():
+                self.player.play()
 
     def _clear_media(self):
         if hasattr(self, '_play_timer'):

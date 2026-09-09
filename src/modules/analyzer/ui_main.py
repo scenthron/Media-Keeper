@@ -773,7 +773,7 @@ class AnalyzerWidget(QWidget):
             # Add to local undo history
             if not hasattr(self, 'undo_history'): self.undo_history = []
             self.undo_history.append(moved_pairs)
-            self.btn_undo.setEnabled(True)
+            if hasattr(self, 'btn_undo'): self.btn_undo.setEnabled(True)
             
             # Update UI and Memory
             self.remove_paths_from_memory([p[1] for p in moved_pairs])
@@ -796,7 +796,7 @@ class AnalyzerWidget(QWidget):
                 except Exception as e:
                     logging.error(f"Undo failed for {current_path}: {e}")
         
-        self.btn_undo.setEnabled(len(self.undo_history) > 0)
+        if hasattr(self, 'btn_undo'): self.btn_undo.setEnabled(len(self.undo_history) > 0)
         self.silent_info(AppContext.tr("anl_btn_undo"), AppContext.tr("anl_msg_undone_format").format(undone_count))
         # Trigger full rescan to be safe
         if self.current_scanned_path:
@@ -1837,7 +1837,7 @@ class AnalyzerWidget(QWidget):
             if not hasattr(self, 'undo_history'):
                 self.undo_history = []
             self.undo_history.append([moved])
-            self.btn_undo.setEnabled(True)
+            if hasattr(self, 'btn_undo'): self.btn_undo.setEnabled(True)
             
             self.remove_paths_from_memory([src_path])
             self.silent_info(AppContext.tr("anl_toolbar_title"), AppContext.tr("anl_msg_file_moved").format(destination_dir))

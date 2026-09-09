@@ -147,6 +147,15 @@ class FileOpsMixin:
         self.files_queue = []
         self.current_index = 0
         
+        # Сбрасываем фильтры, чтобы переданные файлы не были случайно скрыты
+        if hasattr(self, 'config'):
+            self.config.set("filter_extensions", "")
+            self.config.set("filter_min_size", 0.0)
+            self.config.set("filter_max_size", 0.0)
+            self.config.save()
+        if hasattr(self, 'update_filter_ui'):
+            self.update_filter_ui()
+        
         # We must trigger UI refresh directly since there's no ScanThread
         self.apply_local_filters_and_sorting(trigger_sync=True)
         if hasattr(self, 'update_ui_for_virtual_folder'):

@@ -3260,13 +3260,13 @@ class SorterViewerArea(QWidget):
         self.loading_render_items = []
         self.is_loading_interrupted = False
         
-        if not unsort_dir and not files:
+        if self.current_inbox_dir is None and not files:
             self.loading_overlay.hide()
             self.loading_files = []
             self.show_empty_state("Входящие не выбраны\n\nПеретащите папку или группу файлов для анализа на этот холст\nили выберите их через Проводник" if AppContext.LANG == "RU" else "Inbox folder not selected\n\nDrag a folder or a group of files here for analysis\nor choose them using the button below")
             return
             
-        if not files and unsort_dir:
+        if not files and self.current_inbox_dir is not None:
             # Пустая папка
             pass
             

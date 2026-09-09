@@ -2297,7 +2297,7 @@ class SorterGridView(SorterBaseListView):
             if viewer_area and hasattr(viewer_area, 'sync_files_queue'):
                 main_app = viewer_area.get_main_app()
                 group_enabled = main_app.config.get("group_by_sort", False) if main_app and hasattr(main_app, 'config') else False
-                if group_enabled and hasattr(viewer_area, 'current_inbox_dir') and viewer_area.current_inbox_dir and viewer_area.loading_files:
+                if group_enabled and hasattr(viewer_area, 'current_inbox_dir') and viewer_area.current_inbox_dir is not None and viewer_area.loading_files:
                     new_cols = viewer_area.get_grid_columns_count()
                     if old_cols != new_cols:
                         viewer_area._last_cols_count = new_cols
@@ -2840,7 +2840,7 @@ class SorterViewerArea(QWidget):
         selected = view.selectedItems()
         if selected:
             p = selected[0].data(Qt.ItemDataRole.UserRole)
-            if p and hasattr(self, 'loading_files') and self.loading_files and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir:
+            if p and hasattr(self, 'loading_files') and self.loading_files and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir is not None:
                 rel = safe_relpath(p, self.current_inbox_dir)
                 norm_rel = os.path.normpath(rel)
                 for idx, f in enumerate(self.loading_files):
@@ -2910,7 +2910,7 @@ class SorterViewerArea(QWidget):
         # Если включена группировка и изменилось количество колонок в Grid View, перестраиваем список тихо
         main_app = self.get_main_app()
         group_enabled = main_app.config.get("group_by_sort", False) if main_app and hasattr(main_app, 'config') else False
-        if group_enabled and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir and self.loading_files:
+        if group_enabled and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir is not None and self.loading_files:
             cols = self.get_grid_columns_count()
             if not hasattr(self, '_last_cols_count') or self._last_cols_count != cols:
                 self._last_cols_count = cols
@@ -3021,7 +3021,7 @@ class SorterViewerArea(QWidget):
         self.current_view_mode = mode_idx
         
         # If files queue is empty, keep showing empty placeholder widget
-        if not getattr(self, 'loading_files', None) and not self.current_inbox_dir:
+        if not getattr(self, 'loading_files', None) and self.current_inbox_dir is None:
             self.stack.setCurrentIndex(3)
         else:
             self.stack.setCurrentIndex(mode_idx)
@@ -3648,7 +3648,7 @@ class SorterViewerArea(QWidget):
                             widget.deleteLater()
                             
             # Ускоряем удаление из списка загруженных файлов в памяти
-            if hasattr(self, 'loading_files') and self.loading_files and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir:
+            if hasattr(self, 'loading_files') and self.loading_files and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir is not None:
                 norm_paths_set = set(os.path.normpath(strip_long_path_prefix(p)) for p in paths)
                 base_dir = strip_long_path_prefix(self.current_inbox_dir)
                 
@@ -3795,7 +3795,7 @@ class SorterViewerArea(QWidget):
                     widget_list.update_sizes()
                     
             # 3. Обновляем список загруженных файлов в памяти
-            if hasattr(self, 'loading_files') and self.loading_files and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir:
+            if hasattr(self, 'loading_files') and self.loading_files and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir is not None:
                 # Находим относительные пути
                 rel_old = safe_relpath(old_path, self.current_inbox_dir)
                 rel_new = safe_relpath(new_path, self.current_inbox_dir)

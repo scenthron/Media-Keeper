@@ -148,11 +148,15 @@ class FileOpsMixin:
         self.current_index = 0
         
         # Сбрасываем фильтры, чтобы переданные файлы не были случайно скрыты
-        if hasattr(self, 'config'):
-            self.config.set("filter_extensions", "")
-            self.config.set("filter_min_size", 0.0)
-            self.config.set("filter_max_size", 0.0)
-            self.config.save()
+        if hasattr(self, 'config') and isinstance(self.config, dict):
+            self.config["filter_extensions"] = ""
+            self.config["filter_min_size"] = 0.0
+            self.config["filter_max_size"] = 0.0
+            try:
+                from logic_config import ConfigManager
+                ConfigManager.save(self.config)
+            except ImportError:
+                pass
         if hasattr(self, 'update_filter_ui'):
             self.update_filter_ui()
         

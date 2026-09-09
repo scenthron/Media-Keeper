@@ -151,6 +151,9 @@ class FileOpsMixin:
         self.apply_local_filters_and_sorting(trigger_sync=True)
         if hasattr(self, 'update_ui_for_virtual_folder'):
             self.update_ui_for_virtual_folder()
+            
+        # Ensure the view updates when the tab becomes visible
+        self._incoming_dirty = True
 
     def _get_virtual_folder_text(self):
         if not getattr(self, 'virtual_folder_name', None): return None

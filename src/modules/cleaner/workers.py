@@ -893,6 +893,7 @@ import time
 class CreateDumpWorker(QThread):
     progress = pyqtSignal(int, float, str, int, int, object, object, int, int) 
     finished = pyqtSignal(bool, str) 
+    dump_progress = pyqtSignal(int, int)
     
     def __init__(self, folders, dump_path, use_cache=True):
         super().__init__()
@@ -1002,6 +1003,7 @@ class CreateDumpWorker(QThread):
                     if current_time - last_emit_time > 0.1:
                         pct = (i / total_files) * 100
                         self.progress.emit(STAGE_ANALYSIS, pct, path, scanned_files, len(hashes_to_save), 0, scanned_bytes, 0, 0)
+                        self.dump_progress.emit(i, total_files)
                         last_emit_time = current_time
                     
                     mtime = stat.st_mtime

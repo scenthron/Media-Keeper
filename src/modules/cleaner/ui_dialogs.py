@@ -298,6 +298,8 @@ class CleanerOverlay(QWidget):
         self.lbl_timer.setText(f"{minutes:02}:{seconds:02}")
         
     def update_total(self, processed: int, total: int) -> None:
+        if self.bar_total.maximum() != total:
+            self.bar_total.setRange(0, total)
         self.bar_total.setValue(processed)
         self.lbl_total.setText(f"Processed: {processed}/{total}")
         

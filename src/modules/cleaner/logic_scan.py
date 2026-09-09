@@ -35,6 +35,7 @@ class ScanMixin:
         self.dump_worker = CreateDumpWorker(folders, path, use_cache=True)
         # We can reuse on_progress
         self.dump_worker.progress.connect(self.on_progress)
+        self.dump_worker.dump_progress.connect(self.overlay.update_total)
         self.dump_worker.finished.connect(self._on_dump_finished)
         self.dump_worker.start()
 

@@ -1015,8 +1015,8 @@ class AiClassificationTab(QWidget):
         btn_face_conf_default = QPushButton("По умолчанию" if AppContext.is_ru() else "Default")
         btn_face_conf_default.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_face_conf_default.setStyleSheet("""
-            QPushButton { background-color: transparent; color: #3b82f6; font-size: 11px; text-decoration: underline; border: none; }
-            QPushButton:hover { color: #60a5fa; }
+            QPushButton { background-color: #333; color: #ccc; font-size: 11px; padding: 2px 8px; border-radius: 4px; border: 1px solid #444; }
+            QPushButton:hover { background-color: #444; color: white; border-color: #555; }
         """)
         btn_face_conf_default.clicked.connect(lambda: self.slider_face_conf.setValue(70))
         

@@ -305,8 +305,7 @@ class ActionMixin:
         dest_path = self.action_bar.drop_zone.get_path().strip()
         has_path = bool(dest_path and os.path.exists(dest_path))
 
-        self.action_bar.set_move_button_enabled(has_path and has_selection)
-        self.action_bar.btn_move_to.setEnabled(has_selection)
+        self.action_bar.set_move_button_enabled(has_path and has_selection, move_to_enabled=has_selection)
 
     def prompt_move_selected(self) -> None:
         if getattr(self, 'current_tab', 0) not in (2, 3) and getattr(self, 'current_view_mode', 0) == 2: return

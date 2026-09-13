@@ -715,9 +715,11 @@ class CleanerActionBar(QFrame):
                         popup.show()
         return super().eventFilter(obj, event)
 
-    def set_move_button_enabled(self, enabled, text=None):
+    def set_move_button_enabled(self, enabled, text=None, move_to_enabled=None):
+        if move_to_enabled is None:
+            move_to_enabled = enabled
         self.btn_move.setEnabled(enabled)
-        self.btn_move_to.setEnabled(enabled)
+        self.btn_move_to.setEnabled(move_to_enabled)
         if text: self.btn_move.setText(text)
         else: self.btn_move.setText(AppContext.tr("cln_btn_move_icon") + " ")
         

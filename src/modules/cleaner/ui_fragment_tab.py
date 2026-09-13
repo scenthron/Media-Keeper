@@ -901,9 +901,9 @@ class AiFragmentTab(QWidget):
         self.action_bar.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}" if AppContext.is_ru() else f"Selected: {count} files • {size_str}")
         
         has_selection = (count > 0)
-        self.action_bar.btn_delete.setEnabled(has_selection)
-        self.action_bar.btn_move.setEnabled(has_selection and bool(self.action_bar.drop_zone.get_path()))
-        self.action_bar.btn_move_to.setEnabled(has_selection)
+        has_path = bool(self.action_bar.drop_zone.get_path())
+        self.action_bar.set_delete_button_enabled(has_selection)
+        self.action_bar.set_move_button_enabled(has_selection and has_path, move_to_enabled=has_selection)
         
     def select_all_results(self, checked: bool):
         self.tree_results.blockSignals(True)

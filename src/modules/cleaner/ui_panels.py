@@ -737,7 +737,7 @@ class CleanerActionBar(QFrame):
             else:
                 self.btn_move.setStyleSheet("QPushButton { background-color: #3b82f6; color: white; font-weight: bold; padding: 5px 10px; border-radius: 4px; border: 1px solid #2563eb; font-size: 12px; } QPushButton:hover { background-color: #2563eb; }")
         else:
-            self.btn_move.setStyleSheet("QPushButton { background-color: #333; color: #777; font-weight: bold; padding: 5px 10px; border-radius: 4px; border: 1px solid #444; font-size: 12px; }")
+            self.btn_move.setStyleSheet("QPushButton { background-color: #2a2a2a; color: #555; font-weight: bold; padding: 5px 10px; border-radius: 4px; border: 1px solid #333; font-size: 12px; }")
 
     def set_delete_button_enabled(self, enabled, text=None):
         self.btn_delete.setEnabled(enabled)
@@ -747,7 +747,7 @@ class CleanerActionBar(QFrame):
         if enabled:
             self.btn_delete.setStyleSheet("QPushButton { background-color: #dc2626; color: white; font-weight: bold; padding: 5px 10px; border-radius: 4px; border: 1px solid #b91c1c; font-size: 12px; } QPushButton:hover { background-color: #ef4444; }")
         else:
-            self.btn_delete.setStyleSheet("QPushButton { background-color: #333; color: #777; font-weight: bold; padding: 5px 10px; border-radius: 4px; border: 1px solid #444; font-size: 12px; }")
+            self.btn_delete.setStyleSheet("QPushButton { background-color: #2a2a2a; color: #555; font-weight: bold; padding: 5px 10px; border-radius: 4px; border: 1px solid #333; font-size: 12px; }")
 
     def set_deselect_button_enabled(self, enabled: bool) -> None:
         self.btn_deselect.setEnabled(enabled)

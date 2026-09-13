@@ -3596,7 +3596,7 @@ class SorterViewerArea(QWidget):
             loader.get_thumbnail(path, QSize(256, 256))
 
     def remove_files_from_view(self, paths):
-        """Мгновенно удаляет указанные файлы из сетки и списка без перерисовки всей очереди."""
+        """Мгновенно скрывает указанные файлы из сетки и списка без перерисовки всей очереди."""
         self.grid_view._stop_hover_playback(force=True)
         self.list_view._stop_hover_playback(force=True)
         
@@ -3611,53 +3611,20 @@ class SorterViewerArea(QWidget):
         grid_blocked = self.grid_view.blockSignals(True)
         list_blocked = self.list_view.blockSignals(True)
         try:
-            items_to_remove_grid = set()
-            items_to_remove_list = set()
-            
-            # Извлекаем элементы из мапов за O(1) и собираем множества для удаления
             for path in paths:
+                from utils_io import strip_long_path_prefix
                 norm_path = os.path.normpath(strip_long_path_prefix(path))
                 
-                item_grid = self.grid_items_map.pop(norm_path, None)
+                item_grid = self.grid_items_map.get(norm_path)
+                import logging
+                logging.warning(f'[DEBUG] remove_files_from_view: norm_path={norm_path}, found={bool(item_grid)}')
                 if item_grid:
-                    items_to_remove_grid.add(id(item_grid))
+                if item_grid:
+                    item_grid.setHidden(True)
                     
-                item_list = self.list_items_map.pop(norm_path, None)
+                item_list = self.list_items_map.get(norm_path)
                 if item_list:
-                    items_to_remove_list.add(id(item_list))
-                    
-            # Проходим по списку один раз с конца, удаляя нужные элементы за O(N) вместо O(N*K)
-            if items_to_remove_grid:
-                for i in range(self.grid_view.count() - 1, -1, -1):
-                    item = self.grid_view.item(i)
-                    if id(item) in items_to_remove_grid:
-                        widget = self.grid_view.itemWidget(item)
-                        self.grid_view.removeItemWidget(item)
-                        self.grid_view.takeItem(i)
-                        if widget:
-                            widget.deleteLater()
-                            
-            if items_to_remove_list:
-                for i in range(self.list_view.count() - 1, -1, -1):
-                    item = self.list_view.item(i)
-                    if id(item) in items_to_remove_list:
-                        widget = self.list_view.itemWidget(item)
-                        self.list_view.removeItemWidget(item)
-                        self.list_view.takeItem(i)
-                        if widget:
-                            widget.deleteLater()
-                            
-            # Ускоряем удаление из списка загруженных файлов в памяти
-            if hasattr(self, 'loading_files') and self.loading_files and hasattr(self, 'current_inbox_dir') and self.current_inbox_dir is not None:
-                norm_paths_set = set(os.path.normpath(strip_long_path_prefix(p)) for p in paths)
-                base_dir = strip_long_path_prefix(self.current_inbox_dir)
-                
-                new_loading_files = []
-                for f in self.loading_files:
-                    full = os.path.normpath(os.path.join(base_dir, f))
-                    if full not in norm_paths_set:
-                        new_loading_files.append(f)
-                self.loading_files = new_loading_files
+                    item_list.setHidden(True)
         finally:
             self.grid_view.blockSignals(grid_blocked)
             self.list_view.blockSignals(list_blocked)
@@ -3688,36 +3655,54 @@ class SorterViewerArea(QWidget):
         self.list_view.setUpdatesEnabled(False)
         try:
             for full_path, idx in files_to_insert:
-                norm_path = os.path.normpath(full_path)
-                ph = self._get_placeholder_pixmap(full_path)
+                from utils_io import strip_long_path_prefix
+                norm_path = os.path.normpath(strip_long_path_prefix(full_path))
                 
-                # --- 1. Вставка в Grid View ---
-                item_grid = QListWidgetItem()
-                item_grid.setData(Qt.ItemDataRole.UserRole, full_path)
-                widget_grid = SorterGridItemWidget(full_path, self.grid_view.tile_size)
-                widget_grid.set_placeholder(ph)
-                item_grid.setSizeHint(widget_grid.sizeHint())
-                
-                self.grid_view.insertItem(idx, item_grid)
-                self.grid_view.setItemWidget(item_grid, widget_grid)
-                self.grid_items_map[norm_path] = item_grid
-                
-                # --- 2. Вставка в List View ---
-                item_list = QListWidgetItem()
-                item_list.setData(Qt.ItemDataRole.UserRole, full_path)
-                widget_list = SorterListItemWidget(full_path, self.list_view.icon_size)
-                widget_list.set_placeholder(ph)
-                item_list.setSizeHint(widget_list.sizeHint())
-                
-                self.list_view.insertItem(idx, item_list)
-                self.list_view.setItemWidget(item_list, widget_list)
-                self.list_items_map[norm_path] = item_list
-                
-                # Запуск асинхронной загрузки превью
-                ext = os.path.splitext(full_path)[1].lower()
-                if ext in VIDEO_EXTS or ext in AUDIO_EXTS or ext in IMAGE_EXTS:
-                    ThumbnailLoader.inst().get_thumbnail(full_path, QSize(256, 256))
+                # Проверяем, есть ли элемент уже в памяти (скрытый после переноса)
+                item_grid = self.grid_items_map.get(norm_path)
+                import logging
+                logging.warning(f'[DEBUG] insert_files_into_view: norm_path={norm_path}, found={bool(item_grid)}')
+                if item_grid:
+                if item_grid:
+                    item_grid.setHidden(False)
+                else:
+                    ph = self._get_placeholder_pixmap(full_path)
                     
+                    # --- 1. Вставка в Grid View ---
+                    item_grid = QListWidgetItem()
+                    item_grid.setData(Qt.ItemDataRole.UserRole, full_path)
+                    widget_grid = SorterGridItemWidget(full_path, self.grid_view.tile_size)
+                    widget_grid.set_placeholder(ph)
+                    item_grid.setSizeHint(widget_grid.sizeHint())
+                    
+                    self.grid_view.insertItem(idx, item_grid)
+                    self.grid_view.setItemWidget(item_grid, widget_grid)
+                    self.grid_items_map[norm_path] = item_grid
+                    
+                item_list = self.list_items_map.get(norm_path)
+                if item_list:
+                    item_list.setHidden(False)
+                else:
+                    if 'ph' not in locals(): ph = self._get_placeholder_pixmap(full_path)
+                    # --- 2. Вставка в List View ---
+                    item_list = QListWidgetItem()
+                    item_list.setData(Qt.ItemDataRole.UserRole, full_path)
+                    widget_list = SorterListItemWidget(full_path, self.list_view.icon_size)
+                    widget_list.set_placeholder(ph)
+                    item_list.setSizeHint(widget_list.sizeHint())
+                    
+                    self.list_view.insertItem(idx, item_list)
+                    self.list_view.setItemWidget(item_list, widget_list)
+                    self.list_items_map[norm_path] = item_list
+                    
+                    # Запуск асинхронной загрузки превью только для новых элементов
+                    from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS
+                    ext = os.path.splitext(full_path)[1].lower()
+                    if ext in VIDEO_EXTS or ext in AUDIO_EXTS or ext in IMAGE_EXTS:
+                        from modules.sorter.thumbnail_loader import ThumbnailLoader
+                        from PyQt6.QtCore import QSize
+                        ThumbnailLoader.inst().get_thumbnail(full_path, QSize(256, 256))
+                        
             # Также обновим self.loading_files в памяти
             for full_path, idx in files_to_insert:
                 rel = safe_relpath(full_path, self.current_inbox_dir)

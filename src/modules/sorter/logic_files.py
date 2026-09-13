@@ -49,6 +49,62 @@ class FileOpsMixin:
             except Exception as e: logging.error(f"Error closing dialog: {e}")
             setattr(self, dialog_attr_name, None)
 
+    def silent_sync_missing_files(self):
+        """
+        Тихо удаляет из очереди и сетки файлы, которые были удалены или перемещены в других модулях.
+        Не перерисовывает всю сетку, а только скрывает несуществующие файлы, сохраняя фокус и прокрутку.
+        """
+        if not hasattr(self, '_raw_dir_files') or not self._raw_dir_files:
+            return
+            
+        from utils_io import ensure_long_path
+        long_unsort = ensure_long_path(self.UNSORT_DIR)
+        missing_paths = []
+        new_raw = []
+        
+        for f in self._raw_dir_files:
+            full_path = ensure_long_path(os.path.join(long_unsort, f['rel_path']))
+            if not os.path.exists(full_path):
+                missing_paths.append(full_path)
+            else:
+                new_raw.append(f)
+                
+        if not missing_paths:
+            return
+            
+        self._raw_dir_files = new_raw
+        
+        # Обновляем очередь
+        new_queue = []
+        new_current_index = 0
+        found_next = False
+        
+        missing_rels = {safe_relpath(p, long_unsort) for p in missing_paths}
+        
+        for idx, rel_path in enumerate(self.files_queue):
+            if rel_path in missing_rels:
+                continue
+            new_queue.append(rel_path)
+            if not found_next and idx >= self.current_index:
+                new_current_index = len(new_queue) - 1
+                found_next = True
+                
+        if not found_next:
+            new_current_index = len(new_queue) - 1 if new_queue else 0
+        if new_current_index < 0:
+            new_current_index = 0
+            
+        self.files_queue = new_queue
+        self.current_index = new_current_index
+        
+        self.viewer.remove_files_from_view(missing_paths)
+        self.viewer.sync_active_index(self.current_index)
+        
+        if getattr(self.viewer, 'current_view_mode', 0) == 0:
+            self.show_current_file()
+        else:
+            self.on_selection_changed()
+
     def refresh_files_list(self, show_progress=True):
         """
         Scans Incoming folder to build the queue.

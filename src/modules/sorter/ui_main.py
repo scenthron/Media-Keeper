@@ -928,7 +928,11 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             self._categories_dirty = False
             
         if getattr(self, '_incoming_dirty', False):
-            self.refresh_files_list(show_progress=False)
+            if getattr(self.viewer, 'current_view_mode', -1) != 0:
+                # Если мы в режиме плитки или списка, просто скрываем удаленные файлы
+                self.silent_sync_missing_files()
+            else:
+                self.refresh_files_list(show_progress=False)
             self._incoming_dirty = False
 
         if self.current_file_path and os.path.exists(self.current_file_path):

@@ -20,6 +20,7 @@ class AiEngine:
         
         self._is_initialized = False
         self._idle_timer = None
+        self.current_face_conf_thresh = 0.70
         self._init_timer()
 
     def _init_timer(self):
@@ -329,8 +330,11 @@ class AiEngine:
             logging.error(f"Ошибка инициализации моделей: {e}")
             return False
 
-    def extract_faces(self, image_path: str, img_rgb: np.ndarray = None, conf_thresh: float = 0.70) -> list | None:
+    def extract_faces(self, image_path: str, img_rgb: np.ndarray = None, conf_thresh: float = None) -> list | None:
         """Находит все лица на фото и возвращает список словарей {"bbox": [...], "descriptor": np.ndarray}. Возвращает None если файл битый."""
+        if conf_thresh is None:
+            conf_thresh = self.current_face_conf_thresh
+            
         if not self._is_initialized:
             return None
             

@@ -112,6 +112,30 @@ class AiCacheManager:
         except Exception as e:
             logging.error(f"Ошибка при проверке порога детекции лиц: {e}")
 
+
+    def get_last_face_conf_thresh(self, default=0.70) -> float:
+        """Возвращает последний использованный порог обнаружения лиц."""
+        try:
+            with self._conn() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT value FROM sys_meta WHERE key = 'last_face_conf_thresh'")
+                row = cursor.fetchone()
+                return float(row[0]) if row and row[0] else default
+        except Exception as e:
+            logging.error(f"Ошибка при получении порога детекции лиц: {e}")
+            return default
+
+
+    def set_last_face_conf_thresh(self, thresh: float):
+        """Сохраняет текущий порог обнаружения лиц в кэш."""
+        try:
+            with self._conn() as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT OR REPLACE INTO sys_meta (key, value) VALUES ('last_face_conf_thresh', ?)", (str(thresh),))
+                conn.commit()
+        except Exception as e:
+            logging.error(f"Ошибка при сохранении порога детекции лиц: {e}")
+
     def get_image_embedding(self, filepath: str, current_mtime: float, current_size: int) -> np.ndarray | None:
         """
         Возвращает сохраненный вектор изображения (CLIP) из кэша.

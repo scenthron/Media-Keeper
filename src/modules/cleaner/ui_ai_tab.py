@@ -965,7 +965,17 @@ class AiClassificationTab(QWidget):
         
         self.slider_face_conf = QSlider(Qt.Orientation.Horizontal)
         self.slider_face_conf.setRange(10, 100)
-        self.slider_face_conf.setValue(70)
+        
+        saved_thresh = 70
+        if hasattr(self.cleaner, 'cache') and self.cleaner.cache:
+            try:
+                saved_thresh = int(self.cleaner.cache.get_last_face_conf_thresh(0.70) * 100)
+            except:
+                pass
+        
+        self.slider_face_conf.setValue(saved_thresh)
+        self.ai.current_face_conf_thresh = saved_thresh / 100.0
+        
         self.slider_face_conf.setCursor(Qt.CursorShape.PointingHandCursor)
         self.slider_face_conf.setStyleSheet("""
             QSlider::groove:horizontal { height: 4px; background: #333; border-radius: 2px; }
@@ -976,12 +986,18 @@ class AiClassificationTab(QWidget):
         self.lbl_face_conf_right = QLabel("Идеальные лица" if AppContext.is_ru() else "Perfect faces")
         self.lbl_face_conf_right.setStyleSheet("color: #aaa; font-size: 11px;")
         
-        self.lbl_face_conf_val = QLabel("70%")
+        self.lbl_face_conf_val = QLabel(f"{saved_thresh}%")
         self.lbl_face_conf_val.setFixedWidth(35)
         self.lbl_face_conf_val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.lbl_face_conf_val.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
         
-        self.slider_face_conf.valueChanged.connect(lambda v: self.lbl_face_conf_val.setText(f"{v}%"))
+        def on_face_conf_changed(v):
+            self.lbl_face_conf_val.setText(f"{v}%")
+            self.ai.current_face_conf_thresh = v / 100.0
+            if hasattr(self.cleaner, 'cache') and self.cleaner.cache:
+                self.cleaner.cache.set_last_face_conf_thresh(v / 100.0)
+                
+        self.slider_face_conf.valueChanged.connect(on_face_conf_changed)
         
         self.face_conf_layout.addWidget(self.lbl_face_conf_left)
         self.face_conf_layout.addWidget(self.slider_face_conf)
@@ -991,9 +1007,24 @@ class AiClassificationTab(QWidget):
         # Wrapper for slider
         face_conf_wrapper = QVBoxLayout()
         face_conf_wrapper.setSpacing(2)
+        
+        face_conf_title_layout = QHBoxLayout()
         lbl_face_conf_title = QLabel("Порог обнаружения лиц (уверенность)" if AppContext.is_ru() else "Face detection confidence threshold")
         lbl_face_conf_title.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
-        face_conf_wrapper.addWidget(lbl_face_conf_title)
+        
+        btn_face_conf_default = QPushButton("По умолчанию" if AppContext.is_ru() else "Default")
+        btn_face_conf_default.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_face_conf_default.setStyleSheet("""
+            QPushButton { background-color: transparent; color: #3b82f6; font-size: 11px; text-decoration: underline; border: none; }
+            QPushButton:hover { color: #60a5fa; }
+        """)
+        btn_face_conf_default.clicked.connect(lambda: self.slider_face_conf.setValue(70))
+        
+        face_conf_title_layout.addWidget(lbl_face_conf_title)
+        face_conf_title_layout.addWidget(btn_face_conf_default)
+        face_conf_title_layout.addStretch()
+        
+        face_conf_wrapper.addLayout(face_conf_title_layout)
         face_conf_wrapper.addLayout(self.face_conf_layout)
         
         tab_advanced_layout.addLayout(face_conf_wrapper)

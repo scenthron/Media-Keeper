@@ -3616,9 +3616,6 @@ class SorterViewerArea(QWidget):
                 norm_path = os.path.normpath(strip_long_path_prefix(path))
                 
                 item_grid = self.grid_items_map.get(norm_path)
-                import logging
-                logging.warning(f'[DEBUG] remove_files_from_view: norm_path={norm_path}, found={bool(item_grid)}')
-                if item_grid:
                 if item_grid:
                     item_grid.setHidden(True)
                     
@@ -3660,9 +3657,6 @@ class SorterViewerArea(QWidget):
                 
                 # Проверяем, есть ли элемент уже в памяти (скрытый после переноса)
                 item_grid = self.grid_items_map.get(norm_path)
-                import logging
-                logging.warning(f'[DEBUG] insert_files_into_view: norm_path={norm_path}, found={bool(item_grid)}')
-                if item_grid:
                 if item_grid:
                     item_grid.setHidden(False)
                 else:

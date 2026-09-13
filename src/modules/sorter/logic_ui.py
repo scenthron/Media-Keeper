@@ -689,16 +689,24 @@ class UiSetupMixin:
             self.update_watcher_paths()
 
             # Trigger refresh only if source/target paths or scan options changed
-            if (new_data.get("path_unsort") != old_unsort or
-                new_data.get("path_sort") != old_sort or
-                new_data.get("path_todel") != old_todel or
-                new_data.get("scan_subfolders") != old_recursive or
-                new_data.get("max_nesting_depth") != old_depth):
-                self.manual_full_refresh(reset_position=True)
-            elif new_data.get("pagination_size") != old_pagination:
-                # Если изменилась только пагинация, переприменяем фильтры (обновит количество страниц и список)
-                if hasattr(self, 'apply_local_filters_and_sorting'):
-                    self.apply_local_filters_and_sorting(trigger_sync=True)
+            needs_full = (new_data.get("path_unsort") != old_unsort or
+                          new_data.get("path_sort") != old_sort or
+                          new_data.get("path_todel") != old_todel or
+                          new_data.get("scan_subfolders") != old_recursive or
+                          new_data.get("max_nesting_depth") != old_depth)
+            needs_sort = new_data.get("pagination_size") != old_pagination
+
+            if self.isVisible():
+                if needs_full:
+                    self.manual_full_refresh(reset_position=True)
+                elif needs_sort:
+                    if hasattr(self, 'apply_local_filters_and_sorting'):
+                        self.apply_local_filters_and_sorting(trigger_sync=True)
+            else:
+                if needs_full:
+                    self._settings_needs_full_refresh = True
+                elif needs_sort:
+                    self._settings_needs_sort_refresh = True
             
             # 3. Обновляем тексты интерфейса
             if self.window() and hasattr(self.window(), 'update_ui_text'):

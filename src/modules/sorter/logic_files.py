@@ -518,12 +518,18 @@ class FileOpsMixin:
             new_recursive = self.config.get("scan_subfolders", False)
             
             # Если изменился параметр рекурсивного сканирования, требуется полный переобход диска
-            if new_recursive != old_recursive:
-                self.manual_full_refresh(reset_position=False, silent=True)
+            if self.isVisible():
+                if new_recursive != old_recursive:
+                    self.manual_full_refresh(reset_position=False, silent=True)
+                else:
+                    # Применяем новую сортировку и фильтры локально из ОЗУ
+                    sort_type = self.config.get("sort_type", "name_asc")
+                    self.apply_sorting_to_queue(sort_type, trigger_sync=True)
             else:
-                # Применяем новую сортировку и фильтры локально из ОЗУ
-                sort_type = self.config.get("sort_type", "name_asc")
-                self.apply_sorting_to_queue(sort_type, trigger_sync=True)
+                if new_recursive != old_recursive:
+                    self._settings_needs_full_refresh = True
+                else:
+                    self._settings_needs_sort_refresh = True
 
     def manual_full_refresh(self, reset_position=False, silent=False, target_path=None):
         if not silent:

@@ -923,6 +923,17 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             self.video_controls.hide()
 
     def on_tab_enter(self):
+        # Handle deferred settings changes
+        if getattr(self, '_settings_needs_full_refresh', False):
+            self.manual_full_refresh(reset_position=True, silent=True)
+            self._settings_needs_full_refresh = False
+            self._settings_needs_sort_refresh = False
+            
+        elif getattr(self, '_settings_needs_sort_refresh', False):
+            if hasattr(self, 'apply_local_filters_and_sorting'):
+                self.apply_local_filters_and_sorting(trigger_sync=True)
+            self._settings_needs_sort_refresh = False
+
         if getattr(self, '_categories_dirty', False):
             self.reload_categories_ui()
             self._categories_dirty = False

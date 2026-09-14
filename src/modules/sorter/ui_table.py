@@ -269,8 +269,9 @@ class TableModeContainer(QWidget):
         self.splitter.addWidget(self.preview_container)
         self.splitter.addWidget(bottom_container)
         
-        self.splitter.setStretchFactor(0, 4)
-        self.splitter.setStretchFactor(1, 6)
+        self.splitter.setSizes([500, 500])
+        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(1, 1)
         
         self.header.select_all_requested.connect(lambda: self.table.select_all_rows(True))
         self.header.deselect_all_requested.connect(lambda: self.table.select_all_rows(False))
@@ -322,6 +323,9 @@ class TableModeContainer(QWidget):
         self.preview_widget.stop_playback(True)
         self.preview_widget.show_empty("Превью")
         
+    def populate(self, files):
+        self.table.populate(files)
+
     def get_viewer_area(self):
         p = self.parent()
         while p:

@@ -234,6 +234,20 @@ class SorterTableView(QTableWidget):
     def _on_cell_clicked(self, row, col):
         if col == 0:
             self.itemSelectionChanged.emit()
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.MiddleButton:
+            item = self.itemAt(event.pos())
+            if item:
+                row = item.row()
+                chk_item = self.item(row, 0)
+                if chk_item:
+                    path = chk_item.data(Qt.ItemDataRole.UserRole)
+                    if path:
+                        self._open_folder_with_focus(path)
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Space:

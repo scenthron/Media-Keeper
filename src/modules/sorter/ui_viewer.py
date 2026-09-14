@@ -3491,17 +3491,18 @@ class SorterViewerArea(QWidget):
                     self.grid_items_map[os.path.normpath(strip_long_path_prefix(full_path))] = item_grid
                     
                     # --- 2. List Item ---
-                    item_list = QListWidgetItem()
-                    item_list.setData(Qt.ItemDataRole.UserRole, full_path)
-                    
-                    widget_list = SorterListItemWidget(full_path, self.list_view.icon_size)
-                    widget_list.set_placeholder(ph)
-                    
-                    item_list.setSizeHint(widget_list.sizeHint())
-                    self.list_view.addItem(item_list)
-                    self.list_view.setItemWidget(item_list, widget_list)
-                    
-                    self.list_items_map[os.path.normpath(strip_long_path_prefix(full_path))] = item_list
+                    if not hasattr(self.list_view, 'table'):
+                        item_list = QListWidgetItem()
+                        item_list.setData(Qt.ItemDataRole.UserRole, full_path)
+
+                        widget_list = SorterListItemWidget(full_path, self.list_view.icon_size)
+                        widget_list.set_placeholder(ph)
+
+                        item_list.setSizeHint(widget_list.sizeHint())
+                        self.list_view.addItem(item_list)
+                        self.list_view.setItemWidget(item_list, widget_list)
+
+                        self.list_items_map[os.path.normpath(strip_long_path_prefix(full_path))] = item_list
                     
                     # Request async thumbnail generation
                     ext = os.path.splitext(rel_path)[1].lower()
@@ -3714,15 +3715,16 @@ class SorterViewerArea(QWidget):
                 else:
                     if 'ph' not in locals(): ph = self._get_placeholder_pixmap(full_path)
                     # --- 2. Вставка в List View ---
-                    item_list = QListWidgetItem()
-                    item_list.setData(Qt.ItemDataRole.UserRole, full_path)
-                    widget_list = SorterListItemWidget(full_path, self.list_view.icon_size)
-                    widget_list.set_placeholder(ph)
-                    item_list.setSizeHint(widget_list.sizeHint())
-                    
-                    self.list_view.insertItem(idx, item_list)
-                    self.list_view.setItemWidget(item_list, widget_list)
-                    self.list_items_map[norm_path] = item_list
+                    if not hasattr(self.list_view, 'table'):
+                        item_list = QListWidgetItem()
+                        item_list.setData(Qt.ItemDataRole.UserRole, full_path)
+                        widget_list = SorterListItemWidget(full_path, self.list_view.icon_size)
+                        widget_list.set_placeholder(ph)
+                        item_list.setSizeHint(widget_list.sizeHint())
+
+                        self.list_view.insertItem(idx, item_list)
+                        self.list_view.setItemWidget(item_list, widget_list)
+                        self.list_items_map[norm_path] = item_list
                     
                     # Запуск асинхронной загрузки превью только для новых элементов
                     from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS

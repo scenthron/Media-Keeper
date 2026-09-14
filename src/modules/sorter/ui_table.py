@@ -292,7 +292,7 @@ class TableModeContainer(QWidget):
 
     # --- Dummy methods to absorb QListWidget calls from SorterViewerArea ---
     @property
-    def icon_size(self): return QSize(0, 0)
+    def icon_size(self): return 0
     
     def addItem(self, item): pass
     def insertItem(self, idx, item): pass

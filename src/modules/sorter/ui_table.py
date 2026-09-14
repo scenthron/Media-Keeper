@@ -290,6 +290,26 @@ class TableModeContainer(QWidget):
     def _on_current_item_changed(self, path):
         self.preview_widget.load_file(path)
 
+    # --- Dummy methods to absorb QListWidget calls from SorterViewerArea ---
+    @property
+    def icon_size(self): return QSize(0, 0)
+    
+    def addItem(self, item): pass
+    def insertItem(self, idx, item): pass
+    def setItemWidget(self, item, widget): pass
+    def itemWidget(self, item): return None
+    def doItemsLayout(self): pass
+    def count(self): return 0
+    def item(self, i): return None
+    def removeItemWidget(self, item): pass
+    def clearSelection(self): self.table.clearSelection()
+    def setCurrentItem(self, item): pass
+    def scrollToItem(self, item): pass
+    def verticalScrollBar(self): return self.table.verticalScrollBar()
+    def check_hover_under_mouse(self): pass
+    def blockSignals(self, b): return super().blockSignals(b)
+    # -----------------------------------------------------------------------
+
     def _stop_hover_playback(self, force=False):
         pass
         

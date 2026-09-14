@@ -92,6 +92,9 @@ class SorterTableView(QTableWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setAlternatingRowColors(True)
         
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._on_context_menu)
+        
         self.setStyleSheet("""
             QTableWidget {
                 background-color: #1e1e1e;
@@ -248,6 +251,166 @@ class SorterTableView(QTableWidget):
         super().keyPressEvent(event)
 
 
+
+    def _on_context_menu(self, pos):
+        item = self.itemAt(pos)
+        if not item:
+            return
+            
+        row = item.row()
+        
+        # Determine paths
+        # If there are checked items, use them, otherwise use the selected row
+        checked = self.get_checked_files()
+        if checked:
+            paths = checked
+        else:
+            chk_item = self.item(row, 0)
+            if chk_item:
+                paths = [chk_item.data(Qt.ItemDataRole.UserRole)]
+            else:
+                paths = []
+                
+        paths = [p for p in paths if os.path.exists(p)]
+        if not paths:
+            return
+            
+        from PyQt6.QtWidgets import QMenu
+        from PyQt6.QtGui import QAction
+        
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #252525;
+                border: 1px solid #444;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QMenu::item {
+                color: #dddddd;
+                padding: 6px 20px 6px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+            }
+            QMenu::item:selected {
+                background-color: #3b82f6;
+                color: white;
+            }
+            QMenu::separator {
+                height: 1px;
+                background: #444;
+                margin: 3px 8px;
+            }
+        """)
+        
+        if len(paths) == 1:
+            path = paths[0]
+            ext = os.path.splitext(path)[1].lower()
+            
+            act_open = QAction(AppContext.tr("srt_ctx_open_file"), self)
+            act_open.triggered.connect(lambda Checked, p=path: self._open_file(p))
+            menu.addAction(act_open)
+
+            act_folder = QAction(AppContext.tr("srt_ctx_open_folder"), self)
+            act_folder.triggered.connect(lambda Checked, p=path: self._open_folder_with_focus(p))
+            menu.addAction(act_folder)
+            
+            if ext in VIDEO_EXTS:
+                menu.addSeparator()
+                act_vconv = QAction(AppContext.tr("srt_ctx_convert_video"), self)
+                act_vconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("video_conv", p))
+                menu.addAction(act_vconv)
+                
+                act_aconv = QAction(AppContext.tr("srt_ctx_convert_audio_to"), self)
+                act_aconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("audio_conv", p))
+                menu.addAction(act_aconv)
+                
+                act_vedit = QAction(AppContext.tr("srt_ctx_edit_video"), self)
+                act_vedit.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("video_edit", p))
+                menu.addAction(act_vedit)
+                
+            elif ext in AUDIO_EXTS:
+                menu.addSeparator()
+                act_aconv = QAction(AppContext.tr("srt_ctx_convert_audio"), self)
+                act_aconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("audio_conv", p))
+                menu.addAction(act_aconv)
+                
+                act_aedit = QAction(AppContext.tr("srt_ctx_edit_audio"), self)
+                act_aedit.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("audio_edit", p))
+                menu.addAction(act_aedit)
+                
+            elif ext in IMAGE_EXTS:
+                menu.addSeparator()
+                act_iconv = QAction(AppContext.tr("srt_ctx_convert_image"), self)
+                act_iconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("image_conv", p))
+                menu.addAction(act_iconv)
+                
+                act_ai = QAction("Сделать эталоном ИИ поиска" if AppContext.LANG == "RU" else "Use as AI Search Reference", self)
+                act_ai.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("ai_search", p))
+                menu.addAction(act_ai)
+                
+                if ext == '.gif':
+                    from PyQt6.QtGui import QImageReader
+                    reader = QImageReader(path)
+                    if reader.supportsAnimation() and reader.imageCount() > 1:
+                        act_vconv = QAction(AppContext.tr("srt_ctx_convert_video"), self)
+                        act_vconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("video_conv", p))
+                        menu.addAction(act_vconv)
+        else:
+            is_all_video = all(os.path.splitext(p)[1].lower() in VIDEO_EXTS for p in paths)
+            is_all_audio = all(os.path.splitext(p)[1].lower() in AUDIO_EXTS for p in paths)
+            is_all_image = all(os.path.splitext(p)[1].lower() in IMAGE_EXTS for p in paths)
+            
+            if is_all_video:
+                act_vconv = QAction(AppContext.tr("srt_ctx_convert_video_count").format(len(paths)), self)
+                act_vconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("video_conv", p))
+                menu.addAction(act_vconv)
+                
+                act_aconv = QAction(AppContext.tr("srt_ctx_convert_audio_to_count").format(len(paths)), self)
+                act_aconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("audio_conv", p))
+                menu.addAction(act_aconv)
+                
+            elif is_all_audio:
+                act_aconv = QAction(AppContext.tr("srt_ctx_convert_audio_count").format(len(paths)), self)
+                act_aconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("audio_conv", p))
+                menu.addAction(act_aconv)
+                
+            elif is_all_image:
+                act_iconv = QAction(AppContext.tr("srt_ctx_convert_image_count").format(len(paths)), self)
+                act_iconv.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("image_conv", p))
+                menu.addAction(act_iconv)
+                
+                act_ai = QAction("Сделать эталоном ИИ поиска" if AppContext.LANG == "RU" else "Use as AI Search Reference", self)
+                act_ai.triggered.connect(lambda Checked, p=paths: self.send_to_editor_requested.emit("ai_search", p))
+                menu.addAction(act_ai)
+
+        menu.addSeparator()
+        if len(paths) <= 1:
+            del_label = AppContext.tr("srt_ctx_delete_files")
+        else:
+            del_label = AppContext.tr("srt_ctx_delete_files_count").format(len(paths))
+        act_delete = QAction(del_label, self)
+        act_delete.triggered.connect(lambda checked, p=paths: self.delete_files_requested.emit(p))
+        menu.addAction(act_delete)
+
+        if menu.actions():
+            menu.exec(self.mapToGlobal(pos))
+            
+    def _open_file(self, path):
+        import logging
+        try:
+            os.startfile(os.path.normpath(path))
+        except Exception as e:
+            logging.error(f"Cannot open file '{path}': {e}")
+
+    def _open_folder_with_focus(self, path):
+        import logging
+        try:
+            from utils_common import reveal_in_explorer
+            reveal_in_explorer(path)
+        except Exception as e:
+            logging.error(f"Cannot open folder for '{path}': {e}")
+
 class TableModeContainer(QWidget):
     """Общий контейнер для табличного режима (Превью сверху, Таблица снизу)."""
     items_dropped = pyqtSignal(list, bool)
@@ -298,7 +461,16 @@ class TableModeContainer(QWidget):
         self.table.itemSelectionChanged.connect(self._on_table_selection_changed)
         self.table.current_item_changed.connect(self._on_current_item_changed)
         self.table.item_double_clicked.connect(self.item_double_clicked.emit)
+        self.table.send_to_editor_requested.connect(self.send_to_editor_requested.emit)
+        self.table.delete_files_requested.connect(self._on_delete_requested)
 
+
+    def _on_delete_requested(self, file_paths):
+        p = self.get_viewer_area()
+        if p:
+            main_app = p.get_main_app()
+            if main_app and hasattr(main_app, 'delete_files_permanently'):
+                main_app.delete_files_permanently(file_paths)
     def _on_table_selection_changed(self):
         checked = self.table.get_checked_files()
         checked_size = self.table.get_checked_size()

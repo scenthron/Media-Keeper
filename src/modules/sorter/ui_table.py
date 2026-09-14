@@ -183,6 +183,24 @@ class SorterTableView(QTableWidget):
         self.setUpdatesEnabled(True)
         self.itemSelectionChanged.emit()
 
+    def remove_files(self, paths):
+        from utils_io import strip_long_path_prefix
+        paths_set = set(os.path.normpath(strip_long_path_prefix(p)) for p in paths)
+        
+        rows_to_delete = []
+        for row in range(self.rowCount()):
+            item = self.item(row, 0)
+            if item:
+                path = item.data(Qt.ItemDataRole.UserRole)
+                if path and os.path.normpath(strip_long_path_prefix(path)) in paths_set:
+                    rows_to_delete.append(row)
+                    
+        self.setUpdatesEnabled(False)
+        for row in sorted(rows_to_delete, reverse=True):
+            self.removeRow(row)
+        self.setUpdatesEnabled(True)
+        self.itemSelectionChanged.emit()
+
     def get_checked_files(self):
         checked = []
         for row in range(self.rowCount()):

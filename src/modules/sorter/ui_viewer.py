@@ -3301,7 +3301,7 @@ class SorterViewerArea(QWidget):
         self.loading_target_select_idx = current_index
         
         # Если мы в одиночном режиме, нам не нужно генерировать плитки и списки для тысяч файлов
-        if getattr(self, 'current_view_mode', 0) == 0:
+        if getattr(self, 'current_view_mode', 0) in (0, 2):
             self.loading_overlay.hide()
             self.selection_changed.emit()
             main_window = self.window()
@@ -3658,6 +3658,9 @@ class SorterViewerArea(QWidget):
                 item_list = self.list_items_map.get(norm_path)
                 if item_list:
                     item_list.setHidden(True)
+                    
+            if hasattr(self.list_view, 'table'):
+                self.list_view.table.remove_files(paths)
         finally:
             self.grid_view.blockSignals(grid_blocked)
             self.list_view.blockSignals(list_blocked)

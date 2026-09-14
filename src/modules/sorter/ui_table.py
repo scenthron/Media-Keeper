@@ -299,8 +299,8 @@ class TableModeContainer(QWidget):
     def clear(self):
         self.table.setRowCount(0)
         self.table.all_files = []
-        self.preview_widget.stop_all_media()
-        self.preview_widget.clear()
+        self.preview_widget.stop_playback(True)
+        self.preview_widget.show_empty("Превью")
         
     def get_viewer_area(self):
         p = self.parent()

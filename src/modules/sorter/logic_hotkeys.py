@@ -508,7 +508,23 @@ class SorterHotkeysMixin:
         if hasattr(self, 'viewer') and getattr(self.viewer, 'current_view_mode', None) == 2:
             fast_key = getattr(self, '_hotkey_registry', None) and self._hotkey_registry.get_effective_key("fast_move_to_target")
             if fast_key and fast_key.lower() == "space":
-                return # Handled by table widget for checkboxes
+                # Toggle checkbox instead of fast move
+                try:
+                    from PyQt6.QtCore import Qt
+                    table = self.viewer.list_view.table
+                    row = table.currentRow()
+                    if row >= 0:
+                        item = table.item(row, 0)
+                        if item:
+                            st = Qt.CheckState.Unchecked if item.checkState() == Qt.CheckState.Checked else Qt.CheckState.Checked
+                            item.setCheckState(st)
+                            table.itemSelectionChanged.emit()
+                            if row + 1 < table.rowCount():
+                                table.setCurrentCell(row + 1, 1)
+                except Exception as e:
+                    import logging
+                    logging.error(f"Error toggling checkbox via Space: {e}")
+                return
 
         if not getattr(self, 'quick_target_path', None) or not os.path.exists(self.quick_target_path):
             if hasattr(self, '_hotkey_registry') and hasattr(self, 'viewer') and getattr(self.viewer, 'current_view_mode', None) == 0:

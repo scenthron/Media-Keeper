@@ -101,7 +101,7 @@ class SorterTableView(QTableWidget):
                 outline: none;
             }
             QTableWidget::item { padding: 4px; border: none; }
-            QTableWidget::item:selected { background-color: #0d47a1; color: white; }
+            QTableWidget::item:selected { background-color: #2b2b2b; color: white; }
             QHeaderView::section {
                 background-color: #2b2b2b;
                 color: #aaa;
@@ -110,6 +110,24 @@ class SorterTableView(QTableWidget):
                 border-bottom: 1px solid #444;
                 border-right: 1px solid #333;
                 font-weight: bold;
+            }
+            QTableWidget::indicator {
+                width: 14px;
+                height: 14px;
+                border: 1px solid #666;
+                border-radius: 3px;
+                background-color: #2b2b2b;
+            }
+            QTableWidget::indicator:hover {
+                border-color: #3b82f6;
+            }
+            QTableWidget::indicator:checked {
+                background-color: #3b82f6;
+                border: 1px solid #2563eb;
+                image: url(src/assets/icons/check.svg);
+            }
+            QTableWidget::indicator:unchecked {
+                background-color: #2b2b2b;
             }
         """)
         

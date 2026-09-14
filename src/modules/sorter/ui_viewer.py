@@ -1739,7 +1739,12 @@ class SorterBaseListView(QListWidget):
 
     def _update_hover_movie_frame(self):
         if self.hover_movie and self.current_hover_item:
-            widget = self.itemWidget(self.current_hover_item)
+            try:
+                widget = self.itemWidget(self.current_hover_item)
+            except RuntimeError:
+                self.current_hover_item = None
+                self._stop_hover_playback(force=True)
+                return
             if widget and hasattr(widget, 'preview_frame'):
                 pixmap = self.hover_movie.currentPixmap()
                 target_size = widget.preview_frame.size() - QSize(4, 4)
@@ -1785,30 +1790,36 @@ class SorterBaseListView(QListWidget):
         self.current_hover_path = ""
 
     def _track_popup_mouse(self):
-        if hasattr(self, 'large_preview_popup') and self.large_preview_popup and not self.large_preview_popup.isHidden():
-            from PyQt6.QtCore import QRect
-            pos = QCursor.pos()
-            popup_geom = self.large_preview_popup.geometry()
-            
-            # Получаем геометрию текущей плитки в глобальных координатах
-            tile_geom = QRect()
-            if self.current_hover_item:
-                rect = self.visualItemRect(self.current_hover_item)
-                tile_global_pos = self.viewport().mapToGlobal(rect.topLeft())
-                tile_geom = QRect(tile_global_pos, rect.size())
-            
-            in_popup = popup_geom.adjusted(-8, -8, 8, 8).contains(pos)
-            in_tile = tile_geom.adjusted(-8, -8, 8, 8).contains(pos)
-            
-            logging.debug(f"[TrackPopup] Pos: {pos}, PopupGeom: {popup_geom}, TileGeom: {tile_geom}, in_popup: {in_popup}, in_tile: {in_tile}")
-            
-            # Если курсор вне попапа и вне плитки (с буфером безопасности 8px), закрываем попап
-            if not in_popup and not in_tile:
-                logging.info(f"[TrackPopup] Closing popup because cursor {pos} is outside popup {popup_geom} (in: {in_popup}) and tile {tile_geom} (in: {in_tile})")
-                self._stop_hover_playback(force=True)
-        else:
-            if hasattr(self, 'popup_track_timer'):
-                self.popup_track_timer.stop()
+        try:
+            if hasattr(self, 'large_preview_popup') and self.large_preview_popup and not self.large_preview_popup.isHidden():
+                from PyQt6.QtCore import QRect
+                pos = QCursor.pos()
+                popup_geom = self.large_preview_popup.geometry()
+                
+                # Получаем геометрию текущей плитки в глобальных координатах
+                tile_geom = QRect()
+                if getattr(self, 'current_hover_item', None):
+                    try:
+                        rect = self.visualItemRect(self.current_hover_item)
+                        tile_global_pos = self.viewport().mapToGlobal(rect.topLeft())
+                        tile_geom = QRect(tile_global_pos, rect.size())
+                    except RuntimeError:
+                        # C++ object has been deleted
+                        self.current_hover_item = None
+                
+                in_popup = popup_geom.adjusted(-8, -8, 8, 8).contains(pos)
+                in_tile = tile_geom.adjusted(-8, -8, 8, 8).contains(pos)
+                
+                # Если курсор вне попапа и вне плитки (с буфером безопасности 8px), закрываем попап
+                if not in_popup and not in_tile:
+                    self._stop_hover_playback(force=True)
+            else:
+                if hasattr(self, 'popup_track_timer'):
+                    self.popup_track_timer.stop()
+        except Exception as e:
+            import logging
+            logging.error(f"[TrackPopup] Exception in tracking mouse: {e}")
+            self._stop_hover_playback(force=True)
 
     def get_main_app(self):
         """Поднимается по дереву родителей до первого объекта с global_volume.
@@ -1884,10 +1895,16 @@ class SorterBaseListView(QListWidget):
         app_geom = self.window().geometry()
         
         if self.current_hover_item:
-            rect = self.visualItemRect(self.current_hover_item)
-            tile_global_pos = self.viewport().mapToGlobal(rect.topLeft())
-            tile_w = rect.width()
-            tile_h = rect.height()
+            try:
+                rect = self.visualItemRect(self.current_hover_item)
+                tile_global_pos = self.viewport().mapToGlobal(rect.topLeft())
+                tile_w = rect.width()
+                tile_h = rect.height()
+            except RuntimeError:
+                # Item was deleted
+                self.current_hover_item = None
+                self._stop_hover_playback(force=True)
+                return
             
             # Область превью: ширина равна ширине плитки, высота исключает текстовый блок 42px
             preview_w = tile_w

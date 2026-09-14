@@ -505,6 +505,11 @@ class SorterHotkeysMixin:
 
     def fast_move_to_target(self) -> None:
         """Перемещает выделенные файлы в папку быстрой цели (Fast Move)."""
+        if hasattr(self, 'viewer') and getattr(self.viewer, 'current_view_mode', None) == 2:
+            fast_key = getattr(self, '_hotkey_registry', None) and self._hotkey_registry.get_effective_key("fast_move_to_target")
+            if fast_key and fast_key.lower() == "space":
+                return # Handled by table widget for checkboxes
+
         if not getattr(self, 'quick_target_path', None) or not os.path.exists(self.quick_target_path):
             if hasattr(self, '_hotkey_registry') and hasattr(self, 'viewer') and getattr(self.viewer, 'current_view_mode', None) == 0:
                 fast_key = self._hotkey_registry.get_effective_key("fast_move_to_target")

@@ -2578,7 +2578,7 @@ class SorterViewerArea(QWidget):
         self.stack.addWidget(self.grid_view)
         
         # 2. List Viewer
-        self.list_view = SorterListView(self)
+        self.list_view = TableModeContainer(self)
         self.list_view.items_dropped.connect(self.items_dropped.emit)
         self.list_view.itemSelectionChanged.connect(self.selection_changed.emit)
         self.list_view.send_to_editor_requested.connect(self.send_to_editor_requested.emit)
@@ -3256,13 +3256,7 @@ class SorterViewerArea(QWidget):
                 if w:
                     self.grid_view.removeItemWidget(item)
                     w.deleteLater()
-        for i in range(self.list_view.count()):
-            item = self.list_view.item(i)
-            if item:
-                w = self.list_view.itemWidget(item)
-                if w:
-                    self.list_view.removeItemWidget(item)
-                    w.deleteLater()
+        pass # Table mode clears itself
 
         self.grid_view.clear()
         self.list_view.clear()
@@ -3288,6 +3282,16 @@ class SorterViewerArea(QWidget):
             pass
             
         self.loading_files = files
+        if hasattr(self.list_view, 'populate'):
+            file_stats = []
+            for rel_path in files:
+                fp = os.path.join(unsort_dir, rel_path)
+                try:
+                    st = os.stat(fp)
+                    file_stats.append((fp, st.st_mtime, st.st_size))
+                except:
+                    file_stats.append((fp, 0, 0))
+            self.list_view.populate(file_stats)
         if self.stack.currentIndex() == 3:
             self.stack.setCurrentIndex(self.current_view_mode)
             
@@ -3459,12 +3463,13 @@ class SorterViewerArea(QWidget):
                     title = item_data[1]
                     
                     # List Separator
-                    item_list = QListWidgetItem()
-                    item_list.setFlags(item_list.flags() & ~Qt.ItemFlag.ItemIsSelectable)
-                    widget_list = SorterListGroupSeparatorWidget(title)
-                    item_list.setSizeHint(QSize(self.list_view.width() - 30, 30))
-                    self.list_view.addItem(item_list)
-                    self.list_view.setItemWidget(item_list, widget_list)
+                    if hasattr(self.list_view, 'addItem'):
+                        item_list = QListWidgetItem()
+                        item_list.setFlags(item_list.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+                        widget_list = SorterListGroupSeparatorWidget(title)
+                        item_list.setSizeHint(QSize(self.list_view.width() - 30, 30))
+                        self.list_view.addItem(item_list)
+                        self.list_view.setItemWidget(item_list, widget_list)
                 elif item_data[0] == "file":
                     rel_path = item_data[1]
                     orig_idx = item_data[2]
@@ -3561,9 +3566,21 @@ class SorterViewerArea(QWidget):
                 p = item.data(Qt.ItemDataRole.UserRole)
                 if p: selected_paths.append(p)
         elif curr_mode == 2:
-            for item in self.list_view.selectedItems():
-                p = item.data(Qt.ItemDataRole.UserRole)
-                if p: selected_paths.append(p)
+            if hasattr(self.list_view, 'table'):
+                checked = self.list_view.table.get_checked_files()
+                if checked:
+                    selected_paths.extend(checked)
+                else:
+                    row = self.list_view.table.currentRow()
+                    if row >= 0:
+                        item = self.list_view.table.item(row, 0)
+                        if item:
+                            p = item.data(Qt.ItemDataRole.UserRole)
+                            if p: selected_paths.append(p)
+            else:
+                for item in self.list_view.selectedItems():
+                    p = item.data(Qt.ItemDataRole.UserRole)
+                    if p: selected_paths.append(p)
         return selected_paths
 
     def _get_placeholder_pixmap(self, filepath):
@@ -3822,13 +3839,14 @@ class SorterViewerArea(QWidget):
             grid_item.setSelected(True)
             self.grid_view.setCurrentItem(grid_item)
             self.grid_view.scrollToItem(grid_item)
-        if list_item:
+        if list_item and hasattr(self.list_view, 'setCurrentItem'):
             list_item.setSelected(True)
             self.list_view.setCurrentItem(list_item)
             self.list_view.scrollToItem(list_item)
             
         # Обновим визуальное состояние кастомных виджетов
         for view in [self.grid_view, self.list_view]:
+            if not hasattr(view, 'count'): continue
             for i in range(view.count()):
                 item = view.item(i)
                 if not item: continue

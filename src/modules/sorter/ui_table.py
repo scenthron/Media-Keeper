@@ -67,6 +67,8 @@ class SorterTableView(QTableWidget):
     itemSelectionChanged = pyqtSignal()
     item_double_clicked = pyqtSignal(str) # Emits full path
     current_item_changed = pyqtSignal(str) # Emits full path when row changes
+    send_to_editor_requested = pyqtSignal(str, list)
+    delete_files_requested = pyqtSignal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent)

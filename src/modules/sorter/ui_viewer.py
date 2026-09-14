@@ -15,6 +15,7 @@ from PyQt6.QtMultimediaWidgets import QVideoWidget
 from config import AppContext, VIEWER_DESIGN, APP_DESIGN
 from .thumbnail_loader import ThumbnailLoader
 from .ui_player import VideoPlayerControls, SegmentIndicatorWidget
+from .ui_table import TableModeContainer
 
 from .ui_preview_popup import LargePreviewPopup
 from utils_extensions import VIDEO_EXTS, AUDIO_EXTS, IMAGE_EXTS

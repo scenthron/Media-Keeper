@@ -285,6 +285,19 @@ class GroupHeaderWidget(QWidget):
 class CleanerTreeWidget(QTreeWidget):
     itemMiddleClicked = pyqtSignal(QTreeWidgetItem)
     
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.itemClicked.connect(self._on_item_clicked)
+        
+    def _on_item_clicked(self, item, col):
+        if col == 0 and (item.flags() & Qt.ItemFlag.ItemIsUserCheckable):
+            # Only move if the item is visible
+            next_item = self.itemBelow(item)
+            while next_item and next_item.isHidden():
+                next_item = self.itemBelow(next_item)
+            if next_item:
+                self.setCurrentItem(next_item)
+    
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Space:
             item = self.currentItem()
@@ -292,6 +305,13 @@ class CleanerTreeWidget(QTreeWidget):
                 state = item.checkState(0)
                 new_state = Qt.CheckState.Unchecked if state == Qt.CheckState.Checked else Qt.CheckState.Checked
                 item.setCheckState(0, new_state)
+                
+                next_item = self.itemBelow(item)
+                while next_item and next_item.isHidden():
+                    next_item = self.itemBelow(next_item)
+                if next_item:
+                    self.setCurrentItem(next_item)
+                    
                 event.accept()
                 return
         super().keyPressEvent(event)

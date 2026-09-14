@@ -254,6 +254,8 @@ class SorterTableView(QTableWidget):
     def _on_cell_clicked(self, row, col):
         if col == 0:
             self.itemSelectionChanged.emit()
+            if row + 1 < self.rowCount():
+                self.setCurrentCell(row + 1, 0)
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.MiddleButton:
             item = self.itemAt(event.pos())

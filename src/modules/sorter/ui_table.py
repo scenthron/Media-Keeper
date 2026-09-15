@@ -106,7 +106,7 @@ class SorterTableView(QTableWidget):
                 outline: none;
             }
             QTableWidget::item { padding: 4px; border: none; }
-            QTableWidget::item:selected { background-color: #2b2b2b; color: white; }
+            QTableWidget::item:selected { background-color: #3b82f6; color: white; }
             QHeaderView::section {
                 background-color: #2b2b2b;
                 color: #aaa;

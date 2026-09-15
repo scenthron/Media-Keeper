@@ -759,7 +759,10 @@ class FileOpsMixin:
 
                 old_path = self.current_file_path
                 self.current_file_path = new_path
-                self.lbl_filename.setText(new_name)
+                if getattr(self.viewer, 'current_view_mode', 0) == 2:
+                    self.lbl_filename.setText("")
+                else:
+                    self.lbl_filename.setText(new_name)
                 
                 self.viewer.update_file_path_in_view(old_path, new_path)
                 if hasattr(self, 'viewer') and getattr(self.viewer, 'current_view_mode', -1) == 0:
@@ -1668,7 +1671,10 @@ class FileOpsMixin:
 
             if self.current_file_path and self.current_file_path in target_paths:
                 self.current_file_path = target_paths[self.current_file_path]
-                self.lbl_filename.setText(os.path.basename(self.current_file_path))
+                if getattr(self.viewer, 'current_view_mode', 0) == 2:
+                    self.lbl_filename.setText("")
+                else:
+                    self.lbl_filename.setText(os.path.basename(self.current_file_path))
                 
             if getattr(self.viewer, 'current_view_mode', -1) == 0:
                 self.show_current_file()
@@ -1867,7 +1873,10 @@ class FileOpsMixin:
 
             if self.current_file_path and self.current_file_path in target_paths:
                 self.current_file_path = target_paths[self.current_file_path]
-                self.lbl_filename.setText(os.path.basename(self.current_file_path))
+                if getattr(self.viewer, 'current_view_mode', 0) == 2:
+                    self.lbl_filename.setText("")
+                else:
+                    self.lbl_filename.setText(os.path.basename(self.current_file_path))
                 
             if getattr(self.viewer, 'current_view_mode', -1) == 0:
                 self.show_current_file()

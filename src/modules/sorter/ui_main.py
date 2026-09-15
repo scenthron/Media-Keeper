@@ -1208,7 +1208,10 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                 break
                 
         display_text = f"[{size_str}]  {filename}  {idx_str}"
-        self.lbl_filename.setText(display_text)
+        if getattr(self.viewer, 'current_view_mode', 0) == 2:
+            self.lbl_filename.setText("")
+        else:
+            self.lbl_filename.setText(display_text)
 
     def set_quick_target_path(self, path):
         """Устанавливает или сбрасывает целевой каталог для Быстрого перемещения."""

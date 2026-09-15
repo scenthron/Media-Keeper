@@ -217,7 +217,10 @@ class PlayerMixin:
             display_name = os.path.basename(strip_long_path_prefix(filename))
             
             display_text = f"[{size_str}]  {display_name}  {idx_str}"
-            self.lbl_filename.setText(display_text)
+            if getattr(self.viewer, 'current_view_mode', 0) == 2:
+                self.lbl_filename.setText("")
+            else:
+                self.lbl_filename.setText(display_text)
             # --------------------------------------------------------
             
             self.update_window_title()

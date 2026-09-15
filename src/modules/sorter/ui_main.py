@@ -1062,6 +1062,11 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             self.show_current_file()
         else:
             # Switched to Grid/List mode. Stop player.
+            if mode_idx == 2:
+                self.btn_rename_cur.hide()
+            else:
+                self.btn_rename_cur.show()
+                
             if hasattr(self, 'btn_rot_l') and self.btn_rot_l:
                 self.btn_rot_l.hide()
             if hasattr(self, 'btn_rot_r') and self.btn_rot_r:
@@ -1094,7 +1099,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                 if self.affix_window:
                     self.affix_window.setEnabled(True)
                 
-                if AppContext.LANG == "RU":
+                if getattr(self.viewer, 'current_view_mode', 0) == 2:
+                    self.lbl_filename.setText("")
+                elif AppContext.LANG == "RU":
                     self.lbl_filename.setText(f"Выбрано файлов: {count}" if AppContext.is_ru() else f"Selected files: {count}")
                 else:
                     self.lbl_filename.setText(f"Selected files: {count}")
@@ -1104,7 +1111,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                 if self.affix_window:
                     self.affix_window.setEnabled(False)
                 
-                if AppContext.LANG == "RU":
+                if getattr(self.viewer, 'current_view_mode', 0) == 2:
+                    self.lbl_filename.setText("")
+                elif AppContext.LANG == "RU":
                     self.lbl_filename.setText(f"Выбрано файлов: {count} (макс. 40 для аффиксов)" if AppContext.is_ru() else f"Selected files: {count} (max 40 for affixes)")
                 else:
                     self.lbl_filename.setText(f"Selected files: {count} (max 40 for affixes)")

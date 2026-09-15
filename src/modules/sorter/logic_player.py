@@ -190,7 +190,10 @@ class PlayerMixin:
             from utils_io import strip_long_path_prefix
             norm_path = os.path.normpath(strip_long_path_prefix(self.current_file_path))
             if hasattr(self, 'locked_files') and norm_path in self.locked_files:
-                self.lbl_filename.setText(f"{filename} (Перемещение...)" if AppContext.is_ru() else f"{filename} (Moving...)")
+                if getattr(self.viewer, 'current_view_mode', 0) == 2:
+                    self.lbl_filename.setText("")
+                else:
+                    self.lbl_filename.setText(f"{filename} (Перемещение...)" if AppContext.is_ru() else f"{filename} (Moving...)")
                 self.viewer.show_empty_state("Файл перемещается, предпросмотр недоступен...")
                 if hasattr(self, '_recreate_main_player'):
                     self._recreate_main_player()

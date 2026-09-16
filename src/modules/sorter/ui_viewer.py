@@ -3836,19 +3836,24 @@ class SorterViewerArea(QWidget):
     def sync_active_index(self, idx):
         """Синхронизирует выделенный элемент в сетке и списке с указанным индексом."""
         self.grid_view.clearSelection()
-        self.list_view.clearSelection()
         
         grid_item = self.get_grid_item(idx)
-        list_item = self.get_list_item(idx)
-        
         if grid_item:
             grid_item.setSelected(True)
             self.grid_view.setCurrentItem(grid_item)
             self.grid_view.scrollToItem(grid_item)
-        if list_item and hasattr(self.list_view, 'setCurrentItem'):
-            list_item.setSelected(True)
-            self.list_view.setCurrentItem(list_item)
-            self.list_view.scrollToItem(list_item)
+            
+        if hasattr(self.list_view, 'table'):
+            self.list_view.table.clearSelection()
+            if 0 <= idx < self.list_view.table.rowCount():
+                self.list_view.table.selectRow(idx)
+        else:
+            self.list_view.clearSelection()
+            list_item = self.get_list_item(idx)
+            if list_item and hasattr(self.list_view, 'setCurrentItem'):
+                list_item.setSelected(True)
+                self.list_view.setCurrentItem(list_item)
+                self.list_view.scrollToItem(list_item)
             
         # Обновим визуальное состояние кастомных виджетов
         for view in [self.grid_view, self.list_view]:

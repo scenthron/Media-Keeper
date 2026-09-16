@@ -181,6 +181,7 @@ class SorterTableView(QTableWidget):
             self.setItem(row, 4, date_item)
             
         self.setUpdatesEnabled(True)
+        self.scrollToTop()
         self.itemSelectionChanged.emit()
 
     def remove_files(self, paths):

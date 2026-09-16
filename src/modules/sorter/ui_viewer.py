@@ -3069,7 +3069,7 @@ class SorterViewerArea(QWidget):
             self.btn_view_mode.setText("")
             self.btn_view_mode.setIcon(self.icon_single)
             self.btn_view_mode.setToolTip("Одиночный просмотр" if AppContext.LANG == "RU" else "Single View")
-            self.btn_toggle_preview.show()
+            self.btn_toggle_preview.hide()
             self.btn_page_prev.show()
             self.lbl_page_text.show()
             self.btn_page_next.show()

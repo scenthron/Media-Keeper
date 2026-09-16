@@ -457,6 +457,7 @@ class TableModeContainer(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setStyleSheet("background-color: #111;")
+        self.setAcceptDrops(True)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -470,6 +471,7 @@ class TableModeContainer(QWidget):
         preview_layout = QVBoxLayout(self.preview_container)
         preview_layout.setContentsMargins(0, 0, 0, 0)
         self.preview_widget = CleanerPreviewWidget(self)
+        self.preview_widget.setAcceptDrops(False)
         preview_layout.addWidget(self.preview_widget)
         
         bottom_container = QWidget()
@@ -479,6 +481,7 @@ class TableModeContainer(QWidget):
         
         self.header = TableActionHeader()
         self.table = SorterTableView()
+        self.table.setAcceptDrops(False)
         
         bottom_layout.addWidget(self.header)
         bottom_layout.addWidget(self.table)
@@ -559,3 +562,24 @@ class TableModeContainer(QWidget):
                 return p
             p = p.parent()
         return None
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            super().dragMoveEvent(event)
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            paths = [url.toLocalFile() for url in event.mimeData().urls()]
+            if paths:
+                self.items_dropped.emit(paths, False)
+                event.acceptProposedAction()
+                return
+        super().dropEvent(event)

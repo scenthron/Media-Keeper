@@ -3849,6 +3849,10 @@ class SorterViewerArea(QWidget):
             self.list_view.table.clearSelection()
             if 0 <= idx < self.list_view.table.rowCount():
                 self.list_view.table.selectRow(idx)
+                self.list_view.table.setCurrentCell(idx, 0)
+                item = self.list_view.table.item(idx, 0)
+                if item:
+                    self.list_view.table.scrollToItem(item)
         else:
             self.list_view.clearSelection()
             list_item = self.get_list_item(idx)

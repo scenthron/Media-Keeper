@@ -3717,8 +3717,10 @@ class SorterViewerArea(QWidget):
                     item_list.setHidden(False)
                 else:
                     if 'ph' not in locals(): ph = self._get_placeholder_pixmap(full_path)
-                    # --- 2. Вставка в List View ---
-                    if not hasattr(self.list_view, 'table'):
+                    # --- 2. Вставка в List/Table View ---
+                    if hasattr(self.list_view, 'table'):
+                        self.list_view.insert_file(idx, full_path)
+                    else:
                         item_list = QListWidgetItem()
                         item_list.setData(Qt.ItemDataRole.UserRole, full_path)
                         widget_list = SorterListItemWidget(full_path, self.list_view.icon_size)

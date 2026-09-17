@@ -184,6 +184,50 @@ class SorterTableView(QTableWidget):
         self.scrollToTop()
         self.itemSelectionChanged.emit()
 
+
+    def insert_file(self, row, path):
+        self.setUpdatesEnabled(False)
+        self.insertRow(row)
+        
+        try:
+            stat = os.stat(path)
+            mtime = stat.st_mtime
+            size = stat.st_size
+        except:
+            mtime = 0.0
+            size = 0
+            
+        from datetime import datetime
+        from utils_io import format_size
+        
+        chk_item = QTableWidgetItem()
+        chk_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+        chk_item.setCheckState(Qt.CheckState.Unchecked)
+        chk_item.setData(Qt.ItemDataRole.UserRole, path)
+        self.setItem(row, 0, chk_item)
+        
+        name = os.path.basename(path)
+        name_item = QTableWidgetItem(name)
+        self.setItem(row, 1, name_item)
+        
+        ext = os.path.splitext(name)[1].lower()
+        type_item = QTableWidgetItem(ext)
+        type_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setItem(row, 2, type_item)
+        
+        size_item = QTableWidgetItem(format_size(size))
+        size_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.setItem(row, 3, size_item)
+        
+        try:
+            dt_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M")
+        except:
+            dt_str = ""
+        date_item = QTableWidgetItem(dt_str)
+        date_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setItem(row, 4, date_item)
+        
+        self.setUpdatesEnabled(True)
     def remove_files(self, paths):
         from utils_io import strip_long_path_prefix
         paths_set = set(os.path.normpath(strip_long_path_prefix(p)) for p in paths)
@@ -564,6 +608,9 @@ class TableModeContainer(QWidget):
             p = p.parent()
         return None
 
+
+    def insert_file(self, row, path):
+        self.table.insert_file(row, path)
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()

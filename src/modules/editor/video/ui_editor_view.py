@@ -58,6 +58,8 @@ class EditorGraphicsView(QGraphicsView):
 
     def reset_zoom(self):
         self.resetTransform()
+        if self.editor_widget and not getattr(self.editor_widget, 'is_video_loaded', False):
+            return
         if self.scene() and self.scene().sceneRect().isValid():
             rect = self.scene().sceneRect()
             self.fitInView(rect, Qt.AspectRatioMode.KeepAspectRatio)

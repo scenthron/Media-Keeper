@@ -198,7 +198,7 @@ class SorterTableView(QTableWidget):
             size = 0
             
         from datetime import datetime
-        from utils_io import format_size
+        from utils_common import format_size
         
         chk_item = QTableWidgetItem()
         chk_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)

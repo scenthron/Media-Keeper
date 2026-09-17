@@ -224,9 +224,10 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.video_item.nativeSizeChanged.connect(self.center_video)
         
         self.drop_zone = IntegratedDropZone("drop_audio_here")
-        self.drop_zone.resize(400, 100) 
+        self.drop_zone.setFixedSize(480, 140)
+        self.drop_zone.lbl_text.setStyleSheet("color: #999; font-size: 15px; font-weight: bold; border: none; background: transparent;")
         self.proxy_hint = self.scene.addWidget(self.drop_zone)
-        self.proxy_hint.setScale(2.0)
+        
         
         player_area_layout.addWidget(self.view, 1)
 

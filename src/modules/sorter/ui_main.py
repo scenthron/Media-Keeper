@@ -1085,6 +1085,18 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                     list_item.setSelected(True)
                     self.viewer.list_view.scrollToItem(list_item)
 
+
+    def update_table_mode_stats_label(self):
+        cur_count = getattr(self, '_current_page_count', 0)
+        from utils_common import format_size
+        cur_size = format_size(getattr(self, '_current_page_size', 0))
+        
+        tot_count = getattr(self, '_filtered_files_count', 0)
+        tot_size = format_size(getattr(self, '_filtered_files_size', 0))
+        
+        text = f"{cur_count} [{cur_size}] / {tot_count} [{tot_size}]"
+        self.lbl_filename.setText(text)
+
     def on_selection_changed(self) -> None:
         selected = self.viewer.get_selected_files()
         count = len(selected)
@@ -1100,7 +1112,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                     self.affix_window.setEnabled(True)
                 
                 if getattr(self.viewer, 'current_view_mode', 0) == 2:
-                    self.lbl_filename.setText("")
+                    self.update_table_mode_stats_label()
                 elif AppContext.LANG == "RU":
                     self.lbl_filename.setText(f"Выбрано файлов: {count}" if AppContext.is_ru() else f"Selected files: {count}")
                 else:
@@ -1112,7 +1124,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                     self.affix_window.setEnabled(False)
                 
                 if getattr(self.viewer, 'current_view_mode', 0) == 2:
-                    self.lbl_filename.setText("")
+                    self.update_table_mode_stats_label()
                 elif AppContext.LANG == "RU":
                     self.lbl_filename.setText(f"Выбрано файлов: {count} (макс. 40 для аффиксов)" if AppContext.is_ru() else f"Selected files: {count} (max 40 for affixes)")
                 else:
@@ -1209,7 +1221,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                 
         display_text = f"[{size_str}]  {filename}  {idx_str}"
         if getattr(self.viewer, 'current_view_mode', 0) == 2:
-            self.lbl_filename.setText("")
+            self.update_table_mode_stats_label()
         else:
             self.lbl_filename.setText(display_text)
 

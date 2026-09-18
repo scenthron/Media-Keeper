@@ -418,6 +418,8 @@ class FileOpsMixin:
             filtered_files.sort(key=get_sort_key, reverse=reverse)
             
         self._all_filtered_files_queue = [f['rel_path'] for f in filtered_files]
+        self._filtered_files_count = len(filtered_files)
+        self._filtered_files_size = sum(f.get('size', 0) for f in filtered_files)
         
         # --- Pagination Slicing ---
         if not hasattr(self, 'page_index'):
@@ -440,6 +442,8 @@ class FileOpsMixin:
         end_idx = min(start_idx + page_size, total_items)
         
         new_queue = self._all_filtered_files_queue[start_idx:end_idx]
+        self._current_page_count = len(new_queue)
+        self._current_page_size = sum(f.get('size', 0) for f in filtered_files[start_idx:end_idx])
         
         # Update Viewer Pagination UI
         if hasattr(self, 'viewer') and self.viewer and hasattr(self.viewer, 'update_pagination_ui'):

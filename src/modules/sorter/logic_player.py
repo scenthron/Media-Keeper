@@ -191,7 +191,7 @@ class PlayerMixin:
             norm_path = os.path.normpath(strip_long_path_prefix(self.current_file_path))
             if hasattr(self, 'locked_files') and norm_path in self.locked_files:
                 if getattr(self.viewer, 'current_view_mode', 0) == 2:
-                    self.lbl_filename.setText("")
+                    self.update_table_mode_stats_label()
                 else:
                     self.lbl_filename.setText(f"{filename} (Перемещение...)" if AppContext.is_ru() else f"{filename} (Moving...)")
                 self.viewer.show_empty_state("Файл перемещается, предпросмотр недоступен...")
@@ -218,7 +218,7 @@ class PlayerMixin:
             
             display_text = f"[{size_str}]  {display_name}  {idx_str}"
             if getattr(self.viewer, 'current_view_mode', 0) == 2:
-                self.lbl_filename.setText("")
+                self.update_table_mode_stats_label()
             else:
                 self.lbl_filename.setText(display_text)
             # --------------------------------------------------------

@@ -290,13 +290,7 @@ class CleanerTreeWidget(QTreeWidget):
         self.itemClicked.connect(self._on_item_clicked)
         
     def _on_item_clicked(self, item, col):
-        if col == 0 and (item.flags() & Qt.ItemFlag.ItemIsUserCheckable):
-            # Only move if the item is visible
-            next_item = self.itemBelow(item)
-            while next_item and next_item.isHidden():
-                next_item = self.itemBelow(next_item)
-            if next_item:
-                self.setCurrentItem(next_item)
+        pass # Mouse clicks shouldn't auto-advance
     
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Space:

@@ -272,6 +272,13 @@ class FileDetailTree(QTreeWidget):
                 state = item.checkState(0)
                 new_state = Qt.CheckState.Unchecked if state == Qt.CheckState.Checked else Qt.CheckState.Checked
                 item.setCheckState(0, new_state)
+                
+                next_item = self.itemBelow(item)
+                while next_item and next_item.isHidden():
+                    next_item = self.itemBelow(next_item)
+                if next_item:
+                    self.setCurrentItem(next_item)
+                    
                 event.accept()
                 return
         super().keyPressEvent(event)

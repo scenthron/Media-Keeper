@@ -1163,7 +1163,8 @@ class AiClassificationTab(QWidget):
         self.right_splitter.setHandleWidth(2)
         self.right_splitter.setStyleSheet("QSplitter::handle { background-color: #2d2d2d; }")
         
-        self.tree_results = QTreeWidget()
+        from .ui_widgets import CleanerTreeWidget
+        self.tree_results = CleanerTreeWidget()
         self.tree_results.setColumnCount(4)
         self.tree_results.setHeaderLabels([
             "Имя файла" if AppContext.is_ru() else "File Name",

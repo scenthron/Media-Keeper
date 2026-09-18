@@ -788,7 +788,10 @@ class ActionMixin:
                 QMessageBox.critical(self, AppContext.tr("err_title"), f"{AppContext.tr('msg_rename_fail')} {e}")
 
     def on_overlay_cancel(self) -> None:
-        if self.mover and self.mover.isRunning():
+        if hasattr(self, 'dump_worker') and self.dump_worker and self.dump_worker.isRunning():
+            self.dump_worker.stop()
+            self.overlay.lbl_title.setText(AppContext.tr("cln_ovl_cancelling") if AppContext.is_ru() else "Cancelling...")
+        elif self.mover and self.mover.isRunning():
             self.mover.stop()
             self.overlay.lbl_title.setText(AppContext.tr("cln_ovl_cancelling"))
         elif hasattr(self, 'deleter') and self.deleter and self.deleter.isRunning():

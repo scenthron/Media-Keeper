@@ -30,7 +30,7 @@ class ScanMixin:
         
         self.overlay.start_loading_mode(0)
         self.overlay.lbl_title.setText("Создание дампа...")
-        self.overlay.btn_stop.hide()
+        self.overlay.btn_stop.show()
         
         self.dump_worker = CreateDumpWorker(folders, path, use_cache=True)
         # We can reuse on_progress

@@ -467,6 +467,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         else:
             self.update_cache_info()
             self.on_safe_scan_toggled()
+            self.update_view_stats()
             
             # Обновляем доступность медиа-форматов при открытии вкладки похожих
             if index == 1 and hasattr(self, 'settings_panel_similar'):

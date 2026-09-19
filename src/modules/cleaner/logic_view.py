@@ -36,7 +36,7 @@ class ViewMixin:
             self.lbl_show.setVisible(False)
             self.combo_limit.setVisible(False)
             if hasattr(self, 'lbl_groups_found'): self.lbl_groups_found.show()
-            self.action_bar.btn_select_all.hide()
+            self.action_bar.btn_select_all.show()
             
         elif mode == 1: # Zero
             self.action_bar.combo_autoselect.hide()
@@ -217,7 +217,7 @@ class ViewMixin:
         stats = self.session_db.get_active_stats()
         
         # Enable/disable Type Filter button based on availability of data
-        has_data = (stats['groups_count'] > 0)
+        has_data = (len(self.virtual_model._all_items) > 0)
         if hasattr(self, 'current_view_mode') and self.current_view_mode == 0:
             if hasattr(self, 'btn_types') and self.btn_types:
                 self.btn_types.setEnabled(has_data)

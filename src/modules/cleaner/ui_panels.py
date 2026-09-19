@@ -621,6 +621,7 @@ class CleanerActionBar(QFrame):
         self.icon_desel_gray = os.path.join(icons_dir, "checkbox_unchecked-gray.svg").replace("\\", "/")
         self.icon_desel_white = os.path.join(icons_dir, "checkbox_unchecked.svg").replace("\\", "/")
         self.icon_sel_white = os.path.join(icons_dir, "checkbox_checked.svg").replace("\\", "/")
+        self.icon_sel_gray = os.path.join(icons_dir, "checkbox_checked-gray.svg").replace("\\", "/")
         
         self.btn_select_all = ToolTipButton()
         self.btn_select_all.setToolTip(AppContext.tr("cln_ctx_select_all"))
@@ -636,6 +637,7 @@ class CleanerActionBar(QFrame):
         """)
         
         self.btn_deselect = ToolTipButton()
+        self.btn_deselect.setToolTip(AppContext.tr("cln_btn_deselect"))
         self.btn_deselect.setFixedSize(30, 30)
         self.btn_deselect.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_deselect.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
@@ -826,7 +828,7 @@ class CleanerActionBar(QFrame):
                 h += 9
             else:
                 h += 22
-        h += 32
+        h += 62
         self.combo_autoselect.view().setMinimumHeight(h)
         self.combo_autoselect.view().setMaximumHeight(h)
     def update_collision_items(self):

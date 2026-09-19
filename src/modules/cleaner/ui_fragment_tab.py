@@ -516,16 +516,17 @@ class AiFragmentTab(QWidget):
 
         # --- Тулбар таблицы (над таблицей, только над ней) ---
         tt_bar = QFrame()
-        tt_bar.setFixedHeight(34)
-        tt_bar.setStyleSheet("QFrame { background-color: #1a1a1a; border-top: 1px solid #2a2a2a; border-bottom: 1px solid #2a2a2a; }")
+        tt_bar.setFixedHeight(40)
+        tt_bar.setStyleSheet("background: #2a2a2a; border-bottom: 1px solid #333;")
         tt_layout = QHBoxLayout(tt_bar)
         tt_layout.setContentsMargins(10, 0, 10, 0)
-        tt_layout.setSpacing(6)
+        tt_layout.setSpacing(10)
         tt_layout.addStretch(1)
 
         self.lbl_selection_info = QLabel("Выбрано: 0 файлов • 0 B" if AppContext.is_ru() else "Selected: 0 files • 0 B")
         self.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
         tt_layout.addWidget(self.lbl_selection_info)
+
 
         left_layout.addWidget(tt_bar)
         

@@ -13,7 +13,7 @@ from PyQt6.QtSvg import QSvgRenderer
 
 from config import AppContext, APP_DESIGN
 from utils_common import format_size
-from .ui_panels import CleanerSettingsPanel, CleanerActionBar, SimilarSettingsPanel
+from .ui_panels import CleanerSettingsPanel, CleanerActionBar, SimilarSettingsPanel, ToolTipButton
 from .ui_preview import CleanerPreviewWidget
 from .ui_widgets import SourceListItem, GroupHeaderWidget
 from .ui_ai_tab import AiClassificationTab
@@ -574,12 +574,12 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
 
         icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
 
-        btn_exp = QPushButton()
+        btn_exp = ToolTipButton()
         btn_exp.setIcon(QIcon(os.path.join(icons_dir, "square-chevron-down.svg")))
         btn_exp.setIconSize(QSize(18, 18))
         btn_exp.setToolTip(AppContext.tr("cln_btn_expand"))
 
-        btn_col = QPushButton()
+        btn_col = ToolTipButton()
         btn_col.setIcon(QIcon(os.path.join(icons_dir, "square-chevron-up.svg")))
         btn_col.setIconSize(QSize(18, 18))
         btn_col.setToolTip(AppContext.tr("cln_btn_collapse"))
@@ -592,7 +592,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
             b.clicked.connect(lambda _, x=b: self.toggle_tree(x == btn_exp))
             tt_layout.addWidget(b)
 
-        btn_sort_v = QPushButton()
+        btn_sort_v = ToolTipButton()
         btn_sort_v.setIcon(QIcon(os.path.join(icons_dir, "arrow-up-down.svg")))
         btn_sort_v.setIconSize(QSize(18, 18))
         btn_sort_v.setFixedWidth(30)
@@ -612,7 +612,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         # btn_types: кнопка фильтра по типам файлов (только для вкладки Дубликаты)
         btn_types = None
         if not is_similar:
-            btn_types = QPushButton(AppContext.tr("cln_btn_types"))
+            btn_types = ToolTipButton(AppContext.tr("cln_btn_types"))
             btn_types.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_types.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
             btn_types.setToolTip(AppContext.tr("cln_btn_types"))

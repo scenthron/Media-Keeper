@@ -33,6 +33,16 @@ def load_svg_icon(file_path: str, size: QSize, mirror_horizontal: bool = False) 
     pixmap = load_svg_pixmap(file_path, size, mirror_horizontal)
     return QIcon(pixmap)
 
+from PyQt6.QtWidgets import QToolTip
+from PyQt6.QtCore import QEvent
+
+class ToolTipButton(QPushButton):
+    def event(self, e):
+        if e.type() == QEvent.Type.ToolTip and not self.isEnabled():
+            QToolTip.showText(e.globalPosition().toPoint(), self.toolTip(), self)
+            return True
+        return super().event(e)
+
 class CleanerSettingsPanel(QWidget):
     add_folder_clicked = pyqtSignal()
     folder_dropped = pyqtSignal(str)
@@ -595,7 +605,7 @@ class CleanerActionBar(QFrame):
         self.combo_autoselect.currentIndexChanged.connect(self.autoselect_changed.emit)
         self.combo_autoselect.setFixedWidth(240)
         self.combo_autoselect.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
-        self.combo_autoselect.setMaxVisibleItems(25) 
+        self.combo_autoselect.setMaxVisibleItems(15) 
         
         self.combo_autoselect.setStyleSheet("""
             QComboBox { background: #333; color: white; border: 1px solid #555; padding: 4px; border-radius: 4px; }
@@ -612,7 +622,7 @@ class CleanerActionBar(QFrame):
         self.icon_desel_white = os.path.join(icons_dir, "checkbox_unchecked.svg").replace("\\", "/")
         self.icon_sel_white = os.path.join(icons_dir, "checkbox_checked.svg").replace("\\", "/")
         
-        self.btn_select_all = QPushButton()
+        self.btn_select_all = ToolTipButton()
         self.btn_select_all.setToolTip(AppContext.tr("cln_ctx_select_all"))
         self.btn_select_all.setFixedSize(30, 30)
         self.btn_select_all.setIconSize(QSize(16, 16))
@@ -624,7 +634,7 @@ class CleanerActionBar(QFrame):
             QPushButton:hover {{ background-color: #444; border-color: #3b82f6; }}
         """)
         
-        self.btn_deselect = QPushButton()
+        self.btn_deselect = ToolTipButton()
         self.btn_deselect.setFixedSize(30, 30)
         self.btn_deselect.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_deselect.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
@@ -830,6 +840,8 @@ class CleanerActionBar(QFrame):
             add_item(AppContext.tr("cln_sel_protected_dupes"), AppContext.tr("cln_sel_tip_protected_dupes"), 14)
             add_item(AppContext.tr("cln_sel_reference_dupes"), AppContext.tr("cln_sel_tip_reference_dupes"), 15)
 
+        h = self.combo_autoselect.count() * 26
+        self.combo_autoselect.view().setMinimumHeight(h)
     def update_collision_items(self):
         current_idx = self.combo_collision.currentIndex()
         self.combo_collision.clear()

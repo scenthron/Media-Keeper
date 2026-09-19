@@ -502,14 +502,23 @@ class AiFragmentTab(QWidget):
         self.action_bar.btn_deselect.hide()
         self.action_bar.chk_preserve.hide()
         self.action_bar.combo_collision.hide()
-        
-        self.action_bar.lbl_selection_info = QLabel("Выбрано: 0 файлов • 0 B" if AppContext.is_ru() else "Selected: 0 files • 0 B")
-        self.action_bar.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
-        ab_layout = self.action_bar.layout()
-        if ab_layout:
-            ab_layout.insertWidget(3, self.action_bar.lbl_selection_info)
-            
         bot_layout.addWidget(self.action_bar)
+
+        # --- Тулбар таблицы (над таблицей) ---
+        tt_bar = QFrame()
+        tt_bar.setFixedHeight(34)
+        tt_bar.setStyleSheet("QFrame { background-color: #1a1a1a; border-top: 1px solid #2a2a2a; border-bottom: 1px solid #2a2a2a; }")
+        tt_layout = QHBoxLayout(tt_bar)
+        tt_layout.setContentsMargins(10, 0, 10, 0)
+        tt_layout.setSpacing(6)
+        tt_layout.addStretch(1)
+
+        self.lbl_selection_info = QLabel("Выбрано: 0 файлов • 0 B" if AppContext.is_ru() else "Selected: 0 files • 0 B")
+        self.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
+        tt_layout.addWidget(self.lbl_selection_info)
+
+        bot_layout.addWidget(tt_bar)
+
         
         self.right_splitter = QSplitter(Qt.Orientation.Horizontal)
         self.right_splitter.setHandleWidth(2)
@@ -752,7 +761,7 @@ class AiFragmentTab(QWidget):
             return
             
         self.tree_results.clear()
-        self.action_bar.lbl_selection_info.setText("Выбрано: 0 файлов • 0 B" if AppContext.is_ru() else "Selected: 0 files • 0 B")
+        self.lbl_selection_info.setText("Выбрано: 0 файлов • 0 B" if AppContext.is_ru() else "Selected: 0 files • 0 B")
         self.lbl_stats.hide()
         self.progress_bar.show()
         self.progress_bar.setFormat("Подготовка к сканированию..." if AppContext.is_ru() else "Preparing for scan...")
@@ -897,8 +906,8 @@ class AiFragmentTab(QWidget):
         size = sum(os.path.getsize(p) for p in selected_paths if os.path.exists(p))
         size_str = format_size(size)
         
-        self.action_bar.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
-        self.action_bar.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}" if AppContext.is_ru() else f"Selected: {count} files • {size_str}")
+        self.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
+        self.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}" if AppContext.is_ru() else f"Selected: {count} files • {size_str}")
         
         has_selection = (count > 0)
         has_path = bool(self.action_bar.drop_zone.get_path())

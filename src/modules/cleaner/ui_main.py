@@ -567,6 +567,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         tt_layout.setSpacing(10)
         
         tt_layout.addWidget(action_bar.combo_autoselect)
+        tt_layout.addWidget(action_bar.btn_select_all)
         tt_layout.addWidget(action_bar.btn_deselect)
         tt_layout.addSpacing(10)
 

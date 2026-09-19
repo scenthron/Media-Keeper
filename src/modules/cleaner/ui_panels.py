@@ -605,19 +605,26 @@ class CleanerActionBar(QFrame):
             QComboBox QAbstractItemView::item:disabled { background: transparent; border-bottom: 1px solid #777; margin-bottom: 4px; margin-top: 4px; padding: 0px; min-height: 0px; }
         """)
         
-        self.btn_select_all = QPushButton(AppContext.tr("cln_ctx_select_all"))
+        icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
+        self.icon_desel_gray = os.path.join(icons_dir, "checkbox_unchecked-gray.svg").replace("\\", "/")
+        self.icon_desel_white = os.path.join(icons_dir, "checkbox_unchecked.svg").replace("\\", "/")
+        self.icon_sel_white = os.path.join(icons_dir, "checkbox_checked.svg").replace("\\", "/")
+        
+        self.btn_select_all = QPushButton()
+        self.btn_select_all.setToolTip(AppContext.tr("cln_ctx_select_all"))
+        self.btn_select_all.setFixedSize(30, 30)
+        self.btn_select_all.setIconSize(QSize(16, 16))
         self.btn_select_all.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_select_all.clicked.connect(self.select_all_clicked.emit)
-        self.btn_select_all.setStyleSheet("QPushButton { background: #333; color: #ddd; border: 1px solid #555; padding: 5px 10px; border-radius: 4px; } QPushButton:hover { background-color: #444; border-color: #666; }")
+        self.btn_select_all.setStyleSheet(f"""
+            QPushButton {{ background: #333; border: 1px solid #555; border-radius: 4px; qproperty-icon: url("{self.icon_sel_white}"); }}
+            QPushButton:hover {{ background-color: #444; border-color: #3b82f6; }}
+        """)
         
         self.btn_deselect = QPushButton()
         self.btn_deselect.setFixedSize(30, 30)
         self.btn_deselect.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_deselect.clicked.connect(self.deselect_clicked.emit)
-        
-        icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
-        self.icon_desel_gray = os.path.join(icons_dir, "checkbox_unchecked-gray.svg").replace("\\", "/")
-        self.icon_desel_white = os.path.join(icons_dir, "checkbox_unchecked.svg").replace("\\", "/")
         
         self.btn_deselect.setIconSize(QSize(16, 16))
         
@@ -841,7 +848,7 @@ class CleanerActionBar(QFrame):
 
     def update_ui_text(self):
         self.btn_deselect.setToolTip(AppContext.tr("cln_btn_deselect"))
-        self.btn_select_all.setText(AppContext.tr("cln_ctx_select_all"))
+        self.btn_select_all.setToolTip(AppContext.tr("cln_ctx_select_all"))
         self.chk_preserve.setText(AppContext.tr("cln_chk_struct"))
         self.chk_preserve.setToolTip(AppContext.tr("cln_chk_struct_tip"))
         self.drop_zone.default_text = AppContext.tr("cln_ph_dest")

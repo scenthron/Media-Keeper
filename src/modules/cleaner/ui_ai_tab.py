@@ -2461,9 +2461,11 @@ class AiClassificationTab(QWidget):
         root = self.tree_results.invisibleRootItem()
         for i in range(root.childCount()):
             group_item = root.child(i)
+            if group_item.isHidden():
+                continue
             for j in range(group_item.childCount()):
                 file_item = group_item.child(j)
-                if file_item.checkState(0) == Qt.CheckState.Checked:
+                if not file_item.isHidden() and file_item.checkState(0) == Qt.CheckState.Checked:
                     data = file_item.data(0, Qt.ItemDataRole.UserRole)
                     if data and data.get("path"):
                         paths.append(data["path"])
@@ -2610,7 +2612,9 @@ class AiClassificationTab(QWidget):
         try:
             group_item.setCheckState(0, state)
             for i in range(group_item.childCount()):
-                group_item.child(i).setCheckState(0, state)
+                child = group_item.child(i)
+                if not child.isHidden():
+                    child.setCheckState(0, state)
         finally:
             self.tree_results.blockSignals(False)
         self.update_cleaner_action_bar_info()
@@ -2620,16 +2624,19 @@ class AiClassificationTab(QWidget):
         self.tree_results.blockSignals(True)
         try:
             checked_count = 0
+            visible_count = 0
             for i in range(group_item.childCount()):
                 child = group_item.child(i)
-                new_state = Qt.CheckState.Checked if child.checkState(0) == Qt.CheckState.Unchecked else Qt.CheckState.Unchecked
-                child.setCheckState(0, new_state)
-                if new_state == Qt.CheckState.Checked:
-                    checked_count += 1
+                if not child.isHidden():
+                    visible_count += 1
+                    new_state = Qt.CheckState.Checked if child.checkState(0) == Qt.CheckState.Unchecked else Qt.CheckState.Unchecked
+                    child.setCheckState(0, new_state)
+                    if new_state == Qt.CheckState.Checked:
+                        checked_count += 1
             
             if checked_count == 0:
                 group_item.setCheckState(0, Qt.CheckState.Unchecked)
-            elif checked_count == group_item.childCount():
+            elif checked_count == visible_count and visible_count > 0:
                 group_item.setCheckState(0, Qt.CheckState.Checked)
             else:
                 group_item.setCheckState(0, Qt.CheckState.PartiallyChecked)

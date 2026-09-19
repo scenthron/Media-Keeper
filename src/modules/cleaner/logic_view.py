@@ -217,8 +217,20 @@ class ViewMixin:
         stats = self.session_db.get_active_stats()
         
         # Enable/disable Type Filter button based on availability of data
-        if self.current_view_mode == 0 and hasattr(self, 'btn_types'):
-            self.btn_types.setEnabled(stats['groups_count'] > 0)
+        has_data = (stats['groups_count'] > 0)
+        if hasattr(self, 'current_view_mode') and self.current_view_mode == 0:
+            if hasattr(self, 'btn_types') and self.btn_types:
+                self.btn_types.setEnabled(has_data)
+            if hasattr(self, 'action_bar'):
+                if hasattr(self.action_bar, 'combo_autoselect'): self.action_bar.combo_autoselect.setEnabled(has_data)
+                if hasattr(self.action_bar, 'btn_select_all'): self.action_bar.btn_select_all.setEnabled(has_data)
+                # btn_deselect is controlled by selection logic, but we can force it here just in case:
+                if hasattr(self.action_bar, 'set_deselect_button_enabled'): 
+                    if not has_data:
+                        self.action_bar.set_deselect_button_enabled(False)
+            if hasattr(self, 'btn_exp'): self.btn_exp.setEnabled(has_data)
+            if hasattr(self, 'btn_col'): self.btn_col.setEnabled(has_data)
+            if hasattr(self, 'btn_sort_v'): self.btn_sort_v.setEnabled(has_data)
         
         g_count = stats['groups_count']
         dupes_count = stats['dupes_count']

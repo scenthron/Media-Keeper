@@ -593,7 +593,9 @@ class CleanerActionBar(QFrame):
         
         self.update_autoselect_items()
         self.combo_autoselect.currentIndexChanged.connect(self.autoselect_changed.emit)
-        self.combo_autoselect.setFixedWidth(240) 
+        self.combo_autoselect.setFixedWidth(240)
+        self.combo_autoselect.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
+        self.combo_autoselect.setMaxVisibleItems(25) 
         
         self.combo_autoselect.setStyleSheet("""
             QComboBox { background: #333; color: white; border: 1px solid #555; padding: 4px; border-radius: 4px; }
@@ -615,6 +617,7 @@ class CleanerActionBar(QFrame):
         self.btn_select_all.setFixedSize(30, 30)
         self.btn_select_all.setIconSize(QSize(16, 16))
         self.btn_select_all.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_select_all.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
         self.btn_select_all.clicked.connect(self.select_all_clicked.emit)
         self.btn_select_all.setStyleSheet(f"""
             QPushButton {{ background: #333; border: 1px solid #555; border-radius: 4px; qproperty-icon: url("{self.icon_sel_white}"); }}
@@ -624,6 +627,7 @@ class CleanerActionBar(QFrame):
         self.btn_deselect = QPushButton()
         self.btn_deselect.setFixedSize(30, 30)
         self.btn_deselect.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_deselect.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
         self.btn_deselect.clicked.connect(self.deselect_clicked.emit)
         
         self.btn_deselect.setIconSize(QSize(16, 16))
@@ -849,6 +853,7 @@ class CleanerActionBar(QFrame):
     def update_ui_text(self):
         self.btn_deselect.setToolTip(AppContext.tr("cln_btn_deselect"))
         self.btn_select_all.setToolTip(AppContext.tr("cln_ctx_select_all"))
+        self.combo_autoselect.setToolTip("Выбор правила автоматического выделения файлов" if AppContext.LANG == "RU" else "Autoselect condition")
         self.chk_preserve.setText(AppContext.tr("cln_chk_struct"))
         self.chk_preserve.setToolTip(AppContext.tr("cln_chk_struct_tip"))
         self.drop_zone.default_text = AppContext.tr("cln_ph_dest")

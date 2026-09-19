@@ -27,7 +27,7 @@
   "cln_btn_reset": "STOP",
   "cln_tip_abort": "<b>Abort Scan</b><br><span style='color:#aaa;'>Stops searching and displays the duplicates found up to this point.</span>",
   "cln_tip_reset": "<b>Stop & Reset Scan</b><br><span style='color:#aaa;'>Instantly stops searching and discards all results without saving.</span>",
-  "cln_sel_auto": "Auto-Select...",
+  "cln_sel_auto": "Autoselect",
   "cln_sel_all_except_first": "All except 1st",
   "cln_sel_all_except_last": "All except last",
   "cln_sel_shortest": "All except shortest name",

@@ -296,7 +296,7 @@ class ActionMixin:
             has_selection = self.session_db.get_global_selection_stats()['count'] > 0
 
         self.action_bar.set_delete_button_enabled(has_selection)
-        self.action_bar.set_deselect_button_enabled(has_selection)
+        self.action_bar.btn_deselect.setEnabled(has_selection)
 
         if getattr(self, 'current_tab', 0) not in (2, 3) and getattr(self, 'current_view_mode', 0) == 2:
             self.action_bar.set_move_button_enabled(has_selection, AppContext.tr("cln_act_delete_folders"))

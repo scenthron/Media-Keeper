@@ -225,9 +225,9 @@ class ViewMixin:
                 if hasattr(self.action_bar, 'combo_autoselect'): self.action_bar.combo_autoselect.setEnabled(True)
                 if hasattr(self.action_bar, 'btn_select_all'): self.action_bar.btn_select_all.setEnabled(has_data)
                 # btn_deselect is controlled by selection logic, but we can force it here just in case:
-                if hasattr(self.action_bar, 'set_deselect_button_enabled'): 
+                if hasattr(self.action_bar, 'btn_deselect'): 
                     if not has_data:
-                        self.action_bar.set_deselect_button_enabled(False)
+                        if hasattr(self.action_bar, 'btn_deselect'): self.action_bar.btn_deselect.setEnabled(False)
             if hasattr(self, 'btn_exp'): self.btn_exp.setEnabled(has_data)
             if hasattr(self, 'btn_col'): self.btn_col.setEnabled(has_data)
             if hasattr(self, 'btn_sort_v'): self.btn_sort_v.setEnabled(has_data)

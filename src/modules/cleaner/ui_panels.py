@@ -632,6 +632,7 @@ class CleanerActionBar(QFrame):
         self.btn_select_all.setStyleSheet(f"""
             QPushButton {{ background: #333; border: 1px solid #555; border-radius: 4px; qproperty-icon: url("{self.icon_sel_white}"); }}
             QPushButton:hover {{ background-color: #444; border-color: #3b82f6; }}
+            QPushButton:disabled {{ background: #222; border: 1px solid #333; qproperty-icon: url("{self.icon_sel_white}"); }}
         """)
         
         self.btn_deselect = ToolTipButton()
@@ -641,6 +642,11 @@ class CleanerActionBar(QFrame):
         self.btn_deselect.clicked.connect(self.deselect_clicked.emit)
         
         self.btn_deselect.setIconSize(QSize(16, 16))
+        self.btn_deselect.setStyleSheet(f"""
+            QPushButton {{ background: #333; border: 1px solid #555; border-radius: 4px; qproperty-icon: url("{self.icon_desel_gray}"); }}
+            QPushButton:hover {{ background-color: #444; border-color: #3b82f6; qproperty-icon: url("{self.icon_desel_white}"); }}
+            QPushButton:disabled {{ background: #222; border: 1px solid #333; qproperty-icon: url("{self.icon_desel_gray}"); }}
+        """)
         
         layout.addWidget(self.combo_autoselect)
         layout.addWidget(self.btn_select_all)
@@ -709,7 +715,6 @@ class CleanerActionBar(QFrame):
         self.drop_zone.clicked.connect(self.browse_clicked.emit) 
         layout.addWidget(self.drop_zone)
         
-        self.set_deselect_button_enabled(False)
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.Show:
@@ -769,32 +774,6 @@ class CleanerActionBar(QFrame):
             self.btn_delete.setStyleSheet("QPushButton { background-color: #dc2626; color: white; font-weight: bold; padding: 5px 10px; border-radius: 4px; border: 1px solid #b91c1c; font-size: 12px; } QPushButton:hover { background-color: #ef4444; }")
         else:
             self.btn_delete.setStyleSheet("QPushButton { background-color: #2a2a2a; color: #555; font-weight: bold; padding: 5px 10px; border-radius: 4px; border: 1px solid #333; font-size: 12px; }")
-
-    def set_deselect_button_enabled(self, enabled: bool) -> None:
-        self.btn_deselect.setEnabled(enabled)
-        if enabled:
-            self.btn_deselect.setStyleSheet(f"""
-                QPushButton {{ 
-                    background: #333; 
-                    border: 1px solid #555; 
-                    border-radius: 4px; 
-                    qproperty-icon: url("{self.icon_desel_gray}");
-                }} 
-                QPushButton:hover {{ 
-                    background-color: #444; 
-                    border-color: #3b82f6; 
-                    qproperty-icon: url("{self.icon_desel_white}");
-                }}
-            """)
-        else:
-            self.btn_deselect.setStyleSheet(f"""
-                QPushButton {{ 
-                    background: #2b2b2b; 
-                    border: 1px solid #3d3d3d; 
-                    border-radius: 4px; 
-                    qproperty-icon: url("{self.icon_desel_gray}");
-                }}
-            """)
 
     def update_autoselect_items(self):
         self.combo_autoselect.clear()

@@ -575,11 +575,13 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
 
         btn_exp = ToolTipButton()
+        btn_exp.setStyleSheet("QPushButton:disabled { background: #222; border: 1px solid #333; opacity: 0.5; }")
         btn_exp.setIcon(QIcon(os.path.join(icons_dir, "square-chevron-down.svg")))
         btn_exp.setIconSize(QSize(18, 18))
         btn_exp.setToolTip(AppContext.tr("cln_btn_expand"))
 
         btn_col = ToolTipButton()
+        btn_col.setStyleSheet("QPushButton:disabled { background: #222; border: 1px solid #333; opacity: 0.5; }")
         btn_col.setIcon(QIcon(os.path.join(icons_dir, "square-chevron-up.svg")))
         btn_col.setIconSize(QSize(18, 18))
         btn_col.setToolTip(AppContext.tr("cln_btn_collapse"))
@@ -593,6 +595,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
             tt_layout.addWidget(b)
 
         btn_sort_v = ToolTipButton()
+        btn_sort_v.setStyleSheet("QPushButton:disabled { background: #222; border: 1px solid #333; opacity: 0.5; }")
         btn_sort_v.setIcon(QIcon(os.path.join(icons_dir, "arrow-up-down.svg")))
         btn_sort_v.setIconSize(QSize(18, 18))
         btn_sort_v.setFixedWidth(30)
@@ -613,6 +616,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         btn_types = None
         if not is_similar:
             btn_types = ToolTipButton(AppContext.tr("cln_btn_types"))
+            btn_types.setStyleSheet("QPushButton:disabled { background: #222; border: 1px solid #333; color: #777; }")
             btn_types.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_types.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
             btn_types.setToolTip(AppContext.tr("cln_btn_types"))

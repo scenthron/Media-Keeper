@@ -565,6 +565,10 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         tt_layout = QHBoxLayout(tt_bar)
         tt_layout.setContentsMargins(10, 0, 10, 0)
         tt_layout.setSpacing(10)
+        
+        tt_layout.addWidget(action_bar.combo_autoselect)
+        tt_layout.addWidget(action_bar.btn_deselect)
+        tt_layout.addSpacing(10)
 
         icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
 

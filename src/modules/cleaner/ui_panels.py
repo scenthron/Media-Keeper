@@ -618,10 +618,8 @@ class CleanerActionBar(QFrame):
         """)
         
         icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
-        self.icon_desel_gray = os.path.join(icons_dir, "checkbox_unchecked-gray.svg").replace("\\", "/")
         self.icon_desel_white = os.path.join(icons_dir, "checkbox_unchecked.svg").replace("\\", "/")
         self.icon_sel_white = os.path.join(icons_dir, "checkbox_checked.svg").replace("\\", "/")
-        self.icon_sel_gray = os.path.join(icons_dir, "checkbox_checked-gray.svg").replace("\\", "/")
         
         self.btn_select_all = ToolTipButton()
         self.btn_select_all.setToolTip(AppContext.tr("cln_ctx_select_all"))
@@ -630,10 +628,11 @@ class CleanerActionBar(QFrame):
         self.btn_select_all.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_select_all.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
         self.btn_select_all.clicked.connect(self.select_all_clicked.emit)
-        self.btn_select_all.setStyleSheet(f"""
-            QPushButton {{ background: #333; border: 1px solid #555; border-radius: 4px; qproperty-icon: url("{self.icon_sel_white}"); }}
-            QPushButton:hover {{ background-color: #444; border-color: #3b82f6; }}
-            QPushButton:disabled {{ background: #222; border: 1px solid #333; qproperty-icon: url("{self.icon_sel_white}"); }}
+        self.btn_select_all.setIcon(QIcon(self.icon_sel_white))
+        self.btn_select_all.setStyleSheet("""
+            QPushButton { background: #333; border: 1px solid #555; border-radius: 4px; }
+            QPushButton:hover { background: #444; border-color: #3b82f6; }
+            QPushButton:disabled { background: #222; border: 1px solid #333; }
         """)
         
         self.btn_deselect = ToolTipButton()
@@ -644,10 +643,11 @@ class CleanerActionBar(QFrame):
         self.btn_deselect.clicked.connect(self.deselect_clicked.emit)
         
         self.btn_deselect.setIconSize(QSize(16, 16))
-        self.btn_deselect.setStyleSheet(f"""
-            QPushButton {{ background: #333; border: 1px solid #555; border-radius: 4px; qproperty-icon: url("{self.icon_desel_gray}"); }}
-            QPushButton:hover {{ background-color: #444; border-color: #3b82f6; qproperty-icon: url("{self.icon_desel_white}"); }}
-            QPushButton:disabled {{ background: #222; border: 1px solid #333; qproperty-icon: url("{self.icon_desel_gray}"); }}
+        self.btn_deselect.setIcon(QIcon(self.icon_desel_white))
+        self.btn_deselect.setStyleSheet("""
+            QPushButton { background: #333; border: 1px solid #555; border-radius: 4px; }
+            QPushButton:hover { background: #444; border-color: #3b82f6; }
+            QPushButton:disabled { background: #222; border: 1px solid #333; }
         """)
         
         layout.addWidget(self.combo_autoselect)
@@ -828,7 +828,7 @@ class CleanerActionBar(QFrame):
                 h += 9
             else:
                 h += 22
-        h += 62
+        h += 2
         self.combo_autoselect.view().setMinimumHeight(h)
         self.combo_autoselect.view().setMaximumHeight(h)
     def update_collision_items(self):

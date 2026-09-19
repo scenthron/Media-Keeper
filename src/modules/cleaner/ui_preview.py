@@ -59,6 +59,10 @@ class CleanerPreviewWidget(QWidget):
         self.lbl_center_text.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.lbl_center_text.hide()
         
+        self.center_layout = QVBoxLayout(self.view)
+        self.center_layout.setContentsMargins(20, 20, 20, 20)
+        self.center_layout.addWidget(self.lbl_center_text, alignment=Qt.AlignmentFlag.AlignCenter)
+        
         self.video_item = QGraphicsVideoItem()
         self.scene.addItem(self.video_item)
         self.video_item.hide()
@@ -312,13 +316,7 @@ class CleanerPreviewWidget(QWidget):
         if not hasattr(self, 'view'): return
         
         if hasattr(self, 'lbl_center_text') and self.lbl_center_text.isVisible():
-            max_w = self.view.width() - 40
-            if max_w > 0:
-                self.lbl_center_text.setMaximumWidth(max_w)
-                self.lbl_center_text.adjustSize()
-                x_text = (self.view.width() - self.lbl_center_text.width()) // 2
-                y_text = (self.view.height() - self.lbl_center_text.height()) // 2
-                self.lbl_center_text.move(x_text, y_text)
+            pass # Now handled by QVBoxLayout automatically
                 
         if self.time_overlay and self.time_overlay.isVisible():
             padding = 10

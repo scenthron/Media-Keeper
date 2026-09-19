@@ -25,8 +25,15 @@ class ScanMixin:
         folders = list(self.source_folders.keys())
         if not folders: return
         
-        path, _ = QFileDialog.getSaveFileName(self, "Сохранить дамп", "", "Media Keeper Dump (*.mkdump)")
+        from PyQt6.QtCore import QSettings
+        import os
+        settings = QSettings("MediaKeeper", "Cleaner")
+        last_dir = settings.value("last_dump_dir", "")
+        
+        path, _ = QFileDialog.getSaveFileName(self, "Сохранить дамп", last_dir, "Media Keeper Dump (*.mkdump)")
         if not path: return
+        
+        settings.setValue("last_dump_dir", os.path.dirname(path))
         
         self.overlay.start_loading_mode(0)
         self.overlay.lbl_title.setText("Создание дампа...")

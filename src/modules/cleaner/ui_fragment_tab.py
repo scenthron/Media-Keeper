@@ -504,7 +504,17 @@ class AiFragmentTab(QWidget):
         self.action_bar.combo_collision.hide()
         bot_layout.addWidget(self.action_bar)
 
-        # --- Тулбар таблицы (над таблицей) ---
+        self.right_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.right_splitter.setHandleWidth(2)
+        self.right_splitter.setStyleSheet("QSplitter::handle { background-color: #2d2d2d; }")
+
+        # Левая панель: тулбар таблицы + сама таблица
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(0)
+
+        # --- Тулбар таблицы (над таблицей, только над ней) ---
         tt_bar = QFrame()
         tt_bar.setFixedHeight(34)
         tt_bar.setStyleSheet("QFrame { background-color: #1a1a1a; border-top: 1px solid #2a2a2a; border-bottom: 1px solid #2a2a2a; }")
@@ -517,12 +527,7 @@ class AiFragmentTab(QWidget):
         self.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
         tt_layout.addWidget(self.lbl_selection_info)
 
-        bot_layout.addWidget(tt_bar)
-
-        
-        self.right_splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.right_splitter.setHandleWidth(2)
-        self.right_splitter.setStyleSheet("QSplitter::handle { background-color: #2d2d2d; }")
+        left_layout.addWidget(tt_bar)
         
         self.tree_results = CleanerTreeWidget()
         self.tree_results.setColumnCount(4)
@@ -552,8 +557,9 @@ class AiFragmentTab(QWidget):
         self.tree_results.itemChanged.connect(self.on_tree_item_changed)
         self.tree_results.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree_results.customContextMenuRequested.connect(self.show_context_menu)
-        
-        self.right_splitter.addWidget(self.tree_results)
+
+        left_layout.addWidget(self.tree_results, 1)
+        self.right_splitter.addWidget(left_panel)
         
         from .ui_preview import CleanerPreviewWidget
         self.preview_widget = CleanerPreviewWidget()
@@ -562,6 +568,7 @@ class AiFragmentTab(QWidget):
         
         self.right_splitter.setSizes([650, 350])
         bot_layout.addWidget(self.right_splitter, 1)
+
         
         self.main_splitter.addWidget(bottom_widget)
         self.main_layout.addWidget(self.main_splitter)

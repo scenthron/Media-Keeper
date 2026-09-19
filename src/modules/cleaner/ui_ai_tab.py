@@ -1142,13 +1142,7 @@ class AiClassificationTab(QWidget):
         self.post_filter_widget.hide() # Hidden until scan is done
         self.action_bar.layout().insertWidget(0, self.post_filter_widget)
         
-        # Динамически добавляем лейбл выделения в CleanerActionBar для вкладки ИИ
-        self.action_bar.lbl_selection_info = QLabel("Выбрано: 0 файлов • 0 B" if AppContext.is_ru() else "Selected: 0 files • 0 B")
-        self.action_bar.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
-        ab_layout = self.action_bar.layout()
-        if ab_layout:
-            ab_layout.insertWidget(3, self.action_bar.lbl_selection_info)
-            
+        
         self.action_bar.deselect_clicked.connect(lambda: self.select_all_results(False))
         self.action_bar.select_all_clicked.connect(lambda: self.select_all_results(True))
         
@@ -1220,10 +1214,25 @@ class AiClassificationTab(QWidget):
         tree_container = QWidget()
         tree_layout = QVBoxLayout(tree_container)
         tree_layout.setContentsMargins(0, 0, 0, 0)
-        tree_layout.setSpacing(4)
-        
+        tree_layout.setSpacing(0)
+
+        # Тулбар таблицы (только над таблицей)
+        tt_bar = QFrame()
+        tt_bar.setFixedHeight(40)
+        tt_bar.setStyleSheet("background: #2a2a2a; border-bottom: 1px solid #333;")
+        tt_layout = QHBoxLayout(tt_bar)
+        tt_layout.setContentsMargins(10, 0, 10, 0)
+        tt_layout.setSpacing(10)
+        tt_layout.addStretch(1)
+
+        self.lbl_selection_info = QLabel("Выбрано: 0 файлов • 0 B" if AppContext.is_ru() else "Selected: 0 files • 0 B")
+        self.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
+        tt_layout.addWidget(self.lbl_selection_info)
+
+        tree_layout.addWidget(tt_bar)
         
         tree_layout.addWidget(self.tree_results)
+
         
         self.right_splitter.addWidget(tree_container)
         
@@ -2487,9 +2496,9 @@ class AiClassificationTab(QWidget):
         from utils_common import format_size
         size_str = format_size(size)
         
-        self.action_bar.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
-        self.action_bar.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}" if AppContext.is_ru() else f"Selected: {count} files • {size_str}")
-        self.action_bar.lbl_selection_info.setToolTip(f"Выбрано файлов: {count}\nРазмер: {size_str}")
+        self.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
+        self.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}" if AppContext.is_ru() else f"Selected: {count} files • {size_str}")
+        self.lbl_selection_info.setToolTip(f"Выбрано файлов: {count}\nРазмер: {size_str}")
         
         has_selection = (count > 0)
         has_path = bool(self.action_bar.drop_zone.get_path())

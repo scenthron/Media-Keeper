@@ -575,27 +575,24 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         icons_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "icons")
 
         btn_exp = ToolTipButton()
-        btn_exp.setStyleSheet("QPushButton:disabled { background: #222; border: 1px solid #333; opacity: 0.5; }")
         btn_exp.setIcon(QIcon(os.path.join(icons_dir, "square-chevron-down.svg")))
         btn_exp.setIconSize(QSize(18, 18))
         btn_exp.setToolTip(AppContext.tr("cln_btn_expand"))
 
         btn_col = ToolTipButton()
-        btn_col.setStyleSheet("QPushButton:disabled { background: #222; border: 1px solid #333; opacity: 0.5; }")
         btn_col.setIcon(QIcon(os.path.join(icons_dir, "square-chevron-up.svg")))
         btn_col.setIconSize(QSize(18, 18))
         btn_col.setToolTip(AppContext.tr("cln_btn_collapse"))
 
         for b in [btn_exp, btn_col]:
             b.setFixedWidth(30)
-            b.setStyleSheet("QPushButton { background: #333; border: 1px solid #444; border-radius: 3px; } QPushButton:hover { background: #444; }")
+            b.setStyleSheet("QPushButton { background: #333; border: 1px solid #444; border-radius: 3px; } QPushButton:hover { background: #444; } QPushButton:disabled { background: #2b2b2b; border: 1px solid #3d3d3d; }")
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
             b.clicked.connect(lambda _, x=b: self.toggle_tree(x == btn_exp))
             tt_layout.addWidget(b)
 
         btn_sort_v = ToolTipButton()
-        btn_sort_v.setStyleSheet("QPushButton:disabled { background: #222; border: 1px solid #333; opacity: 0.5; }")
         btn_sort_v.setIcon(QIcon(os.path.join(icons_dir, "arrow-up-down.svg")))
         btn_sort_v.setIconSize(QSize(18, 18))
         btn_sort_v.setFixedWidth(30)
@@ -604,6 +601,7 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
             QPushButton { background: #333; border: 1px solid #444; border-radius: 3px; }
             QPushButton:hover { background: #444; }
             QPushButton:pressed { background: #3b82f6; border-color: #3b82f6; }
+            QPushButton:disabled { background: #2b2b2b; border: 1px solid #3d3d3d; }
         """)
         btn_sort_v.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_sort_v.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
@@ -616,11 +614,10 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         btn_types = None
         if not is_similar:
             btn_types = ToolTipButton(AppContext.tr("cln_btn_types"))
-            btn_types.setStyleSheet("QPushButton:disabled { background: #222; border: 1px solid #333; color: #777; }")
             btn_types.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_types.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
             btn_types.setToolTip(AppContext.tr("cln_btn_types"))
-            btn_types.setStyleSheet("QPushButton { background: #333; color: white; border: 1px solid #444; border-radius: 3px; padding: 2px 8px; } QPushButton:disabled { color: #555; background: #222; border-color: #333; }")
+            btn_types.setStyleSheet("QPushButton { background: #333; color: white; border: 1px solid #444; border-radius: 3px; padding: 2px 8px; } QPushButton:hover { background: #444; } QPushButton:disabled { color: #555; background: #2b2b2b; border: 1px solid #3d3d3d; }")
             btn_types.clicked.connect(self.on_type_filter_click)
             btn_types.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
             btn_types.customContextMenuRequested.connect(self.on_types_context_menu)

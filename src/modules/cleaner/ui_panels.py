@@ -826,7 +826,7 @@ class CleanerActionBar(QFrame):
                 h += 9
             else:
                 h += 22
-        h += 2
+        h += 32
         self.combo_autoselect.view().setMinimumHeight(h)
         self.combo_autoselect.view().setMaximumHeight(h)
     def update_collision_items(self):

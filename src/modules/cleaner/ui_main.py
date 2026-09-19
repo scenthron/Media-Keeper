@@ -353,9 +353,9 @@ class CleanerModule(QWidget, CleanerTreeMixin, ScanMixin, ViewMixin, ActionMixin
         if self.current_tab == 1:
             return self.lbl_selection_info_similar
         elif self.current_tab == 3:
-            return self.page_ai.action_bar.lbl_selection_info
+            return self.page_ai.lbl_selection_info
         elif self.current_tab == 2:
-            return self.page_fragment.action_bar.lbl_selection_info
+            return self.page_fragment.lbl_selection_info
         else:
             return self.lbl_selection_info_dupes
 

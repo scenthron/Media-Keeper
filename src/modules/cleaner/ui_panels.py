@@ -39,7 +39,7 @@ from PyQt6.QtCore import QEvent
 class ToolTipButton(QPushButton):
     def event(self, e):
         if e.type() == QEvent.Type.ToolTip and not self.isEnabled():
-            QToolTip.showText(e.globalPosition().toPoint(), self.toolTip(), self)
+            QToolTip.showText(e.globalPos(), self.toolTip(), self)
             return True
         return super().event(e)
 
@@ -840,8 +840,16 @@ class CleanerActionBar(QFrame):
             add_item(AppContext.tr("cln_sel_protected_dupes"), AppContext.tr("cln_sel_tip_protected_dupes"), 14)
             add_item(AppContext.tr("cln_sel_reference_dupes"), AppContext.tr("cln_sel_tip_reference_dupes"), 15)
 
-        h = self.combo_autoselect.count() * 26
+        h = 0
+        for i in range(self.combo_autoselect.count()):
+            size_hint = self.combo_autoselect.itemData(i, Qt.ItemDataRole.SizeHintRole)
+            if size_hint == QSize(0, 9):
+                h += 9
+            else:
+                h += 22
+        h += 2
         self.combo_autoselect.view().setMinimumHeight(h)
+        self.combo_autoselect.view().setMaximumHeight(h)
     def update_collision_items(self):
         current_idx = self.combo_collision.currentIndex()
         self.combo_collision.clear()

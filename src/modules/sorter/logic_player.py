@@ -208,7 +208,9 @@ class PlayerMixin:
             size = 0
             try: 
                 size = os.path.getsize(self.current_file_path)
-            except: 
+            except Exception as e:
+                import logging
+                logging.error(f"GETSIZE ERROR: path='{self.current_file_path}', type={type(self.current_file_path)}, error={e}")
                 pass
             size_str = format_size(size)
             idx_str = f"[{self.current_index + 1}/{len(self.files_queue)}]"

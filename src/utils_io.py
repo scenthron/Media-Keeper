@@ -11,6 +11,9 @@ def ensure_long_path(path):
     """
     if not path:
         return path
+    if os.name == 'nt' and path.startswith('\\\\?\\'):
+        # Windows APIs strictly require backslashes when using the long path prefix
+        return path.replace('/', '\\')
     if os.name == 'nt' and not path.startswith('\\\\?\\'):
         abs_path = os.path.abspath(path)
         if abs_path.startswith('\\\\'):

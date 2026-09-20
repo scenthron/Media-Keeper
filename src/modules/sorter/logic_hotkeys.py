@@ -180,10 +180,6 @@ class HotkeyRegistry:
         """
         self._current_mode = mode_idx
         
-        fast_key = self.get_effective_key("fast_move_to_target")
-        play_key = self.get_effective_key("toggle_playback")
-        conflict = (fast_key == play_key and fast_key)
-
         for action_id, sc in self._shortcuts.items():
             action = self._actions[action_id]
             is_enabled = False
@@ -192,9 +188,6 @@ class HotkeyRegistry:
             else:
                 is_enabled = mode_idx in action.enabled_in_modes
                 
-            if mode_idx == 0 and conflict and action_id == "toggle_playback":
-                is_enabled = False
-
             sc.setEnabled(is_enabled)
 
     # ------------------------------------------------------------------
@@ -414,11 +407,21 @@ _SORTER_ACTIONS: list[HotkeyAction] = [
         action_id="fast_move_to_target",
         label_ru="Быстрое перемещение в выбранную папку",
         label_en="Fast move to selected folder",
-        default_key="Space",
+        default_key="M",
         callback_name="fast_move_to_target",
         group="file",
         context=_W,
         enabled_in_modes=None,
+    ),
+    HotkeyAction(
+        action_id="toggle_selection",
+        label_ru="Выделить файл (чекбокс)",
+        label_en="Select file (checkbox)",
+        default_key="Space",
+        callback_name="toggle_selection",
+        group="file",
+        context=_W,
+        enabled_in_modes={1, 2},
     ),
 ]
 
@@ -503,36 +506,48 @@ class SorterHotkeysMixin:
         if hasattr(self, 'viewer'):
             self.viewer.toggle_hover_preview()
 
+    def toggle_selection(self) -> None:
+        """Переключает выделение/чекбокс в режиме таблицы или сетки."""
+        if not hasattr(self, 'viewer'):
+            return
+            
+        mode = getattr(self.viewer, 'current_view_mode', 0)
+        
+        if mode == 2:  # Table mode
+            try:
+                from PyQt6.QtCore import Qt
+                table = getattr(self.viewer, 'list_view', None) and getattr(self.viewer.list_view, 'table', None)
+                if not table: return
+                row = table.currentRow()
+                if row >= 0:
+                    item = table.item(row, 0)
+                    if item:
+                        st = Qt.CheckState.Unchecked if item.checkState() == Qt.CheckState.Checked else Qt.CheckState.Checked
+                        item.setCheckState(st)
+                        table.itemSelectionChanged.emit()
+                        if row + 1 < table.rowCount():
+                            table.setCurrentCell(row + 1, 1)
+            except Exception as e:
+                import logging
+                logging.error(f"Error toggling checkbox via hotkey: {e}")
+                
+        elif mode == 1:  # Grid mode
+            try:
+                grid = getattr(self.viewer, 'grid_view', None)
+                if not grid: return
+                row = grid.currentRow()
+                if row >= 0:
+                    item = grid.item(row)
+                    if item:
+                        item.setSelected(not item.isSelected())
+            except Exception as e:
+                import logging
+                logging.error(f"Error toggling selection in grid via hotkey: {e}")
+
     def fast_move_to_target(self) -> None:
         """Перемещает выделенные файлы в папку быстрой цели (Fast Move)."""
-        if hasattr(self, 'viewer') and getattr(self.viewer, 'current_view_mode', None) == 2:
-            fast_key = getattr(self, '_hotkey_registry', None) and self._hotkey_registry.get_effective_key("fast_move_to_target")
-            if fast_key and fast_key.lower() == "space":
-                # Toggle checkbox instead of fast move
-                try:
-                    from PyQt6.QtCore import Qt
-                    table = self.viewer.list_view.table
-                    row = table.currentRow()
-                    if row >= 0:
-                        item = table.item(row, 0)
-                        if item:
-                            st = Qt.CheckState.Unchecked if item.checkState() == Qt.CheckState.Checked else Qt.CheckState.Checked
-                            item.setCheckState(st)
-                            table.itemSelectionChanged.emit()
-                            if row + 1 < table.rowCount():
-                                table.setCurrentCell(row + 1, 1)
-                except Exception as e:
-                    import logging
-                    logging.error(f"Error toggling checkbox via Space: {e}")
-                return
-
+        import logging
         if not getattr(self, 'quick_target_path', None) or not os.path.exists(self.quick_target_path):
-            if hasattr(self, '_hotkey_registry') and hasattr(self, 'viewer') and getattr(self.viewer, 'current_view_mode', None) == 0:
-                fast_key = self._hotkey_registry.get_effective_key("fast_move_to_target")
-                play_key = self._hotkey_registry.get_effective_key("toggle_playback")
-                if fast_key == play_key:
-                    self.toggle_playback()
-                    return
             logging.warning("Fast move triggered, but quick_target_path is not set or invalid.")
             return
 

@@ -380,7 +380,49 @@ class PathSettingsDialog(QDialog):
         row_pagination.addStretch()
         l.addLayout(row_pagination, 4, 0, 1, 3)
 
-        l.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 5, 0, 1, 3)
+        row_delay = QHBoxLayout()
+        lbl_delay = QLabel("Задержка просмотра списка (сек):" if is_ru else "List view delay (sec):")
+        lbl_delay.setStyleSheet("font-weight: normal; color: #ccc;")
+        row_delay.addWidget(lbl_delay)
+        
+        from PyQt6.QtWidgets import QDoubleSpinBox
+        self.spin_list_delay = QDoubleSpinBox()
+        self.spin_list_delay.setRange(0.0, 10.0)
+        self.spin_list_delay.setSingleStep(0.1)
+        self.spin_list_delay.setDecimals(2)
+        self.spin_list_delay.setValue(self.config.get("list_view_delay", 0.0))
+        self.spin_list_delay.setFixedWidth(100)
+        self.spin_list_delay.setFixedHeight(26)
+        
+        self.spin_list_delay.setStyleSheet(f"""
+            QDoubleSpinBox {{
+                background-color: #333;
+                color: white;
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding-right: 20px;
+            }}
+            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
+                background-color: #444;
+                border: none;
+                width: 16px;
+            }}
+            QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {{ background-color: #555; }}
+            QDoubleSpinBox::up-arrow {{
+                image: url('{up_arrow}');
+                width: 12px; height: 12px;
+            }}
+            QDoubleSpinBox::down-arrow {{
+                image: url('{down_arrow}');
+                width: 12px; height: 12px;
+            }}
+        """)
+        
+        row_delay.addWidget(self.spin_list_delay)
+        row_delay.addStretch()
+        l.addLayout(row_delay, 5, 0, 1, 3)
+
+        l.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding), 6, 0, 1, 3)
 
         # Подсказка о смене языка
         lbl_lang_hint = QLabel(
@@ -390,7 +432,7 @@ class PathSettingsDialog(QDialog):
         )
         lbl_lang_hint.setStyleSheet("color: #89b4fa; font-size: 11px; font-weight: normal; margin-top: 10px;")
         lbl_lang_hint.setWordWrap(True)
-        l.addWidget(lbl_lang_hint, 5, 0, 1, 3)
+        l.addWidget(lbl_lang_hint, 7, 0, 1, 3)
 
     def setup_hotkeys_tab(self):
         is_ru = (AppContext.LANG == "RU")
@@ -648,5 +690,6 @@ class PathSettingsDialog(QDialog):
             "path_sort": self.e_sort.text(),
             "path_todel": self.e_todel.text(),
             "auto_collapse_groups": self.chk_collapse_groups.isChecked(),
-            "pagination_size": self.spin_pagination.value()
+            "pagination_size": self.spin_pagination.value(),
+            "list_view_delay": self.spin_list_delay.value()
         }

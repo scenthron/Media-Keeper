@@ -322,3 +322,38 @@ def reveal_in_explorer(path: str) -> bool:
             return False
 
 
+
+
+from PyQt6.QtCore import QObject, QEvent, Qt
+from PyQt6.QtWidgets import QAbstractItemView
+import time
+
+class ListViewDelayFilter(QObject):
+    def __init__(self):
+        super().__init__()
+        self.last_move_time = 0.0
+        self.cached_delay = 0.0
+        self.last_config_load = 0.0
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.KeyPress:
+            # Проверяем, является ли объект списком или его viewport
+            is_view = isinstance(obj, QAbstractItemView)
+            is_viewport = hasattr(obj, 'parentWidget') and isinstance(obj.parentWidget(), QAbstractItemView)
+            if is_view or is_viewport:
+                if event.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_PageUp, Qt.Key.Key_PageDown):
+                    current_time = time.time()
+                    # Кэшируем чтение конфига на 2 секунды, чтобы не грузить диск
+                    if current_time - self.last_config_load > 2.0:
+                        from modules.sorter.logic_config import ConfigManager
+                        config = ConfigManager.load()
+                        self.cached_delay = config.get('list_view_delay', 0.0)
+                        self.last_config_load = current_time
+                        
+                    if self.cached_delay > 0.0:
+                        if event.isAutoRepeat():
+                            if current_time - self.last_move_time < self.cached_delay:
+                                return True  # Блокируем событие
+                        self.last_move_time = current_time
+        return super().eventFilter(obj, event)
+

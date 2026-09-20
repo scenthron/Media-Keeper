@@ -463,6 +463,10 @@ if __name__ == "__main__":
     logging.info(f"Запуск приложения {APP_VERSION}.")
     app = QApplication(sys.argv)
     
+    from utils_common import ListViewDelayFilter
+    list_delay_filter = ListViewDelayFilter()
+    app.installEventFilter(list_delay_filter)
+    
     # Load built-in Qt translations for system dialogs (e.g. QFileDialog)
     try:
         from PyQt6.QtCore import QTranslator

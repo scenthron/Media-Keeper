@@ -22,14 +22,15 @@ class ConfigManager:
         "session_segment_view": False,
         "auto_collapse_groups": True,
         "pagination_size": 1000,
+        "list_view_delay": 0.0,
         "view_mode": 0,
         "use_directml": False
     }
     
     @staticmethod
     def get_config_path():
-        from logic_paths import get_app_data_dir
-        return os.path.join(get_app_data_dir(), "settings.ini")
+        from config import AppContext
+        return os.path.join(AppContext.get_app_data_dir(), "settings.ini")
 
     @staticmethod
     def get_base_dir():
@@ -58,11 +59,15 @@ class ConfigManager:
                                     config[k] = ConfigManager.DEFAULT_CONFIG.get(k, 0)
                                     logging.warning(f"Некорректное значение для '{k}' в settings.ini: '{v}'. Используется значение по умолчанию {config[k]}.")
                             elif k == "hover_delay":
+                                try: 
+                                    config[k] = float(v)
+                                except ValueError: 
+                                    config[k] = 0.25
+                            elif k == "list_view_delay":
                                 try:
                                     config[k] = float(v)
                                 except ValueError:
-                                    config[k] = 0.4
-                                    logging.warning(f"Некорректное значение для '{k}' в settings.ini: '{v}'. Используется значение по умолчанию 0.4.")
+                                    config[k] = 0.0
                             elif k == "session_loop":
                                 config[k] = (v.lower() == "true")
                             elif k == "use_directml":

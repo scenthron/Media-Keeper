@@ -209,7 +209,6 @@ class PlayerMixin:
             try: 
                 size = os.path.getsize(self.current_file_path)
             except Exception as e:
-                import logging
                 logging.error(f"GETSIZE ERROR: path='{self.current_file_path}', type={type(self.current_file_path)}, error={e}")
                 pass
             size_str = format_size(size)

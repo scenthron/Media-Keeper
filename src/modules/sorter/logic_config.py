@@ -29,8 +29,8 @@ class ConfigManager:
     
     @staticmethod
     def get_config_path():
-        from config import AppContext
-        return os.path.join(AppContext.get_app_data_dir(), "settings.ini")
+        from logic_paths import get_app_data_dir
+        return os.path.join(get_app_data_dir(), "settings.ini")
 
     @staticmethod
     def get_base_dir():

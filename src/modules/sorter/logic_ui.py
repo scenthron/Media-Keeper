@@ -684,6 +684,9 @@ class UiSetupMixin:
                 self.config["hotkeys_sorter"] = self._hotkey_registry.save_overrides()
 
             ConfigManager.save(self.config)
+            
+            from PyQt6.QtCore import QCoreApplication
+            QCoreApplication.instance().setProperty("list_view_delay", new_data.get("list_view_delay", 0.0))
 
             self.update_paths_from_config()
             self.update_watcher_paths()

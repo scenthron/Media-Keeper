@@ -1519,6 +1519,9 @@ class AiClassificationTab(QWidget):
                 group_item = root.child(i)
                 group_visible_children = 0
                 
+                g_data = group_item.data(0, Qt.ItemDataRole.UserRole)
+                g_name = g_data.get("name", "Unknown") if g_data else "Unknown"
+                
                 if getattr(self, "is_cluster_results", False):
                     target_size = int(value)
                     actual_size = group_item.childCount()
@@ -1532,6 +1535,7 @@ class AiClassificationTab(QWidget):
                             group_item.setCheckState(0, Qt.CheckState.Unchecked)
                     else:
                         group_item.setHidden(False)
+                        group_item.setText(0, f"Группа: {g_name} ({actual_size} файлов)" if AppContext.is_ru() else f"Group: {g_name} ({actual_size} files)")
                 else:
                     target_similarity = float(value)
                     for j in range(group_item.childCount()):
@@ -1553,6 +1557,7 @@ class AiClassificationTab(QWidget):
                             group_item.setCheckState(0, Qt.CheckState.Unchecked)
                     else:
                         group_item.setHidden(False)
+                        group_item.setText(0, f"Группа: {g_name} ({group_visible_children} файлов)" if AppContext.is_ru() else f"Group: {g_name} ({group_visible_children} files)")
         finally:
             self.tree_results.blockSignals(False)
             

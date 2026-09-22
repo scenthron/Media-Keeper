@@ -823,23 +823,9 @@ class FileOpsMixin:
         except Exception as e:
             logging.error(f"Error clearing QThreadPool: {e}")
 
-        # Сначала закрываем попапы и останавливаем ховер-воспроизведение на уровне вьюшек
-        try:
-            if hasattr(self, 'viewer') and self.viewer:
-                if hasattr(self.viewer, 'grid_view') and self.viewer.grid_view:
-                    if hasattr(self.viewer.grid_view, '_stop_hover_playback'):
-                        try: self.viewer.grid_view._stop_hover_playback(force=True)
-                        except: pass
-                if hasattr(self.viewer, 'list_view') and self.viewer.list_view:
-                    if hasattr(self.viewer.list_view, '_stop_hover_playback'):
-                        try: self.viewer.list_view._stop_hover_playback(force=True)
-                        except: pass
-                self.viewer.clear_scene_content()
-        except Exception as e:
-            logging.error(f"Error stopping hover players: {e}")
-
         players_to_wait = []
 
+        # Сначала собираем все плееры, которые могут держать файлы
         try:
             if hasattr(self, '_recreate_main_player'):
                 self._recreate_main_player()
@@ -862,8 +848,34 @@ class FileOpsMixin:
                                 players_to_wait.append(view.hover_player)
                             except Exception:
                                 pass
+                        
+                        # Также берем плеер из попапа, если он открыт
+                        if hasattr(view, 'large_preview_popup') and view.large_preview_popup:
+                            try:
+                                p_player = view.large_preview_popup.media_player
+                                if p_player:
+                                    p_player.stop()
+                                    p_player.setSource(QUrl())
+                                    players_to_wait.append(p_player)
+                            except Exception:
+                                pass
         except Exception as e:
             logging.error(f"Error gathering active hover players: {e}")
+
+        # Теперь безопасно закрываем попапы и останавливаем ховер-воспроизведение
+        try:
+            if hasattr(self, 'viewer') and self.viewer:
+                if hasattr(self.viewer, 'grid_view') and self.viewer.grid_view:
+                    if hasattr(self.viewer.grid_view, '_stop_hover_playback'):
+                        try: self.viewer.grid_view._stop_hover_playback(force=True)
+                        except: pass
+                if hasattr(self.viewer, 'list_view') and self.viewer.list_view:
+                    if hasattr(self.viewer.list_view, '_stop_hover_playback'):
+                        try: self.viewer.list_view._stop_hover_playback(force=True)
+                        except: pass
+                self.viewer.clear_scene_content()
+        except Exception as e:
+            logging.error(f"Error stopping hover players: {e}")
             
         # Ждем, пока оставшиеся плееры перейдут в состояние NoMedia (высвободят файлы)
         if players_to_wait:

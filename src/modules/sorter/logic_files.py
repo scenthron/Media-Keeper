@@ -859,6 +859,17 @@ class FileOpsMixin:
                                     players_to_wait.append(p_player)
                             except Exception:
                                 pass
+                                
+                        # И для TableModeContainer (режим таблицы)
+                        if hasattr(view, 'preview_widget') and view.preview_widget:
+                            try:
+                                t_player = getattr(view.preview_widget, 'player', None)
+                                if t_player:
+                                    t_player.stop()
+                                    t_player.setSource(QUrl())
+                                    players_to_wait.append(t_player)
+                            except Exception:
+                                pass
         except Exception as e:
             logging.error(f"Error gathering active hover players: {e}")
 

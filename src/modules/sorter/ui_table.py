@@ -584,7 +584,10 @@ class TableModeContainer(QWidget):
     # -----------------------------------------------------------------------
 
     def _stop_hover_playback(self, force=False):
-        pass
+        try:
+            self.preview_widget.stop_playback(True)
+        except Exception:
+            pass
         
     def setUpdatesEnabled(self, enabled):
         self.table.setUpdatesEnabled(enabled)

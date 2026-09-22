@@ -218,16 +218,18 @@ class ViewMixin:
         
         # Enable/disable Type Filter button based on availability of data
         has_data = (len(self.virtual_model._all_items) > 0)
+        
+        if hasattr(self, 'action_bar'):
+            if hasattr(self.action_bar, 'btn_select_all'): self.action_bar.btn_select_all.setEnabled(has_data)
+            if hasattr(self.action_bar, 'btn_deselect'):
+                if not has_data:
+                    self.action_bar.btn_deselect.setEnabled(False)
+        
         if hasattr(self, 'current_view_mode') and self.current_view_mode == 0:
             if hasattr(self, 'btn_types') and self.btn_types:
                 self.btn_types.setEnabled(has_data)
             if hasattr(self, 'action_bar'):
                 if hasattr(self.action_bar, 'combo_autoselect'): self.action_bar.combo_autoselect.setEnabled(True)
-                if hasattr(self.action_bar, 'btn_select_all'): self.action_bar.btn_select_all.setEnabled(has_data)
-                # btn_deselect is controlled by selection logic, but we can force it here just in case:
-                if hasattr(self.action_bar, 'btn_deselect'): 
-                    if not has_data:
-                        if hasattr(self.action_bar, 'btn_deselect'): self.action_bar.btn_deselect.setEnabled(False)
             if hasattr(self, 'btn_exp'): self.btn_exp.setEnabled(has_data)
             if hasattr(self, 'btn_col'): self.btn_col.setEnabled(has_data)
             if hasattr(self, 'btn_sort_v'): self.btn_sort_v.setEnabled(has_data)

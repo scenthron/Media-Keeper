@@ -732,6 +732,13 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         del_action.triggered.connect(self.delete_category)
         menu.addAction(del_action)
 
+        is_temp_root = self.path in getattr(self.app, 'temp_roots', [])
+        if is_temp_root:
+            menu.addSeparator()
+            remove_temp_action = QAction("Убрать из дерева (временный)" if AppContext.is_ru() else "Remove from tree", self)
+            remove_temp_action.triggered.connect(self.remove_temp_root)
+            menu.addAction(remove_temp_action)
+
         menu.exec(self.mapToGlobal(pos))
 
     def request_duplicates(self):
@@ -739,3 +746,14 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         if hasattr(win, 'cleaner_tab'):
             win.cleaner_tab.add_folder_path(self.path)
             win.switch_tab(2)
+
+    def remove_temp_root(self):
+        if self.path in getattr(self.app, 'temp_roots', []):
+            self.app.temp_roots.remove(self.path)
+            self.app.config["temp_roots"] = "|".join(self.app.temp_roots)
+            from config import ConfigManager
+            ConfigManager.save(self.app.config)
+            self.app.reload_categories_ui()
+
+    def rename_category(self):
+        from .ui_sidebar_dialogs import RenameDialog

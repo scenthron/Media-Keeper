@@ -1320,7 +1320,7 @@ class AnalyzerWidget(QWidget):
             shell = self.window()
             if shell:
                 video_exts = VIDEO_EXTS
-                audio_exts = {'mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'wma'}
+                audio_exts = {'mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac', 'wma', 'opus'}
                 image_exts = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'tiff'}
 
                 if ext in video_exts:

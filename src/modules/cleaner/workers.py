@@ -534,7 +534,7 @@ class SimilarScanWorker(QThread):
         if self.media_type == 0:
             allowed_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.avif', '.tiff', '.webp', '.avif', '.heic', '.heif'}
         elif self.media_type == 1:
-            allowed_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.oga', '.m4a', '.wma'}
+            allowed_exts = {'.mp3', '.wav', '.flac', '.aac', '.ogg', '.oga', '.m4a', '.wma', '.opus'}
         else:
             allowed_exts = VIDEO_EXTS
             

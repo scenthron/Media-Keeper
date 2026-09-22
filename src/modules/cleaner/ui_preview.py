@@ -503,7 +503,7 @@ class CleanerPreviewWidget(QWidget):
         self.time_overlay.set_time(0, 0)
         
         ext = os.path.splitext(path)[1].lower()
-        is_audio = ext in ['.mp3', '.wav', '.ogg', '.oga', '.flac', '.m4a', '.wma', '.aac']
+        is_audio = ext in ['.mp3', '.wav', '.ogg', '.oga', '.flac', '.m4a', '.wma', '.aac', '.opus']
         self.current_media_type = 'audio' if is_audio else 'video'
         
         if is_audio:
@@ -649,7 +649,7 @@ class CleanerPreviewWidget(QWidget):
         
         if ext in ['.jpg', '.jpeg', '.png', '.bmp', '.avif']: self.setup_static_image(path)
         elif ext in ['.gif', '.webp', '.avif']: self.setup_animated(path)
-        elif ext in VIDEO_EXTS or ext in ['.mp3', '.wav', '.ogg', '.oga', '.flac', '.m4a', '.wma', '.aac']: 
+        elif ext in VIDEO_EXTS or ext in ['.mp3', '.wav', '.ogg', '.oga', '.flac', '.m4a', '.wma', '.aac', '.opus']: 
             self.setup_video(path)
         else:
             self.show_empty("...")

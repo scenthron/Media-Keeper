@@ -862,9 +862,6 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             else:
                 if item_type == "category":
                     widget = CategoryWidget(name, path, self, level=0)
-                    if path not in getattr(self, 'collapsed_states_cache', {}) and self.temp_roots:
-                        if not widget.is_collapsed:
-                            widget.toggle_collapse()
                     layout.insertWidget(idx, widget)
                 elif item_type == "drop_zone":
                     drop_zone = DropZoneWidget()

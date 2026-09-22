@@ -98,7 +98,7 @@ class FileOpsMixin:
         self.current_index = new_current_index
         
         self.viewer.remove_files_from_view(missing_paths)
-        self.viewer.sync_active_index(self.current_index)
+        self.viewer.sync_active_index(self.current_index, scroll=False)
         
         if getattr(self.viewer, 'current_view_mode', 0) == 0:
             self.show_current_file()
@@ -1181,7 +1181,7 @@ class FileOpsMixin:
                 self.viewer.remove_files_from_view(succeeded_srcs)
                 logging.info(f"[PROFILER] Шаг 3: remove_files_from_view завершен (плитка скрыта). Прошло времени: {(time.perf_counter() - start_time)*1000:.2f} ms")
                 
-                self.viewer.sync_active_index(self.current_index)
+                self.viewer.sync_active_index(self.current_index, scroll=False)
                 
                 if getattr(self.viewer, 'current_view_mode', 0) == 0:
                     self.show_current_file()
@@ -1303,7 +1303,7 @@ class FileOpsMixin:
             
             # Обновляем UI
             self.viewer.remove_files_from_view(deleted_paths)
-            self.viewer.sync_active_index(self.current_index)
+            self.viewer.sync_active_index(self.current_index, scroll=False)
             
             if hasattr(self, 'viewer') and getattr(self.viewer, 'current_view_mode', -1) == 0:
                 self.show_current_file()
@@ -1530,7 +1530,7 @@ class FileOpsMixin:
                     if files_to_insert:
                         files_to_insert.sort(key=lambda x: x[1])
                         self.viewer.insert_files_into_view(files_to_insert)
-                        self.viewer.sync_active_index(self.current_index)
+                        self.viewer.sync_active_index(self.current_index, scroll=False)
                         if getattr(self.viewer, 'current_view_mode', -1) == 0:
                             self.show_current_file()
                         else:

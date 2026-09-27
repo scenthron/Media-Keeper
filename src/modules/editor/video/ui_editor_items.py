@@ -1,6 +1,7 @@
+from PyQt6.QtWidgets import QGraphicsObject, QGraphicsItem
+from PyQt6.QtCore import Qt, QRectF, QPointF, QTimer, pyqtSignal, QSizeF
+from PyQt6.QtGui import QColor, QPainter, QPen, QBrush, QPixmap, QMovie, QFont, QFontMetrics, QImage
 from PyQt6.QtMultimedia import QVideoSink, QVideoFrame
-from PyQt6.QtCore import pyqtSignal, QSizeF
-from PyQt6.QtGui import QImage
 
 class VideoGraphicsItem(QGraphicsObject):
     """
@@ -52,10 +53,6 @@ class VideoGraphicsItem(QGraphicsObject):
             painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
             painter.drawImage(self.boundingRect(), self._frame_image)
 
-
-from PyQt6.QtWidgets import QGraphicsObject, QGraphicsItem
-from PyQt6.QtCore import Qt, QRectF, QPointF, QTimer
-from PyQt6.QtGui import QColor, QPainter, QPen, QBrush, QPixmap, QMovie, QFont, QFontMetrics
 
 class OverlayGraphicsItem(QGraphicsObject):
     """

@@ -1420,13 +1420,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
     def center_video(self, size=None):
         if not self.video_item or not self.is_video_loaded: return
-        if not isinstance(size, QSizeF):
-            ns = self.video_item.nativeSize()
-            if not ns.isValid(): return
-            if self.current_rotation % 180 != 0:
-                size = QSizeF(ns.height(), ns.width())
-            else:
-                size = ns
+        if not isinstance(size, QSizeF): size = self.video_item.nativeSize()
         if not size.isValid(): return
         self.video_item.setSize(size)
         self.video_item.setPos(0, 0)

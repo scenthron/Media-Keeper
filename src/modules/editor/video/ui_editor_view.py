@@ -59,13 +59,15 @@ class EditorGraphicsView(QGraphicsView):
         super().mousePressEvent(event)
 
     def reset_zoom(self):
-        self.resetTransform()
-        if self.editor_widget and not getattr(self.editor_widget, 'is_video_loaded', False):
-            return
-        if self.scene() and self.scene().sceneRect().isValid():
-            rect = self.scene().sceneRect()
-            self.fitInView(rect, Qt.AspectRatioMode.KeepAspectRatio)
-            self.centerOn(rect.center())
+        if self.editor_widget and hasattr(self.editor_widget, '_fit_scene_to_view'):
+            if self.scene() and self.scene().sceneRect().isValid():
+                self.editor_widget._fit_scene_to_view(self.scene().sceneRect())
+        else:
+            self.resetTransform()
+            if self.scene() and self.scene().sceneRect().isValid():
+                rect = self.scene().sceneRect()
+                self.fitInView(rect, Qt.AspectRatioMode.KeepAspectRatio)
+                self.centerOn(rect.center())
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

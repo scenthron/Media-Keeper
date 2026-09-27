@@ -1418,6 +1418,26 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.is_looping = loop
         self.player.setPlaybackRate(rate)
 
+
+    def _fit_scene_to_view(self, scene_rect):
+        if scene_rect.isEmpty(): return
+        self.scene.setSceneRect(scene_rect)
+        self.view.resetTransform()
+        
+        view_rect = self.view.viewport().rect()
+        w_view, h_view = view_rect.width(), view_rect.height()
+        w_scene, h_scene = scene_rect.width(), scene_rect.height()
+        
+        if w_scene > 0 and h_scene > 0:
+            scale = min(w_view / w_scene, h_view / h_scene)
+            # Отступаем чуть-чуть от краев, чтобы точно не было скроллбаров и багов
+            scale *= 0.99 
+            t = self.view.transform()
+            t.scale(scale, scale)
+            self.view.setTransform(t)
+        
+        self.view.centerOn(scene_rect.center())
+
     def center_video(self, size=None):
         if not self.video_item or not self.is_video_loaded: return
         if not isinstance(size, QSizeF): size = self.video_item.nativeSize()
@@ -1427,10 +1447,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.video_item.setTransform(QTransform()) 
         rect = self.video_item.boundingRect()
         if not rect.isEmpty():
-            self.scene.setSceneRect(rect)
-            self.view.resetTransform()
-            self.view.fitInView(rect, Qt.AspectRatioMode.KeepAspectRatio)
-            self.view.centerOn(rect.center())
+            self._fit_scene_to_view(rect)
             if self.overlay_item.get_rect().width() == 200: 
                 w, h = rect.width(), rect.height()
                 ow, oh = w * (2.0 / 3.0), h * (2.0 / 3.0)
@@ -1618,32 +1635,26 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
     def _apply_view_transform(self):
         rect = self.video_item.boundingRect()
-        self.video_item.setTransformOriginPoint(rect.center())
-        self.video_item.setRotation(self.current_rotation)
+        
         scale_x = -1 if self.is_flip_h else 1
         scale_y = -1 if self.is_flip_v else 1
+        
         t = QTransform()
-        if scale_x == -1 or scale_y == -1:
-            t.translate(rect.center().x(), rect.center().y())
-            t.scale(scale_x, scale_y)
-            t.translate(-rect.center().x(), -rect.center().y())
+        t.translate(rect.center().x(), rect.center().y())
+        t.rotate(self.current_rotation)
+        t.scale(scale_x, scale_y)
+        t.translate(-rect.center().x(), -rect.center().y())
+        
+        self.video_item.setRotation(0)
+        self.video_item.setTransformOriginPoint(0, 0)
         self.video_item.setTransform(t)
         
-        # Сброс позиции перед вычислением, чтобы не накапливать сдвиги
         self.video_item.setPos(0, 0)
         scene_rect = self.video_item.sceneBoundingRect()
-        
-        # Сдвигаем элемент так, чтобы его сцена начиналась строго с (0,0)
-        # Это предотвращает баги QGraphicsView::fitInView с отрицательными координатами
         self.video_item.setPos(-scene_rect.topLeft())
         
         scene_rect = self.video_item.sceneBoundingRect()
-        
-        if not scene_rect.isEmpty():
-            self.scene.setSceneRect(scene_rect)
-            self.view.resetTransform()
-            self.view.fitInView(scene_rect, Qt.AspectRatioMode.KeepAspectRatio)
-        self.view.centerOn(scene_rect.center())
+        self._fit_scene_to_view(scene_rect)
 
     def _delete_selected_marker(self):
         row = self.list_markers.currentRow()

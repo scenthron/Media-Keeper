@@ -1428,6 +1428,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         rect = self.video_item.boundingRect()
         if not rect.isEmpty():
             self.scene.setSceneRect(rect)
+            self.view.resetTransform()
             self.view.fitInView(rect, Qt.AspectRatioMode.KeepAspectRatio)
             self.view.centerOn(rect.center())
             if self.overlay_item.get_rect().width() == 200: 
@@ -1622,11 +1623,15 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         scale_x = -1 if self.is_flip_h else 1
         scale_y = -1 if self.is_flip_v else 1
         t = QTransform()
-        t.scale(scale_x, scale_y)
+        if scale_x == -1 or scale_y == -1:
+            t.translate(rect.center().x(), rect.center().y())
+            t.scale(scale_x, scale_y)
+            t.translate(-rect.center().x(), -rect.center().y())
         self.video_item.setTransform(t)
         scene_rect = self.video_item.sceneBoundingRect()
         if not scene_rect.isEmpty():
             self.scene.setSceneRect(scene_rect)
+            self.view.resetTransform()
             self.view.fitInView(scene_rect, Qt.AspectRatioMode.KeepAspectRatio)
         self.view.centerOn(scene_rect.center())
 

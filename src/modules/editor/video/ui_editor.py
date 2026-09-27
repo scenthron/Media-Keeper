@@ -1628,7 +1628,17 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
             t.scale(scale_x, scale_y)
             t.translate(-rect.center().x(), -rect.center().y())
         self.video_item.setTransform(t)
+        
+        # Сброс позиции перед вычислением, чтобы не накапливать сдвиги
+        self.video_item.setPos(0, 0)
         scene_rect = self.video_item.sceneBoundingRect()
+        
+        # Сдвигаем элемент так, чтобы его сцена начиналась строго с (0,0)
+        # Это предотвращает баги QGraphicsView::fitInView с отрицательными координатами
+        self.video_item.setPos(-scene_rect.topLeft())
+        
+        scene_rect = self.video_item.sceneBoundingRect()
+        
         if not scene_rect.isEmpty():
             self.scene.setSceneRect(scene_rect)
             self.view.resetTransform()

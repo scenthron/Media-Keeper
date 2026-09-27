@@ -1420,13 +1420,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
     def center_video(self, size=None):
         if not self.video_item or not self.is_video_loaded: return
-        if not isinstance(size, QSizeF):
-            ns = self.video_item.nativeSize()
-            if not ns.isValid(): return
-            if self.current_rotation % 180 != 0:
-                size = QSizeF(ns.height(), ns.width())
-            else:
-                size = ns
+        if not isinstance(size, QSizeF): size = self.video_item.nativeSize()
         if not size.isValid(): return
         self.video_item.setSize(size)
         self.video_item.setPos(0, 0)
@@ -1613,7 +1607,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
     def _rotate(self, angle):
         self.current_rotation = (self.current_rotation + angle) % 360
-        self.center_video()
+        self._apply_view_transform()
         self._check_start_readiness()
 
     def _flip(self, axis):
@@ -1625,12 +1619,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
     def _apply_view_transform(self):
         rect = self.video_item.boundingRect()
         self.video_item.setTransformOriginPoint(rect.center())
-        
-        effective_rotation = 0 if (self.current_rotation % 180 != 0) else self.current_rotation
-        if self.current_rotation == 270:
-            effective_rotation = 180
-            
-        self.video_item.setRotation(effective_rotation)
+        self.video_item.setRotation(self.current_rotation)
         scale_x = -1 if self.is_flip_h else 1
         scale_y = -1 if self.is_flip_v else 1
         t = QTransform()

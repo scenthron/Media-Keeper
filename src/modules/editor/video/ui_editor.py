@@ -22,7 +22,7 @@ from ..ui_ffmpeg_notice import FFmpegNoticeWidget
 from ..ffmpeg_downloader import check_ffmpeg_available
 
 # Sub-components
-from .ui_editor_items import OverlayGraphicsItem, CropHandle
+from .ui_editor_items import OverlayGraphicsItem, CropHandle, VideoGraphicsItem
 from .ui_editor_widgets import WaveformProgressWidget, MagneticSlider, PlaybackSettingsPopup, CollapsibleSection
 from .ui_editor_view import EditorGraphicsView
 
@@ -190,8 +190,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.view.setAcceptDrops(False)
         self.view.viewport().setAcceptDrops(False)
         
-        self.video_item = QGraphicsVideoItem()
-        self.video_item.setAspectRatioMode(Qt.AspectRatioMode.IgnoreAspectRatio)
+        self.video_item = VideoGraphicsItem()
         self.scene.addItem(self.video_item)
         self._video_output_set = False
         
@@ -1097,7 +1096,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         
         logging.info(f"Загрузка {'аудио' if is_audio else 'видео'}: {path}")
         if not getattr(self, "_video_output_set", False):
-            self.player.setVideoOutput(self.video_item)
+            self.player.setVideoOutput(self.video_item.videoSink())
             self._video_output_set = True
         self.player.setSource(QUrl.fromLocalFile(path))
         self._generate_waveform(path)
@@ -1424,7 +1423,6 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         if not isinstance(size, QSizeF): size = self.video_item.nativeSize()
         if not size.isValid(): return
         self.video_item.setSize(size)
-        self.video_item.setAspectRatioMode(Qt.AspectRatioMode.IgnoreAspectRatio)
         self.video_item.setPos(0, 0)
         self.video_item.setTransform(QTransform()) 
         rect = self.video_item.boundingRect()

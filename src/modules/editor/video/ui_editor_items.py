@@ -1,3 +1,57 @@
+from PyQt6.QtMultimedia import QVideoSink, QVideoFrame
+from PyQt6.QtCore import pyqtSignal, QSizeF
+from PyQt6.QtGui import QImage
+
+class VideoGraphicsItem(QGraphicsObject):
+    """
+    Надежный графический элемент видео на базе QVideoSink.
+    Исключает внутренние C++ баги масштабирования и обрезки QGraphicsVideoItem при поворотах.
+    """
+    nativeSizeChanged = pyqtSignal(QSizeF)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._sink = QVideoSink(self)
+        self._sink.videoFrameChanged.connect(self._on_frame_changed)
+        self._frame_image = QImage()
+        self._native_size = QSizeF(0, 0)
+        self._size = QSizeF(0, 0)
+
+    def videoSink(self):
+        return self._sink
+
+    def _on_frame_changed(self, frame: QVideoFrame):
+        if frame.isValid():
+            img = frame.toImage()
+            if not img.isNull():
+                self._frame_image = img
+                new_native = QSizeF(img.width(), img.height())
+                if self._native_size != new_native:
+                    self._native_size = new_native
+                    self.nativeSizeChanged.emit(self._native_size)
+                self.update()
+
+    def setSize(self, size: QSizeF):
+        if self._size != size:
+            self.prepareGeometryChange()
+            self._size = size
+            self.update()
+
+    def size(self) -> QSizeF:
+        return self._size if self._size.isValid() and not self._size.isEmpty() else self._native_size
+
+    def nativeSize(self) -> QSizeF:
+        return self._native_size
+
+    def boundingRect(self) -> QRectF:
+        s = self.size()
+        return QRectF(0, 0, s.width(), s.height())
+
+    def paint(self, painter: QPainter, option, widget=None):
+        if not self._frame_image.isNull():
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+            painter.drawImage(self.boundingRect(), self._frame_image)
+
 
 from PyQt6.QtWidgets import QGraphicsObject, QGraphicsItem
 from PyQt6.QtCore import Qt, QRectF, QPointF, QTimer

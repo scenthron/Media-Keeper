@@ -191,6 +191,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.view.viewport().setAcceptDrops(False)
         
         self.video_item = QGraphicsVideoItem()
+        self.video_item.setAspectRatioMode(Qt.AspectRatioMode.IgnoreAspectRatio)
         self.scene.addItem(self.video_item)
         self._video_output_set = False
         
@@ -1423,6 +1424,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         if not isinstance(size, QSizeF): size = self.video_item.nativeSize()
         if not size.isValid(): return
         self.video_item.setSize(size)
+        self.video_item.setAspectRatioMode(Qt.AspectRatioMode.IgnoreAspectRatio)
         self.video_item.setPos(0, 0)
         self.video_item.setTransform(QTransform()) 
         rect = self.video_item.boundingRect()

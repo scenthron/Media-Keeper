@@ -1421,28 +1421,19 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
     def _fit_scene_to_view(self, scene_rect):
         if scene_rect.isEmpty(): return
-        # Очищаем sceneRect, чтобы QGraphicsView сам определял границы
-        self.scene.setSceneRect(QRectF())
+        self.scene.setSceneRect(scene_rect)
         self.view.resetTransform()
         
-        # Полностью перестраиваем окно, как просил пользователь!
-        # Рассчитываем масштаб строго по размерам видео-элемента
-        view_rect = self.view.viewport().rect()
-        w_view, h_view = view_rect.width(), view_rect.height()
-        w_scene, h_scene = scene_rect.width(), scene_rect.height()
+        # Вращаем и отражаем САМУ КАМЕРУ (QGraphicsView), а не элементы на сцене.
+        # Это полностью обходит баги QGraphicsVideoItem в Qt6 с внутренним сжатием.
+        scale_x = -1 if self.is_flip_h else 1
+        scale_y = -1 if self.is_flip_v else 1
+        self.view.scale(scale_x, scale_y)
+        self.view.rotate(self.current_rotation)
         
-        if w_scene > 0 and h_scene > 0:
-            # Вычисляем масштаб так, чтобы видео идеально вписалось в холст (окно предпросмотра)
-            scale = min(w_view / w_scene, h_view / h_scene)
-            scale *= 0.99
-            
-            t = QTransform()
-            t.scale(scale, scale)
-            self.view.setTransform(t)
-            
-            # Устанавливаем sceneRect равным повернутому видео, чтобы центровка работала четко
-            self.scene.setSceneRect(scene_rect)
-            self.view.centerOn(scene_rect.center())
+        # Вписываем сцену. Qt автоматически учтет поворот камеры при расчете масштаба!
+        self.view.fitInView(scene_rect, Qt.AspectRatioMode.KeepAspectRatio)
+        self.view.centerOn(scene_rect.center())
 
     def center_video(self, size=None):
         if not self.video_item or not self.is_video_loaded: return
@@ -1630,8 +1621,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
     def _rotate(self, angle):
         self.current_rotation = (self.current_rotation + angle) % 360
-        # Полностью перестраиваем окно, как будто видео добавлено заново!
-        self.center_video()
+        self._apply_view_transform()
         self._check_start_readiness()
 
     def _flip(self, axis):
@@ -1641,26 +1631,14 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self._check_start_readiness()
 
     def _apply_view_transform(self):
-        rect = self.video_item.boundingRect()
-        
-        scale_x = -1 if self.is_flip_h else 1
-        scale_y = -1 if self.is_flip_v else 1
-        
-        t = QTransform()
-        t.translate(rect.center().x(), rect.center().y())
-        t.rotate(self.current_rotation)
-        t.scale(scale_x, scale_y)
-        t.translate(-rect.center().x(), -rect.center().y())
-        
-        self.video_item.setRotation(0)
-        self.video_item.setTransformOriginPoint(0, 0)
-        self.video_item.setTransform(t)
-        
+        # Очищаем все трансформации с видео-элемента, чтобы QVideoSink не сходил с ума
+        self.video_item.setTransform(QTransform())
         self.video_item.setPos(0, 0)
-        scene_rect = self.video_item.sceneBoundingRect()
-        self.video_item.setPos(-scene_rect.topLeft())
         
-        scene_rect = self.video_item.sceneBoundingRect()
+        # Теперь сцена всегда равна исходному размеру видео (nativeSize)
+        scene_rect = self.video_item.boundingRect()
+        
+        # Вся магия поворота и отражения теперь происходит внутри _fit_scene_to_view
         self._fit_scene_to_view(scene_rect)
 
     def _delete_selected_marker(self):

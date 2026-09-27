@@ -1421,22 +1421,28 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
     def _fit_scene_to_view(self, scene_rect):
         if scene_rect.isEmpty(): return
-        self.scene.setSceneRect(scene_rect)
+        # Очищаем sceneRect, чтобы QGraphicsView сам определял границы
+        self.scene.setSceneRect(QRectF())
         self.view.resetTransform()
         
+        # Полностью перестраиваем окно, как просил пользователь!
+        # Рассчитываем масштаб строго по размерам видео-элемента
         view_rect = self.view.viewport().rect()
         w_view, h_view = view_rect.width(), view_rect.height()
         w_scene, h_scene = scene_rect.width(), scene_rect.height()
         
         if w_scene > 0 and h_scene > 0:
+            # Вычисляем масштаб так, чтобы видео идеально вписалось в холст (окно предпросмотра)
             scale = min(w_view / w_scene, h_view / h_scene)
-            # Отступаем чуть-чуть от краев, чтобы точно не было скроллбаров и багов
-            scale *= 0.99 
-            t = self.view.transform()
+            scale *= 0.99
+            
+            t = QTransform()
             t.scale(scale, scale)
             self.view.setTransform(t)
-        
-        self.view.centerOn(scene_rect.center())
+            
+            # Устанавливаем sceneRect равным повернутому видео, чтобы центровка работала четко
+            self.scene.setSceneRect(scene_rect)
+            self.view.centerOn(scene_rect.center())
 
     def center_video(self, size=None):
         if not self.video_item or not self.is_video_loaded: return
@@ -1624,7 +1630,8 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
     def _rotate(self, angle):
         self.current_rotation = (self.current_rotation + angle) % 360
-        self._apply_view_transform()
+        # Полностью перестраиваем окно, как будто видео добавлено заново!
+        self.center_video()
         self._check_start_readiness()
 
     def _flip(self, axis):
@@ -1639,19 +1646,10 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         scale_x = -1 if self.is_flip_h else 1
         scale_y = -1 if self.is_flip_v else 1
         
-        # Фикс бага QGraphicsVideoItem (Qt6): при повороте на 90/270 он сжимает видео 
-        # внутри своей рамки (чтобы вписать повернутый кадр в исходный размер). 
-        # Компенсируем это сжатие увеличением элемента.
-        fix_scale = 1.0
-        if self.current_rotation % 180 != 0:
-            ns = self.video_item.nativeSize()
-            if ns.width() > 0 and ns.height() > 0:
-                fix_scale = max(ns.width() / ns.height(), ns.height() / ns.width())
-                
         t = QTransform()
         t.translate(rect.center().x(), rect.center().y())
         t.rotate(self.current_rotation)
-        t.scale(scale_x * fix_scale, scale_y * fix_scale)
+        t.scale(scale_x, scale_y)
         t.translate(-rect.center().x(), -rect.center().y())
         
         self.video_item.setRotation(0)

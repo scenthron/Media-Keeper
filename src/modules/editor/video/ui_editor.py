@@ -1420,16 +1420,15 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
     def center_video(self, size=None):
         if not self.video_item or not self.is_video_loaded: return
-        if not isinstance(size, QSizeF): size = self.video_item.nativeSize()
+        if not isinstance(size, QSizeF):
+            ns = self.video_item.nativeSize()
+            if not ns.isValid(): return
+            if self.current_rotation % 180 != 0:
+                size = QSizeF(ns.height(), ns.width())
+            else:
+                size = ns
         if not size.isValid(): return
         self.video_item.setSize(size)
-        # Отключаем внутреннее сохранение пропорций Qt6 (KeepAspectRatio), 
-        # которое вызывает баг с появлением огромных черных полос при повороте.
-        # Вместо этого мы позволяем кадру растянуться, а затем поворот (QTransform) 
-        # возвращает ему идеальные исходные пропорции на экране.
-        if hasattr(self.video_item, 'setAspectRatioMode'):
-            self.video_item.setAspectRatioMode(Qt.AspectRatioMode.IgnoreAspectRatio)
-        
         self.video_item.setPos(0, 0)
         self.video_item.setTransform(QTransform()) 
         rect = self.video_item.boundingRect()
@@ -1614,7 +1613,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
     def _rotate(self, angle):
         self.current_rotation = (self.current_rotation + angle) % 360
-        self._apply_view_transform()
+        self.center_video()
         self._check_start_readiness()
 
     def _flip(self, axis):

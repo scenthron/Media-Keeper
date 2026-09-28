@@ -339,6 +339,41 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
             new_path = os.path.join(parent_dir, new_name)
             try:
                 os.rename(self.path, new_path)
+                
+                from config import ConfigManager
+                config_changed = False
+                
+                if hasattr(self.app, 'target_dirs') and self.path in self.app.target_dirs:
+                    idx = self.app.target_dirs.index(self.path)
+                    self.app.target_dirs[idx] = new_path
+                    self.app.config["target_dirs"] = "|".join(self.app.target_dirs)
+                    config_changed = True
+                    
+                if hasattr(self.app, 'temp_roots') and self.path in self.app.temp_roots:
+                    idx = self.app.temp_roots.index(self.path)
+                    self.app.temp_roots[idx] = new_path
+                    self.app.config["temp_roots"] = "|".join(self.app.temp_roots)
+                    config_changed = True
+
+                if hasattr(self.app, 'inbox_path') and self.app.inbox_path == self.path:
+                    self.app.inbox_path = new_path
+                    self.app.config["inbox_dir"] = new_path
+                    config_changed = True
+
+                if hasattr(self.app, 'session_inbox_path') and self.app.session_inbox_path == self.path:
+                    self.app.session_inbox_path = new_path
+
+                if hasattr(self.app, 'trash_dir') and self.app.trash_dir == self.path:
+                    self.app.trash_dir = new_path
+                    self.app.config["trash_dir"] = new_path
+                    config_changed = True
+                
+                if hasattr(self.app, 'quick_target_path') and self.app.quick_target_path == self.path:
+                    self.app.quick_target_path = new_path
+
+                if config_changed:
+                    ConfigManager.save(self.app.config)
+
                 if self.path in self.app.category_colors_cache:
                     self.app.category_colors_cache[new_path] = self.app.category_colors_cache.pop(self.path)
                 if parent_dir in self.app.custom_orders:
@@ -755,5 +790,4 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
             ConfigManager.save(self.app.config)
             self.app.reload_categories_ui()
 
-    def rename_category(self):
-        from .ui_sidebar_dialogs import RenameDialog
+

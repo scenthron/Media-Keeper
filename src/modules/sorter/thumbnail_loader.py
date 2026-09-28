@@ -1,6 +1,6 @@
 import os
 import logging
-from utils_io import ensure_long_path
+from utils_io import ensure_long_path, strip_long_path_prefix
 from PyQt6.QtCore import QRunnable, QObject, pyqtSignal, QThreadPool, QSize, Qt
 from PyQt6.QtGui import QImage
 
@@ -13,7 +13,7 @@ class ThumbnailSignals(QObject):
 class ThumbnailWorker(QRunnable):
     def __init__(self, filepath: str, target_size: QSize):
         super().__init__()
-        self.filepath = filepath
+        self.filepath = os.path.normpath(strip_long_path_prefix(filepath))
         self.target_size = target_size
         self.signals = ThumbnailSignals()
 
@@ -22,51 +22,105 @@ class ThumbnailWorker(QRunnable):
             image = QImage()
             loaded = False
             
+            clean_path = strip_long_path_prefix(self.filepath)
             long_path = ensure_long_path(self.filepath)
-            ext = os.path.splitext(long_path)[1].lower()
+            ext = os.path.splitext(clean_path)[1].lower()
             from utils_extensions import VIDEO_EXTS
             
             if ext in VIDEO_EXTS:
                 from logic_paths import get_ffmpeg_exe
                 import subprocess
                 ffmpeg = get_ffmpeg_exe()
+                
+                # 1. Попытка через FFmpeg (быстрый поиск + точный поиск с авто-конвертацией пиксельного формата)
                 if os.path.exists(ffmpeg):
-                    cmd = [
-                        ffmpeg,
-                        "-y",
-                        "-ss", "00:00:00",
-                        "-i", long_path,
-                        "-frames:v", "1",
-                        "-f", "image2pipe",
-                        "-vcodec", "mjpeg",
-                        "-"
-                    ]
                     startupinfo = None
                     if os.name == 'nt':
                         startupinfo = subprocess.STARTUPINFO()
                         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                     
+                    # Попытка 1: Быстрый поиск в начале видео с принудительным yuvj420p (для 10-bit / HDR)
+                    cmd1 = [
+                        ffmpeg,
+                        "-y",
+                        "-ss", "00:00:00",
+                        "-i", clean_path,
+                        "-frames:v", "1",
+                        "-pix_fmt", "yuvj420p",
+                        "-f", "image2pipe",
+                        "-vcodec", "mjpeg",
+                        "-"
+                    ]
                     try:
                         proc = subprocess.Popen(
-                            cmd,
+                            cmd1,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
                             startupinfo=startupinfo
                         )
                         self.signals.process_started.emit(self.filepath, proc)
                         try:
-                            stdout, stderr = proc.communicate(timeout=5)
+                            stdout, stderr = proc.communicate(timeout=4)
                             if proc.returncode == 0 and stdout:
                                 if image.loadFromData(stdout):
                                     loaded = True
                         except subprocess.TimeoutExpired:
                             proc.kill()
                             proc.communicate()
-                            logging.debug(f"FFmpeg extraction timeout for {self.filepath}")
                         finally:
                             self.signals.process_finished.emit(self.filepath)
                     except Exception as ex:
-                        logging.debug(f"FFmpeg extraction failed for {self.filepath}: {ex}")
+                        logging.debug(f"FFmpeg fast extraction failed for {self.filepath}: {ex}")
+                    
+                    # Попытка 2: Если первый кадр пустой (таймкод > 0 или edit list), поиск со смещением 0.5с
+                    if not loaded:
+                        cmd2 = [
+                            ffmpeg,
+                            "-y",
+                            "-i", clean_path,
+                            "-ss", "00:00:00.500",
+                            "-frames:v", "1",
+                            "-pix_fmt", "yuvj420p",
+                            "-f", "image2pipe",
+                            "-vcodec", "mjpeg",
+                            "-"
+                        ]
+                        try:
+                            proc = subprocess.Popen(
+                                cmd2,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                startupinfo=startupinfo
+                            )
+                            self.signals.process_started.emit(self.filepath, proc)
+                            try:
+                                stdout, stderr = proc.communicate(timeout=4)
+                                if proc.returncode == 0 and stdout:
+                                    if image.loadFromData(stdout):
+                                        loaded = True
+                            except subprocess.TimeoutExpired:
+                                proc.kill()
+                                proc.communicate()
+                            finally:
+                                self.signals.process_finished.emit(self.filepath)
+                        except Exception as ex:
+                            logging.debug(f"FFmpeg accurate extraction failed for {self.filepath}: {ex}")
+                
+                # 2. Попытка через OpenCV VideoCapture (надежный резервный декодер)
+                if not loaded:
+                    try:
+                        import cv2
+                        cap = cv2.VideoCapture(clean_path)
+                        if cap.isOpened():
+                            ret, frame = cap.read()
+                            cap.release()
+                            if ret and frame is not None:
+                                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                h, w, ch = rgb.shape
+                                image = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888).copy()
+                                loaded = not image.isNull()
+                    except Exception as ex:
+                        logging.debug(f"OpenCV fallback extraction failed for {self.filepath}: {ex}")
             
             if not loaded:
                 if not image.load(long_path):
@@ -107,7 +161,7 @@ class ThumbnailLoader(QObject):
         self.cache = {}
 
     def get_thumbnail(self, filepath: str, target_size: QSize):
-        norm_path = os.path.normpath(filepath)
+        norm_path = os.path.normpath(strip_long_path_prefix(filepath))
         
         # Check RAM cache
         if norm_path in self.cache:
@@ -128,16 +182,16 @@ class ThumbnailLoader(QObject):
         self.pool.start(worker)
 
     def _on_process_started(self, filepath: str, proc: object):
-        norm_path = os.path.normpath(filepath)
+        norm_path = os.path.normpath(strip_long_path_prefix(filepath))
         self.active_processes[norm_path] = proc
 
     def _on_process_finished(self, filepath: str):
-        norm_path = os.path.normpath(filepath)
+        norm_path = os.path.normpath(strip_long_path_prefix(filepath))
         if norm_path in self.active_processes:
             del self.active_processes[norm_path]
 
     def cancel_for_file(self, filepath: str):
-        norm_path = os.path.normpath(filepath)
+        norm_path = os.path.normpath(strip_long_path_prefix(filepath))
         if norm_path in self.active_processes:
             try:
                 proc = self.active_processes[norm_path]
@@ -150,7 +204,7 @@ class ThumbnailLoader(QObject):
             self.active_requests.remove(norm_path)
 
     def _on_finished(self, filepath: str, image: QImage):
-        norm_path = os.path.normpath(filepath)
+        norm_path = os.path.normpath(strip_long_path_prefix(filepath))
         if norm_path in self.active_requests:
             self.active_requests.remove(norm_path)
         
@@ -167,7 +221,7 @@ class ThumbnailLoader(QObject):
         self.thumbnail_ready.emit(norm_path, image)
 
     def _on_error(self, filepath: str, error_msg: str):
-        norm_path = os.path.normpath(filepath)
+        norm_path = os.path.normpath(strip_long_path_prefix(filepath))
         if norm_path in self.active_requests:
             self.active_requests.remove(norm_path)
         logging.debug(f"Failed to generate thumbnail for {filepath}: {error_msg}")
@@ -178,9 +232,7 @@ class ThumbnailLoader(QObject):
 
     def rename_cache_key(self, old_path: str, new_path: str) -> None:
         """Переименовывает ключ в кэше миниатюр при переименовании файла, сохраняя миниатюру в RAM."""
-        norm_old = os.path.normpath(old_path)
-        if norm_old.startswith("\\\\?\\"): norm_old = norm_old[4:]
-        norm_new = os.path.normpath(new_path)
-        if norm_new.startswith("\\\\?\\"): norm_new = norm_new[4:]
+        norm_old = os.path.normpath(strip_long_path_prefix(old_path))
+        norm_new = os.path.normpath(strip_long_path_prefix(new_path))
         if norm_old in self.cache:
             self.cache[norm_new] = self.cache.pop(norm_old)

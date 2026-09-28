@@ -32,22 +32,42 @@ class TestImageRepair(unittest.TestCase):
         self.assertEqual(s['mode'], 'convert')
         self.assertTrue(widget.output_zone.isEnabled())
         
-        # Mode 2: Repair duplicate (default is index 0)
+        # Mode 2: Repair duplicate (default op is index 0: refresh_thumb)
         widget.tab_widget.setCurrentIndex(1)
         widget.combo_repair_mode.setCurrentIndex(0)
         widget.combo_op_type.setCurrentIndex(0)
         s = widget.get_settings()
         self.assertEqual(s['mode'], 'repair')
         self.assertEqual(s['repair_save_mode'], 'duplicate')
-        self.assertEqual(s['repair_op_type'], 'format')
+        self.assertEqual(s['repair_op_type'], 'refresh_thumb')
         self.assertEqual(s['repair_scope'], 'damaged_only')
         self.assertTrue(widget.output_zone.isEnabled())
+        
+        # Format mode (index 1)
+        widget.combo_op_type.setCurrentIndex(1)
+        s = widget.get_settings()
+        self.assertEqual(s['repair_op_type'], 'format')
         
         # Mode 3: Repair in-place (index 1)
         widget.combo_repair_mode.setCurrentIndex(1)
         s = widget.get_settings()
         self.assertEqual(s['repair_save_mode'], 'in_place')
         self.assertFalse(widget.output_zone.isEnabled())
+
+    def test_refresh_thumb_mode(self):
+        # Create a WebP image named .jpg
+        test_file = os.path.join(self.test_dir, 'thumb_test.jpg')
+        Image.new('RGB', (120, 120), (50, 100, 150)).save(test_file, 'WEBP')
+        
+        # In-place refresh_thumb
+        target, ok = repair_single_image(test_file, {'repair_op_type': 'refresh_thumb', 'repair_save_mode': 'in_place', 'repair_scope': 'damaged_only'})
+        self.assertTrue(ok)
+        self.assertTrue(os.path.exists(test_file))
+        self.assertEqual(os.path.normpath(target), os.path.normpath(test_file))
+        # Ensure file content remains valid WebP inside
+        with open(target, 'rb') as f:
+            head = f.read(12)
+        self.assertTrue(head.startswith(b'RIFF') and head[8:12] == b'WEBP')
 
     def test_format_file_info_human_readable(self):
         from modules.editor.video.helpers import format_file_info

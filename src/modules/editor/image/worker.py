@@ -226,20 +226,81 @@ def _resolve_target_path(src_path, orig_dir, orig_name, orig_ext, repair_mode, s
             target_path = _resolve_unique_path(candidate, src_path)
         return target_path, False
 
+def force_windows_thumbnail_cache(path, real_fmt):
+    """
+    Выполняет безопасный кэш-цикл для Проводника Windows:
+    1. Временно переименовывает файл во временное имя с реальным расширением (.webp/.png/.gif).
+    2. Уведомляет Windows Shell (SHChangeNotify) для вызова системного кодека и генерации эскиза.
+    3. Возвращает исходное имя и расширение файла.
+    Результат: файл на 100% не изменен, а в кэше Windows появляется миниатюра.
+    """
+    if os.name != 'nt' or not os.path.exists(path):
+        return path, True
+
+    try:
+        from utils_io import ensure_long_path
+    except ImportError:
+        from src.utils_io import ensure_long_path
+    import ctypes
+    import time
+
+    target_ext = FORMAT_TO_EXT.get(real_fmt)
+    if not target_ext:
+        return path, True
+
+    orig_dir = os.path.dirname(path)
+    orig_name, orig_ext = os.path.splitext(os.path.basename(path))
+    if orig_ext.lower() == target_ext.lower():
+        try:
+            ctypes.windll.shell32.SHChangeNotify(0x00002000, 0x0005, ensure_long_path(path), None)
+        except Exception:
+            pass
+        return path, True
+
+    temp_path = os.path.join(orig_dir, f"{orig_name}_mk_thumb_tmp{target_ext}")
+    try:
+        if os.path.exists(temp_path):
+            try: os.remove(temp_path)
+            except: pass
+
+        os.replace(path, temp_path)
+        try:
+            ctypes.windll.shell32.SHChangeNotify(0x00000002, 0x0005, ensure_long_path(temp_path), None)
+        except Exception:
+            pass
+        
+        time.sleep(0.05)
+
+        os.replace(temp_path, path)
+        try:
+            ctypes.windll.shell32.SHChangeNotify(0x00000001, 0x0005, ensure_long_path(temp_path), ensure_long_path(path))
+            ctypes.windll.shell32.SHChangeNotify(0x00002000, 0x0005, ensure_long_path(path), None)
+        except Exception:
+            pass
+        return path, True
+    except Exception as e:
+        logging.warning(f"[force_windows_thumbnail_cache] Ошибка кэш-цикла для {path}: {e}")
+        if os.path.exists(temp_path) and not os.path.exists(path):
+            try: os.replace(temp_path, path)
+            except: pass
+        return path, False
+
 def repair_single_image(src_path, s):
     """
-    Умное исправление изображений с тремя режимами:
-    1. 'format' (Исправление формата):
-       - 'damaged_only' (по умолчанию): пропускает здоровые файлы (SKIPPED_OK),
+    Умное исправление изображений с четырьмя режимами:
+    1. 'refresh_thumb' (Обновление превью Windows, ПО УМОЛЧАНИЮ):
+       - Безопасный кэш-цикл: заставляет Windows закэшировать эскиз без изменения файла и расширения (100% Lossless).
+    2. 'format' (Исправление формата):
+       - 'damaged_only': пропускает здоровые файлы (SKIPPED_OK),
          исправляет только файлы с ложными расширениями (WebP/AVIF -> JPG/PNG).
        - 'all': принудительно перекодирует все файлы под их расширение.
-    2. 'lossless_ext' (Исправление расширения под формат):
+    3. 'lossless_ext' (Исправление расширения под формат):
        - Бережно меняет расширение файла на его реальный формат (.webp, .png, .jpg)
          без перекодирования матрицы пикселей (100% сохранение качества).
-    3. 'exif' (Восстановление EXIF-миниатюр):
+    4. 'exif' (Восстановление EXIF-миниатюр):
        - Внедряет IFD1-миниатюру в настоящие JPEG-файлы без пережатия (100% Lossless).
     """
-    op_type = s.get('repair_op_type', 'format')
+    op_type = s.get('repair_op_type', 'refresh_thumb')
     repair_mode = s.get('repair_save_mode', 'duplicate')
     repair_scope = s.get('repair_scope', 'damaged_only')
     
@@ -265,8 +326,30 @@ def repair_single_image(src_path, s):
 
     is_mismatched = not is_matching if real_format != 'UNKNOWN' else False
 
+    # РЕЖИМ: Обновление превью в Windows (Без изменения файлов)
+    if op_type == 'refresh_thumb':
+        if repair_scope == 'damaged_only' and not is_mismatched:
+            return "SKIPPED_OK", True
+
+        if repair_mode == 'in_place':
+            target_path = src_path
+            res_path, ok = force_windows_thumbnail_cache(target_path, real_format)
+            return res_path, ok
+        else:
+            out_dir = s.get('output_dir', '').strip()
+            if not out_dir or not os.path.isdir(out_dir):
+                out_dir = orig_dir
+            target_candidate = os.path.join(out_dir, f"{orig_name}{orig_ext}")
+            if os.path.abspath(target_candidate).lower() == os.path.abspath(src_path).lower():
+                target_candidate = os.path.join(out_dir, f"{orig_name}_1{orig_ext}")
+            target_path = _resolve_unique_path(target_candidate, src_path)
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            shutil.copy2(src_path, target_path)
+            res_path, ok = force_windows_thumbnail_cache(target_path, real_format)
+            return res_path, ok
+
     # РЕЖИМ: Исправление расширения под формат (Lossless Rename/Copy)
-    if op_type == 'lossless_ext':
+    elif op_type == 'lossless_ext':
         if real_format == 'UNKNOWN':
             logging.warning(f"[ImageWorker] Не удалось определить формат файла {src_path}. Пропуск.")
             return src_path, False

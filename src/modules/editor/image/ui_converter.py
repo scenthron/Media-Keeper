@@ -314,9 +314,12 @@ class ImageConverterWidget(QWidget):
                     diff = ((new_size - old_size) / old_size) * 100 if old_size > 0 else 0
                     
                     s = self.settings_panel.get_settings()
-                    op_type = s.get('repair_op_type', 'format')
+                    op_type = s.get('repair_op_type', 'refresh_thumb')
                     
-                    if s.get('mode') == 'repair' and op_type == 'lossless_ext':
+                    if s.get('mode') == 'repair' and op_type == 'refresh_thumb':
+                        self.table.item(row, 2).setText(AppContext.tr("status_thumb_refreshed"))
+                        self.table.item(row, 3).setText("OK")
+                    elif s.get('mode') == 'repair' and op_type == 'lossless_ext':
                         self.table.item(row, 2).setText(AppContext.tr("status_ext_fixed"))
                         self.table.item(row, 3).setText("OK")
                     elif os.path.normpath(result) == os.path.normpath(path):

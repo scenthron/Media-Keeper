@@ -1873,15 +1873,13 @@ class SorterBaseListView(QListWidget):
         if self.hover_movie:
             self.hover_movie.stop()
             
-        # Если выделено более 1 файла — запрещаем открывать всплывающее окно, чтобы не сбивать мультивыделение
+        # Автовыделение элемента, если выделено 0 или 1 файл (при множественном выделении выделение не сбрасывается)
         selected_items = self.selectedItems()
-        if len(selected_items) > 1:
-            return
-            
-        if self.current_hover_item and (not selected_items or selected_items[0] != self.current_hover_item):
-            self.clearSelection()
-            self.current_hover_item.setSelected(True)
-            self.setCurrentItem(self.current_hover_item)
+        if len(selected_items) <= 1:
+            if self.current_hover_item and (not selected_items or selected_items[0] != self.current_hover_item):
+                self.clearSelection()
+                self.current_hover_item.setSelected(True)
+                self.setCurrentItem(self.current_hover_item)
             
         main_app = self.get_main_app()
         self.large_preview_popup = LargePreviewPopup(self.current_hover_path, main_app, self.window())

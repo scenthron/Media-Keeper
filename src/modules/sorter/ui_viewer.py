@@ -1776,16 +1776,18 @@ class SorterBaseListView(QListWidget):
                 pass
 
         if self.hover_movie:
-            self.hover_movie.stop()
-            self.hover_movie.deleteLater()
+            try:
+                self.hover_movie.stop()
+                self.hover_movie.deleteLater()
+            except Exception:
+                pass
             self.hover_movie = None
             
-        self.hover_player.stop()
-        self.hover_player.setSource(QUrl())
-        
-        video_widget = self.get_video_widget()
-        video_widget.hide()
-        video_widget.setParent(None)
+        try:
+            self.hover_player.stop()
+            self.hover_player.setSource(QUrl())
+        except Exception:
+            pass
         
         self.current_hover_item = None
         self.current_hover_path = ""

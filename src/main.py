@@ -495,29 +495,11 @@ try:
 except Exception:
     pass
 
-class SafeQApplication(QApplication):
-    """
-    Надежная обертка над QApplication: перехватывает ЛЮБЫЕ необработанные исключения
-    внутри цикла обработки событий Qt (сигналы, слоты, события мыши, перерисовка),
-    предотвращая 'тихое' закрытие программы без вывода ошибки.
-    """
-    def notify(self, receiver, event):
-        try:
-            return super().notify(receiver, event)
-        except Exception as e:
-            import traceback
-            import logging
-            tb_lines = traceback.format_exc()
-            receiver_name = receiver.objectName() if hasattr(receiver, 'objectName') else str(receiver)
-            logging.critical(f"Unhandled Exception in Qt Event Loop (receiver={receiver_name}):\n{tb_lines}")
-            return False
-
-
 if __name__ == "__main__":
     setup_logging()
     sys.excepthook = global_excepthook
     logging.info(f"Запуск приложения {APP_VERSION}.")
-    app = SafeQApplication(sys.argv)
+    app = QApplication(sys.argv)
     
     from utils_common import ListViewDelayFilter
     list_delay_filter = ListViewDelayFilter()

@@ -221,8 +221,12 @@ class ImageConverterWidget(QWidget):
                 old_size = self.files[row]['size']
                 diff = ((new_size - old_size) / old_size) * 100 if old_size > 0 else 0
                 
-                self.table.item(row, 2).setText(os.path.basename(result))
-                self.table.item(row, 3).setText(f"{diff:+.1f}%")
+                if os.path.normpath(result) == os.path.normpath(path):
+                    self.table.item(row, 2).setText(AppContext.tr("repair_status_updated"))
+                    self.table.item(row, 3).setText(f"{diff:+.1f}%" if abs(diff) >= 0.05 else "OK")
+                else:
+                    self.table.item(row, 2).setText(os.path.basename(result))
+                    self.table.item(row, 3).setText(f"{diff:+.1f}%")
                 for c in range(4): self.table.item(row, c).setBackground(QColor(34, 197, 94, 30))
             else:
                 self.table.item(row, 2).setText(f"❌ {result}")

@@ -262,5 +262,19 @@
   "settings_limit_size_group": "Ограничение размера",
   "lbl_compress_priority": "Приоритет сжатия",
   "lbl_priority_quality": "Качество",
-  "lbl_priority_resolution": "Разрешение"
+  "lbl_priority_resolution": "Разрешение",
+  "tab_mode_convert": "Конвертация",
+  "tab_mode_repair": "Исправление",
+  "repair_save_mode_title": "Режим сохранения",
+  "repair_save_mode_inplace": "В исходных файлах (без копий)",
+  "repair_save_mode_duplicate": "Создавать новые файлы (дубликаты)",
+  "repair_thumb_size_title": "Размер миниатюры",
+  "repair_thumb_160": "160 × 120 (EXIF Стандарт)",
+  "repair_thumb_256": "256 × 192",
+  "repair_thumb_320": "320 × 240",
+  "repair_thumb_512": "512 × 384",
+  "repair_info_text": "Восстанавливает встроенные миниатюры (EXIF) для Picasa и Проводника. Формат файлов и качество пикселей остаются оригинальными на 100% (Lossless).",
+  "repair_status_updated": "Превью обновлено (на месте)",
+  "repair_status_saved": "Сохранено: {}",
+  "repair_status_ok": "OK (без изменений)"
 }

@@ -1,6 +1,9 @@
 import os
+import io
+import shutil
 import logging
-from PIL import Image, ImageSequence
+from PIL import Image, ImageSequence, ImageOps
+import piexif
 from PyQt6.QtCore import QThread, pyqtSignal
 
 def filter_and_skip_frames(frames, durations, skip_enabled):
@@ -150,6 +153,92 @@ def save_temp_image(processed_frames, durations, loop, out_format, out_path, s, 
             img_to_save = img_to_save.convert('RGBA' if 'transparency' in img_to_save.info else 'RGB')
         img_to_save.save(out_path, **save_params)
 
+
+def repair_single_image(src_path, s):
+    """
+    Беспотерное (Lossless) восстановление / внедрение EXIF-миниатюры.
+    Сохраняет оригинальный формат каждого файла и пиксели изображения без пересжатия.
+    
+    Поддерживает:
+    - 'in_place': прямая инъекция в исходный файл на диске.
+    - 'duplicate': создание копии (в output_dir или рядом с суффиксом _fixed).
+    """
+    repair_mode = s.get('repair_save_mode', 'in_place')
+    orig_dir = os.path.dirname(src_path)
+    orig_name, orig_ext = os.path.splitext(os.path.basename(src_path))
+    
+    if repair_mode == 'in_place':
+        target_path = src_path
+        is_in_place = True
+    else:
+        is_in_place = False
+        out_dir = s.get('output_dir', '').strip()
+        if out_dir and os.path.isdir(out_dir):
+            target_path = os.path.join(out_dir, f"{orig_name}{orig_ext}")
+            if os.path.exists(target_path):
+                count = 1
+                while os.path.exists(target_path):
+                    target_path = os.path.join(out_dir, f"{orig_name}_{count}{orig_ext}")
+                    count += 1
+        else:
+            target_path = os.path.join(orig_dir, f"{orig_name}_fixed{orig_ext}")
+            if os.path.exists(target_path):
+                count = 1
+                while os.path.exists(target_path):
+                    target_path = os.path.join(orig_dir, f"{orig_name}_fixed_{count}{orig_ext}")
+                    count += 1
+
+    if not is_in_place:
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        shutil.copy2(src_path, target_path)
+
+    ext_lower = orig_ext.lower()
+    thumb_w, thumb_h = s.get('repair_thumb_size', (160, 120))
+
+    if ext_lower in ('.jpg', '.jpeg', '.jfif', '.pjpeg', '.pjp'):
+        with Image.open(src_path) as img:
+            img_transposed = ImageOps.exif_transpose(img)
+            img_rgb = img_transposed.convert('RGB')
+            img_rgb.thumbnail((thumb_w, thumb_h), Image.Resampling.LANCZOS)
+            
+            thumb_io = io.BytesIO()
+            img_rgb.save(thumb_io, 'JPEG', quality=75)
+            thumb_bytes = thumb_io.getvalue()
+            
+        try:
+            exif_dict = piexif.load(target_path)
+        except Exception:
+            exif_dict = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': None}
+            
+        if not isinstance(exif_dict, dict):
+            exif_dict = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': None}
+            
+        exif_dict['thumbnail'] = thumb_bytes
+        
+        try:
+            exif_bytes = piexif.dump(exif_dict)
+        except Exception:
+            clean_exif = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': thumb_bytes}
+            for ifd in ('0th', 'Exif', 'GPS', '1st'):
+                if ifd in exif_dict and isinstance(exif_dict[ifd], dict):
+                    for tag, val in exif_dict[ifd].items():
+                        try:
+                            test_dict = {ifd: {tag: val}, 'thumbnail': thumb_bytes}
+                            piexif.dump(test_dict)
+                            clean_exif[ifd][tag] = val
+                        except Exception:
+                            pass
+            exif_bytes = piexif.dump(clean_exif)
+            
+        piexif.insert(exif_bytes, target_path)
+        logging.info(f"[ImageWorker] Успешно внедрена EXIF-миниатюра {thumb_w}x{thumb_h} в {target_path}")
+        return target_path, True
+    else:
+        # Для форматов без IFD1-миниатюр (PNG, WebP и др.) сохраняем целостность файла
+        logging.info(f"[ImageWorker] Формат {orig_ext} сохранен в оригинальном виде: {target_path}")
+        return target_path, True
+
+
 class ImageConverterWorker(QThread):
     file_progress = pyqtSignal(str, int) # path, percent
     file_finished = pyqtSignal(str, bool, str) # path, success, result_path_or_error
@@ -177,8 +266,14 @@ class ImageConverterWorker(QThread):
     def process_file(self, info):
         src_path = info['path']
         s = self.settings
+
+        # Режим «Исправление» (Lossless EXIF Repair)
+        if s.get('mode') == 'repair':
+            res_path, success = repair_single_image(src_path, s)
+            self.file_finished.emit(src_path, success, res_path)
+            return
         
-        # 1. Output Path Logic
+        # Режим «Конвертация»
         out_dir = s['output_dir'] or os.path.dirname(src_path)
         base_name, _ = os.path.splitext(os.path.basename(src_path))
         ext = "." + s['format'].replace("jpg", "jpeg")
@@ -197,7 +292,6 @@ class ImageConverterWorker(QThread):
                 out_path = os.path.join(out_dir, f"{target_name}_{count}{ext}")
                 count += 1
 
-        # 2. Processing
         with Image.open(src_path) as img:
             is_animated = getattr(img, "is_animated", False)
             
@@ -213,7 +307,6 @@ class ImageConverterWorker(QThread):
                 src_frames.append(img.copy())
                 src_durations.append(100)
 
-            # Limit size logic
             limit_size = s.get('limit_size', False)
             max_size_mb = s.get('max_size_mb', 10)
             max_bytes = max_size_mb * 1024 * 1024

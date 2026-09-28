@@ -1,7 +1,8 @@
 
 import os
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, 
-                              QCheckBox, QGroupBox, QSlider, QSpinBox, QComboBox, QStyle)
+                              QCheckBox, QGroupBox, QSlider, QSpinBox, QComboBox, QStyle, 
+                              QTabWidget, QFrame)
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QIntValidator, QColor
 
@@ -22,9 +23,9 @@ class ImageSettingsWidget(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(20)
-        layout.setContentsMargins(10, 0, 0, 0)
+        main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(10, 0, 0, 0)
 
         cb_style = """
             QCheckBox { spacing: 8px; color: #eee; font-size: 13px; }
@@ -38,16 +39,56 @@ class ImageSettingsWidget(QWidget):
             QSpinBox:disabled { background-color: #2a2a2a; color: #777; border-color: #444; }
         """
 
+        # Tab Widget for Mode Switching
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #444;
+                border-radius: 6px;
+                background: #262626;
+                padding: 6px;
+            }
+            QTabBar::tab {
+                background: #2b2b2b;
+                color: #888;
+                border: 1px solid #444;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                padding: 7px 16px;
+                font-weight: bold;
+                font-size: 12px;
+                margin-right: 4px;
+            }
+            QTabBar::tab:hover:!selected {
+                background: #333;
+                color: #ddd;
+            }
+            QTabBar::tab:selected {
+                background: #3b82f6;
+                color: white;
+                border-color: #3b82f6;
+            }
+        """)
+
+        # ==========================================
+        # TAB 1: CONVERSION
+        # ==========================================
+        self.tab_convert = QWidget()
+        tab_convert_layout = QVBoxLayout(self.tab_convert)
+        tab_convert_layout.setSpacing(15)
+        tab_convert_layout.setContentsMargins(4, 4, 4, 4)
+
         # Section 1: Output Format
-        grp_format = self.create_group_box(AppContext.tr("settings_image_format"))
-        fmt_layout = QVBoxLayout(grp_format)
+        self.grp_format = self.create_group_box(AppContext.tr("settings_image_format"))
+        fmt_layout = QVBoxLayout(self.grp_format)
         self.combo_format = QComboBox()
         self.combo_format.addItems(["JPG", "PNG", "WebP", "BMP", "TIFF", "GIF"])
         self.combo_format.setStyleSheet(APP_DESIGN['nativelike_combo'])
         self.combo_format.setFixedHeight(28)
         self.combo_format.currentIndexChanged.connect(self.on_format_changed)
         fmt_layout.addWidget(self.combo_format)
-        layout.addWidget(grp_format)
+        tab_convert_layout.addWidget(self.grp_format)
 
         # Section 2: Quality
         self.grp_quality = self.create_group_box(AppContext.tr("settings_compression_mode"))
@@ -71,11 +112,11 @@ class ImageSettingsWidget(QWidget):
         """)
         self.slider_quality.valueChanged.connect(self.update_quality_label)
         qual_layout.addWidget(self.slider_quality)
-        layout.addWidget(self.grp_quality)
+        tab_convert_layout.addWidget(self.grp_quality)
 
         # Section 3: Scale
-        grp_scale = self.create_group_box(AppContext.tr("chk_scale_video")) # Reuse key
-        scale_layout = QVBoxLayout(grp_scale)
+        self.grp_scale = self.create_group_box(AppContext.tr("chk_scale_video"))
+        scale_layout = QVBoxLayout(self.grp_scale)
         
         row_scale = QHBoxLayout()
         self.chk_scale = QCheckBox()
@@ -130,7 +171,7 @@ class ImageSettingsWidget(QWidget):
         self.inp_width.textEdited.connect(self.sync_height)
         self.inp_height.textEdited.connect(self.sync_width)
         scale_layout.addWidget(self.prop_container)
-        layout.addWidget(grp_scale)
+        tab_convert_layout.addWidget(self.grp_scale)
 
         # Section 3.5: Size Limit
         self.grp_limit = self.create_group_box(AppContext.tr("settings_limit_size_group"))
@@ -189,11 +230,11 @@ class ImageSettingsWidget(QWidget):
         """)
         self.slider_compress_priority.valueChanged.connect(self.settings_changed.emit)
         limit_layout.addWidget(self.slider_compress_priority)
-        layout.addWidget(self.grp_limit)
+        tab_convert_layout.addWidget(self.grp_limit)
 
         # Section 4: Naming
-        grp_naming = self.create_group_box(AppContext.tr("settings_other"))
-        nam_layout = QVBoxLayout(grp_naming)
+        self.grp_naming = self.create_group_box(AppContext.tr("settings_other"))
+        nam_layout = QVBoxLayout(self.grp_naming)
         
         self.chk_rename = QCheckBox(AppContext.tr("chk_rename"))
         self.chk_rename.setChecked(True)
@@ -211,13 +252,101 @@ class ImageSettingsWidget(QWidget):
         self.inp_name_tmpl.setStyleSheet(APP_DESIGN['nativelike_input'])
         row_nam.addWidget(self.inp_name_tmpl, 1)
         nam_layout.addLayout(row_nam)
-        layout.addWidget(grp_naming)
+        tab_convert_layout.addWidget(self.grp_naming)
+        tab_convert_layout.addStretch()
 
-        layout.addStretch()
+        # ==========================================
+        # TAB 2: REPAIR PREVIEW
+        # ==========================================
+        self.tab_repair = QWidget()
+        tab_repair_layout = QVBoxLayout(self.tab_repair)
+        tab_repair_layout.setSpacing(15)
+        tab_repair_layout.setContentsMargins(4, 4, 4, 4)
+
+        # Section 1: Save Mode (Dropdown)
+        self.grp_repair_mode = self.create_group_box(AppContext.tr("repair_save_mode_title"))
+        rep_mode_layout = QVBoxLayout(self.grp_repair_mode)
+        self.combo_repair_mode = QComboBox()
+        self.combo_repair_mode.addItems([
+            AppContext.tr("repair_save_mode_inplace"),
+            AppContext.tr("repair_save_mode_duplicate")
+        ])
+        self.combo_repair_mode.setStyleSheet(APP_DESIGN['nativelike_combo'])
+        self.combo_repair_mode.setFixedHeight(28)
+        self.combo_repair_mode.currentIndexChanged.connect(self._on_repair_mode_changed)
+        rep_mode_layout.addWidget(self.combo_repair_mode)
+        tab_repair_layout.addWidget(self.grp_repair_mode)
+
+        # Section 2: Thumbnail Size
+        self.grp_repair_size = self.create_group_box(AppContext.tr("repair_thumb_size_title"))
+        rep_size_layout = QVBoxLayout(self.grp_repair_size)
+        self.combo_thumb_size = QComboBox()
+        self.combo_thumb_size.addItems([
+            AppContext.tr("repair_thumb_160"),
+            AppContext.tr("repair_thumb_256"),
+            AppContext.tr("repair_thumb_320"),
+            AppContext.tr("repair_thumb_512")
+        ])
+        self.combo_thumb_size.setStyleSheet(APP_DESIGN['nativelike_combo'])
+        self.combo_thumb_size.setFixedHeight(28)
+        self.combo_thumb_size.currentIndexChanged.connect(self.settings_changed.emit)
+        rep_size_layout.addWidget(self.combo_thumb_size)
+        tab_repair_layout.addWidget(self.grp_repair_size)
+
+        # Section 3: Info Box (Lossless hint)
+        self.info_frame = QFrame()
+        self.info_frame.setStyleSheet("""
+            QFrame {
+                background-color: rgba(59, 130, 246, 0.08);
+                border: 1px solid rgba(59, 130, 246, 0.3);
+                border-left: 3px solid #3b82f6;
+                border-radius: 4px;
+                padding: 6px;
+            }
+        """)
+        info_layout = QVBoxLayout(self.info_frame)
+        info_layout.setContentsMargins(6, 6, 6, 6)
+        self.lbl_repair_info = QLabel(AppContext.tr("repair_info_text"))
+        self.lbl_repair_info.setWordWrap(True)
+        self.lbl_repair_info.setStyleSheet("color: #93c5fd; font-size: 11px; line-height: 15px; border: none; background: transparent;")
+        info_layout.addWidget(self.lbl_repair_info)
+        tab_repair_layout.addWidget(self.info_frame)
+
+        tab_repair_layout.addStretch()
+
+        # Add tabs
+        self.tab_widget.addTab(self.tab_convert, AppContext.tr("tab_mode_convert"))
+        self.tab_widget.addTab(self.tab_repair, AppContext.tr("tab_mode_repair"))
+        self.tab_widget.currentChanged.connect(self._on_tab_changed)
+        main_layout.addWidget(self.tab_widget)
+
+        # Shared Output Folder DropZone at bottom
         self.output_zone = OutputFolderDropZone()
         self.output_zone.folder_dropped.connect(self.set_output_folder)
         self.output_zone.browse_clicked.connect(self.select_output_folder)
-        layout.addWidget(self.output_zone)
+        main_layout.addWidget(self.output_zone)
+
+        # Update initial output zone state
+        self._update_output_zone_state()
+
+    def _on_tab_changed(self, idx):
+        self._update_output_zone_state()
+        self.settings_changed.emit()
+
+    def _on_repair_mode_changed(self, idx):
+        self._update_output_zone_state()
+        self.settings_changed.emit()
+
+    def _update_output_zone_state(self):
+        current_tab = self.tab_widget.currentIndex()
+        if current_tab == 0:
+            # Convert tab -> output zone is fully enabled
+            self.output_zone.setEnabled(True)
+            self.output_zone.setGraphicsEffect(None)
+        else:
+            # Repair tab
+            is_inplace = (self.combo_repair_mode.currentIndex() == 0)
+            self.output_zone.setEnabled(not is_inplace)
 
     def select_output_folder(self):
         from PyQt6.QtWidgets import QFileDialog
@@ -232,7 +361,7 @@ class ImageSettingsWidget(QWidget):
     def create_group_box(self, title):
         gb = QGroupBox(title)
         gb.setStyleSheet("""
-            QGroupBox { border: 1px solid #444; border-radius: 6px; margin-top: 20px; font-weight: bold; color: #ddd; }
+            QGroupBox { border: 1px solid #444; border-radius: 6px; margin-top: 14px; font-weight: bold; color: #ddd; }
             QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; left: 10px; }
         """)
         return gb
@@ -250,7 +379,6 @@ class ImageSettingsWidget(QWidget):
             self.lbl_quality.setEnabled(False)
         else:
             self.chk_lossless.setEnabled(True)
-            # Restore slider state based on checkbox
             self.on_lossless_toggled(self.chk_lossless.isChecked())
             
         self.settings_changed.emit()
@@ -286,16 +414,12 @@ class ImageSettingsWidget(QWidget):
         self.file_count = count
         if w and h:
             self.orig_width, self.orig_height = w, h
-            # If width/height were empty, populate them
             if not self.inp_width.text() or self.inp_width.text() == "0":
                 self.inp_width.setText(str(w))
                 self.inp_height.setText(str(h))
         
-        # Now Proportion is allowed for any count (Fit-In mode)
-        is_prop_allowed = (count >= 1)
         model = self.combo_scale.model()
         idx = model.index(0, 0)
-        
         model.setData(idx, Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable, Qt.ItemDataRole.UserRole - 1)
         model.setData(idx, QColor("#ffffff"), Qt.ItemDataRole.ForegroundRole)
         
@@ -337,7 +461,15 @@ class ImageSettingsWidget(QWidget):
         elif idx == 3: sp = 25
         elif idx == 4: sp = self.inp_scale_percent.value()
 
+        # Repair thumb sizes
+        thumb_sizes = [(160, 120), (256, 192), (320, 240), (512, 384)]
+        t_idx = self.combo_thumb_size.currentIndex()
+        thumb_size = thumb_sizes[t_idx] if 0 <= t_idx < len(thumb_sizes) else (160, 120)
+
         return {
+            'mode': 'convert' if self.tab_widget.currentIndex() == 0 else 'repair',
+            'repair_save_mode': 'in_place' if self.combo_repair_mode.currentIndex() == 0 else 'duplicate',
+            'repair_thumb_size': thumb_size,
             'format': self.combo_format.currentText().lower(),
             'lossless': self.chk_lossless.isChecked(),
             'quality': self.slider_quality.value(),
@@ -355,10 +487,49 @@ class ImageSettingsWidget(QWidget):
         }
 
     def update_ui_text(self):
+        self.tab_widget.setTabText(0, AppContext.tr("tab_mode_convert"))
+        self.tab_widget.setTabText(1, AppContext.tr("tab_mode_repair"))
+        
+        self.grp_format.setTitle(AppContext.tr("settings_image_format"))
+        self.grp_quality.setTitle(AppContext.tr("settings_compression_mode"))
+        self.chk_lossless.setText(AppContext.tr("chk_lossless"))
         self.lbl_quality.setText(AppContext.tr("lbl_quality_slider").format(self.slider_quality.value()))
+        self.grp_scale.setTitle(AppContext.tr("chk_scale_video"))
+        self.grp_naming.setTitle(AppContext.tr("settings_other"))
+        self.chk_rename.setText(AppContext.tr("chk_rename"))
+        
         if hasattr(self, 'grp_limit'):
             self.grp_limit.setTitle(AppContext.tr("settings_limit_size_group"))
             self.chk_limit_size.setText(AppContext.tr("chk_max_file_size"))
             self.lbl_compress_priority.setText(AppContext.tr("lbl_compress_priority"))
             self.lbl_priority_quality.setText(AppContext.tr("lbl_priority_quality"))
             self.lbl_priority_resolution.setText(AppContext.tr("lbl_priority_resolution"))
+
+        if hasattr(self, 'grp_repair_mode'):
+            self.grp_repair_mode.setTitle(AppContext.tr("repair_save_mode_title"))
+            cur_mode = self.combo_repair_mode.currentIndex()
+            self.combo_repair_mode.blockSignals(True)
+            self.combo_repair_mode.clear()
+            self.combo_repair_mode.addItems([
+                AppContext.tr("repair_save_mode_inplace"),
+                AppContext.tr("repair_save_mode_duplicate")
+            ])
+            self.combo_repair_mode.setCurrentIndex(cur_mode)
+            self.combo_repair_mode.blockSignals(False)
+
+        if hasattr(self, 'grp_repair_size'):
+            self.grp_repair_size.setTitle(AppContext.tr("repair_thumb_size_title"))
+            cur_size = self.combo_thumb_size.currentIndex()
+            self.combo_thumb_size.blockSignals(True)
+            self.combo_thumb_size.clear()
+            self.combo_thumb_size.addItems([
+                AppContext.tr("repair_thumb_160"),
+                AppContext.tr("repair_thumb_256"),
+                AppContext.tr("repair_thumb_320"),
+                AppContext.tr("repair_thumb_512")
+            ])
+            self.combo_thumb_size.setCurrentIndex(cur_size)
+            self.combo_thumb_size.blockSignals(False)
+
+        if hasattr(self, 'lbl_repair_info'):
+            self.lbl_repair_info.setText(AppContext.tr("repair_info_text"))

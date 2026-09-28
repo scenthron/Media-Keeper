@@ -262,5 +262,19 @@
   "settings_limit_size_group": "Size Limit",
   "lbl_compress_priority": "Compression Priority",
   "lbl_priority_quality": "Quality",
-  "lbl_priority_resolution": "Resolution"
+  "lbl_priority_resolution": "Resolution",
+  "tab_mode_convert": "Conversion",
+  "tab_mode_repair": "Repair",
+  "repair_save_mode_title": "Save Mode",
+  "repair_save_mode_inplace": "In original files (no copies)",
+  "repair_save_mode_duplicate": "Create new files (duplicates)",
+  "repair_thumb_size_title": "Thumbnail Size",
+  "repair_thumb_160": "160 × 120 (EXIF Standard)",
+  "repair_thumb_256": "256 × 192",
+  "repair_thumb_320": "320 × 240",
+  "repair_thumb_512": "512 × 384",
+  "repair_info_text": "Restores embedded thumbnails (EXIF) for Picasa and File Explorer. File formats and image quality remain 100% original (Lossless).",
+  "repair_status_updated": "Preview restored (in-place)",
+  "repair_status_saved": "Saved: {}",
+  "repair_status_ok": "OK (no changes)"
 }

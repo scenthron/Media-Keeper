@@ -35,9 +35,12 @@ class TestImageRepair(unittest.TestCase):
         # Mode 2: Repair duplicate (default is index 0)
         widget.tab_widget.setCurrentIndex(1)
         widget.combo_repair_mode.setCurrentIndex(0)
+        widget.combo_op_type.setCurrentIndex(0)
         s = widget.get_settings()
         self.assertEqual(s['mode'], 'repair')
         self.assertEqual(s['repair_save_mode'], 'duplicate')
+        self.assertEqual(s['repair_op_type'], 'format')
+        self.assertEqual(s['repair_scope'], 'damaged_only')
         self.assertTrue(widget.output_zone.isEnabled())
         
         # Mode 3: Repair in-place (index 1)
@@ -56,16 +59,25 @@ class TestImageRepair(unittest.TestCase):
         info2 = format_file_info("video.mp4", int(1.5 * 1024 * 1024), "H.264", "1920x1080")
         self.assertEqual(info2, "video.mp4 (1.5MB, H.264, 1920x1080)")
 
-    def test_lossless_repair_in_place(self):
+    def test_lossless_exif_repair(self):
         test_file = os.path.join(self.test_dir, 'img_inplace.jpg')
         Image.new('RGB', (320, 240), (100, 150, 200)).save(test_file, 'JPEG')
         
-        target, ok = repair_single_image(test_file, {'repair_save_mode': 'in_place', 'repair_thumb_size': (160, 120)})
+        target, ok = repair_single_image(test_file, {'repair_op_type': 'exif', 'repair_save_mode': 'in_place', 'repair_thumb_size': (160, 120)})
         self.assertTrue(ok)
         self.assertEqual(os.path.normpath(target), os.path.normpath(test_file))
         
         exif = piexif.load(target)
         self.assertIsNotNone(exif.get('thumbnail'))
+
+    def test_format_repair_skips_healthy_files(self):
+        # Healthy JPG should be skipped in damaged_only mode
+        healthy_jpg = os.path.join(self.test_dir, 'healthy.jpg')
+        Image.new('RGB', (300, 200), (10, 20, 30)).save(healthy_jpg, 'JPEG')
+        
+        res, ok = repair_single_image(healthy_jpg, {'repair_op_type': 'format', 'repair_scope': 'damaged_only'})
+        self.assertTrue(ok)
+        self.assertEqual(res, "SKIPPED_OK")
 
     def test_repair_fake_jpeg_webp(self):
         # Create a real WebP image with .jpg extension
@@ -78,17 +90,14 @@ class TestImageRepair(unittest.TestCase):
         self.assertTrue(header.startswith(b'RIFF') and header[8:12] == b'WEBP')
         
         # Run in-place repair
-        target, ok = repair_single_image(test_fake_jpg, {'repair_save_mode': 'in_place', 'repair_thumb_size': (160, 120)})
+        target, ok = repair_single_image(test_fake_jpg, {'repair_op_type': 'format', 'repair_save_mode': 'in_place', 'repair_scope': 'damaged_only'})
         self.assertTrue(ok)
         self.assertEqual(os.path.normpath(target), os.path.normpath(test_fake_jpg))
         
-        # Verify it is now a genuine JPEG with EXIF thumbnail
+        # Verify it is now a genuine JPEG
         with open(target, 'rb') as f:
             new_header = f.read(4)
         self.assertTrue(new_header.startswith(b'\xff\xd8'))
-        
-        exif = piexif.load(target)
-        self.assertIsNotNone(exif.get('thumbnail'))
 
 if __name__ == '__main__':
     unittest.main()

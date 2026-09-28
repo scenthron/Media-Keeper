@@ -277,7 +277,35 @@ class ImageSettingsWidget(QWidget):
         rep_mode_layout.addWidget(self.combo_repair_mode)
         tab_repair_layout.addWidget(self.grp_repair_mode)
 
-        # Section 2: Thumbnail Size
+        # Section 2: Operation Type
+        self.grp_op_type = self.create_group_box(AppContext.tr("repair_op_type_title"))
+        op_type_layout = QVBoxLayout(self.grp_op_type)
+        self.combo_op_type = QComboBox()
+        self.combo_op_type.addItems([
+            AppContext.tr("repair_op_format"),
+            AppContext.tr("repair_op_exif")
+        ])
+        self.combo_op_type.setStyleSheet(APP_DESIGN['nativelike_combo'])
+        self.combo_op_type.setFixedHeight(28)
+        self.combo_op_type.currentIndexChanged.connect(self._on_op_type_changed)
+        op_type_layout.addWidget(self.combo_op_type)
+        tab_repair_layout.addWidget(self.grp_op_type)
+
+        # Section 3A: Scope for Format Repair (Only damaged vs All)
+        self.grp_repair_scope = self.create_group_box(AppContext.tr("repair_scope_title"))
+        rep_scope_layout = QVBoxLayout(self.grp_repair_scope)
+        self.combo_repair_scope = QComboBox()
+        self.combo_repair_scope.addItems([
+            AppContext.tr("repair_scope_damaged"),
+            AppContext.tr("repair_scope_all")
+        ])
+        self.combo_repair_scope.setStyleSheet(APP_DESIGN['nativelike_combo'])
+        self.combo_repair_scope.setFixedHeight(28)
+        self.combo_repair_scope.currentIndexChanged.connect(self.settings_changed.emit)
+        rep_scope_layout.addWidget(self.combo_repair_scope)
+        tab_repair_layout.addWidget(self.grp_repair_scope)
+
+        # Section 3B: Thumbnail Size for EXIF Repair
         self.grp_repair_size = self.create_group_box(AppContext.tr("repair_thumb_size_title"))
         rep_size_layout = QVBoxLayout(self.grp_repair_size)
         self.combo_thumb_size = QComboBox()
@@ -291,9 +319,10 @@ class ImageSettingsWidget(QWidget):
         self.combo_thumb_size.setFixedHeight(28)
         self.combo_thumb_size.currentIndexChanged.connect(self.settings_changed.emit)
         rep_size_layout.addWidget(self.combo_thumb_size)
+        self.grp_repair_size.hide()
         tab_repair_layout.addWidget(self.grp_repair_size)
 
-        # Section 3: Info Box (Lossless hint)
+        # Section 4: Info Box (Lossless / Format hint)
         self.info_frame = QFrame()
         self.info_frame.setStyleSheet("""
             QFrame {
@@ -306,7 +335,7 @@ class ImageSettingsWidget(QWidget):
         """)
         info_layout = QVBoxLayout(self.info_frame)
         info_layout.setContentsMargins(6, 6, 6, 6)
-        self.lbl_repair_info = QLabel(AppContext.tr("repair_info_text"))
+        self.lbl_repair_info = QLabel(AppContext.tr("repair_format_info"))
         self.lbl_repair_info.setWordWrap(True)
         self.lbl_repair_info.setStyleSheet("color: #93c5fd; font-size: 11px; line-height: 15px; border: none; background: transparent;")
         info_layout.addWidget(self.lbl_repair_info)
@@ -328,6 +357,16 @@ class ImageSettingsWidget(QWidget):
 
         # Update initial output zone state
         self._update_output_zone_state()
+
+    def _on_op_type_changed(self, idx):
+        is_format = (idx == 0)
+        self.grp_repair_scope.setVisible(is_format)
+        self.grp_repair_size.setVisible(not is_format)
+        if is_format:
+            self.lbl_repair_info.setText(AppContext.tr("repair_format_info"))
+        else:
+            self.lbl_repair_info.setText(AppContext.tr("repair_exif_info"))
+        self.settings_changed.emit()
 
     def _on_tab_changed(self, idx):
         self._update_output_zone_state()
@@ -466,9 +505,13 @@ class ImageSettingsWidget(QWidget):
         t_idx = self.combo_thumb_size.currentIndex()
         thumb_size = thumb_sizes[t_idx] if 0 <= t_idx < len(thumb_sizes) else (160, 120)
 
+        is_format_op = (self.combo_op_type.currentIndex() == 0)
+
         return {
             'mode': 'convert' if self.tab_widget.currentIndex() == 0 else 'repair',
             'repair_save_mode': 'duplicate' if self.combo_repair_mode.currentIndex() == 0 else 'in_place',
+            'repair_op_type': 'format' if is_format_op else 'exif',
+            'repair_scope': 'damaged_only' if self.combo_repair_scope.currentIndex() == 0 else 'all',
             'repair_thumb_size': thumb_size,
             'format': self.combo_format.currentText().lower(),
             'lossless': self.chk_lossless.isChecked(),
@@ -517,6 +560,30 @@ class ImageSettingsWidget(QWidget):
             self.combo_repair_mode.setCurrentIndex(cur_mode)
             self.combo_repair_mode.blockSignals(False)
 
+        if hasattr(self, 'grp_op_type'):
+            self.grp_op_type.setTitle(AppContext.tr("repair_op_type_title"))
+            cur_op = self.combo_op_type.currentIndex()
+            self.combo_op_type.blockSignals(True)
+            self.combo_op_type.clear()
+            self.combo_op_type.addItems([
+                AppContext.tr("repair_op_format"),
+                AppContext.tr("repair_op_exif")
+            ])
+            self.combo_op_type.setCurrentIndex(cur_op)
+            self.combo_op_type.blockSignals(False)
+
+        if hasattr(self, 'grp_repair_scope'):
+            self.grp_repair_scope.setTitle(AppContext.tr("repair_scope_title"))
+            cur_scope = self.combo_repair_scope.currentIndex()
+            self.combo_repair_scope.blockSignals(True)
+            self.combo_repair_scope.clear()
+            self.combo_repair_scope.addItems([
+                AppContext.tr("repair_scope_damaged"),
+                AppContext.tr("repair_scope_all")
+            ])
+            self.combo_repair_scope.setCurrentIndex(cur_scope)
+            self.combo_repair_scope.blockSignals(False)
+
         if hasattr(self, 'grp_repair_size'):
             self.grp_repair_size.setTitle(AppContext.tr("repair_thumb_size_title"))
             cur_size = self.combo_thumb_size.currentIndex()
@@ -532,4 +599,6 @@ class ImageSettingsWidget(QWidget):
             self.combo_thumb_size.blockSignals(False)
 
         if hasattr(self, 'lbl_repair_info'):
-            self.lbl_repair_info.setText(AppContext.tr("repair_info_text"))
+            is_format = (self.combo_op_type.currentIndex() == 0)
+            self.lbl_repair_info.setText(AppContext.tr("repair_format_info") if is_format else AppContext.tr("repair_exif_info"))
+

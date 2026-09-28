@@ -126,6 +126,8 @@ class ImageConverterWidget(QWidget):
             
         if not new_paths: return
 
+        from .worker import detect_real_image_format
+
         self.drop_zone.btn_clear.show()
         start_row = self.table.rowCount()
         for i, path in enumerate(new_paths):
@@ -137,9 +139,25 @@ class ImageConverterWidget(QWidget):
             except:
                 w, h, res = 0, 0, "?"
 
+            real_fmt = detect_real_image_format(path)
+            ext_lower = os.path.splitext(path)[1].lower()
+            is_fake = False
+            status_init = ""
+
+            if ext_lower in ('.jpg', '.jpeg', '.jfif', '.pjpeg', '.pjp') and real_fmt not in ('JPEG', 'UNKNOWN'):
+                is_fake = True
+                status_init = AppContext.tr("status_fake_format").format(real_fmt)
+            elif ext_lower in ('.png',) and real_fmt not in ('PNG', 'UNKNOWN'):
+                is_fake = True
+                status_init = AppContext.tr("status_fake_format").format(real_fmt)
+            elif ext_lower in ('.webp',) and real_fmt not in ('WEBP', 'UNKNOWN'):
+                is_fake = True
+                status_init = AppContext.tr("status_fake_format").format(real_fmt)
+
             info = {
                 'path': path, 'name': os.path.basename(path), 'size': os.path.getsize(path),
-                'width': w, 'height': h, 'res': res, 'status': 'Wait'
+                'width': w, 'height': h, 'res': res, 'real_fmt': real_fmt, 'is_fake': is_fake,
+                'status': 'Wait'
             }
             self.files.append(info)
             self.table.insertRow(row)
@@ -153,8 +171,14 @@ class ImageConverterWidget(QWidget):
             it_src.setIcon(QIcon(os.path.join(icons_dir, "file.svg")))
             it_src.setToolTip(path)
             self.table.setItem(row, 1, it_src)
-            self.table.setItem(row, 2, QTableWidgetItem(""))
+            self.table.setItem(row, 2, QTableWidgetItem(status_init))
             self.table.setItem(row, 3, QTableWidgetItem(""))
+
+            if is_fake:
+                for c in range(4):
+                    item = self.table.item(row, c)
+                    if item:
+                        item.setBackground(QColor(251, 146, 60, 45))
 
         if len(self.files) == 1:
             f = self.files[0]
@@ -216,18 +240,24 @@ class ImageConverterWidget(QWidget):
         if row is not None:
             if success:
                 self.files[row]['status'] = 'Done'
-                self.files[row]['output_path'] = result
-                new_size = os.path.getsize(result)
-                old_size = self.files[row]['size']
-                diff = ((new_size - old_size) / old_size) * 100 if old_size > 0 else 0
-                
-                if os.path.normpath(result) == os.path.normpath(path):
-                    self.table.item(row, 2).setText(AppContext.tr("repair_status_updated"))
-                    self.table.item(row, 3).setText(f"{diff:+.1f}%" if abs(diff) >= 0.05 else "OK")
+                if result == 'SKIPPED_OK':
+                    self.files[row]['output_path'] = path
+                    self.table.item(row, 2).setText(AppContext.tr("status_skipped_ok"))
+                    self.table.item(row, 3).setText("OK")
+                    for c in range(4): self.table.item(row, c).setBackground(QColor(34, 197, 94, 20))
                 else:
-                    self.table.item(row, 2).setText(os.path.basename(result))
-                    self.table.item(row, 3).setText(f"{diff:+.1f}%")
-                for c in range(4): self.table.item(row, c).setBackground(QColor(34, 197, 94, 30))
+                    self.files[row]['output_path'] = result
+                    new_size = os.path.getsize(result) if os.path.exists(result) else self.files[row]['size']
+                    old_size = self.files[row]['size']
+                    diff = ((new_size - old_size) / old_size) * 100 if old_size > 0 else 0
+                    
+                    if os.path.normpath(result) == os.path.normpath(path):
+                        self.table.item(row, 2).setText(AppContext.tr("status_format_fixed"))
+                        self.table.item(row, 3).setText(f"{diff:+.1f}%" if abs(diff) >= 0.05 else "OK")
+                    else:
+                        self.table.item(row, 2).setText(os.path.basename(result))
+                        self.table.item(row, 3).setText(f"{diff:+.1f}%")
+                    for c in range(4): self.table.item(row, c).setBackground(QColor(34, 197, 94, 30))
             else:
                 self.table.item(row, 2).setText(f"❌ {result}")
             

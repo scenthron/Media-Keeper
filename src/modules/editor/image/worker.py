@@ -6,6 +6,33 @@ from PIL import Image, ImageSequence, ImageOps
 import piexif
 from PyQt6.QtCore import QThread, pyqtSignal
 
+def detect_real_image_format(path):
+    """
+    Определяет реальный формат файла по сигнатуре первых байтов (Magic Bytes),
+    а не по его расширению.
+    Возвращает: 'JPEG', 'WEBP', 'PNG', 'GIF', 'TIFF', 'BMP', 'UNKNOWN'
+    """
+    try:
+        with open(path, 'rb') as f:
+            head = f.read(32)
+        if len(head) < 4:
+            return 'UNKNOWN'
+        if head.startswith(b'\xff\xd8\xff'):
+            return 'JPEG'
+        if head.startswith(b'RIFF') and len(head) >= 12 and head[8:12] == b'WEBP':
+            return 'WEBP'
+        if head.startswith(b'\x89PNG\r\n\x1a\n'):
+            return 'PNG'
+        if head.startswith(b'GIF87a') or head.startswith(b'GIF89a'):
+            return 'GIF'
+        if head.startswith(b'BM'):
+            return 'BMP'
+        if head.startswith(b'II*\x00') or head.startswith(b'MM\x00*'):
+            return 'TIFF'
+    except Exception as e:
+        logging.warning(f"[detect_real_image_format] Не удалось прочитать заголовок {path}: {e}")
+    return 'UNKNOWN'
+
 def filter_and_skip_frames(frames, durations, skip_enabled):
     """
     Отбрасывает каждый второй кадр анимации для уменьшения размера файла.
@@ -156,12 +183,12 @@ def save_temp_image(processed_frames, durations, loop, out_format, out_path, s, 
 
 def repair_single_image(src_path, s):
     """
-    Беспотерное (Lossless) восстановление / внедрение EXIF-миниатюры.
-    Сохраняет оригинальный формат каждого файла и пиксели изображения без пересжатия.
-    
-    Поддерживает:
-    - 'in_place': прямая инъекция в исходный файл на диске.
-    - 'duplicate': создание копии (в output_dir или рядом с суффиксом _fixed).
+    Умное исправление превью и восстановление метаданных:
+    1. Проверяет реальную сигнатуру файла (Magic Bytes).
+    2. Если файл является настоящим JPEG -> выполняет Lossless-внедрение EXIF-миниатюры без пережатия пикселей.
+    3. Если файл имеет расширение .jpg/.jpeg, но внутри это WebP/PNG/AVIF -> конвертирует в настоящий JPEG
+       высокого качества (Q92) с внедренной миниатюрой, решая проблему нечитаемости в Проводнике и Picasa.
+    4. Для остальных форматов сохраняет оригинальные данные.
     """
     repair_mode = s.get('repair_save_mode', 'in_place')
     orig_dir = os.path.dirname(src_path)
@@ -188,54 +215,108 @@ def repair_single_image(src_path, s):
                     target_path = os.path.join(orig_dir, f"{orig_name}_fixed_{count}{orig_ext}")
                     count += 1
 
-    if not is_in_place:
-        os.makedirs(os.path.dirname(target_path), exist_ok=True)
-        shutil.copy2(src_path, target_path)
-
     ext_lower = orig_ext.lower()
     thumb_w, thumb_h = s.get('repair_thumb_size', (160, 120))
+    real_format = detect_real_image_format(src_path)
 
+    # Обработка файлов с расширением JPEG (.jpg, .jpeg, .jfif, .pjpeg, .pjp)
     if ext_lower in ('.jpg', '.jpeg', '.jfif', '.pjpeg', '.pjp'):
-        with Image.open(src_path) as img:
-            img_transposed = ImageOps.exif_transpose(img)
-            img_rgb = img_transposed.convert('RGB')
-            img_rgb.thumbnail((thumb_w, thumb_h), Image.Resampling.LANCZOS)
+        if real_format == 'JPEG':
+            # --- СЦЕНАРИЙ 1: Настоящий JPEG -> Lossless инъекция в заголовок ---
+            if not is_in_place:
+                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                shutil.copy2(src_path, target_path)
+
+            with Image.open(src_path) as img:
+                img_transposed = ImageOps.exif_transpose(img)
+                img_rgb = img_transposed.convert('RGB')
+                img_rgb.thumbnail((thumb_w, thumb_h), Image.Resampling.LANCZOS)
+                
+                thumb_io = io.BytesIO()
+                img_rgb.save(thumb_io, 'JPEG', quality=75)
+                thumb_bytes = thumb_io.getvalue()
+                
+            try:
+                exif_dict = piexif.load(target_path)
+            except Exception:
+                exif_dict = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': None}
+                
+            if not isinstance(exif_dict, dict):
+                exif_dict = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': None}
+                
+            exif_dict['thumbnail'] = thumb_bytes
             
-            thumb_io = io.BytesIO()
-            img_rgb.save(thumb_io, 'JPEG', quality=75)
-            thumb_bytes = thumb_io.getvalue()
+            try:
+                exif_bytes = piexif.dump(exif_dict)
+            except Exception:
+                clean_exif = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': thumb_bytes}
+                for ifd in ('0th', 'Exif', 'GPS', '1st'):
+                    if ifd in exif_dict and isinstance(exif_dict[ifd], dict):
+                        for tag, val in exif_dict[ifd].items():
+                            try:
+                                test_dict = {ifd: {tag: val}, 'thumbnail': thumb_bytes}
+                                piexif.dump(test_dict)
+                                clean_exif[ifd][tag] = val
+                            except Exception:
+                                pass
+                exif_bytes = piexif.dump(clean_exif)
+                
+            piexif.insert(exif_bytes, target_path)
+            logging.info(f"[ImageWorker] Успешно внедрена EXIF-миниатюра (Lossless) в {target_path}")
+            return target_path, True
+        else:
+            # --- СЦЕНАРИЙ 2: Ложный JPEG (внутри WebP/PNG/AVIF/BMP) -> Перекодирование в настоящий JPEG ---
+            logging.info(f"[ImageWorker] Обнаружено ложное расширение {ext_lower} для реального формата {real_format}: {src_path}. Перекодирование в настоящий JPEG.")
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
             
-        try:
-            exif_dict = piexif.load(target_path)
-        except Exception:
-            exif_dict = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': None}
-            
-        if not isinstance(exif_dict, dict):
-            exif_dict = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': None}
-            
-        exif_dict['thumbnail'] = thumb_bytes
-        
-        try:
-            exif_bytes = piexif.dump(exif_dict)
-        except Exception:
-            clean_exif = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': thumb_bytes}
-            for ifd in ('0th', 'Exif', 'GPS', '1st'):
-                if ifd in exif_dict and isinstance(exif_dict[ifd], dict):
-                    for tag, val in exif_dict[ifd].items():
-                        try:
-                            test_dict = {ifd: {tag: val}, 'thumbnail': thumb_bytes}
-                            piexif.dump(test_dict)
-                            clean_exif[ifd][tag] = val
-                        except Exception:
-                            pass
-            exif_bytes = piexif.dump(clean_exif)
-            
-        piexif.insert(exif_bytes, target_path)
-        logging.info(f"[ImageWorker] Успешно внедрена EXIF-миниатюра {thumb_w}x{thumb_h} в {target_path}")
-        return target_path, True
+            with Image.open(src_path) as img:
+                img_transposed = ImageOps.exif_transpose(img)
+                if img_transposed.mode != 'RGB':
+                    img_rgb = img_transposed.convert('RGB')
+                else:
+                    img_rgb = img_transposed.copy()
+
+                # Генерируем миниатюру
+                thumb = img_rgb.copy()
+                thumb.thumbnail((thumb_w, thumb_h), Image.Resampling.LANCZOS)
+                thumb_io = io.BytesIO()
+                thumb.save(thumb_io, 'JPEG', quality=75)
+                thumb_bytes = thumb_io.getvalue()
+
+                # Сохраняем существующий EXIF если доступен
+                try:
+                    src_exif = piexif.load(src_path)
+                    if isinstance(src_exif, dict):
+                        exif_dict = src_exif
+                    else:
+                        exif_dict = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': None}
+                except Exception:
+                    exif_dict = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': None}
+
+                exif_dict['thumbnail'] = thumb_bytes
+
+                try:
+                    exif_bytes = piexif.dump(exif_dict)
+                except Exception:
+                    clean_exif = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': thumb_bytes}
+                    exif_bytes = piexif.dump(clean_exif)
+
+                tmp_path = target_path + ".mk_tmp"
+                img_rgb.save(tmp_path, 'JPEG', quality=92, optimize=True, exif=exif_bytes)
+
+                if os.path.exists(target_path):
+                    try: os.remove(target_path)
+                    except: pass
+                shutil.move(tmp_path, target_path)
+
+            logging.info(f"[ImageWorker] Файл успешно перекодирован в настоящий JPEG с превью: {target_path}")
+            return target_path, True
     else:
-        # Для форматов без IFD1-миниатюр (PNG, WebP и др.) сохраняем целостность файла
-        logging.info(f"[ImageWorker] Формат {orig_ext} сохранен в оригинальном виде: {target_path}")
+        # Для остальных расширений (.png, .webp, .tiff и т.д.)
+        if not is_in_place:
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            shutil.copy2(src_path, target_path)
+        logging.info(f"[ImageWorker] Формат {orig_ext} сохранен: {target_path}")
         return target_path, True
 
 
@@ -267,7 +348,7 @@ class ImageConverterWorker(QThread):
         src_path = info['path']
         s = self.settings
 
-        # Режим «Исправление» (Lossless EXIF Repair)
+        # Режим «Исправление» (Smart EXIF / Format Repair)
         if s.get('mode') == 'repair':
             res_path, success = repair_single_image(src_path, s)
             self.file_finished.emit(src_path, success, res_path)

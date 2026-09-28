@@ -57,14 +57,28 @@ class TestImageRepair(unittest.TestCase):
         exif = piexif.load(target)
         self.assertIsNotNone(exif.get('thumbnail'))
 
-    def test_repair_duplicate_preserves_format(self):
-        test_png = os.path.join(self.test_dir, 'img_dup.png')
-        Image.new('RGB', (200, 200), (200, 150, 100)).save(test_png, 'PNG')
+    def test_repair_fake_jpeg_webp(self):
+        # Create a real WebP image with .jpg extension
+        test_fake_jpg = os.path.join(self.test_dir, 'fake_photo.jpg')
+        Image.new('RGB', (300, 200), (50, 150, 250)).save(test_fake_jpg, 'WEBP')
         
-        target, ok = repair_single_image(test_png, {'repair_save_mode': 'duplicate', 'output_dir': '', 'repair_thumb_size': (160, 120)})
+        # Verify it is internally WEBP before repair
+        with open(test_fake_jpg, 'rb') as f:
+            header = f.read(12)
+        self.assertTrue(header.startswith(b'RIFF') and header[8:12] == b'WEBP')
+        
+        # Run in-place repair
+        target, ok = repair_single_image(test_fake_jpg, {'repair_save_mode': 'in_place', 'repair_thumb_size': (160, 120)})
         self.assertTrue(ok)
-        self.assertTrue(os.path.exists(target))
-        self.assertTrue(target.endswith('.png'))
+        self.assertEqual(os.path.normpath(target), os.path.normpath(test_fake_jpg))
+        
+        # Verify it is now a genuine JPEG with EXIF thumbnail
+        with open(target, 'rb') as f:
+            new_header = f.read(4)
+        self.assertTrue(new_header.startswith(b'\xff\xd8'))
+        
+        exif = piexif.load(target)
+        self.assertIsNotNone(exif.get('thumbnail'))
 
 if __name__ == '__main__':
     unittest.main()

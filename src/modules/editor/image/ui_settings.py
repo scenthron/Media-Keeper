@@ -268,8 +268,8 @@ class ImageSettingsWidget(QWidget):
         rep_mode_layout = QVBoxLayout(self.grp_repair_mode)
         self.combo_repair_mode = QComboBox()
         self.combo_repair_mode.addItems([
-            AppContext.tr("repair_save_mode_inplace"),
-            AppContext.tr("repair_save_mode_duplicate")
+            AppContext.tr("repair_save_mode_duplicate"),
+            AppContext.tr("repair_save_mode_inplace")
         ])
         self.combo_repair_mode.setStyleSheet(APP_DESIGN['nativelike_combo'])
         self.combo_repair_mode.setFixedHeight(28)
@@ -344,8 +344,8 @@ class ImageSettingsWidget(QWidget):
             self.output_zone.setEnabled(True)
             self.output_zone.setGraphicsEffect(None)
         else:
-            # Repair tab
-            is_inplace = (self.combo_repair_mode.currentIndex() == 0)
+            # Repair tab -> enabled if duplicate mode (index 0), disabled if in-place (index 1)
+            is_inplace = (self.combo_repair_mode.currentIndex() == 1)
             self.output_zone.setEnabled(not is_inplace)
 
     def select_output_folder(self):
@@ -468,7 +468,7 @@ class ImageSettingsWidget(QWidget):
 
         return {
             'mode': 'convert' if self.tab_widget.currentIndex() == 0 else 'repair',
-            'repair_save_mode': 'in_place' if self.combo_repair_mode.currentIndex() == 0 else 'duplicate',
+            'repair_save_mode': 'duplicate' if self.combo_repair_mode.currentIndex() == 0 else 'in_place',
             'repair_thumb_size': thumb_size,
             'format': self.combo_format.currentText().lower(),
             'lossless': self.chk_lossless.isChecked(),
@@ -511,8 +511,8 @@ class ImageSettingsWidget(QWidget):
             self.combo_repair_mode.blockSignals(True)
             self.combo_repair_mode.clear()
             self.combo_repair_mode.addItems([
-                AppContext.tr("repair_save_mode_inplace"),
-                AppContext.tr("repair_save_mode_duplicate")
+                AppContext.tr("repair_save_mode_duplicate"),
+                AppContext.tr("repair_save_mode_inplace")
             ])
             self.combo_repair_mode.setCurrentIndex(cur_mode)
             self.combo_repair_mode.blockSignals(False)

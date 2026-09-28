@@ -32,19 +32,29 @@ class TestImageRepair(unittest.TestCase):
         self.assertEqual(s['mode'], 'convert')
         self.assertTrue(widget.output_zone.isEnabled())
         
-        # Mode 2: Repair in-place
+        # Mode 2: Repair duplicate (default is index 0)
         widget.tab_widget.setCurrentIndex(1)
         widget.combo_repair_mode.setCurrentIndex(0)
         s = widget.get_settings()
         self.assertEqual(s['mode'], 'repair')
-        self.assertEqual(s['repair_save_mode'], 'in_place')
-        self.assertFalse(widget.output_zone.isEnabled())
-        
-        # Mode 3: Repair duplicate
-        widget.combo_repair_mode.setCurrentIndex(1)
-        s = widget.get_settings()
         self.assertEqual(s['repair_save_mode'], 'duplicate')
         self.assertTrue(widget.output_zone.isEnabled())
+        
+        # Mode 3: Repair in-place (index 1)
+        widget.combo_repair_mode.setCurrentIndex(1)
+        s = widget.get_settings()
+        self.assertEqual(s['repair_save_mode'], 'in_place')
+        self.assertFalse(widget.output_zone.isEnabled())
+
+    def test_format_file_info_human_readable(self):
+        from modules.editor.video.helpers import format_file_info
+        # Under 1MB: 205 KB
+        info1 = format_file_info("photo.jpg", 205 * 1024, "", "1188x1232")
+        self.assertEqual(info1, "photo.jpg (205KB, 1188x1232)")
+        
+        # 1.5MB with video codec
+        info2 = format_file_info("video.mp4", int(1.5 * 1024 * 1024), "H.264", "1920x1080")
+        self.assertEqual(info2, "video.mp4 (1.5MB, H.264, 1920x1080)")
 
     def test_lossless_repair_in_place(self):
         test_file = os.path.join(self.test_dir, 'img_inplace.jpg')

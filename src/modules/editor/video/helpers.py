@@ -53,13 +53,26 @@ def smart_truncate_filename(full_text, max_width, font_metrics):
     # Крайний случай - просто обрезаем
     return full_text[:max_width // font_metrics.averageCharWidth()] + "..."
 
-def format_file_info(name, size, codec, res):
+def format_file_info(name, size, codec=None, res=None):
     """
-    Форматирует информацию о файле для отображения в ячейке
-    Принимает 4 аргумента: имя, размер(байт), кодек, разрешение
+    Форматирует информацию о файле для отображения в ячейке.
+    Принимает 4 аргумента: имя, размер (байт), кодек/длительность, разрешение.
     """
-    size_mb = size / (1024 * 1024)
-    return f"{name} ({size_mb:.0f}MB, {codec}, {res})"
+    if size < 1024 * 1024:
+        size_str = f"{size / 1024:.0f}KB"
+    elif size < 10 * 1024 * 1024:
+        size_str = f"{size / (1024 * 1024):.1f}MB"
+    else:
+        size_str = f"{size / (1024 * 1024):.0f}MB"
+        
+    parts = [size_str]
+    if codec:
+        parts.append(str(codec).strip())
+    if res and str(res).strip() not in ("?", ""):
+        parts.append(str(res).strip())
+        
+    info_str = ", ".join(parts)
+    return f"{name} ({info_str})"
 
 
 def is_segment_taken(num_markers: int, segment_index: int, is_inverted: bool) -> bool:

@@ -301,8 +301,20 @@ def repair_single_image(src_path, s):
                     clean_exif = {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}, 'thumbnail': thumb_bytes}
                     exif_bytes = piexif.dump(clean_exif)
 
+                orig_bytes = os.path.getsize(src_path)
+                best_data = None
+                # Адаптивный подбор качества (86 -> 80 -> 75), чтобы итоговый JPEG сохранял исходный вес и не раздувался
+                for q in (86, 80, 75):
+                    buf = io.BytesIO()
+                    img_rgb.save(buf, 'JPEG', quality=q, optimize=True, exif=exif_bytes)
+                    data = buf.getvalue()
+                    if len(data) <= orig_bytes * 1.05 or q == 75:
+                        best_data = data
+                        break
+
                 tmp_path = target_path + ".mk_tmp"
-                img_rgb.save(tmp_path, 'JPEG', quality=92, optimize=True, exif=exif_bytes)
+                with open(tmp_path, "wb") as f_out:
+                    f_out.write(best_data)
 
                 if os.path.exists(target_path):
                     try: os.remove(target_path)

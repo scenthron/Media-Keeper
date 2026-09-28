@@ -27,13 +27,28 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         self.app = parent_app
         self.level = level 
         self.parent_cat = parent_cat
-        if hasattr(self.app, 'collapsed_states_cache') and self.path in self.app.collapsed_states_cache:
-            self.is_collapsed = self.app.collapsed_states_cache[self.path]
+        norm_path = os.path.normpath(self.path)
+        collapsed_val = None
+        if hasattr(self.app, 'collapsed_states_cache') and self.app.collapsed_states_cache:
+            if norm_path in self.app.collapsed_states_cache:
+                collapsed_val = self.app.collapsed_states_cache[norm_path]
+            else:
+                norm_case_p = os.path.normcase(norm_path)
+                for k, v in self.app.collapsed_states_cache.items():
+                    if os.path.normcase(k) == norm_case_p:
+                        collapsed_val = v
+                        break
+
+        if collapsed_val is not None:
+            self.is_collapsed = bool(collapsed_val)
         else:
-            if self.level >= 2:
+            if getattr(self.app, '_tree_remember_enabled', False):
+                self.is_collapsed = True
+            elif self.level >= 2:
                 self.is_collapsed = True
             else:
                 self.is_collapsed = self.app.config.get("auto_collapse_groups", True)
+
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setAcceptDrops(True)
         self._drag_start_pos = None
@@ -41,11 +56,23 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
         self.is_inbox = False
         self.is_trash = False
         
-        if self.path in self.app.category_colors_cache:
-            self.current_color = self.app.category_colors_cache[self.path]
+        color_val = None
+        if hasattr(self.app, 'category_colors_cache') and self.app.category_colors_cache:
+            if norm_path in self.app.category_colors_cache:
+                color_val = self.app.category_colors_cache[norm_path]
+            else:
+                norm_case_p = os.path.normcase(norm_path)
+                for k, v in self.app.category_colors_cache.items():
+                    if os.path.normcase(k) == norm_case_p:
+                        color_val = v
+                        break
+
+        if color_val is not None:
+            self.current_color = color_val
         else:
             self.current_color = self.generate_random_color()
-            self.app.category_colors_cache[self.path] = self.current_color
+            if hasattr(self.app, 'category_colors_cache'):
+                self.app.category_colors_cache[self.path] = self.current_color
             
         self.init_ui()
         
@@ -553,9 +580,18 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
             items = []
         
         key_path = os.path.normpath(self.path)
+        order = None
+        if hasattr(self.app, 'custom_orders') and self.app.custom_orders:
+            if key_path in self.app.custom_orders:
+                order = self.app.custom_orders[key_path]
+            else:
+                norm_case_k = os.path.normcase(key_path)
+                for k, v in self.app.custom_orders.items():
+                    if os.path.normcase(k) == norm_case_k:
+                        order = v
+                        break
         
-        if key_path in self.app.custom_orders:
-            order = self.app.custom_orders[key_path]
+        if order:
             ordered_items = [i for i in order if i in items]
             new_items = sorted([i for i in items if i not in order])
             final_items = ordered_items + new_items

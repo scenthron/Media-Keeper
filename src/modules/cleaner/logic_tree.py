@@ -416,8 +416,13 @@ class CleanerTreeMixin:
             if getattr(self, 'current_view_mode', 0) == 1:
                 self.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}")
                 self.lbl_selection_info.setToolTip(f"Выбрано файлов: {count}\nРазмер: {size_str}")
+            elif self.current_tab in (1, 2, 3):
+                # Вкладки похожих / фрагментов / ИИ — режима пустых папок нет
+                self.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}")
+                self.lbl_selection_info.setToolTip(f"Выбрано файлов: {count}\nРазмер: {size_str}")
             else:
                 self.lbl_selection_info.setText(f"Выбрано: {count} папок")
                 self.lbl_selection_info.setToolTip(f"Выбрано пустых папок: {count}")
+
 
         self.validate_move_state(selected_count_cache=count)

@@ -494,5 +494,50 @@ class TestClassifyCount(unittest.TestCase):
                             f"Путь {r['path']} не является папкой")
 
 
+class TestTreeStateManagerAndOrdering(unittest.TestCase):
+    """Тестирует сохранение/загрузку treeview.json, кастомный порядок и новые папки."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.fs = FsBuilder(self.tmpdir)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_tree_state_save_and_load(self):
+        from modules.sorter.logic_tree_state import TreeStateManager
+        root = self.fs.mkdir("root")
+        sub1 = self.fs.mkdir("root", "Folder1")
+        sub2 = self.fs.mkdir("root", "Folder2")
+
+        collapsed = {sub1: False, sub2: True}
+        orders = {root: ["Folder2", "Folder1"]}
+        colors = {sub1: "#ff0000"}
+
+        TreeStateManager.save_state(root, True, collapsed, orders, colors)
+        self.assertTrue(TreeStateManager.state_exists(root))
+
+        loaded = TreeStateManager.load_state(root)
+        self.assertIsNotNone(loaded)
+        self.assertTrue(loaded.get("enabled", False))
+        self.assertEqual(loaded["collapsed_states"][os.path.normpath(sub1)], False)
+        self.assertEqual(loaded["collapsed_states"][os.path.normpath(sub2)], True)
+        self.assertEqual(loaded["custom_orders"][os.path.normpath(root)], ["Folder2", "Folder1"])
+        self.assertEqual(loaded["category_colors"][os.path.normpath(sub1)], "#ff0000")
+
+    def test_custom_orders_appends_new_folders_at_the_end(self):
+        root = os.path.normpath(self.fs.mkdir("root"))
+        saved_order = ["FolderB", "FolderA"]
+        # In directory, we have FolderA, FolderB, and newly added FolderC and Folder0
+        actual_items = ["FolderA", "FolderB", "FolderC", "Folder0"]
+        
+        ordered_items = [i for i in saved_order if i in actual_items]
+        new_items = sorted([i for i in actual_items if i not in saved_order])
+        final_items = ordered_items + new_items
+        
+        self.assertEqual(final_items, ["FolderB", "FolderA", "Folder0", "FolderC"])
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+

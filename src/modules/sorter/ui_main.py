@@ -454,7 +454,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             
         state = TreeStateManager.load_state(root_path)
         if state is not None:
-            self._tree_remember_enabled = state.get("enabled", False)
+            self._tree_remember_enabled = state.get("enabled", True)
             if hasattr(self, 'btn_remember_tree'):
                 self.btn_remember_tree.setChecked(self._tree_remember_enabled)
             
@@ -640,6 +640,7 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             ConfigManager.save(self.config)
             self.SORT_DIR = new_default
             self.cats_container.parent_path = self.SORT_DIR
+            self.load_tree_state_from_root(self.SORT_DIR, inherit_cache=False)
             has_default = True
             
         if paths:
@@ -666,6 +667,12 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         ConfigManager.save(self.config)
         self.SORT_DIR = ""
         self.temp_roots = []
+        self._tree_remember_enabled = False
+        self.collapsed_states_cache = {}
+        self.custom_orders = {}
+        self.category_colors_cache = {}
+        if hasattr(self, 'btn_remember_tree'):
+            self.btn_remember_tree.setChecked(False)
         self.reload_categories_ui()
         self.validate_controls_state()
 
@@ -673,11 +680,15 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         start_dir = self.SORT_DIR if self.SORT_DIR and os.path.exists(self.SORT_DIR) else os.path.expanduser("~")
         path = QFileDialog.getExistingDirectory(self, AppContext.tr("dlg_select_folder"), start_dir)
         if path:
+            path = os.path.normpath(path)
             if not self.config.get("path_sort", ""):
                  self.config["path_sort"] = path
                  ConfigManager.save(self.config)
                  self.SORT_DIR = path
+                 self.cats_container.parent_path = self.SORT_DIR
+                 self.load_tree_state_from_root(self.SORT_DIR, inherit_cache=False)
                  self.reload_categories_ui()
+                 self.validate_controls_state()
                  return
 
             for i in range(self.cats_layout.count()):
@@ -805,15 +816,25 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                      items = []
                  
                  key_path = os.path.normpath(path)
-                 
-                 if key_path in self.custom_orders:
-                     order = self.custom_orders[key_path]
+                 order = None
+                 if hasattr(self, 'custom_orders') and self.custom_orders:
+                     if key_path in self.custom_orders:
+                         order = self.custom_orders[key_path]
+                     else:
+                         norm_case_k = os.path.normcase(key_path)
+                         for k, v in self.custom_orders.items():
+                             if os.path.normcase(k) == norm_case_k:
+                                 order = v
+                                 break
+
+                 if order:
                      ordered_items = [i for i in order if i in items]
                      new_items = sorted([i for i in items if i not in order])
                      final_items = ordered_items + new_items
                      self.custom_orders[key_path] = final_items
                      items = final_items
-                 else: items = sorted(items)
+                 else:
+                     items = sorted(items)
 
                  for cat_name in items:
                      cat_path = os.path.join(path, cat_name)

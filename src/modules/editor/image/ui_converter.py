@@ -128,7 +128,10 @@ class ImageConverterWidget(QWidget):
         if not new_paths: return
 
         from .worker import detect_real_image_format
-        from src.utils_io import check_file_system_block
+        try:
+            from utils_io import check_file_system_block
+        except ImportError:
+            from src.utils_io import check_file_system_block
 
         self.drop_zone.btn_clear.show()
         start_row = self.table.rowCount()
@@ -247,7 +250,10 @@ class ImageConverterWidget(QWidget):
             return
 
         from .worker import detect_real_image_format
-        from src.utils_io import check_file_system_block, unblock_file_system_attributes
+        try:
+            from utils_io import check_file_system_block, unblock_file_system_attributes
+        except ImportError:
+            from src.utils_io import check_file_system_block, unblock_file_system_attributes
         import logging
 
         unblocked_count = 0

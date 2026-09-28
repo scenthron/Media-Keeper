@@ -181,7 +181,10 @@ def save_temp_image(processed_frames, durations, loop, out_format, out_path, s, 
         img_to_save.save(out_path, **save_params)
 
 
-from src.utils_io import smart_move_file
+try:
+    from utils_io import smart_move_file
+except ImportError:
+    from src.utils_io import smart_move_file
 
 FORMAT_TO_EXT = {
     'WEBP': '.webp',

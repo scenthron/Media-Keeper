@@ -12,6 +12,7 @@ from ..video.ui_widgets import OutputFolderDropZone
 class ImageSettingsWidget(QWidget):
     settings_changed = pyqtSignal()
     output_folder_changed = pyqtSignal(str)
+    unblock_requested = pyqtSignal()
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -258,10 +259,37 @@ class ImageSettingsWidget(QWidget):
         # ==========================================
         # TAB 2: REPAIR PREVIEW
         # ==========================================
+        # TAB 2: ИСПРАВЛЕНИЕ (SMART REPAIR / EXIF / LOSSLESS EXT)
+        # ==========================================
         self.tab_repair = QWidget()
         tab_repair_layout = QVBoxLayout(self.tab_repair)
-        tab_repair_layout.setSpacing(15)
+        tab_repair_layout.setSpacing(12)
         tab_repair_layout.setContentsMargins(4, 4, 4, 4)
+
+        # Section 0: Unblock Button (Quick Action)
+        self.btn_unblock = QPushButton(AppContext.tr("btn_unblock_attributes"))
+        self.btn_unblock.setToolTip(AppContext.tr("btn_unblock_tooltip"))
+        self.btn_unblock.setFixedHeight(30)
+        self.btn_unblock.setStyleSheet("""
+            QPushButton {
+                background-color: #2563eb;
+                color: #ffffff;
+                font-weight: bold;
+                font-size: 11px;
+                border: 1px solid #1d4ed8;
+                border-radius: 4px;
+                padding: 4px 8px;
+            }
+            QPushButton:hover {
+                background-color: #3b82f6;
+                border-color: #2563eb;
+            }
+            QPushButton:pressed {
+                background-color: #1d4ed8;
+            }
+        """)
+        self.btn_unblock.clicked.connect(self.unblock_requested.emit)
+        tab_repair_layout.addWidget(self.btn_unblock)
 
         # Section 1: Save Mode (Dropdown)
         self.grp_repair_mode = self.create_group_box(AppContext.tr("repair_save_mode_title"))
@@ -277,12 +305,13 @@ class ImageSettingsWidget(QWidget):
         rep_mode_layout.addWidget(self.combo_repair_mode)
         tab_repair_layout.addWidget(self.grp_repair_mode)
 
-        # Section 2: Operation Type
+        # Section 2: Operation Type (3 modes)
         self.grp_op_type = self.create_group_box(AppContext.tr("repair_op_type_title"))
         op_type_layout = QVBoxLayout(self.grp_op_type)
         self.combo_op_type = QComboBox()
         self.combo_op_type.addItems([
             AppContext.tr("repair_op_format"),
+            AppContext.tr("repair_op_lossless_ext"),
             AppContext.tr("repair_op_exif")
         ])
         self.combo_op_type.setStyleSheet(APP_DESIGN['nativelike_combo'])
@@ -291,7 +320,7 @@ class ImageSettingsWidget(QWidget):
         op_type_layout.addWidget(self.combo_op_type)
         tab_repair_layout.addWidget(self.grp_op_type)
 
-        # Section 3A: Scope for Format Repair (Only damaged vs All)
+        # Section 3A: Scope for Format / Lossless Ext Repair (Only damaged vs All)
         self.grp_repair_scope = self.create_group_box(AppContext.tr("repair_scope_title"))
         rep_scope_layout = QVBoxLayout(self.grp_repair_scope)
         self.combo_repair_scope = QComboBox()
@@ -322,7 +351,7 @@ class ImageSettingsWidget(QWidget):
         self.grp_repair_size.hide()
         tab_repair_layout.addWidget(self.grp_repair_size)
 
-        # Section 4: Info Box (Lossless / Format hint)
+        # Section 4: Info Box (Dynamic hint)
         self.info_frame = QFrame()
         self.info_frame.setStyleSheet("""
             QFrame {
@@ -360,12 +389,17 @@ class ImageSettingsWidget(QWidget):
 
     def _on_op_type_changed(self, idx):
         is_format = (idx == 0)
-        self.grp_repair_scope.setVisible(is_format)
-        self.grp_repair_size.setVisible(not is_format)
+        is_lossless = (idx == 1)
+        is_exif = (idx == 2)
+        self.grp_repair_scope.setVisible(is_format or is_lossless)
+        self.grp_repair_size.setVisible(is_exif)
         if is_format:
             self.lbl_repair_info.setText(AppContext.tr("repair_format_info"))
+        elif is_lossless:
+            self.lbl_repair_info.setText(AppContext.tr("repair_lossless_ext_info"))
         else:
             self.lbl_repair_info.setText(AppContext.tr("repair_exif_info"))
+        self.settings_changed.emit()
         self.settings_changed.emit()
 
     def _on_tab_changed(self, idx):
@@ -505,12 +539,13 @@ class ImageSettingsWidget(QWidget):
         t_idx = self.combo_thumb_size.currentIndex()
         thumb_size = thumb_sizes[t_idx] if 0 <= t_idx < len(thumb_sizes) else (160, 120)
 
-        is_format_op = (self.combo_op_type.currentIndex() == 0)
+        op_idx = self.combo_op_type.currentIndex()
+        op_type_map = {0: 'format', 1: 'lossless_ext', 2: 'exif'}
 
         return {
             'mode': 'convert' if self.tab_widget.currentIndex() == 0 else 'repair',
             'repair_save_mode': 'duplicate' if self.combo_repair_mode.currentIndex() == 0 else 'in_place',
-            'repair_op_type': 'format' if is_format_op else 'exif',
+            'repair_op_type': op_type_map.get(op_idx, 'format'),
             'repair_scope': 'damaged_only' if self.combo_repair_scope.currentIndex() == 0 else 'all',
             'repair_thumb_size': thumb_size,
             'format': self.combo_format.currentText().lower(),
@@ -548,6 +583,10 @@ class ImageSettingsWidget(QWidget):
             self.lbl_priority_quality.setText(AppContext.tr("lbl_priority_quality"))
             self.lbl_priority_resolution.setText(AppContext.tr("lbl_priority_resolution"))
 
+        if hasattr(self, 'btn_unblock'):
+            self.btn_unblock.setText(AppContext.tr("btn_unblock_attributes"))
+            self.btn_unblock.setToolTip(AppContext.tr("btn_unblock_tooltip"))
+
         if hasattr(self, 'grp_repair_mode'):
             self.grp_repair_mode.setTitle(AppContext.tr("repair_save_mode_title"))
             cur_mode = self.combo_repair_mode.currentIndex()
@@ -567,6 +606,7 @@ class ImageSettingsWidget(QWidget):
             self.combo_op_type.clear()
             self.combo_op_type.addItems([
                 AppContext.tr("repair_op_format"),
+                AppContext.tr("repair_op_lossless_ext"),
                 AppContext.tr("repair_op_exif")
             ])
             self.combo_op_type.setCurrentIndex(cur_op)
@@ -599,6 +639,12 @@ class ImageSettingsWidget(QWidget):
             self.combo_thumb_size.blockSignals(False)
 
         if hasattr(self, 'lbl_repair_info'):
-            is_format = (self.combo_op_type.currentIndex() == 0)
-            self.lbl_repair_info.setText(AppContext.tr("repair_format_info") if is_format else AppContext.tr("repair_exif_info"))
+            op_idx = self.combo_op_type.currentIndex()
+            if op_idx == 0:
+                self.lbl_repair_info.setText(AppContext.tr("repair_format_info"))
+            elif op_idx == 1:
+                self.lbl_repair_info.setText(AppContext.tr("repair_lossless_ext_info"))
+            else:
+                self.lbl_repair_info.setText(AppContext.tr("repair_exif_info"))
+
 

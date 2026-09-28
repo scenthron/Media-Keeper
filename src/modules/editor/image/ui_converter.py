@@ -68,6 +68,7 @@ class ImageConverterWidget(QWidget):
         self.settings_panel = ImageSettingsWidget()
         self.settings_panel.setFixedWidth(380)
         self.settings_panel.output_folder_changed.connect(self.set_output_folder)
+        self.settings_panel.unblock_requested.connect(self.on_unblock_attributes_clicked)
         
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -127,6 +128,7 @@ class ImageConverterWidget(QWidget):
         if not new_paths: return
 
         from .worker import detect_real_image_format
+        from src.utils_io import check_file_system_block
 
         self.drop_zone.btn_clear.show()
         start_row = self.table.rowCount()
@@ -142,21 +144,26 @@ class ImageConverterWidget(QWidget):
             real_fmt = detect_real_image_format(path)
             ext_lower = os.path.splitext(path)[1].lower()
             is_fake = False
-            status_init = ""
-
             if ext_lower in ('.jpg', '.jpeg', '.jfif', '.pjpeg', '.pjp') and real_fmt not in ('JPEG', 'UNKNOWN'):
                 is_fake = True
-                status_init = AppContext.tr("status_fake_format").format(real_fmt)
             elif ext_lower in ('.png',) and real_fmt not in ('PNG', 'UNKNOWN'):
                 is_fake = True
-                status_init = AppContext.tr("status_fake_format").format(real_fmt)
             elif ext_lower in ('.webp',) and real_fmt not in ('WEBP', 'UNKNOWN'):
                 is_fake = True
+
+            is_blocked = check_file_system_block(path)
+            status_init = ""
+            if is_fake and is_blocked:
+                status_init = AppContext.tr("status_fake_and_blocked").format(real_fmt)
+            elif is_fake:
                 status_init = AppContext.tr("status_fake_format").format(real_fmt)
+            elif is_blocked:
+                status_init = AppContext.tr("status_blocked_attr")
 
             info = {
                 'path': path, 'name': os.path.basename(path), 'size': os.path.getsize(path),
                 'width': w, 'height': h, 'res': res, 'real_fmt': real_fmt, 'is_fake': is_fake,
+                'is_blocked': is_blocked,
                 'status': 'Wait'
             }
             self.files.append(info)
@@ -174,7 +181,7 @@ class ImageConverterWidget(QWidget):
             self.table.setItem(row, 2, QTableWidgetItem(status_init))
             self.table.setItem(row, 3, QTableWidgetItem(""))
 
-            if is_fake:
+            if is_fake or is_blocked:
                 for c in range(4):
                     item = self.table.item(row, c)
                     if item:
@@ -235,6 +242,55 @@ class ImageConverterWidget(QWidget):
         self.worker.all_finished.connect(self.on_all_finished)
         self.worker.start()
 
+    def on_unblock_attributes_clicked(self):
+        if not self.files:
+            return
+
+        from .worker import detect_real_image_format
+        from src.utils_io import check_file_system_block, unblock_file_system_attributes
+        import logging
+
+        unblocked_count = 0
+        for row, f_info in enumerate(self.files):
+            path = f_info['path']
+            if check_file_system_block(path):
+                if unblock_file_system_attributes(path):
+                    unblocked_count += 1
+
+            real_fmt = detect_real_image_format(path)
+            ext_lower = os.path.splitext(path)[1].lower()
+            is_fake = False
+            if ext_lower in ('.jpg', '.jpeg', '.jfif', '.pjpeg', '.pjp') and real_fmt not in ('JPEG', 'UNKNOWN'):
+                is_fake = True
+            elif ext_lower in ('.png',) and real_fmt not in ('PNG', 'UNKNOWN'):
+                is_fake = True
+            elif ext_lower in ('.webp',) and real_fmt not in ('WEBP', 'UNKNOWN'):
+                is_fake = True
+
+            is_blocked = check_file_system_block(path)
+            f_info['is_fake'] = is_fake
+            f_info['is_blocked'] = is_blocked
+            f_info['real_fmt'] = real_fmt
+
+            status_text = ""
+            if is_fake and is_blocked:
+                status_text = AppContext.tr("status_fake_and_blocked").format(real_fmt)
+            elif is_fake:
+                status_text = AppContext.tr("status_fake_format").format(real_fmt)
+            elif is_blocked:
+                status_text = AppContext.tr("status_blocked_attr")
+
+            if self.table.item(row, 2):
+                self.table.item(row, 2).setText(status_text)
+
+            bg_color = QColor(251, 146, 60, 45) if (is_fake or is_blocked) else QColor(0, 0, 0, 0)
+            for c in range(4):
+                item = self.table.item(row, c)
+                if item:
+                    item.setBackground(bg_color)
+
+        logging.info(f"[ImageConverter] Сняты блокировки и атрибуты у {unblocked_count} файлов")
+
     def on_file_finished(self, path, success, result):
         row = next((i for i, f in enumerate(self.files) if f['path'] == path), None)
         if row is not None:
@@ -251,8 +307,14 @@ class ImageConverterWidget(QWidget):
                     old_size = self.files[row]['size']
                     diff = ((new_size - old_size) / old_size) * 100 if old_size > 0 else 0
                     
-                    if os.path.normpath(result) == os.path.normpath(path):
-                        self.table.item(row, 2).setText(AppContext.tr("status_format_fixed"))
+                    s = self.settings_panel.get_settings()
+                    op_type = s.get('repair_op_type', 'format')
+                    
+                    if s.get('mode') == 'repair' and op_type == 'lossless_ext':
+                        self.table.item(row, 2).setText(AppContext.tr("status_ext_fixed"))
+                        self.table.item(row, 3).setText("OK")
+                    elif os.path.normpath(result) == os.path.normpath(path):
+                        self.table.item(row, 2).setText(AppContext.tr("status_format_fixed") if op_type == 'format' else AppContext.tr("repair_status_updated"))
                         self.table.item(row, 3).setText(f"{diff:+.1f}%" if abs(diff) >= 0.05 else "OK")
                     else:
                         self.table.item(row, 2).setText(os.path.basename(result))
@@ -278,3 +340,4 @@ class ImageConverterWidget(QWidget):
         self.btn_start.setText(AppContext.tr("btn_start"))
         if hasattr(self.settings_panel, 'update_ui_text'):
             self.settings_panel.update_ui_text()
+

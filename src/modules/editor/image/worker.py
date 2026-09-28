@@ -181,35 +181,59 @@ def save_temp_image(processed_frames, durations, loop, out_format, out_path, s, 
         img_to_save.save(out_path, **save_params)
 
 
+from src.utils_io import smart_move_file
+
+FORMAT_TO_EXT = {
+    'WEBP': '.webp',
+    'PNG': '.png',
+    'JPEG': '.jpg',
+    'GIF': '.gif',
+    'BMP': '.bmp',
+    'TIFF': '.tiff'
+}
+
+def _resolve_unique_path(desired_path, avoid_path=None):
+    """
+    Если desired_path уже существует и это не тот же самый файл (avoid_path),
+    добавляет числовой суффикс _1, _2 и т.д.
+    """
+    if not os.path.exists(desired_path):
+        return desired_path
+    
+    if avoid_path and os.path.abspath(desired_path).lower() == os.path.abspath(avoid_path).lower():
+        return desired_path
+
+    dirname = os.path.dirname(desired_path)
+    base, ext = os.path.splitext(os.path.basename(desired_path))
+    count = 1
+    while os.path.exists(os.path.join(dirname, f"{base}_{count}{ext}")):
+        count += 1
+    return os.path.join(dirname, f"{base}_{count}{ext}")
+
 def _resolve_target_path(src_path, orig_dir, orig_name, orig_ext, repair_mode, s):
     if repair_mode == 'in_place':
         return src_path, True
     else:
         out_dir = s.get('output_dir', '').strip()
         if out_dir and os.path.isdir(out_dir):
-            target_path = os.path.join(out_dir, f"{orig_name}{orig_ext}")
-            if os.path.exists(target_path):
-                count = 1
-                while os.path.exists(target_path):
-                    target_path = os.path.join(out_dir, f"{orig_name}_{count}{orig_ext}")
-                    count += 1
+            candidate = os.path.join(out_dir, f"{orig_name}{orig_ext}")
+            target_path = _resolve_unique_path(candidate, src_path)
         else:
-            target_path = os.path.join(orig_dir, f"{orig_name}_fixed{orig_ext}")
-            if os.path.exists(target_path):
-                count = 1
-                while os.path.exists(target_path):
-                    target_path = os.path.join(orig_dir, f"{orig_name}_fixed_{count}{orig_ext}")
-                    count += 1
+            candidate = os.path.join(orig_dir, f"{orig_name}_fixed{orig_ext}")
+            target_path = _resolve_unique_path(candidate, src_path)
         return target_path, False
 
 def repair_single_image(src_path, s):
     """
-    Умное исправление изображений с двумя режимами:
+    Умное исправление изображений с тремя режимами:
     1. 'format' (Исправление формата):
        - 'damaged_only' (по умолчанию): пропускает здоровые файлы (SKIPPED_OK),
          исправляет только файлы с ложными расширениями (WebP/AVIF -> JPG/PNG).
        - 'all': принудительно перекодирует все файлы под их расширение.
-    2. 'exif' (Восстановление EXIF-миниатюр):
+    2. 'lossless_ext' (Исправление расширения под формат):
+       - Бережно меняет расширение файла на его реальный формат (.webp, .png, .jpg)
+         без перекодирования матрицы пикселей (100% сохранение качества).
+    3. 'exif' (Восстановление EXIF-миниатюр):
        - Внедряет IFD1-миниатюру в настоящие JPEG-файлы без пережатия (100% Lossless).
     """
     op_type = s.get('repair_op_type', 'format')
@@ -221,17 +245,57 @@ def repair_single_image(src_path, s):
     ext_lower = orig_ext.lower()
     real_format = detect_real_image_format(src_path)
 
-    # Проверка несоответствия формата расширению
-    is_mismatched = False
-    if ext_lower in ('.jpg', '.jpeg', '.jfif', '.pjpeg', '.pjp') and real_format != 'JPEG':
-        is_mismatched = True
-    elif ext_lower in ('.png',) and real_format != 'PNG':
-        is_mismatched = True
-    elif ext_lower in ('.webp',) and real_format != 'WEBP':
-        is_mismatched = True
+    # Проверка соответствия формата расширению
+    is_matching = False
+    if real_format == 'JPEG' and ext_lower in ('.jpg', '.jpeg', '.jfif', '.pjpeg', '.pjp'):
+        is_matching = True
+    elif real_format == 'PNG' and ext_lower in ('.png',):
+        is_matching = True
+    elif real_format == 'WEBP' and ext_lower in ('.webp',):
+        is_matching = True
+    elif real_format == 'GIF' and ext_lower in ('.gif',):
+        is_matching = True
+    elif real_format == 'BMP' and ext_lower in ('.bmp',):
+        is_matching = True
+    elif real_format == 'TIFF' and ext_lower in ('.tif', '.tiff'):
+        is_matching = True
 
-    # РЕЖИМ 1: Исправление формата файла
-    if op_type == 'format':
+    is_mismatched = not is_matching if real_format != 'UNKNOWN' else False
+
+    # РЕЖИМ: Исправление расширения под формат (Lossless Rename/Copy)
+    if op_type == 'lossless_ext':
+        if real_format == 'UNKNOWN':
+            logging.warning(f"[ImageWorker] Не удалось определить формат файла {src_path}. Пропуск.")
+            return src_path, False
+
+        if repair_scope == 'damaged_only' and is_matching:
+            logging.info(f"[ImageWorker] Файл {src_path} уже имеет верное расширение для формата {real_format}. Пропуск.")
+            return "SKIPPED_OK", True
+
+        target_ext = FORMAT_TO_EXT.get(real_format, orig_ext)
+        if repair_mode == 'in_place':
+            target_candidate = os.path.join(orig_dir, orig_name + target_ext)
+            if os.path.abspath(target_candidate).lower() == os.path.abspath(src_path).lower():
+                return src_path, True
+            target_path = _resolve_unique_path(target_candidate, src_path)
+            smart_move_file(src_path, target_path)
+            logging.info(f"[ImageWorker] Lossless переименование: {src_path} -> {target_path}")
+            return target_path, True
+        else:
+            out_dir = s.get('output_dir', '').strip()
+            if not out_dir or not os.path.isdir(out_dir):
+                out_dir = orig_dir
+            target_candidate = os.path.join(out_dir, orig_name + target_ext)
+            if os.path.abspath(target_candidate).lower() == os.path.abspath(src_path).lower():
+                target_candidate = os.path.join(out_dir, f"{orig_name}_1{target_ext}")
+            target_path = _resolve_unique_path(target_candidate, src_path)
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            shutil.copy2(src_path, target_path)
+            logging.info(f"[ImageWorker] Lossless копия с верным расширением: {src_path} -> {target_path}")
+            return target_path, True
+
+    # РЕЖИМ: Исправление формата файла (Encoding)
+    elif op_type == 'format':
         if repair_scope == 'damaged_only' and not is_mismatched:
             logging.info(f"[ImageWorker] Файл {src_path} имеет корректный формат {real_format}. Пропуск (OK).")
             return "SKIPPED_OK", True

@@ -99,5 +99,48 @@ class TestImageRepair(unittest.TestCase):
             new_header = f.read(4)
         self.assertTrue(new_header.startswith(b'\xff\xd8'))
 
+    def test_lossless_extension_repair(self):
+        # 1. Create a WebP image with fake .jpg extension
+        test_fake = os.path.join(self.test_dir, 'lossless_fake.jpg')
+        Image.new('RGB', (100, 100), (10, 20, 30)).save(test_fake, 'WEBP')
+        
+        # Test in-place rename: should rename lossless_fake.jpg -> lossless_fake.webp
+        target, ok = repair_single_image(test_fake, {'repair_op_type': 'lossless_ext', 'repair_save_mode': 'in_place', 'repair_scope': 'damaged_only'})
+        self.assertTrue(ok)
+        self.assertTrue(target.endswith('.webp'))
+        self.assertTrue(os.path.exists(target))
+        self.assertFalse(os.path.exists(test_fake))
+        
+        # 2. Test duplicate copy with collision handling
+        test_fake2 = os.path.join(self.test_dir, 'lossless_fake.jpg')
+        Image.new('RGB', (100, 100), (10, 20, 30)).save(test_fake2, 'WEBP')
+        # lossless_fake.webp already exists! So duplicate should create lossless_fake_1.webp
+        target2, ok2 = repair_single_image(test_fake2, {'repair_op_type': 'lossless_ext', 'repair_save_mode': 'duplicate', 'repair_scope': 'damaged_only'})
+        self.assertTrue(ok2)
+        self.assertTrue(target2.endswith('lossless_fake_1.webp'))
+        self.assertTrue(os.path.exists(target2))
+        self.assertTrue(os.path.exists(test_fake2)) # original kept
+
+    def test_unblock_file_attributes(self):
+        from src.utils_io import check_file_system_block, unblock_file_system_attributes
+        
+        test_file = os.path.join(self.test_dir, 'unblock_test.jpg')
+        with open(test_file, 'w') as f: f.write('dummy')
+        
+        # Write Zone.Identifier ADS
+        zone_stream = test_file + ':Zone.Identifier'
+        try:
+            with open(zone_stream, 'w') as f: f.write('[ZoneTransfer]\nZoneId=3\n')
+            has_zone = os.path.exists(zone_stream)
+        except Exception:
+            has_zone = False
+
+        if has_zone:
+            self.assertTrue(check_file_system_block(test_file))
+            unblocked = unblock_file_system_attributes(test_file)
+            self.assertTrue(unblocked)
+            self.assertFalse(check_file_system_block(test_file))
+
 if __name__ == '__main__':
     unittest.main()
+

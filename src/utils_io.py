@@ -278,3 +278,76 @@ def is_video_safe_for_qt(filepath: str) -> bool:
     except Exception as e:
         logging.debug(f"Ошибка проверки is_video_safe_for_qt для {filepath}: {e}")
     return True
+
+
+def check_file_system_block(path: str) -> bool:
+    """
+    Проверяет, заблокирован ли файл системой Windows:
+    1. Наличие скрытого потока безопасности NTFS Zone.Identifier (Mark of the Web).
+    2. Наличие атрибута FILE_ATTRIBUTE_TEMPORARY (0x100), подавляющего создание превью проводником.
+    """
+    if not path:
+        return False
+    
+    if os.name == 'nt':
+        try:
+            # 1. Проверка Zone.Identifier ADS
+            zone_stream = ensure_long_path(path) + ":Zone.Identifier"
+            if os.path.exists(zone_stream):
+                return True
+        except Exception:
+            pass
+
+        try:
+            # 2. Проверка FILE_ATTRIBUTE_TEMPORARY
+            import ctypes
+            attrs = ctypes.windll.kernel32.GetFileAttributesW(ensure_long_path(path))
+            if attrs != -1 and (attrs & 0x100):  # FILE_ATTRIBUTE_TEMPORARY
+                return True
+        except Exception:
+            pass
+
+    return False
+
+
+def unblock_file_system_attributes(path: str) -> bool:
+    """
+    Безопасно снимает блокировки и временные атрибуты с файла:
+    1. Удаляет поток NTFS Zone.Identifier (эквивалентно кнопке «Разблокировать» в свойствах файла).
+    2. Сбрасывает флаг FILE_ATTRIBUTE_TEMPORARY.
+    Возвращает True, если хотя бы один атрибут или поток был успешно очищен.
+    """
+    if not path or not os.path.exists(path):
+        return False
+
+    cleaned = False
+    if os.name == 'nt':
+        import ctypes
+        # 1. Удаление потока Zone.Identifier
+        try:
+            zone_stream = ensure_long_path(path) + ":Zone.Identifier"
+            if os.path.exists(zone_stream):
+                if ctypes.windll.kernel32.DeleteFileW(zone_stream) or not os.path.exists(zone_stream):
+                    cleaned = True
+                else:
+                    try:
+                        os.remove(zone_stream)
+                        cleaned = True
+                    except Exception:
+                        pass
+        except Exception as e:
+            logging.debug(f"[unblock_file_system_attributes] Ошибка удаления Zone.Identifier для {path}: {e}")
+
+        # 2. Сброс FILE_ATTRIBUTE_TEMPORARY
+        try:
+            long_path = ensure_long_path(path)
+            attrs = ctypes.windll.kernel32.GetFileAttributesW(long_path)
+            if attrs != -1 and (attrs & 0x100):
+                new_attrs = attrs & ~0x100
+                if ctypes.windll.kernel32.SetFileAttributesW(long_path, new_attrs):
+                    cleaned = True
+        except Exception as e:
+            logging.debug(f"[unblock_file_system_attributes] Ошибка сброса атрибутов для {path}: {e}")
+
+    return cleaned
+

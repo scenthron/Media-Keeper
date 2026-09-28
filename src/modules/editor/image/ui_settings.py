@@ -13,6 +13,7 @@ class ImageSettingsWidget(QWidget):
     settings_changed = pyqtSignal()
     output_folder_changed = pyqtSignal(str)
     unblock_requested = pyqtSignal()
+    apply_custom_ext_requested = pyqtSignal(str)
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -305,14 +306,13 @@ class ImageSettingsWidget(QWidget):
         rep_mode_layout.addWidget(self.combo_repair_mode)
         tab_repair_layout.addWidget(self.grp_repair_mode)
 
-        # Section 2: Operation Type (4 modes)
+        # Section 2: Operation Type (3 modes)
         self.grp_op_type = self.create_group_box(AppContext.tr("repair_op_type_title"))
         op_type_layout = QVBoxLayout(self.grp_op_type)
         self.combo_op_type = QComboBox()
         self.combo_op_type.addItems([
-            AppContext.tr("repair_op_refresh_thumb"),
-            AppContext.tr("repair_op_format"),
             AppContext.tr("repair_op_lossless_ext"),
+            AppContext.tr("repair_op_format"),
             AppContext.tr("repair_op_exif")
         ])
         self.combo_op_type.setStyleSheet(APP_DESIGN['nativelike_combo'])
@@ -321,7 +321,7 @@ class ImageSettingsWidget(QWidget):
         op_type_layout.addWidget(self.combo_op_type)
         tab_repair_layout.addWidget(self.grp_op_type)
 
-        # Section 3A: Scope for Refresh / Format / Lossless Ext (Only damaged vs All)
+        # Section 3A: Scope for Lossless Ext / Format (Only damaged vs All)
         self.grp_repair_scope = self.create_group_box(AppContext.tr("repair_scope_title"))
         rep_scope_layout = QVBoxLayout(self.grp_repair_scope)
         self.combo_repair_scope = QComboBox()
@@ -335,7 +335,42 @@ class ImageSettingsWidget(QWidget):
         rep_scope_layout.addWidget(self.combo_repair_scope)
         tab_repair_layout.addWidget(self.grp_repair_scope)
 
-        # Section 3B: Thumbnail Size for EXIF Repair
+        # Section 3B: Batch Custom Extension Change (for Lossless mode)
+        self.grp_custom_ext = self.create_group_box(AppContext.tr("repair_batch_ext_title"))
+        custom_ext_layout = QHBoxLayout(self.grp_custom_ext)
+        custom_ext_layout.setSpacing(6)
+        
+        self.inp_custom_ext = QLineEdit("jpg")
+        self.inp_custom_ext.setPlaceholderText(AppContext.tr("repair_batch_ext_placeholder"))
+        self.inp_custom_ext.setStyleSheet(APP_DESIGN['nativelike_input'])
+        self.inp_custom_ext.setFixedHeight(28)
+        custom_ext_layout.addWidget(self.inp_custom_ext, 1)
+
+        self.btn_apply_custom_ext = QPushButton(AppContext.tr("btn_apply_batch_ext"))
+        self.btn_apply_custom_ext.setFixedHeight(28)
+        self.btn_apply_custom_ext.setStyleSheet("""
+            QPushButton {
+                background-color: #3b82f6;
+                color: #ffffff;
+                font-weight: bold;
+                font-size: 11px;
+                border: 1px solid #2563eb;
+                border-radius: 4px;
+                padding: 4px 10px;
+            }
+            QPushButton:hover {
+                background-color: #60a5fa;
+                border-color: #3b82f6;
+            }
+            QPushButton:pressed {
+                background-color: #1d4ed8;
+            }
+        """)
+        self.btn_apply_custom_ext.clicked.connect(self._on_apply_custom_ext_clicked)
+        custom_ext_layout.addWidget(self.btn_apply_custom_ext)
+        tab_repair_layout.addWidget(self.grp_custom_ext)
+
+        # Section 3C: Thumbnail Size for EXIF Repair
         self.grp_repair_size = self.create_group_box(AppContext.tr("repair_thumb_size_title"))
         rep_size_layout = QVBoxLayout(self.grp_repair_size)
         self.combo_thumb_size = QComboBox()
@@ -365,7 +400,7 @@ class ImageSettingsWidget(QWidget):
         """)
         info_layout = QVBoxLayout(self.info_frame)
         info_layout.setContentsMargins(6, 6, 6, 6)
-        self.lbl_repair_info = QLabel(AppContext.tr("repair_refresh_thumb_info"))
+        self.lbl_repair_info = QLabel(AppContext.tr("repair_lossless_ext_info"))
         self.lbl_repair_info.setWordWrap(True)
         self.lbl_repair_info.setStyleSheet("color: #93c5fd; font-size: 11px; line-height: 15px; border: none; background: transparent;")
         info_layout.addWidget(self.lbl_repair_info)
@@ -389,21 +424,23 @@ class ImageSettingsWidget(QWidget):
         self._update_output_zone_state()
 
     def _on_op_type_changed(self, idx):
-        is_refresh = (idx == 0)
+        is_lossless = (idx == 0)
         is_format = (idx == 1)
-        is_lossless = (idx == 2)
-        is_exif = (idx == 3)
-        self.grp_repair_scope.setVisible(is_refresh or is_format or is_lossless)
+        is_exif = (idx == 2)
+        self.grp_repair_scope.setVisible(is_lossless or is_format)
+        self.grp_custom_ext.setVisible(is_lossless)
         self.grp_repair_size.setVisible(is_exif)
-        if is_refresh:
-            self.lbl_repair_info.setText(AppContext.tr("repair_refresh_thumb_info"))
+        if is_lossless:
+            self.lbl_repair_info.setText(AppContext.tr("repair_lossless_ext_info"))
         elif is_format:
             self.lbl_repair_info.setText(AppContext.tr("repair_format_info"))
-        elif is_lossless:
-            self.lbl_repair_info.setText(AppContext.tr("repair_lossless_ext_info"))
         else:
             self.lbl_repair_info.setText(AppContext.tr("repair_exif_info"))
         self.settings_changed.emit()
+
+    def _on_apply_custom_ext_clicked(self):
+        ext = self.inp_custom_ext.text().strip().lstrip('.').lower()
+        self.apply_custom_ext_requested.emit(ext)
 
     def _on_tab_changed(self, idx):
         self._update_output_zone_state()
@@ -543,14 +580,15 @@ class ImageSettingsWidget(QWidget):
         thumb_size = thumb_sizes[t_idx] if 0 <= t_idx < len(thumb_sizes) else (160, 120)
 
         op_idx = self.combo_op_type.currentIndex()
-        op_type_map = {0: 'refresh_thumb', 1: 'format', 2: 'lossless_ext', 3: 'exif'}
+        op_type_map = {0: 'lossless_ext', 1: 'format', 2: 'exif'}
 
         return {
             'mode': 'convert' if self.tab_widget.currentIndex() == 0 else 'repair',
             'repair_save_mode': 'duplicate' if self.combo_repair_mode.currentIndex() == 0 else 'in_place',
-            'repair_op_type': op_type_map.get(op_idx, 'refresh_thumb'),
+            'repair_op_type': op_type_map.get(op_idx, 'lossless_ext'),
             'repair_scope': 'damaged_only' if self.combo_repair_scope.currentIndex() == 0 else 'all',
             'repair_thumb_size': thumb_size,
+            'custom_ext': self.inp_custom_ext.text().strip().lstrip('.').lower() if hasattr(self, 'inp_custom_ext') else 'jpg',
             'format': self.combo_format.currentText().lower(),
             'lossless': self.chk_lossless.isChecked(),
             'quality': self.slider_quality.value(),
@@ -608,9 +646,8 @@ class ImageSettingsWidget(QWidget):
             self.combo_op_type.blockSignals(True)
             self.combo_op_type.clear()
             self.combo_op_type.addItems([
-                AppContext.tr("repair_op_refresh_thumb"),
-                AppContext.tr("repair_op_format"),
                 AppContext.tr("repair_op_lossless_ext"),
+                AppContext.tr("repair_op_format"),
                 AppContext.tr("repair_op_exif")
             ])
             self.combo_op_type.setCurrentIndex(cur_op)
@@ -627,6 +664,11 @@ class ImageSettingsWidget(QWidget):
             ])
             self.combo_repair_scope.setCurrentIndex(cur_scope)
             self.combo_repair_scope.blockSignals(False)
+
+        if hasattr(self, 'grp_custom_ext'):
+            self.grp_custom_ext.setTitle(AppContext.tr("repair_batch_ext_title"))
+            self.inp_custom_ext.setPlaceholderText(AppContext.tr("repair_batch_ext_placeholder"))
+            self.btn_apply_custom_ext.setText(AppContext.tr("btn_apply_batch_ext"))
 
         if hasattr(self, 'grp_repair_size'):
             self.grp_repair_size.setTitle(AppContext.tr("repair_thumb_size_title"))
@@ -645,11 +687,9 @@ class ImageSettingsWidget(QWidget):
         if hasattr(self, 'lbl_repair_info'):
             op_idx = self.combo_op_type.currentIndex()
             if op_idx == 0:
-                self.lbl_repair_info.setText(AppContext.tr("repair_refresh_thumb_info"))
+                self.lbl_repair_info.setText(AppContext.tr("repair_lossless_ext_info"))
             elif op_idx == 1:
                 self.lbl_repair_info.setText(AppContext.tr("repair_format_info"))
-            elif op_idx == 2:
-                self.lbl_repair_info.setText(AppContext.tr("repair_lossless_ext_info"))
             else:
                 self.lbl_repair_info.setText(AppContext.tr("repair_exif_info"))
 

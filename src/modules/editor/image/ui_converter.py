@@ -69,6 +69,7 @@ class ImageConverterWidget(QWidget):
         self.settings_panel.setFixedWidth(380)
         self.settings_panel.output_folder_changed.connect(self.set_output_folder)
         self.settings_panel.unblock_requested.connect(self.on_unblock_attributes_clicked)
+        self.settings_panel.apply_custom_ext_requested.connect(self.on_apply_custom_ext_clicked)
         
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -297,6 +298,102 @@ class ImageConverterWidget(QWidget):
 
         logging.info(f"[ImageConverter] Сняты блокировки и атрибуты у {unblocked_count} файлов")
 
+    def on_apply_custom_ext_clicked(self, custom_ext):
+        ext = (custom_ext or "").strip().lstrip('.').lower()
+        if not ext or not self.files:
+            return
+
+        from .worker import _resolve_unique_path, detect_real_image_format
+        try:
+            from utils_io import smart_move_file, check_file_system_block
+        except ImportError:
+            from src.utils_io import smart_move_file, check_file_system_block
+        import shutil
+
+        s = self.settings_panel.get_settings()
+        repair_mode = s.get('repair_save_mode', 'duplicate')
+        out_dir = s.get('output_dir', '').strip()
+
+        count_changed = 0
+        for i, f_info in enumerate(self.files):
+            src_path = f_info['path']
+            if not os.path.exists(src_path):
+                continue
+            orig_dir = os.path.dirname(src_path)
+            orig_name, orig_ext = os.path.splitext(os.path.basename(src_path))
+            target_ext = f".{ext}"
+
+            if orig_ext.lower() == target_ext.lower():
+                continue
+
+            if repair_mode == 'in_place':
+                target_candidate = os.path.join(orig_dir, f"{orig_name}{target_ext}")
+                target_path = _resolve_unique_path(target_candidate, src_path)
+                smart_move_file(src_path, target_path)
+                f_info['path'] = target_path
+                f_info['name'] = os.path.basename(target_path)
+                count_changed += 1
+            else:
+                dest_dir = out_dir if (out_dir and os.path.isdir(out_dir)) else orig_dir
+                target_candidate = os.path.join(dest_dir, f"{orig_name}{target_ext}")
+                if os.path.abspath(target_candidate).lower() == os.path.abspath(src_path).lower():
+                    target_candidate = os.path.join(dest_dir, f"{orig_name}_1{target_ext}")
+                target_path = _resolve_unique_path(target_candidate, src_path)
+                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                shutil.copy2(src_path, target_path)
+                f_info['path'] = target_path
+                f_info['name'] = os.path.basename(target_path)
+                count_changed += 1
+
+            current_path = f_info['path']
+            file_size = os.path.getsize(current_path) if os.path.exists(current_path) else f_info['size']
+            f_info['size'] = file_size
+            size_str = f"{file_size / (1024*1024):.1f} MB" if file_size >= 1024*1024 else f"{file_size / 1024:.0f} KB"
+
+            try:
+                with Image.open(current_path) as img:
+                    w, h = img.size
+                    res = f"{w}x{h}"
+            except:
+                res = "?"
+
+            item_name = self.table.item(i, 1)
+            if item_name:
+                item_name.setText(f"{os.path.basename(current_path)} ({res}, {size_str})")
+                item_name.setToolTip(current_path)
+
+            real_fmt = detect_real_image_format(current_path)
+            cur_ext_lower = os.path.splitext(current_path)[1].lower()
+            is_fake = False
+            if cur_ext_lower in ('.jpg', '.jpeg', '.jfif', '.pjpeg', '.pjp') and real_fmt not in ('JPEG', 'UNKNOWN'):
+                is_fake = True
+            elif cur_ext_lower in ('.png',) and real_fmt not in ('PNG', 'UNKNOWN'):
+                is_fake = True
+            elif cur_ext_lower in ('.webp',) and real_fmt not in ('WEBP', 'UNKNOWN'):
+                is_fake = True
+
+            is_blocked = check_file_system_block(current_path)
+            status_text = ""
+            if is_fake and is_blocked:
+                status_text = AppContext.tr("status_fake_and_blocked").format(real_fmt)
+            elif is_fake:
+                status_text = AppContext.tr("status_fake_format").format(real_fmt)
+            elif is_blocked:
+                status_text = AppContext.tr("status_blocked_attr")
+
+            if self.table.item(i, 2):
+                self.table.item(i, 2).setText(status_text)
+            if self.table.item(i, 3):
+                self.table.item(i, 3).setText("")
+
+            bg_color = QColor(251, 146, 60, 45) if (is_fake or is_blocked) else QColor(0, 0, 0, 0)
+            for c in range(4):
+                item = self.table.item(i, c)
+                if item:
+                    item.setBackground(bg_color)
+
+        logging.info(f"[ImageConverter] Пакетная смена расширения на '.{ext}' выполнена для {count_changed} файлов")
+
     def on_file_finished(self, path, success, result):
         row = next((i for i, f in enumerate(self.files) if f['path'] == path), None)
         if row is not None:
@@ -314,12 +411,9 @@ class ImageConverterWidget(QWidget):
                     diff = ((new_size - old_size) / old_size) * 100 if old_size > 0 else 0
                     
                     s = self.settings_panel.get_settings()
-                    op_type = s.get('repair_op_type', 'refresh_thumb')
+                    op_type = s.get('repair_op_type', 'lossless_ext')
                     
-                    if s.get('mode') == 'repair' and op_type == 'refresh_thumb':
-                        self.table.item(row, 2).setText(AppContext.tr("status_thumb_refreshed"))
-                        self.table.item(row, 3).setText("OK")
-                    elif s.get('mode') == 'repair' and op_type == 'lossless_ext':
+                    if s.get('mode') == 'repair' and op_type == 'lossless_ext':
                         self.table.item(row, 2).setText(AppContext.tr("status_ext_fixed"))
                         self.table.item(row, 3).setText("OK")
                     elif os.path.normpath(result) == os.path.normpath(path):

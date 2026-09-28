@@ -510,16 +510,6 @@ class SafeQApplication(QApplication):
             tb_lines = traceback.format_exc()
             receiver_name = receiver.objectName() if hasattr(receiver, 'objectName') else str(receiver)
             logging.critical(f"Unhandled Exception in Qt Event Loop (receiver={receiver_name}):\n{tb_lines}")
-            try:
-                from PyQt6.QtWidgets import QMessageBox
-                msg = QMessageBox()
-                msg.setIcon(QMessageBox.Icon.Critical)
-                msg.setWindowTitle("Критическая ошибка")
-                msg.setText("Произошла непредвиденная ошибка в интерфейсе.")
-                msg.setDetailedText(tb_lines)
-                msg.exec()
-            except Exception:
-                pass
             return False
 
 

@@ -1486,36 +1486,37 @@ class LargePreviewPopup(QDialog):
         super().closeEvent(event)
         
     def cleanup(self):
-        import logging; import time; t0 = time.time()
-        if hasattr(self, 'size_settings_popup') and self.size_settings_popup:
-            self.size_settings_popup.hide()
-            self.size_settings_popup.deleteLater()
-            self.size_settings_popup = None
+        if getattr(self, '_is_cleaning_up', False):
+            return
+        self._is_cleaning_up = True
 
-        if self.media_player:
-            logging.info(f"    [SORTER CLEAR] Before cleanup: {time.time()-t0:.4f}s")
+        if hasattr(self, 'size_settings_popup') and self.size_settings_popup:
             try:
-                self.media_player.positionChanged.disconnect()
-                self.media_player.durationChanged.disconnect()
+                self.size_settings_popup.hide()
+                self.size_settings_popup.deleteLater()
             except Exception:
                 pass
-            self.media_player.stop()
-            logging.info(f"    [SORTER CLEAR] Before setSource: {time.time()-t0:.4f}s")
-            self.media_player.setSource(QUrl())
-            logging.info(f"    [SORTER CLEAR] After setSource: {time.time()-t0:.4f}s")
-            
+            self.size_settings_popup = None
+
+        if hasattr(self, 'smart_preview_mgr') and self.smart_preview_mgr:
             try:
-                import time
-                from PyQt6.QtMultimedia import QMediaPlayer
-                from PyQt6.QtCore import QCoreApplication
-                start_t = time.time()
-                while self.media_player.mediaStatus() != QMediaPlayer.MediaStatus.NoMedia and (time.time() - start_t) < 0.3:
-                    QCoreApplication.processEvents()
-                    time.sleep(0.01)
-            except Exception as e:
-                logging.error(f"Error waiting for popup media player release: {e}")
-                
-            self.media_player.deleteLater()
+                self.smart_preview_mgr.cleanup()
+            except Exception:
+                pass
+            self.smart_preview_mgr = None
+
+        if self.media_player:
+            try:
+                self.media_player.stop()
+                self.media_player.setSource(QUrl())
+                self.media_player.setVideoOutput(None)
+                self.media_player.setAudioOutput(None)
+            except Exception:
+                pass
+            try:
+                self.media_player.deleteLater()
+            except Exception:
+                pass
             self.media_player = None
             
         if hasattr(self, 'audio_output') and self.audio_output:
@@ -1526,19 +1527,30 @@ class LargePreviewPopup(QDialog):
             self.audio_output = None
             
         if self.movie:
-            self.movie.stop()
-            self.movie.deleteLater()
+            try:
+                self.movie.stop()
+                self.movie.deleteLater()
+            except Exception:
+                pass
             self.movie = None
+
+        if hasattr(self, '_movie_buffer') and self._movie_buffer:
+            try:
+                self._movie_buffer.close()
+                self._movie_buffer.deleteLater()
+            except Exception:
+                pass
+            self._movie_buffer = None
             
         parent_list = self.parent()
         if parent_list and hasattr(parent_list, '_on_large_preview_closed'):
-            parent_list._on_large_preview_closed()
+            try:
+                parent_list._on_large_preview_closed()
+            except Exception:
+                pass
 
         if self.main_app and hasattr(self.main_app, 'viewer'):
             try:
                 self.main_app.viewer.selection_changed.disconnect(self.update_select_button_state)
             except Exception:
                 pass
-            
-        import gc
-        gc.collect()

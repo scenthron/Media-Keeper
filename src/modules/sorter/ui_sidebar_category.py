@@ -383,9 +383,11 @@ class CategoryWidget(QFrame, SidebarNodeMixin):
                         if self.name in order:
                             idx = order.index(self.name)
                             order[idx] = new_name
-                self.app.reload_categories_ui()
+                QTimer.singleShot(0, self.app.reload_categories_ui)
             except Exception as e:
-                QMessageBox.critical(self, AppContext.tr("err_title"), str(e))
+                import logging
+                logging.error(f"Error renaming category '{self.path}' -> '{new_path}': {e}", exc_info=True)
+                QMessageBox.critical(None, AppContext.tr("err_title"), str(e))
     
     def delete_category(self):
         total_files = 0

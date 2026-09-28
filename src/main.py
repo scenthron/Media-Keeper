@@ -457,11 +457,77 @@ def global_excepthook(exctype, value, traceback_obj):
         
     sys.__excepthook__(exctype, value, traceback_obj)
 
+import faulthandler
+import threading
+
+# Включаем перехват фатальных C/C++ сбоев и дампов стека
+try:
+    faulthandler.enable()
+except Exception:
+    pass
+
+def global_threading_excepthook(args):
+    import traceback
+    import logging
+    try:
+        tb_lines = traceback.format_exception(args.exc_type, args.exc_value, args.exc_traceback)
+        tb_text = "".join(tb_lines)
+        thread_name = getattr(args.thread, 'name', 'Unknown')
+        logging.critical(f"Unhandled Exception in Thread '{thread_name}':\n{tb_text}")
+        
+        # Показываем диалог пользователю
+        try:
+            from PyQt6.QtWidgets import QApplication, QMessageBox
+            if QApplication.instance():
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Icon.Critical)
+                msg.setWindowTitle("Критическая ошибка (Поток)")
+                msg.setText(f"Произошла ошибка в фоновом потоке '{thread_name}'.")
+                msg.setDetailedText(tb_text)
+                msg.exec()
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"Error in global_threading_excepthook: {e}", file=sys.stderr)
+
+try:
+    threading.excepthook = global_threading_excepthook
+except Exception:
+    pass
+
+class SafeQApplication(QApplication):
+    """
+    Надежная обертка над QApplication: перехватывает ЛЮБЫЕ необработанные исключения
+    внутри цикла обработки событий Qt (сигналы, слоты, события мыши, перерисовка),
+    предотвращая 'тихое' закрытие программы без вывода ошибки.
+    """
+    def notify(self, receiver, event):
+        try:
+            return super().notify(receiver, event)
+        except Exception as e:
+            import traceback
+            import logging
+            tb_lines = traceback.format_exc()
+            receiver_name = receiver.objectName() if hasattr(receiver, 'objectName') else str(receiver)
+            logging.critical(f"Unhandled Exception in Qt Event Loop (receiver={receiver_name}):\n{tb_lines}")
+            try:
+                from PyQt6.QtWidgets import QMessageBox
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Icon.Critical)
+                msg.setWindowTitle("Критическая ошибка")
+                msg.setText("Произошла непредвиденная ошибка в интерфейсе.")
+                msg.setDetailedText(tb_lines)
+                msg.exec()
+            except Exception:
+                pass
+            return False
+
+
 if __name__ == "__main__":
     setup_logging()
     sys.excepthook = global_excepthook
     logging.info(f"Запуск приложения {APP_VERSION}.")
-    app = QApplication(sys.argv)
+    app = SafeQApplication(sys.argv)
     
     from utils_common import ListViewDelayFilter
     list_delay_filter = ListViewDelayFilter()

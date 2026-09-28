@@ -295,9 +295,11 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
                         if self.name in order:
                             idx = order.index(self.name)
                             order[idx] = new_name
-                self.app.reload_categories_ui()
+                QTimer.singleShot(0, self.app.reload_categories_ui)
             except Exception as e:
-                QMessageBox.critical(self, AppContext.tr("err_title"), str(e))
+                import logging
+                logging.error(f"Error renaming leaf folder '{self.path}' -> '{new_path}': {e}", exc_info=True)
+                QMessageBox.critical(None, AppContext.tr("err_title"), str(e))
 
     def create_subdirectory(self):
         dlg = SmartNameDialog("dlg_new_sub_title", "dlg_enter_name", self.path, "", self)

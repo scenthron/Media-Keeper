@@ -14,7 +14,7 @@ from config import AppContext, APP_DESIGN
 from .worker import ProbeWorker, ConversionWorker
 from .helpers import format_file_info
 from .ui_widgets import OutputFolderDropZone, IntegratedDropZone
-from .ui_table import FileDropTable, DeleteRowDelegate
+from .ui_table import FileDropTable, DeleteRowDelegate, MiddleElideDelegate
 from .ui_settings import VideoSettingsWidget
 from ..ui_ffmpeg_notice import FFmpegNoticeWidget
 from ..ffmpeg_downloader import check_ffmpeg_available
@@ -81,8 +81,10 @@ class VideoConverterWidget(QWidget):
         self.table.verticalHeader().hide() # Hide '1', '2' and corner button
         self.table.setStyleSheet("QTableWidget { background: transparent; color: #eee; border: none; } QHeaderView::section { background: #222; color: #aaa; border: none; font-weight: bold; }")
         
-        # Set Delegate
+        # Set Delegates
         self.table.setItemDelegateForColumn(0, DeleteRowDelegate(self.table))
+        self.table.setItemDelegateForColumn(1, MiddleElideDelegate(self.table))
+        self.table.setItemDelegateForColumn(2, MiddleElideDelegate(self.table))
         
         left_layout.addWidget(self.table)
         

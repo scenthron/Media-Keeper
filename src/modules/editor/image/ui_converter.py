@@ -13,7 +13,7 @@ from config import AppContext, APP_DESIGN
 from .ui_settings import ImageSettingsWidget
 from .worker import ImageConverterWorker
 from ..video.ui_widgets import IntegratedDropZone
-from ..video.ui_table import FileDropTable, DeleteRowDelegate
+from ..video.ui_table import FileDropTable, DeleteRowDelegate, MiddleElideDelegate
 from ..video.helpers import format_file_info
 
 class ImageConverterWidget(QWidget):
@@ -54,6 +54,8 @@ class ImageConverterWidget(QWidget):
         self.table.setColumnWidth(3, 80)
         self.table.verticalHeader().hide()
         self.table.setItemDelegateForColumn(0, DeleteRowDelegate(self.table))
+        self.table.setItemDelegateForColumn(1, MiddleElideDelegate(self.table))
+        self.table.setItemDelegateForColumn(2, MiddleElideDelegate(self.table))
         self.table.setStyleSheet("QTableWidget { background: transparent; color: #eee; border: none; } QHeaderView::section { background: #222; color: #aaa; border: none; font-weight: bold; }")
         
         left_layout.addWidget(self.table)
@@ -359,7 +361,7 @@ class ImageConverterWidget(QWidget):
 
             item_name = self.table.item(i, 1)
             if item_name:
-                item_name.setText(f"{os.path.basename(current_path)} ({res}, {size_str})")
+                item_name.setText(format_file_info(os.path.basename(current_path), file_size, "", res))
                 item_name.setToolTip(current_path)
 
             real_fmt = detect_real_image_format(current_path)

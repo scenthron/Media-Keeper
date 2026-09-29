@@ -155,6 +155,24 @@ class TestImageRepair(unittest.TestCase):
         self.assertTrue(os.path.exists(widget.files[0]['path']))
         self.assertTrue(os.path.exists(widget.files[1]['path']))
 
+    def test_middle_elide_filename(self):
+        from modules.editor.video.ui_table import middle_elide_text
+        from PyQt6.QtGui import QFont, QFontMetrics
+        
+        font = QFont('Segoe UI', 9)
+        fm = QFontMetrics(font)
+        
+        long_filename = "sdfgsdfgsdfg_super_long_name_test_123456789_asdfasdf.jpg (205KB, 1200x800)"
+        full_w = fm.horizontalAdvance(long_filename)
+        
+        # Test narrow width
+        elided = middle_elide_text(long_filename, full_w // 2, fm)
+        self.assertIn("...", elided)
+        self.assertTrue(elided.endswith("(205KB, 1200x800)"))
+        self.assertIn(".jpg", elided)
+        self.assertTrue(elided.startswith("sdfgsdfg"))
+        self.assertLessEqual(fm.horizontalAdvance(elided), full_w // 2 + 10)
+
     def test_unblock_file_attributes(self):
         from src.utils_io import check_file_system_block, unblock_file_system_attributes
         

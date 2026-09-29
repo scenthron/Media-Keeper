@@ -3,55 +3,48 @@ import os
 
 def smart_truncate_filename(full_text, max_width, font_metrics):
     """
-    Умное сокращение: приоритет информации в скобках
-    file.avi (150MB, H.264, 1920x1080) -> filen....avi (150MB, H.264, 1920x1080)
+    Умное сокращение середины имени файла:
+    file_very_long_name.avi (150MB, H.264, 1920x1080) -> file_v...name.avi (150MB, H.264, 1920x1080)
+    Всегда сохраняет расширение файла и информацию в скобках.
     """
-    if font_metrics.horizontalAdvance(full_text) <= max_width:
+    if not full_text or font_metrics.horizontalAdvance(full_text) <= max_width:
         return full_text
-    
-    # Разделяем на имя и инфо в скобках
-    if '(' in full_text and ')' in full_text:
-        name_part = full_text[:full_text.index('(')].strip()
-        info_part = full_text[full_text.index('('):]
+        
+    if '(' in full_text and full_text.endswith(')'):
+        idx = full_text.rfind('(')
+        name_part = full_text[:idx].strip()
+        info_part = full_text[idx:].strip()
     else:
         name_part = full_text
         info_part = ""
-    
-    # Проверяем длину инфо
-    info_width = font_metrics.horizontalAdvance(info_part)
-    available_for_name = max_width - info_width - font_metrics.horizontalAdvance("...")
-    
-    if available_for_name > 0:
-        # Сокращаем имя, сохраняя расширение
-        if '.' in name_part:
-            base, ext = os.path.splitext(name_part)
-            ext_width = font_metrics.horizontalAdvance(ext)
-            available_for_base = available_for_name - ext_width
-            
-            if available_for_base > 0:
-                # Подбираем длину базового имени
-                for i in range(len(base), 0, -1):
-                    test_text = base[:i] + "..." + ext + " " + info_part
-                    if font_metrics.horizontalAdvance(test_text) <= max_width:
-                        return test_text
-    
-    # Если и это не помещается, сокращаем и инфо
-    if info_part:
-        # Сокращаем инфо: (150MB...) 
-        half_available = max_width // 2
-        # Простое сокращение имени
-        short_name = name_part[:5] + "..." + (name_part[-4:] if len(name_part) > 9 else "")
-        remaining = max_width - font_metrics.horizontalAdvance(short_name + " (") - font_metrics.horizontalAdvance("...)")
         
-        if remaining > 0:
-            info_content = info_part[1:-1]  # Убираем скобки
-            for i in range(len(info_content), 0, -1):
-                test_info = "(" + info_content[:i] + "...)"
-                if font_metrics.horizontalAdvance(test_info) <= remaining:
-                    return short_name + " " + test_info
+    base, ext = os.path.splitext(name_part)
+    info_str = f" {info_part}" if info_part else ""
+    info_w = font_metrics.horizontalAdvance(info_str)
     
-    # Крайний случай - просто обрезаем
-    return full_text[:max_width // font_metrics.averageCharWidth()] + "..."
+    avail_for_name = max_width - info_w
+    min_name_w = font_metrics.horizontalAdvance("..." + ext)
+    
+    if avail_for_name <= min_name_w:
+        from PyQt6.QtCore import Qt
+        return font_metrics.elidedText(full_text, Qt.TextElideMode.ElideMiddle, max_width)
+        
+    low = 1
+    high = len(base)
+    best_name = base + ext
+    
+    while low <= high:
+        mid = (low + high) // 2
+        left_len = (mid + 1) // 2
+        right_len = mid // 2
+        candidate = base[:left_len] + "..." + (base[-right_len:] if right_len > 0 else "") + ext
+        if font_metrics.horizontalAdvance(candidate) <= avail_for_name:
+            best_name = candidate
+            low = mid + 1
+        else:
+            high = mid - 1
+            
+    return f"{best_name}{info_str}"
 
 def format_file_info(name, size, codec=None, res=None):
     """

@@ -94,6 +94,72 @@ class DeleteRowDelegate(QStyledItemDelegate):
                     return True
         return super().editorEvent(event, model, option, index)
 
+def middle_elide_text(full_text: str, max_width: int, fm) -> str:
+    """
+    Умное сокращение середины длинных имен файлов (например: sdfgsdfgsdfg...asdfasdf.jpg),
+    с гарантированным сохранением расширения файла и метаданных в скобках.
+    """
+    if not full_text or fm.horizontalAdvance(full_text) <= max_width:
+        return full_text
+        
+    if '(' in full_text and full_text.endswith(')'):
+        idx = full_text.rfind('(')
+        name_part = full_text[:idx].strip()
+        info_part = full_text[idx:].strip()
+    else:
+        name_part = full_text
+        info_part = ''
+        
+    base, ext = os.path.splitext(name_part)
+    info_str = f" {info_part}" if info_part else ""
+    info_w = fm.horizontalAdvance(info_str)
+    
+    avail_for_name = max_width - info_w
+    min_name_w = fm.horizontalAdvance("..." + ext)
+    
+    if avail_for_name <= min_name_w:
+        return fm.elidedText(full_text, Qt.TextElideMode.ElideMiddle, max_width)
+        
+    # Двоичный поиск максимального количества символов базового имени
+    low = 1
+    high = len(base)
+    best_name = base + ext
+    
+    while low <= high:
+        mid = (low + high) // 2
+        left_len = (mid + 1) // 2
+        right_len = mid // 2
+        candidate = base[:left_len] + "..." + (base[-right_len:] if right_len > 0 else "") + ext
+        if fm.horizontalAdvance(candidate) <= avail_for_name:
+            best_name = candidate
+            low = mid + 1
+        else:
+            high = mid - 1
+            
+    return f"{best_name}{info_str}"
+
+class MiddleElideDelegate(QStyledItemDelegate):
+    """
+    Делегат ячеек таблицы, плавно сокращающий середину имени файла (Elide Middle)
+    при недостатке ширины колонки, всегда сохраняя расширение и метаданные.
+    """
+    def paint(self, painter, option, index):
+        from PyQt6.QtWidgets import QStyleOptionViewItem, QApplication
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        
+        icon_w = (opt.decorationSize.width() + 8) if not opt.icon.isNull() else 0
+        padding = 12
+        avail_w = opt.rect.width() - icon_w - padding
+        
+        if avail_w > 0 and opt.text:
+            fm = opt.fontMetrics
+            opt.text = middle_elide_text(opt.text, avail_w, fm)
+            opt.textElideMode = Qt.TextElideMode.ElideNone
+            
+        style = opt.widget.style() if opt.widget else QApplication.style()
+        style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+
 class FileDropTable(QTableWidget):
     files_dropped = pyqtSignal(list)
     delete_request_signal = pyqtSignal(int)

@@ -342,12 +342,24 @@ class ImageSettingsWidget(QWidget):
         
         self.inp_custom_ext = QLineEdit("jpg")
         self.inp_custom_ext.setPlaceholderText(AppContext.tr("repair_batch_ext_placeholder"))
-        self.inp_custom_ext.setStyleSheet(APP_DESIGN['nativelike_input'])
-        self.inp_custom_ext.setFixedHeight(28)
+        self.inp_custom_ext.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #555;
+                border-radius: 4px;
+                padding: 2px 8px;
+                background: #333;
+                color: white;
+                font-size: 13px;
+            }
+            QLineEdit:focus {
+                border-color: #3b82f6;
+            }
+        """)
+        self.inp_custom_ext.setFixedHeight(30)
         custom_ext_layout.addWidget(self.inp_custom_ext, 1)
 
         self.btn_apply_custom_ext = QPushButton(AppContext.tr("btn_apply_batch_ext"))
-        self.btn_apply_custom_ext.setFixedHeight(28)
+        self.btn_apply_custom_ext.setFixedHeight(30)
         self.btn_apply_custom_ext.setStyleSheet("""
             QPushButton {
                 background-color: #3b82f6;

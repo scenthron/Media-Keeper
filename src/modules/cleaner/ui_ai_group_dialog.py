@@ -13,6 +13,7 @@ from config import AppContext
 from .logic_ai_classifier import get_ai_assets_dir, load_ai_settings, save_ai_settings
 from .logic_ai_dump import load_dump_info, extract_images_to_temp, save_dump, extract_images_to_dir, load_features
 from .ui_widgets import RefImagesListWidget
+from .ai_constants import AI_SAMPLE_IMAGE_EXTS, AI_IMAGE_FILTER_QT
 import cv2
 
 class AiGroupSettingsDialog(QDialog):
@@ -328,7 +329,7 @@ class AiGroupSettingsDialog(QDialog):
             self, 
             "Выберите картинки" if self.is_ru else "Select Images",
             "", 
-            "Images (*.png *.jpg *.jpeg *.bmp *.webp)"
+            AI_IMAGE_FILTER_QT
         )
         if files:
             self.add_dropped_files(files, is_positive)
@@ -343,6 +344,9 @@ class AiGroupSettingsDialog(QDialog):
             ai_initialized = self.classifier.ai.initialize_sessions()
             
         for path in file_paths:
+            ext = os.path.splitext(path)[1].lower()
+            if ext not in AI_SAMPLE_IMAGE_EXTS:
+                continue
             if path not in target_list:
                 is_invalid = False
                 if is_face_mode and ai_initialized:

@@ -5,6 +5,7 @@ import numpy as np
 from enum import Enum
 from dataclasses import dataclass, field
 from PyQt6.QtCore import QObject, pyqtSignal, QRunnable, QThreadPool
+from .ai_constants import AI_SCAN_IMAGE_EXTS
 
 # -----------------------------------------------------------------------------
 # DTO (Data Transfer Objects)
@@ -154,7 +155,7 @@ class AiCoreWorker(QRunnable):
             
             # 1. Gather valid files
             self.signals.progress.emit(STAGE_SCANNING, 0.0, "Поиск медиафайлов...", 0, 0, 0, 0, 0, 0)
-            valid_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.avif'}
+            valid_exts = AI_SCAN_IMAGE_EXTS
             valid_files = []
             scanned_files = 0
             scanned_bytes = 0

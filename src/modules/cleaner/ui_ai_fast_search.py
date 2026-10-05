@@ -9,6 +9,7 @@ from PyQt6.QtGui import QIcon, QPixmap, QColor, QPen, QPainter, QImage
 
 from config import AppContext
 from .logic_ai_dump import save_dump
+from .ai_constants import AI_SAMPLE_IMAGE_EXTS
 from logic_paths import get_app_data_dir
 import shutil
 import uuid
@@ -152,7 +153,7 @@ class FastSearchDropArea(QListWidget):
         return QPixmap()
 
     def add_files(self, files: list[str]):
-        valid_exts = {'.jpg', '.jpeg', '.png', '.bmp', '.webp', '.avif'}
+        valid_exts = AI_SAMPLE_IMAGE_EXTS
         temp_dir = os.path.join(get_app_data_dir(), "Ai_assets", "Temp", "FastSearch")
         os.makedirs(temp_dir, exist_ok=True)
         

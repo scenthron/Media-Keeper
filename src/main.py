@@ -12,6 +12,14 @@ if hasattr(sys, '__interactivehook__'):
     except:
         pass
 
+# --- Инициализация Windows COM (STA) для корректной работы системных диалогов ---
+if sys.platform == 'win32':
+    try:
+        import ctypes
+        ctypes.windll.ole32.CoInitializeEx(None, 2)  # COINIT_APARTMENTTHREADED (STA)
+    except Exception:
+        pass
+
 # --- Внедрение DirectML (если включено в настройках) ---
 try:
     from modules.cleaner.core_directml import DirectMLManager
@@ -122,37 +130,52 @@ def _make_safe_dialog_method(orig_method, options_index):
             except Exception:
                 pass
 
-        # 3. Safe dialog execution on Windows:
-        # We explicitly enforce DontUseNativeDialog on Windows to prevent unrecoverable OS-level
-        # COM RPC_E_WRONG_THREAD (0x8001010e) and SEH access violation crashes that occur when DirectML / ONNX
-        # or worker threads change the COM apartment threading model.
+        # 3. Native Windows Explorer Dialog execution (with sidebar, favorites, breadcrumbs):
         if sys.platform == 'win32':
-            if 'options' in kwargs:
-                kwargs['options'] = kwargs['options'] | QFileDialog.Option.DontUseNativeDialog
-            else:
-                while len(args_list) < options_index:
-                    args_list.append("")
-                if len(args_list) > options_index:
-                    cur_opt = args_list[options_index] or QFileDialog.Option(0)
-                    args_list[options_index] = cur_opt | QFileDialog.Option.DontUseNativeDialog
-                else:
-                    default_opt = QFileDialog.Option.ShowDirsOnly if orig_method.__name__ == 'getExistingDirectory' else QFileDialog.Option(0)
-                    args_list.append(default_opt | QFileDialog.Option.DontUseNativeDialog)
+            try:
+                import ctypes
+                ctypes.windll.ole32.CoInitializeEx(None, 2)  # Ensure STA COM active on GUI thread
+            except Exception:
+                pass
 
         try:
-            logging.debug(f"[SafeDialog] Invoking {orig_method.__name__} with args={args_list}, kwargs={kwargs}")
-            res = orig_method(*args_list, **kwargs)
-            logging.debug(f"[SafeDialog] {orig_method.__name__} returned: {res!r}")
+            native_args = list(args_list)
+            native_kwargs = dict(kwargs)
+            logging.debug(f"[SafeDialog] Attempting native {orig_method.__name__} with args={native_args}, kwargs={native_kwargs}")
+            res = orig_method(*native_args, **native_kwargs)
+            logging.debug(f"[SafeDialog] Native {orig_method.__name__} returned: {res!r}")
             return res
-        except Exception as e:
-            err_msg = f"[SafeDialog ERROR] Failed calling {orig_method.__name__}: {e}"
-            print(err_msg, file=sys.stderr, flush=True)
-            logging.error(err_msg, exc_info=True)
-            if orig_method.__name__ in ('getOpenFileName', 'getOpenFileNames', 'getSaveFileName'):
-                if orig_method.__name__ == 'getOpenFileNames':
-                    return [], ""
-                return "", ""
-            return ""
+        except Exception as native_err:
+            logging.error(f"[SafeDialog] Native dialog failed: {native_err}. Falling back to built-in Qt dialog.", exc_info=True)
+            
+            fallback_args = list(args_list)
+            fallback_kwargs = dict(kwargs)
+            if sys.platform == 'win32':
+                if 'options' in fallback_kwargs:
+                    fallback_kwargs['options'] = fallback_kwargs['options'] | QFileDialog.Option.DontUseNativeDialog
+                else:
+                    while len(fallback_args) < options_index:
+                        fallback_args.append("")
+                    if len(fallback_args) > options_index:
+                        cur_opt = fallback_args[options_index] or QFileDialog.Option(0)
+                        fallback_args[options_index] = cur_opt | QFileDialog.Option.DontUseNativeDialog
+                    else:
+                        default_opt = QFileDialog.Option.ShowDirsOnly if orig_method.__name__ == 'getExistingDirectory' else QFileDialog.Option(0)
+                        fallback_args.append(default_opt | QFileDialog.Option.DontUseNativeDialog)
+
+            try:
+                res = orig_method(*fallback_args, **fallback_kwargs)
+                logging.debug(f"[SafeDialog] Fallback {orig_method.__name__} returned: {res!r}")
+                return res
+            except Exception as e:
+                err_msg = f"[SafeDialog ERROR] Failed calling fallback {orig_method.__name__}: {e}"
+                print(err_msg, file=sys.stderr, flush=True)
+                logging.error(err_msg, exc_info=True)
+                if orig_method.__name__ in ('getOpenFileName', 'getOpenFileNames', 'getSaveFileName'):
+                    if orig_method.__name__ == 'getOpenFileNames':
+                        return [], ""
+                    return "", ""
+                return ""
     return safe_method
 
 QFileDialog.getExistingDirectory = _make_safe_dialog_method(QFileDialog.getExistingDirectory, 3)

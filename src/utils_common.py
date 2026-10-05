@@ -277,7 +277,9 @@ def reveal_in_explorer(path: str) -> bool:
         
         dir_path = os.path.dirname(path)
         
-        ole32.CoInitialize(None)
+        # 0x0 = S_OK (мы инициализировали COM), 0x1 = S_FALSE (COM уже был активен)
+        hr_init = ole32.CoInitializeEx(None, 2)  # COINIT_APARTMENTTHREADED (STA)
+        co_inited = (hr_init == 0)
         try:
             dir_pidl = shell32.ILCreateFromPathW(dir_path)
             if not dir_pidl:
@@ -307,7 +309,8 @@ def reveal_in_explorer(path: str) -> bool:
                 logging.error(f"Fallback startfile failed: {start_err}")
                 return False
         finally:
-            ole32.CoUninitialize()
+            if co_inited:
+                ole32.CoUninitialize()
     else:
         # Для других ОС (Linux, macOS)
         try:

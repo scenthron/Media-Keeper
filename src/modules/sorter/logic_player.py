@@ -345,6 +345,10 @@ class PlayerMixin:
                 is_loading = hasattr(self, 'viewer') and hasattr(self.viewer, 'loading_overlay') and not self.viewer.loading_overlay.isHidden()
                 if not is_loading and self.isVisible():
                     self.media_player.play()
+                    
+                if is_fast_active:
+                    QTimer.singleShot(80, lambda: self.media_player.setPlaybackRate(speed) if hasattr(self, 'media_player') and self.media_player else None)
+                    QTimer.singleShot(200, lambda: self.media_player.setPlaybackRate(speed) if hasattr(self, 'media_player') and self.media_player else None)
                 
             else:
                 self.video_controls.hide()
@@ -405,12 +409,20 @@ class PlayerMixin:
             self.viewer.set_fullscreen_mode(True, controls_to_pass)
 
     def _fit_video(self, status):
-        if status == QMediaPlayer.MediaStatus.BufferedMedia or status == QMediaPlayer.MediaStatus.LoadedMedia:
+        if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia, QMediaPlayer.MediaStatus.BufferingMedia):
             if hasattr(self, 'viewer') and hasattr(self.viewer, 'single_view') and self.viewer.single_view.video_item.nativeSize().isValid():
                 sz = self.viewer.single_view.video_item.nativeSize()
                 self.viewer.single_view._fit_video_size_changed(sz)
             else:
                 self.viewer.reset_view()
+                
+            if hasattr(self, 'media_player') and self.media_player:
+                if not getattr(self, 'current_media_is_video', False):
+                    if getattr(AppContext, 'session_audio_speed_active', False):
+                        self.media_player.setPlaybackRate(float(AppContext.session_fast_speed_val))
+                else:
+                    if getattr(AppContext, 'session_video_speed_active', False):
+                        self.media_player.setPlaybackRate(float(AppContext.session_fast_speed_val))
 
     def _fit_video_size_changed(self, size):
         if hasattr(self, 'viewer') and hasattr(self.viewer, 'single_view') and hasattr(self.viewer.single_view, '_fit_video_size_changed'):

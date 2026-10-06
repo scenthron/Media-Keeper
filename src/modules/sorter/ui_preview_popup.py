@@ -840,6 +840,7 @@ class LargePreviewPopup(QDialog):
             self.media_player.durationChanged.connect(self.controls.update_duration)
             self.media_player.durationChanged.connect(self._update_overlay_duration)
             self.media_player.playbackStateChanged.connect(self._on_playback_state_changed)
+            self.media_player.mediaStatusChanged.connect(self._on_media_status_changed_popup)
             
             self.controls.seek_requested.connect(self.media_player.setPosition)
             self.controls.seek_moved.connect(self.media_player.setPosition)
@@ -871,6 +872,10 @@ class LargePreviewPopup(QDialog):
             self.media_player.setPlaybackRate(speed)
             self.media_player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
             self.media_player.play()
+            
+            if is_fast_active:
+                QTimer.singleShot(80, lambda: self.media_player.setPlaybackRate(speed) if hasattr(self, 'media_player') and self.media_player else None)
+                QTimer.singleShot(200, lambda: self.media_player.setPlaybackRate(speed) if hasattr(self, 'media_player') and self.media_player else None)
             
         self.size_settings_popup = SizeSettingsPopup(self)
         self.size_settings_popup.hide()
@@ -1298,7 +1303,7 @@ class LargePreviewPopup(QDialog):
                 self.movie.setPaused(False)
 
     def _on_media_status_changed_popup(self, status):
-        if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia):
+        if status in (QMediaPlayer.MediaStatus.BufferedMedia, QMediaPlayer.MediaStatus.LoadedMedia, QMediaPlayer.MediaStatus.BufferingMedia):
             if hasattr(self, 'video_viewer') and self.video_viewer:
                 sz = self.video_viewer.video_item.nativeSize()
                 if sz.isValid():
@@ -1306,6 +1311,13 @@ class LargePreviewPopup(QDialog):
             if hasattr(self, 'time_overlay'):
                 self.time_overlay.show()
                 self.resizeEvent(None)
+                
+            if hasattr(self, 'media_player') and self.media_player:
+                ext = os.path.splitext(getattr(self, 'filepath', ''))[1].lower()
+                if ext in AUDIO_EXTS and getattr(AppContext, 'session_audio_speed_active', False):
+                    self.media_player.setPlaybackRate(float(AppContext.session_fast_speed_val))
+                elif ext in VIDEO_EXTS and getattr(AppContext, 'session_video_speed_active', False):
+                    self.media_player.setPlaybackRate(float(AppContext.session_fast_speed_val))
         elif status == QMediaPlayer.MediaStatus.InvalidMedia:
             if hasattr(self, 'time_overlay'):
                 self.time_overlay.hide()
@@ -1318,6 +1330,8 @@ class LargePreviewPopup(QDialog):
         if is_playing and hasattr(self, 'media_player') and self.media_player:
             ext = os.path.splitext(getattr(self, 'filepath', ''))[1].lower()
             if ext in AUDIO_EXTS and getattr(AppContext, 'session_audio_speed_active', False):
+                self.media_player.setPlaybackRate(float(AppContext.session_fast_speed_val))
+            elif ext in VIDEO_EXTS and getattr(AppContext, 'session_video_speed_active', False):
                 self.media_player.setPlaybackRate(float(AppContext.session_fast_speed_val))
             
         if hasattr(self, 'video_viewer') and self.video_viewer and hasattr(self.video_viewer, 'update_segment_indicator'):
@@ -1457,6 +1471,13 @@ class LargePreviewPopup(QDialog):
             pos = self.media_player.position()
             self.time_overlay.set_time(pos, dur)
             self.resizeEvent(None)
+            
+        if hasattr(self, 'media_player') and self.media_player:
+            ext = os.path.splitext(getattr(self, 'filepath', ''))[1].lower()
+            if ext in AUDIO_EXTS and getattr(AppContext, 'session_audio_speed_active', False):
+                self.media_player.setPlaybackRate(float(AppContext.session_fast_speed_val))
+            elif ext in VIDEO_EXTS and getattr(AppContext, 'session_video_speed_active', False):
+                self.media_player.setPlaybackRate(float(AppContext.session_fast_speed_val))
             
     def _on_media_duration_changed(self, dur):
         if hasattr(self, 'smart_preview_mgr'):

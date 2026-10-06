@@ -535,9 +535,8 @@ class CleanerPreviewWidget(QWidget):
         self.resizeEvent(None)
         
         if is_audio:
-            AppContext.session_audio_speed_active = False
-            is_fast_active = False
-            speed = 1.0
+            is_fast_active = getattr(AppContext, "session_audio_speed_active", False)
+            speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
             loop = AppContext.session_loop
             segment_view = False
         else:

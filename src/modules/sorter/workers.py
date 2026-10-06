@@ -62,18 +62,15 @@ class ScanThread(QThread):
                     size = stat.st_size
                     mtime = stat.st_mtime
                     ctime = stat.st_ctime
+                    rel = os.path.relpath(fp, long_folder)
+                    result.append({
+                        'rel_path': rel,
+                        'size': size,
+                        'mtime': mtime,
+                        'ctime': ctime
+                    })
                 except Exception:
-                    size = 0
-                    mtime = 0.0
-                    ctime = 0.0
-
-                rel = os.path.relpath(fp, long_folder)
-                result.append({
-                    'rel_path': rel,
-                    'size': size,
-                    'mtime': mtime,
-                    'ctime': ctime
-                })
+                    continue
         except Exception as e:
             logging.error(f"Ошибка в потоке сканирования: {e}", exc_info=True)
 

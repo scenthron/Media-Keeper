@@ -152,11 +152,57 @@ class FileOpsMixin:
         recursive = self.config.get("scan_subfolders", False)
         
         if getattr(self, 'virtual_folder_name', None):
-            # We are in virtual folder mode, but the user clicked refresh.
-            # We just re-apply filters on existing _raw_dir_files.
-            logging.info("Refreshing virtual folder via apply_local_filters_and_sorting")
+            # We are in virtual folder mode, validate which files still physically exist on disk
+            logging.info("Validating and refreshing virtual folder files...")
             self._safe_close_dialog('scan_dlg')
-            self.apply_local_filters_and_sorting(trigger_sync=True)
+            
+            import json
+            from logic_paths import get_app_data_dir
+            from utils_io import safe_path_exists, ensure_long_path
+            
+            valid_files = []
+            for f in getattr(self, '_raw_dir_files', []):
+                p = f.get('rel_path', '')
+                if p and safe_path_exists(p):
+                    try:
+                        stat = os.stat(ensure_long_path(p))
+                        f['size'] = stat.st_size
+                        f['mtime'] = stat.st_mtime
+                        f['ctime'] = stat.st_ctime
+                        valid_files.append(f)
+                    except Exception:
+                        pass
+            
+            self._raw_dir_files = valid_files
+            session_path = os.path.join(get_app_data_dir(), "virtual_session.json")
+            
+            if valid_files:
+                try:
+                    with open(session_path, 'w', encoding='utf-8') as f_sess:
+                        json.dump({"source_name": self.virtual_folder_name, "files": [f['rel_path'] for f in valid_files]}, f_sess, ensure_ascii=False)
+                except Exception as e:
+                    logging.warning(f"Failed to update virtual session: {e}")
+                if hasattr(self, 'update_ui_for_virtual_folder'):
+                    self.update_ui_for_virtual_folder()
+                self.apply_local_filters_and_sorting(trigger_sync=True)
+            else:
+                # All files in virtual folder have been moved/deleted! Clean up virtual session
+                logging.info("Virtual folder is empty after refresh. Exiting virtual folder mode.")
+                if os.path.exists(session_path):
+                    try: os.remove(session_path)
+                    except Exception: pass
+                self.virtual_folder_name = None
+                if hasattr(self, 'lbl_unsort_count'):
+                    self.lbl_unsort_count.virtual_getter = None
+                self.update_paths_from_config()
+                if hasattr(self, 'refresh_sidebar_styling'):
+                    self.refresh_sidebar_styling()
+                
+                # If a real UNSORT_DIR is configured, scan it, otherwise show empty
+                if self.UNSORT_DIR and os.path.exists(self.UNSORT_DIR):
+                    self.refresh_files_list(show_progress=show_progress)
+                else:
+                    self.apply_local_filters_and_sorting(trigger_sync=True)
             return
 
         logging.info(f"Starting scan thread: {self.UNSORT_DIR}")

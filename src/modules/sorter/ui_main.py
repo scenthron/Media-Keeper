@@ -346,8 +346,14 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                 with open(session_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 if data.get('source_name') and data.get('files'):
-                    self.load_virtual_files(data['files'], data['source_name'])
-                    has_virtual = True
+                    from utils_io import safe_path_exists
+                    existing_files = [p for p in data['files'] if safe_path_exists(p)]
+                    if existing_files:
+                        self.load_virtual_files(existing_files, data['source_name'])
+                        has_virtual = True
+                    else:
+                        try: os.remove(session_path)
+                        except Exception: pass
         except Exception as e:
             import logging
             logging.error(f"Failed to load virtual session: {e}")

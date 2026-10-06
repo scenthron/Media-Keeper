@@ -329,10 +329,8 @@ class PlayerMixin:
                 self.current_media_is_video = False # Treat as audio for UI logic
                 
                 
-                # Audio always resets speed by default logic
-                AppContext.session_audio_speed_active = False
-                is_fast_active = False
-                speed = 1.0
+                is_fast_active = getattr(AppContext, "session_audio_speed_active", False)
+                speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
                 loop = AppContext.session_loop
                 self.media_player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
                 self.video_controls.update_speed_button(AppContext.session_fast_speed_val, is_fast_active)
@@ -342,6 +340,7 @@ class PlayerMixin:
                 from utils_io import strip_long_path_prefix
                 clean_path = strip_long_path_prefix(self.current_file_path)
                 self.media_player.setSource(QUrl.fromLocalFile(clean_path))
+                self.media_player.setPlaybackRate(speed)
                 self.viewer.set_audio_mode(filename)
                 is_loading = hasattr(self, 'viewer') and hasattr(self.viewer, 'loading_overlay') and not self.viewer.loading_overlay.isHidden()
                 if not is_loading and self.isVisible():
@@ -508,3 +507,6 @@ class PlayerMixin:
         
         is_playing = (state == QMediaPlayer.PlaybackState.PlayingState)
         self.video_controls.set_playing_state(is_playing)
+        if is_playing and not getattr(self, 'current_media_is_video', False):
+            if getattr(AppContext, 'session_audio_speed_active', False):
+                self.media_player.setPlaybackRate(float(AppContext.session_fast_speed_val))

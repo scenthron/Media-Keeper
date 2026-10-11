@@ -448,7 +448,7 @@ class ImageConverterWorker(QThread):
         # Режим «Конвертация»
         out_dir = s['output_dir'] or os.path.dirname(src_path)
         base_name, _ = os.path.splitext(os.path.basename(src_path))
-        ext = "." + s['format'].replace("jpg", "jpeg")
+        ext = "." + s['format'].lstrip('.').lower()
         
         target_name = base_name
         if s['rename']:

@@ -43,6 +43,8 @@ class EditorCropMixin:
         else:
             self.handle_tl.hide()
             self.handle_br.hide()
+            if hasattr(self, 'crop_frame_item'):
+                self.crop_frame_item.hide()
             self._disable_crop_drag_mode()
             self._update_dimming()
             if hasattr(self, 'crop_anim_timer'):
@@ -81,7 +83,7 @@ class EditorCropMixin:
             self.crop_drag_rect = QGraphicsRectItem(self.video_item)
             self.crop_drag_rect.setBrush(QBrush(QColor(255, 255, 255, 1)))  
             self.crop_drag_rect.setPen(QPen(Qt.PenStyle.NoPen))
-            self.crop_drag_rect.setZValue(15)  
+            self.crop_drag_rect.setZValue(12)  
             self.crop_drag_rect.setCursor(Qt.CursorShape.SizeAllCursor)
 
         tl = self.handle_tl.pos()
@@ -298,6 +300,8 @@ class EditorCropMixin:
             self._crop_brush.setTransform(transform)
             for d in [self.crop_dim_top, self.crop_dim_bottom, self.crop_dim_left, self.crop_dim_right]:
                 d.setBrush(self._crop_brush)
+        if hasattr(self, 'crop_frame_item') and self.crop_frame_item.isVisible():
+            self.crop_frame_item.advance_dash(1)
 
     def _update_dimming(self):
         if not self.is_cropping:
@@ -327,6 +331,11 @@ class EditorCropMixin:
                 self._crop_brush.setTransform(QTransform().translate(self._crop_stripe_offset, 0))
             d.setBrush(self._crop_brush)
             d.show()
+
+        if hasattr(self, 'crop_frame_item'):
+            from PyQt6.QtCore import QRectF
+            self.crop_frame_item.setRect(QRectF(tl.x(), tl.y(), br.x() - tl.x(), br.y() - tl.y()))
+            self.crop_frame_item.show()
             
         if hasattr(self, 'lbl_crop_size'):
             self.lbl_crop_size.setText(f"{self.spin_crop_w.value()} × {self.spin_crop_h.value()} px")

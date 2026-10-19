@@ -22,7 +22,7 @@ from ..ui_ffmpeg_notice import FFmpegNoticeWidget
 from ..ffmpeg_downloader import check_ffmpeg_available
 
 # Sub-components
-from .ui_editor_items import OverlayGraphicsItem, CropHandle, VideoGraphicsItem
+from .ui_editor_items import OverlayGraphicsItem, CropHandle, CropFrameItem, VideoGraphicsItem
 from .ui_editor_widgets import WaveformProgressWidget, MagneticSlider, PlaybackSettingsPopup, CollapsibleSection
 from .ui_editor_view import EditorGraphicsView
 
@@ -116,6 +116,8 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.scrub_preview_timer.setInterval(100) 
         self.scrub_preview_timer.setSingleShot(True)
         self.scrub_preview_timer.timeout.connect(self._update_cc_preview)
+        
+        self._init_frame_step_controllers()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -212,16 +214,20 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
             d.setZValue(10)
             d.hide()
             
-        self.handle_tl = CropHandle(v)
-        self.handle_br = CropHandle(v)
-        self.handle_tl.setZValue(11)
-        self.handle_br.setZValue(11)
+        self.handle_tl = CropHandle(v, corner='tl')
+        self.handle_br = CropHandle(v, corner='br')
+        self.handle_tl.setZValue(30)
+        self.handle_br.setZValue(30)
         self.handle_tl.hide()
         self.handle_br.hide()
         self.handle_tl.handle_moved.connect(self._on_crop_moved)
         self.handle_br.handle_moved.connect(self._on_crop_moved)
+
+        self.crop_frame_item = CropFrameItem(v)
+        self.crop_frame_item.hide()
         
         self.video_item.nativeSizeChanged.connect(self.center_video)
+        self.video_item.videoSink().videoFrameChanged.connect(self._on_video_frame_arrived)
         
         self.drop_zone = IntegratedDropZone("drop_audio_here")
         self.drop_zone.setFixedSize(480, 140)
@@ -264,17 +270,49 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.btn_next_frame.setIconSize(QSize(18, 18))
         self.btn_next_frame.setToolTip(AppContext.tr("tooltip_next_frame"))
         
-        # Auto-repeat for frame navigation
+        # Slow playback speed selector when holding frame buttons
+        self.combo_slow_speed = QComboBox()
+        self.combo_slow_speed.addItem("0.1x", 0.1)
+        self.combo_slow_speed.addItem("0.25x", 0.25)
+        self.combo_slow_speed.addItem("0.5x", 0.5)
+        self.combo_slow_speed.setCurrentIndex(1)  # 0.25x by default
+        self.combo_slow_speed.setFixedSize(65, 36)
+        self.combo_slow_speed.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.combo_slow_speed.setToolTip(AppContext.tr("tooltip_slow_speed"))
+        self.combo_slow_speed.setStyleSheet("""
+            QComboBox {
+                background: #2a2a3e;
+                color: #e0e0e0;
+                border: 1px solid #3a3a5a;
+                border-radius: 6px;
+                padding-left: 6px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QComboBox:hover {
+                border-color: #3b82f6;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 14px;
+            }
+            QComboBox QAbstractItemView {
+                background: #1e1e2e;
+                color: #e0e0e0;
+                border: 1px solid #3a3a5a;
+                selection-background-color: #3b82f6;
+            }
+        """)
+
         for btn in [self.btn_prev_frame, self.btn_next_frame]:
-            btn.setAutoRepeat(True)
-            btn.setAutoRepeatDelay(400)
-            btn.setAutoRepeatInterval(50)
+            btn.setAutoRepeat(False)
         
         for b in [self.btn_play, self.btn_prev_frame, self.btn_next_frame]:
             b.setFixedSize(36, 36)
             b.setStyleSheet(self._btn_style())
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             row1.addWidget(b)
+        row1.addWidget(self.combo_slow_speed)
         self.btn_play.clicked.connect(self.toggle_play)
  
         self.btn_play_frag = QPushButton()
@@ -289,8 +327,10 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.btn_play_frag.clicked.connect(self.play_preview)
         row1.insertWidget(1, self.btn_play_frag)
         
-        self.btn_prev_frame.clicked.connect(lambda: self._step_frame(-1))
-        self.btn_next_frame.clicked.connect(lambda: self._step_frame(1))
+        self.btn_prev_frame.pressed.connect(lambda: self._on_step_btn_pressed(-1))
+        self.btn_prev_frame.released.connect(lambda: self._on_step_btn_released(-1))
+        self.btn_next_frame.pressed.connect(lambda: self._on_step_btn_pressed(1))
+        self.btn_next_frame.released.connect(lambda: self._on_step_btn_released(1))
 
         row1.addStretch()
         self.lbl_time = QLabel("00:00:00.000 / 00:00:00.000")
@@ -1659,6 +1699,8 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.btn_prev_frame.setToolTip(AppContext.tr("tooltip_prev_frame"))
         self.btn_next_frame.setText("")
         self.btn_next_frame.setToolTip(AppContext.tr("tooltip_next_frame"))
+        if hasattr(self, 'combo_slow_speed'):
+            self.combo_slow_speed.setToolTip(AppContext.tr("tooltip_slow_speed"))
         self.btn_play_frag.setText(AppContext.tr("btn_preview_fragment"))
         self.btn_play_frag.setToolTip(AppContext.tr("tooltip_play_frag"))
         self.btn_play_frag.setIcon(QIcon(os.path.join(self.icons_dir, "skip-forward.svg")))

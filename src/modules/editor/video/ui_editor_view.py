@@ -43,6 +43,8 @@ class EditorGraphicsView(QGraphicsView):
                     is_control = True
                 if hasattr(self.editor_widget, 'handle_br') and item == self.editor_widget.handle_br:
                     is_control = True
+                if hasattr(self.editor_widget, 'crop_frame_item') and item == self.editor_widget.crop_frame_item:
+                    is_control = True
 
                 # Если клик был по видео или пустому месту (но не по элементам управления), запускаем play/pause
                 # Также игнорируем клик по OverlayGraphicsItem, чтобы не сбивать выделение

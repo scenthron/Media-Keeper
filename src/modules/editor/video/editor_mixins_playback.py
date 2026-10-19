@@ -101,6 +101,107 @@ class EditorPlaybackMixin:
         else:
             self.player.play()
 
+    def _init_frame_step_controllers(self):
+        """Инициализация таймеров и контроллеров покадровой перемотки и замедленного просмотра"""
+        self._frame_hold_timer = QTimer(self)
+        self._frame_hold_timer.setSingleShot(True)
+        self._frame_hold_timer.setInterval(260)
+        self._frame_hold_timer.timeout.connect(self._on_frame_hold_timeout)
+        
+        self._rewind_timer = QTimer(self)
+        self._rewind_timer.timeout.connect(self._on_rewind_tick)
+        
+        self._active_step_direction = 0  # 1: вперед, -1: назад, 0: нет
+        self._is_holding_step = False
+        self._is_seeking_back = False
+        self._original_playback_rate = 1.0
+
+    def _get_selected_slow_speed(self) -> float:
+        if hasattr(self, 'combo_slow_speed'):
+            data = self.combo_slow_speed.currentData()
+            if data is not None:
+                try:
+                    return float(data)
+                except Exception:
+                    pass
+        return 0.25
+
+    def _on_step_btn_pressed(self, direction: int):
+        dur = self.player.duration()
+        if dur <= 0: return
+        self._active_step_direction = direction
+        self._is_holding_step = False
+        self._frame_hold_timer.start()
+
+    def _on_step_btn_released(self, direction: int):
+        if self._active_step_direction != direction and self._active_step_direction != 0:
+            return
+        
+        self._frame_hold_timer.stop()
+        
+        if not self._is_holding_step:
+            # Одиночный клик: точный шаг на 1 кадр
+            self._step_frame(direction)
+        else:
+            # Завершение замедленного просмотра
+            if direction == 1:
+                self.player.pause()
+                self.player.setPlaybackRate(1.0)
+                self._schedule_cc_preview()
+            elif direction == -1:
+                self._rewind_timer.stop()
+                self._is_seeking_back = False
+                self._schedule_cc_preview()
+                
+        self._active_step_direction = 0
+        self._is_holding_step = False
+
+    def _on_frame_hold_timeout(self):
+        self._is_holding_step = True
+        dur = self.player.duration()
+        if dur <= 0: return
+        
+        speed = self._get_selected_slow_speed()
+        
+        if self._active_step_direction == 1:
+            # Воспроизведение вперед с выбранной скоростью
+            if self.preview_item.isVisible():
+                self.preview_item.hide()
+            if not self.video_item.isVisible():
+                self.video_item.show()
+                
+            self.player.setPlaybackRate(speed)
+            if self.player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
+                self.player.play()
+        elif self._active_step_direction == -1:
+            # Замедленная перемотка назад с синхронизированной частотой
+            interval_ms = max(40, int(33.3 / speed))
+            self._rewind_timer.setInterval(interval_ms)
+            self._is_seeking_back = False
+            self._on_rewind_tick()
+            self._rewind_timer.start()
+
+    def _on_rewind_tick(self):
+        if self._is_seeking_back:
+            return
+        if self.player.duration() <= 0:
+            self._rewind_timer.stop()
+            return
+        if self.player.position() <= 0:
+            self._rewind_timer.stop()
+            return
+            
+        self._is_seeking_back = True
+        self._step_frame(-1)
+        # Таймаут сброса флага на случай задержки декодера
+        QTimer.singleShot(140, self._unlock_seeking_back)
+
+    def _unlock_seeking_back(self):
+        self._is_seeking_back = False
+
+    def _on_video_frame_arrived(self, frame):
+        self._is_seeking_back = False
+
     def _step_frame(self, count):
         step_ms = 33
         dur = self.player.duration()

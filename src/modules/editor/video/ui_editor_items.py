@@ -363,26 +363,121 @@ class OverlayGraphicsItem(QGraphicsObject):
         super().mouseReleaseEvent(event)
 
 
+class CropFrameItem(QGraphicsObject):
+    """
+    Контрастная анимированная рамка кадрирования («марширующие муравьи»)
+    со встроенной сеткой «Правило третей» (3x3).
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setZValue(25)
+        self._rect = QRectF(0, 0, 0, 0)
+        self._dash_offset = 0
+        self.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+
+    def boundingRect(self):
+        return self._rect.adjusted(-2, -2, 2, 2)
+
+    def setRect(self, rect: QRectF):
+        if self._rect != rect:
+            self.prepareGeometryChange()
+            self._rect = rect
+            self.update()
+
+    def advance_dash(self, step=1):
+        self._dash_offset = (self._dash_offset + step) % 20
+        self.update()
+
+    def paint(self, painter, option, widget=None):
+        if self._rect.isEmpty() or not self.isVisible():
+            return
+            
+        r = self._rect
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+        
+        # 1. Сетка «Правило третей» (3x3)
+        w3 = r.width() / 3.0
+        h3 = r.height() / 3.0
+        if w3 > 25 and h3 > 25:
+            grid_pen = QPen(QColor(255, 255, 255, 55), 1, Qt.PenStyle.DotLine)
+            painter.setPen(grid_pen)
+            painter.drawLine(QPointF(r.left() + w3, r.top()), QPointF(r.left() + w3, r.bottom()))
+            painter.drawLine(QPointF(r.left() + 2 * w3, r.top()), QPointF(r.left() + 2 * w3, r.bottom()))
+            painter.drawLine(QPointF(r.left(), r.top() + h3), QPointF(r.right(), r.top() + h3))
+            painter.drawLine(QPointF(r.left(), r.top() + 2 * h3), QPointF(r.right(), r.top() + 2 * h3))
+            
+        # 2. Черная сплошная внешняя окантовка (толщина 2px)
+        black_pen = QPen(QColor(0, 0, 0, 240), 2.0, Qt.PenStyle.SolidLine)
+        painter.setPen(black_pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRect(r)
+        
+        # 3. Белый пунктирный анимированный контур («марширующие муравьи»)
+        white_pen = QPen(QColor(255, 255, 255, 255), 2.0, Qt.PenStyle.CustomDashLine)
+        white_pen.setDashPattern([5, 5])
+        white_pen.setDashOffset(self._dash_offset)
+        painter.setPen(white_pen)
+        painter.drawRect(r)
+
+
 class CropHandle(QGraphicsObject):
-    """Small handle for resizing crop rect"""
+    """
+    Стильные L-образные контрастные маркеры кадрирования,
+    не закрывающие рабочее пространство кадра.
+    """
     from PyQt6.QtCore import pyqtSignal
     handle_moved = pyqtSignal()
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, corner='tl'):
         super().__init__(parent)
+        self.corner = corner
         self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsMovable | 
                       QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._rect = QRectF(-10, -10, 20, 20)
+        if corner in ('tl', 'br'):
+            self.setCursor(Qt.CursorShape.SizeFDiagCursor)
+        else:
+            self.setCursor(Qt.CursorShape.SizeBDiagCursor)
+        self.setZValue(30)
+        self._rect = QRectF(-14, -14, 28, 28)
 
     def boundingRect(self):
         return self._rect
 
     def paint(self, painter, option, widget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setBrush(QBrush(QColor("#3b82f6")))
-        painter.setPen(QPen(Qt.GlobalColor.white, 2))
-        painter.drawEllipse(self._rect)
+        L = 14.0
+        
+        # Черная подложка для абсолютного контраста (толщина 4.5px)
+        pen_bg = QPen(QColor(0, 0, 0, 240), 4.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.SquareCap, Qt.PenJoinStyle.MiterJoin)
+        painter.setPen(pen_bg)
+        if self.corner == 'tl':
+            painter.drawLine(QPointF(L, 0), QPointF(0, 0))
+            painter.drawLine(QPointF(0, 0), QPointF(0, L))
+        elif self.corner == 'br':
+            painter.drawLine(QPointF(-L, 0), QPointF(0, 0))
+            painter.drawLine(QPointF(0, 0), QPointF(0, -L))
+        elif self.corner == 'tr':
+            painter.drawLine(QPointF(-L, 0), QPointF(0, 0))
+            painter.drawLine(QPointF(0, 0), QPointF(0, L))
+        elif self.corner == 'bl':
+            painter.drawLine(QPointF(L, 0), QPointF(0, 0))
+            painter.drawLine(QPointF(0, 0), QPointF(0, -L))
+
+        # Белый основной контур (толщина 2.5px)
+        pen_fg = QPen(QColor(255, 255, 255, 255), 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.SquareCap, Qt.PenJoinStyle.MiterJoin)
+        painter.setPen(pen_fg)
+        if self.corner == 'tl':
+            painter.drawLine(QPointF(L, 0), QPointF(0, 0))
+            painter.drawLine(QPointF(0, 0), QPointF(0, L))
+        elif self.corner == 'br':
+            painter.drawLine(QPointF(-L, 0), QPointF(0, 0))
+            painter.drawLine(QPointF(0, 0), QPointF(0, -L))
+        elif self.corner == 'tr':
+            painter.drawLine(QPointF(-L, 0), QPointF(0, 0))
+            painter.drawLine(QPointF(0, 0), QPointF(0, L))
+        elif self.corner == 'bl':
+            painter.drawLine(QPointF(L, 0), QPointF(0, 0))
+            painter.drawLine(QPointF(0, 0), QPointF(0, -L))
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:

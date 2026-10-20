@@ -39,9 +39,9 @@ class EditorGraphicsView(QGraphicsView):
                 # Crop controls check
                 if hasattr(self.editor_widget, 'crop_drag_rect') and item == self.editor_widget.crop_drag_rect:
                     is_control = True
-                if hasattr(self.editor_widget, 'handle_tl') and item == self.editor_widget.handle_tl:
+                if hasattr(self.editor_widget, 'crop_handles') and item in self.editor_widget.crop_handles:
                     is_control = True
-                if hasattr(self.editor_widget, 'handle_br') and item == self.editor_widget.handle_br:
+                elif hasattr(self.editor_widget, 'handle_tl') and (item == self.editor_widget.handle_tl or item == getattr(self.editor_widget, 'handle_br', None)):
                     is_control = True
                 if hasattr(self.editor_widget, 'crop_frame_item') and item == self.editor_widget.crop_frame_item:
                     is_control = True

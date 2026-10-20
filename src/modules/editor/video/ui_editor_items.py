@@ -366,7 +366,8 @@ class OverlayGraphicsItem(QGraphicsObject):
 class CropFrameItem(QGraphicsObject):
     """
     Контрастная анимированная рамка кадрирования («марширующие муравьи»)
-    со встроенной сеткой «Правило третей» (3x3).
+    со встроенной сеткой «Правило третей» (3x3) и эстетичными зазорами
+    перед угловыми L-маркерами и центральными дефисами.
     """
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -393,11 +394,13 @@ class CropFrameItem(QGraphicsObject):
             return
             
         r = self._rect
+        w = r.width()
+        h = r.height()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
         
         # 1. Сетка «Правило третей» (3x3)
-        w3 = r.width() / 3.0
-        h3 = r.height() / 3.0
+        w3 = w / 3.0
+        h3 = h / 3.0
         if w3 > 25 and h3 > 25:
             grid_pen = QPen(QColor(255, 255, 255, 55), 1, Qt.PenStyle.DotLine)
             painter.setPen(grid_pen)
@@ -406,37 +409,79 @@ class CropFrameItem(QGraphicsObject):
             painter.drawLine(QPointF(r.left(), r.top() + h3), QPointF(r.right(), r.top() + h3))
             painter.drawLine(QPointF(r.left(), r.top() + 2 * h3), QPointF(r.right(), r.top() + 2 * h3))
             
-        # 2. Черная сплошная внешняя окантовка (толщина 2px)
+        # 2. Отрезки бегущей зебры с отступами (зазорами) от уголков и дефисов
+        # Отступ от угла: длина уголка 14px + зазор 5px = 19px
+        # Отступ от центрального дефиса: полудлина дефиса 12px + зазор 5px = 17px
+        corner_gap = 19.0
+        edge_gap = 17.0
+        
+        lines_to_draw = []
+        
+        # Горизонтальные грани (верхняя и нижняя)
+        if w > (corner_gap * 2 + edge_gap * 2 + 10):
+            cx = r.center().x()
+            lines_to_draw.append((QPointF(r.left() + corner_gap, r.top()), QPointF(cx - edge_gap, r.top())))
+            lines_to_draw.append((QPointF(cx + edge_gap, r.top()), QPointF(r.right() - corner_gap, r.top())))
+            lines_to_draw.append((QPointF(r.left() + corner_gap, r.bottom()), QPointF(cx - edge_gap, r.bottom())))
+            lines_to_draw.append((QPointF(cx + edge_gap, r.bottom()), QPointF(r.right() - corner_gap, r.bottom())))
+        elif w > (corner_gap * 2 + 6):
+            lines_to_draw.append((QPointF(r.left() + corner_gap, r.top()), QPointF(r.right() - corner_gap, r.top())))
+            lines_to_draw.append((QPointF(r.left() + corner_gap, r.bottom()), QPointF(r.right() - corner_gap, r.bottom())))
+            
+        # Вертикальные грани (левая и правая)
+        if h > (corner_gap * 2 + edge_gap * 2 + 10):
+            cy = r.center().y()
+            lines_to_draw.append((QPointF(r.left(), r.top() + corner_gap), QPointF(r.left(), cy - edge_gap)))
+            lines_to_draw.append((QPointF(r.left(), cy + edge_gap), QPointF(r.left(), r.bottom() - corner_gap)))
+            lines_to_draw.append((QPointF(r.right(), r.top() + corner_gap), QPointF(r.right(), cy - edge_gap)))
+            lines_to_draw.append((QPointF(r.right(), cy + edge_gap), QPointF(r.right(), r.bottom() - corner_gap)))
+        elif h > (corner_gap * 2 + 6):
+            lines_to_draw.append((QPointF(r.left(), r.top() + corner_gap), QPointF(r.left(), r.bottom() - corner_gap)))
+            lines_to_draw.append((QPointF(r.right(), r.top() + corner_gap), QPointF(r.right(), r.bottom() - corner_gap)))
+            
+        # Отрисовка подложки: черная сплошная линия (2px)
         black_pen = QPen(QColor(0, 0, 0, 240), 2.0, Qt.PenStyle.SolidLine)
         painter.setPen(black_pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRect(r)
-        
-        # 3. Белый пунктирный анимированный контур («марширующие муравьи»)
+        for p1, p2 in lines_to_draw:
+            painter.drawLine(p1, p2)
+            
+        # Отрисовка бегущей зебры: белый пунктир (2px)
         white_pen = QPen(QColor(255, 255, 255, 255), 2.0, Qt.PenStyle.CustomDashLine)
         white_pen.setDashPattern([5, 5])
         white_pen.setDashOffset(self._dash_offset)
         painter.setPen(white_pen)
-        painter.drawRect(r)
+        for p1, p2 in lines_to_draw:
+            painter.drawLine(p1, p2)
 
 
 class CropHandle(QGraphicsObject):
     """
-    Стильные L-образные контрастные маркеры кадрирования,
-    не закрывающие рабочее пространство кадра.
+    Контрастные маркеры кадрирования:
+    - 4 угла ('tl', 'tr', 'bl', 'br') - стильные L-образные уголки;
+    - 4 грани ('t', 'b', 'l', 'r') - центральные контрастные дефисы-манипуляторы.
     """
     from PyQt6.QtCore import pyqtSignal
-    handle_moved = pyqtSignal()
+    handle_moved = pyqtSignal(object)
     
-    def __init__(self, parent=None, corner='tl'):
+    def __init__(self, parent=None, handle_type='tl', corner=None):
         super().__init__(parent)
-        self.corner = corner
+        self.handle_type = corner if corner else handle_type
         self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsMovable | 
                       QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
-        if corner in ('tl', 'br'):
+        
+        # Специализированные курсоры
+        if self.handle_type in ('tl', 'br'):
             self.setCursor(Qt.CursorShape.SizeFDiagCursor)
-        else:
+        elif self.handle_type in ('tr', 'bl'):
             self.setCursor(Qt.CursorShape.SizeBDiagCursor)
+        elif self.handle_type in ('t', 'b'):
+            self.setCursor(Qt.CursorShape.SizeVerCursor)
+        elif self.handle_type in ('l', 'r'):
+            self.setCursor(Qt.CursorShape.SizeHorCursor)
+        else:
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+            
         self.setZValue(30)
         self._rect = QRectF(-14, -14, 28, 28)
 
@@ -446,47 +491,66 @@ class CropHandle(QGraphicsObject):
     def paint(self, painter, option, widget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         L = 14.0
+        edge_L = 12.0
         
         # Черная подложка для абсолютного контраста (толщина 4.5px)
         pen_bg = QPen(QColor(0, 0, 0, 240), 4.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.SquareCap, Qt.PenJoinStyle.MiterJoin)
         painter.setPen(pen_bg)
-        if self.corner == 'tl':
+        
+        # Углы
+        if self.handle_type == 'tl':
             painter.drawLine(QPointF(L, 0), QPointF(0, 0))
             painter.drawLine(QPointF(0, 0), QPointF(0, L))
-        elif self.corner == 'br':
+        elif self.handle_type == 'br':
             painter.drawLine(QPointF(-L, 0), QPointF(0, 0))
             painter.drawLine(QPointF(0, 0), QPointF(0, -L))
-        elif self.corner == 'tr':
+        elif self.handle_type == 'tr':
             painter.drawLine(QPointF(-L, 0), QPointF(0, 0))
             painter.drawLine(QPointF(0, 0), QPointF(0, L))
-        elif self.corner == 'bl':
+        elif self.handle_type == 'bl':
             painter.drawLine(QPointF(L, 0), QPointF(0, 0))
             painter.drawLine(QPointF(0, 0), QPointF(0, -L))
+        # Боковые дефисы
+        elif self.handle_type in ('t', 'b'):
+            painter.drawLine(QPointF(-edge_L, 0), QPointF(edge_L, 0))
+        elif self.handle_type in ('l', 'r'):
+            painter.drawLine(QPointF(0, -edge_L), QPointF(0, edge_L))
 
         # Белый основной контур (толщина 2.5px)
         pen_fg = QPen(QColor(255, 255, 255, 255), 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.SquareCap, Qt.PenJoinStyle.MiterJoin)
         painter.setPen(pen_fg)
-        if self.corner == 'tl':
+        
+        # Углы
+        if self.handle_type == 'tl':
             painter.drawLine(QPointF(L, 0), QPointF(0, 0))
             painter.drawLine(QPointF(0, 0), QPointF(0, L))
-        elif self.corner == 'br':
+        elif self.handle_type == 'br':
             painter.drawLine(QPointF(-L, 0), QPointF(0, 0))
             painter.drawLine(QPointF(0, 0), QPointF(0, -L))
-        elif self.corner == 'tr':
+        elif self.handle_type == 'tr':
             painter.drawLine(QPointF(-L, 0), QPointF(0, 0))
             painter.drawLine(QPointF(0, 0), QPointF(0, L))
-        elif self.corner == 'bl':
+        elif self.handle_type == 'bl':
             painter.drawLine(QPointF(L, 0), QPointF(0, 0))
             painter.drawLine(QPointF(0, 0), QPointF(0, -L))
+        # Боковые дефисы
+        elif self.handle_type in ('t', 'b'):
+            painter.drawLine(QPointF(-edge_L, 0), QPointF(edge_L, 0))
+        elif self.handle_type in ('l', 'r'):
+            painter.drawLine(QPointF(0, -edge_L), QPointF(0, edge_L))
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            new_pos = value
             if self.parentItem():
                 rect = self.parentItem().boundingRect()
-                val = value 
-                x = max(0, min(val.x(), rect.width()))
-                y = max(0, min(val.y(), rect.height()))
-                new_pos = QPointF(x, y)
-                self.handle_moved.emit()
-                return new_pos
+                if rect.width() > 0 and rect.height() > 0:
+                    val = value
+                    x = max(0, min(val.x(), rect.width()))
+                    y = max(0, min(val.y(), rect.height()))
+                    new_pos = QPointF(x, y)
+            if not self.signalsBlocked():
+                self.handle_moved.emit(self)
+            return new_pos
         return super().itemChange(change, value)
+

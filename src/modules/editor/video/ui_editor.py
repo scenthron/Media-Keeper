@@ -214,14 +214,24 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
             d.setZValue(10)
             d.hide()
             
-        self.handle_tl = CropHandle(v, corner='tl')
-        self.handle_br = CropHandle(v, corner='br')
-        self.handle_tl.setZValue(30)
-        self.handle_br.setZValue(30)
-        self.handle_tl.hide()
-        self.handle_br.hide()
-        self.handle_tl.handle_moved.connect(self._on_crop_moved)
-        self.handle_br.handle_moved.connect(self._on_crop_moved)
+        self.handle_tl = CropHandle(v, handle_type='tl')
+        self.handle_tr = CropHandle(v, handle_type='tr')
+        self.handle_bl = CropHandle(v, handle_type='bl')
+        self.handle_br = CropHandle(v, handle_type='br')
+        self.handle_t  = CropHandle(v, handle_type='t')
+        self.handle_b  = CropHandle(v, handle_type='b')
+        self.handle_l  = CropHandle(v, handle_type='l')
+        self.handle_r  = CropHandle(v, handle_type='r')
+
+        self.crop_handles = [
+            self.handle_tl, self.handle_tr, self.handle_bl, self.handle_br,
+            self.handle_t, self.handle_b, self.handle_l, self.handle_r
+        ]
+
+        for h_item in self.crop_handles:
+            h_item.setZValue(30)
+            h_item.hide()
+            h_item.handle_moved.connect(self._on_crop_moved)
 
         self.crop_frame_item = CropFrameItem(v)
         self.crop_frame_item.hide()
@@ -1239,8 +1249,8 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.waveform_progress.clear_markers()
         self.waveform_progress.set_playback_pos(-1)
         self.lbl_frag_info.hide()
-        self.handle_tl.hide()
-        self.handle_br.hide()
+        for h_item in getattr(self, 'crop_handles', [self.handle_tl, self.handle_br]):
+            h_item.hide()
         for s in [self.spin_crop_x, self.spin_crop_y, self.spin_crop_w, self.spin_crop_h]:
             s.setEnabled(False)
             s.setValue(0)

@@ -23,12 +23,15 @@ class EditorCropMixin:
             self.spin_crop_w.setRange(10, int(w))
             self.spin_crop_h.setRange(10, int(h))
 
-            self.handle_tl.setPos(w * 0.1, h * 0.1)
-            self.handle_br.setPos(w * 0.9, h * 0.9)
+            x = w * 0.1
+            y = h * 0.1
+            cw = w * 0.8
+            ch = h * 0.8
+            self._sync_crop_handles_to_rect(x, y, cw, ch)
 
             if not self.is_crop_locked_size:
-                self.handle_tl.show()
-                self.handle_br.show()
+                for h_item in getattr(self, 'crop_handles', [self.handle_tl, self.handle_br]):
+                    h_item.show()
             self._enable_crop_drag_mode()
             self._update_crop_spins_from_handles()
             self._update_dimming()
@@ -41,8 +44,8 @@ class EditorCropMixin:
                 self._crop_stripe_offset = 0
             self.crop_anim_timer.start()
         else:
-            self.handle_tl.hide()
-            self.handle_br.hide()
+            for h_item in getattr(self, 'crop_handles', [self.handle_tl, self.handle_br]):
+                h_item.hide()
             if hasattr(self, 'crop_frame_item'):
                 self.crop_frame_item.hide()
             self._disable_crop_drag_mode()
@@ -67,15 +70,15 @@ class EditorCropMixin:
         if not self.is_cropping: return
         self.spin_crop_w.setEnabled(False)
         self.spin_crop_h.setEnabled(False)
-        self.handle_tl.hide()
-        self.handle_br.hide()
+        for h_item in getattr(self, 'crop_handles', [self.handle_tl, self.handle_br]):
+            h_item.hide()
         self._enable_crop_drag_mode()
         self._update_crop_controls_enabled()
 
     def _disable_crop_lock_size(self):
         if not self.is_cropping: return
-        self.handle_tl.show()
-        self.handle_br.show()
+        for h_item in getattr(self, 'crop_handles', [self.handle_tl, self.handle_br]):
+            h_item.show()
         self._disable_crop_drag_mode()
 
     def _enable_crop_drag_mode(self):
@@ -116,8 +119,7 @@ class EditorCropMixin:
             new_y = self.crop_area_start_pos.y() + delta.y()
             new_x = max(0, min(new_x, rect.width() - current_w))
             new_y = max(0, min(new_y, rect.height() - current_h))
-            self.handle_tl.setPos(new_x, new_y)
-            self.handle_br.setPos(new_x + current_w, new_y + current_h)
+            self._sync_crop_handles_to_rect(new_x, new_y, current_w, current_h)
             self.crop_drag_rect.setRect(new_x, new_y, current_w, current_h)
             self._update_crop_spins_from_handles()
             self._update_dimming()
@@ -197,8 +199,6 @@ class EditorCropMixin:
 
     def _on_crop_spin_changed(self):
         if not self.is_cropping: return
-        self.handle_tl.blockSignals(True)
-        self.handle_br.blockSignals(True)
         rect = self.video_item.boundingRect()
         w_max, h_max = rect.width(), rect.height()
         x = max(0, min(self.spin_crop_x.value(), w_max - 10))
@@ -219,10 +219,9 @@ class EditorCropMixin:
         self.spin_crop_w.blockSignals(False)
         self.spin_crop_h.blockSignals(False)
         
-        self.handle_tl.setPos(x, y)
-        self.handle_br.setPos(x + w, y + h)
-        self.handle_tl.blockSignals(False)
-        self.handle_br.blockSignals(False)
+        self._sync_crop_handles_to_rect(x, y, w, h)
+        if hasattr(self, 'crop_drag_rect'):
+            self.crop_drag_rect.setRect(x, y, w, h)
         self._update_dimming()
         self._check_start_readiness()
 
@@ -242,27 +241,79 @@ class EditorCropMixin:
         self.spin_crop_w.blockSignals(False)
         self.spin_crop_h.blockSignals(False)
 
-    def _on_crop_moved(self):
+    def _sync_crop_handles_to_rect(self, x, y, w, h):
+        handles = getattr(self, 'crop_handles', [self.handle_tl, self.handle_br])
+        for h_item in handles:
+            h_item.blockSignals(True)
+            
+        self.handle_tl.setPos(x, y)
+        self.handle_br.setPos(x + w, y + h)
+        if hasattr(self, 'handle_tr'):
+            self.handle_tr.setPos(x + w, y)
+        if hasattr(self, 'handle_bl'):
+            self.handle_bl.setPos(x, y + h)
+        if hasattr(self, 'handle_t'):
+            self.handle_t.setPos(x + w / 2.0, y)
+        if hasattr(self, 'handle_b'):
+            self.handle_b.setPos(x + w / 2.0, y + h)
+        if hasattr(self, 'handle_l'):
+            self.handle_l.setPos(x, y + h / 2.0)
+        if hasattr(self, 'handle_r'):
+            self.handle_r.setPos(x + w, y + h / 2.0)
+            
+        for h_item in handles:
+            h_item.blockSignals(False)
+
+    def _on_crop_moved(self, handle=None):
         if self.is_crop_locked_size:
             self._update_crop_spins_from_handles()
             self._update_dimming()
             return
-        self.handle_tl.blockSignals(True)
-        self.handle_br.blockSignals(True)
-        desired_tl = self.handle_tl.pos()
-        desired_br = self.handle_br.pos()
+
+        if handle is None:
+            handle = self.sender()
+
+        h_type = getattr(handle, 'handle_type', 'tl')
+        
+        cur_x = self.handle_tl.x()
+        cur_y = self.handle_tl.y()
+        cur_r = self.handle_br.x()
+        cur_b = self.handle_br.y()
+        
         rect = self.video_item.boundingRect()
-        video_w, video_h = rect.width(), rect.height()
-        desired_tl.setX(max(0, min(desired_tl.x(), video_w - 10)))
-        desired_tl.setY(max(0, min(desired_tl.y(), video_h - 10)))
-        min_br_x = desired_tl.x() + 10
-        min_br_y = desired_tl.y() + 10
-        desired_br.setX(max(min_br_x, min(desired_br.x(), video_w)))
-        desired_br.setY(max(min_br_y, min(desired_br.y(), video_h)))
-        self.handle_tl.setPos(desired_tl)
-        self.handle_br.setPos(desired_br)
-        self.handle_tl.blockSignals(False)
-        self.handle_br.blockSignals(False)
+        vw, vh = rect.width(), rect.height()
+        
+        if handle:
+            hx = handle.x()
+            hy = handle.y()
+            
+            if h_type == 'tl':
+                cur_x = max(0, min(hx, cur_r - 10))
+                cur_y = max(0, min(hy, cur_b - 10))
+            elif h_type == 'tr':
+                cur_r = max(cur_x + 10, min(hx, vw))
+                cur_y = max(0, min(hy, cur_b - 10))
+            elif h_type == 'bl':
+                cur_x = max(0, min(hx, cur_r - 10))
+                cur_b = max(cur_y + 10, min(hy, vh))
+            elif h_type == 'br':
+                cur_r = max(cur_x + 10, min(hx, vw))
+                cur_b = max(cur_y + 10, min(hy, vh))
+            elif h_type == 't':
+                cur_y = max(0, min(hy, cur_b - 10))
+            elif h_type == 'b':
+                cur_b = max(cur_y + 10, min(hy, vh))
+            elif h_type == 'l':
+                cur_x = max(0, min(hx, cur_r - 10))
+            elif h_type == 'r':
+                cur_r = max(cur_x + 10, min(hx, vw))
+
+        w = cur_r - cur_x
+        h = cur_b - cur_y
+        
+        self._sync_crop_handles_to_rect(cur_x, cur_y, w, h)
+        if hasattr(self, 'crop_drag_rect'):
+            self.crop_drag_rect.setRect(cur_x, cur_y, w, h)
         self._update_crop_spins_from_handles()
         self._update_dimming()
         self._check_start_readiness()

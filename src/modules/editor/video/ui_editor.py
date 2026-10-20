@@ -840,8 +840,8 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         scroll_content_layout.addWidget(sec_overlay)
 
         # SECTION 4: Markers & Segments
-        self.sec_markers = CollapsibleSection(AppContext.tr("section_markers"), self, icon_path=os.path.join(self.icons_dir, "video-editor-marker.svg"), tooltip=AppContext.tr("tooltip_sec_markers"))
-        lay_markers = self.sec_markers.content_layout
+        sec_markers = CollapsibleSection(AppContext.tr("section_markers"), self, icon_path=os.path.join(self.icons_dir, "video-editor-marker.svg"), tooltip=AppContext.tr("tooltip_sec_markers"))
+        lay_markers = sec_markers.content_layout
         lay_markers.setSpacing(4)
         lay_markers.setContentsMargins(6, 6, 6, 6)
 
@@ -937,7 +937,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.lbl_frag_info.setStyleSheet("font-family: monospace; font-size: 11px; color: #4ade80; font-weight: bold; margin-top: 2px;")
         lay_markers.addWidget(self.lbl_frag_info)
 
-        scroll_content_layout.addWidget(self.sec_markers)
+        scroll_content_layout.addWidget(sec_markers)
 
         # SECTION 5: Encoding settings
         sec_encoding = CollapsibleSection(AppContext.tr("section_encoding"), self, icon_path=os.path.join(self.icons_dir, "gear-color.svg"), tooltip=AppContext.tr("tooltip_sec_encoding"))

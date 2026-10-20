@@ -1,7 +1,8 @@
-from PyQt6.QtWidgets import QFrame, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QCheckBox, QStyle, QStyleOptionSlider
+from PyQt6.QtWidgets import QFrame, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QCheckBox, QStyle, QStyleOptionSlider, QMenu
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QPointF, QRect, QSize
 from PyQt6.QtGui import QPainter, QColor, QBrush, QPen, QIcon
 from config import AppContext, VIEWER_DESIGN, APP_DESIGN
+from .helpers import format_ms_time
 
 
 class WaveformProgressWidget(QFrame):
@@ -16,12 +17,21 @@ class WaveformProgressWidget(QFrame):
         self.setFixedHeight(40)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet("background-color: #1a1a1a; border-radius: 6px;")
+        self.setMouseTracking(True)
 
         self.pixmap = None
         self.markers = []
         self.is_inverted = False
         self.selected_idx = -1
         self.playback_pos = -1.0
+
+        self.duration_ms = 0
+        self.duration_provider = None
+        self.waveform_scale = 1.0
+
+        self.hover_x = -1
+        self.hover_pos = -1.0
+        self.time_badge = None
 
         self.is_dragging = False
         self.drag_idx = -1
@@ -39,6 +49,49 @@ class WaveformProgressWidget(QFrame):
     def set_waveform(self, pixmap):
         self.pixmap = pixmap
         self.update()
+
+    def set_duration(self, dur: int):
+        self.duration_ms = max(0, int(dur))
+        self.update()
+
+    def set_duration_provider(self, provider):
+        self.duration_provider = provider
+
+    @property
+    def total_duration(self) -> int:
+        if self.duration_provider:
+            try:
+                d = self.duration_provider()
+                if d > 0:
+                    return d
+            except:
+                pass
+        return self.duration_ms
+
+    def set_waveform_scale(self, scale: float):
+        self.waveform_scale = max(0.5, min(10.0, float(scale)))
+        self.update()
+
+    def zoom_in_waveform(self):
+        steps = [1.0, 1.5, 2.0, 3.0, 5.0]
+        for s in steps:
+            if s > self.waveform_scale + 0.05:
+                self.set_waveform_scale(s)
+                return s
+        self.set_waveform_scale(min(10.0, self.waveform_scale * 1.5))
+        return self.waveform_scale
+
+    def zoom_out_waveform(self):
+        steps = [5.0, 3.0, 2.0, 1.5, 1.0]
+        for s in steps:
+            if s < self.waveform_scale - 0.05:
+                self.set_waveform_scale(s)
+                return s
+        self.set_waveform_scale(max(0.5, self.waveform_scale / 1.5))
+        return self.waveform_scale
+
+    def reset_waveform_zoom(self):
+        self.set_waveform_scale(1.0)
 
     def clear_markers(self):
         self.markers = []
@@ -69,6 +122,56 @@ class WaveformProgressWidget(QFrame):
     # ---------------------------------------------------------------------
     # Internals
     # ---------------------------------------------------------------------
+    def _ensure_time_badge(self):
+        top_win = self.window()
+        if self.time_badge is None or self.time_badge.window() != top_win:
+            self.time_badge = QLabel(top_win)
+            self.time_badge.setObjectName("waveform_time_badge")
+            self.time_badge.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+            self.time_badge.setStyleSheet("""
+                QLabel#waveform_time_badge {
+                    background-color: rgba(24, 24, 28, 235);
+                    color: #ffffff;
+                    border: 1px solid #4a4a5a;
+                    border-radius: 4px;
+                    font-family: monospace, Consolas, "Courier New";
+                    font-size: 11px;
+                    font-weight: bold;
+                    padding: 2px 6px;
+                }
+            """)
+            self.time_badge.hide()
+        return self.time_badge
+
+    def _update_time_badge(self, x: int, p: float):
+        if not self.isEnabled() or self.width() <= 0:
+            if self.time_badge:
+                self.time_badge.hide()
+            return
+
+        badge = self._ensure_time_badge()
+        dur = self.total_duration
+        if dur > 0:
+            time_at_hover = int(p * dur)
+            badge.setText(format_ms_time(time_at_hover))
+        else:
+            badge.setText(f"{p * 100:.1f}%")
+        badge.adjustSize()
+
+        top_left_in_win = self.mapTo(self.window(), QPoint(0, 0))
+        badge_w = badge.width()
+        badge_h = badge.height()
+
+        target_x = top_left_in_win.x() + x - badge_w // 2
+        min_x = top_left_in_win.x()
+        max_x = top_left_in_win.x() + self.width() - badge_w
+        target_x = max(min_x, min(max_x, target_x))
+        target_y = top_left_in_win.y() - badge_h - 3
+
+        badge.move(target_x, target_y)
+        badge.show()
+        badge.raise_()
+
     def update_states(self):
         self._update_playhead_color()
         self.markers_changed.emit(self.markers, self.is_inverted)
@@ -82,6 +185,10 @@ class WaveformProgressWidget(QFrame):
     # Event handling
     # ---------------------------------------------------------------------
     def mousePressEvent(self, event):
+        if event.button() != Qt.MouseButton.LeftButton:
+            super().mousePressEvent(event)
+            return
+
         x = event.pos().x()
         y = event.pos().y()
         w = self.width()
@@ -109,12 +216,17 @@ class WaveformProgressWidget(QFrame):
             self.is_scrubbing = True
             self.scrub_started.emit()
             self.seek_requested.emit(p)
+        self._update_time_badge(x, p)
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         x = event.pos().x()
         w = self.width()
         p = max(0.0, min(1.0, x / w))
+        self.hover_x = x
+        self.hover_pos = p
+
+        self._update_time_badge(x, p)
 
         if self.is_dragging and 0 <= self.drag_idx < len(self.markers):
             lower = self.markers[self.drag_idx - 1] if self.drag_idx > 0 else 0.0
@@ -133,7 +245,131 @@ class WaveformProgressWidget(QFrame):
             self.scrub_finished.emit()
         self.is_dragging = False
         self.drag_idx = -1
+        if not self.rect().contains(event.pos()):
+            self.hover_x = -1
+            self.hover_pos = -1.0
+            if self.time_badge:
+                self.time_badge.hide()
+        self.update()
         super().mouseReleaseEvent(event)
+
+    def leaveEvent(self, event):
+        self.hover_x = -1
+        self.hover_pos = -1.0
+        if self.time_badge:
+            self.time_badge.hide()
+        self.update()
+        super().leaveEvent(event)
+
+    def hideEvent(self, event):
+        self.hover_x = -1
+        self.hover_pos = -1.0
+        if self.time_badge:
+            self.time_badge.hide()
+        super().hideEvent(event)
+
+    def contextMenuEvent(self, event):
+        if not self.isEnabled():
+            return
+        x = event.pos().x()
+        w = self.width()
+        p = max(0.0, min(1.0, x / w))
+
+        # Check if right-clicked on an existing marker
+        margin = 15
+        clicked_idx = -1
+        for i, m in enumerate(self.markers):
+            if abs(x - m * w) < margin:
+                clicked_idx = i
+                break
+
+        dur = self.total_duration
+        if dur > 0:
+            time_ms = int(p * dur)
+            time_str = format_ms_time(time_ms)
+        else:
+            time_str = f"{p * 100:.1f}%"
+
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: #1e1e24;
+                color: #ffffff;
+                border: 1px solid #3a3a4a;
+                border-radius: 6px;
+                padding: 4px;
+                font-size: 11px;
+            }
+            QMenu::item {
+                padding: 5px 20px 5px 24px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background-color: #2563eb;
+                color: #ffffff;
+            }
+            QMenu::item:disabled {
+                color: #666677;
+            }
+            QMenu::separator {
+                height: 1px;
+                background: #333340;
+                margin: 4px 6px;
+            }
+        """)
+
+        act_add = menu.addAction(f"✂  {AppContext.tr('menu_add_marker_at')} ({time_str})")
+
+        act_del = None
+        if clicked_idx != -1:
+            marker_p = self.markers[clicked_idx]
+            m_time_str = format_ms_time(int(marker_p * dur)) if dur > 0 else f"{marker_p * 100:.1f}%"
+            act_del = menu.addAction(f"❌  {AppContext.tr('menu_delete_marker')} ({m_time_str})")
+
+        menu.addSeparator()
+
+        zoom_text = f"[{self.waveform_scale:.1f}x]" if abs(self.waveform_scale - 1.0) >= 0.05 else "[1.0x]"
+        act_zoom_in = menu.addAction(f"🔍+ {AppContext.tr('menu_waveform_zoom_in')} (+50%) {zoom_text}")
+        act_zoom_out = menu.addAction(f"🔍- {AppContext.tr('menu_waveform_zoom_out')} (-50%)")
+        act_zoom_reset = menu.addAction(f"↺  {AppContext.tr('menu_waveform_zoom_reset')} (1.0x)")
+
+        if abs(self.waveform_scale - 1.0) < 0.01:
+            act_zoom_reset.setEnabled(False)
+        if self.waveform_scale <= 0.55:
+            act_zoom_out.setEnabled(False)
+        if self.waveform_scale >= 9.9:
+            act_zoom_in.setEnabled(False)
+
+        if self.markers:
+            menu.addSeparator()
+            act_invert = menu.addAction(f"⇄  {AppContext.tr('btn_invert_markers_text')}")
+            act_clear = menu.addAction(f"🗑  {AppContext.tr('btn_clear_markers_text')}")
+        else:
+            act_invert = None
+            act_clear = None
+
+        chosen = menu.exec(event.globalPos())
+        if not chosen:
+            return
+
+        if chosen == act_add:
+            self.add_marker(p)
+            self.seek_requested.emit(p)
+        elif act_del and chosen == act_del:
+            if 0 <= clicked_idx < len(self.markers):
+                self.markers.pop(clicked_idx)
+                self.selected_idx = -1
+                self.update_states()
+        elif chosen == act_zoom_in:
+            self.zoom_in_waveform()
+        elif chosen == act_zoom_out:
+            self.zoom_out_waveform()
+        elif chosen == act_zoom_reset:
+            self.reset_waveform_zoom()
+        elif act_invert and chosen == act_invert:
+            self.toggle_inversion()
+        elif act_clear and chosen == act_clear:
+            self.clear_markers()
 
     # ---------------------------------------------------------------------
     # Visualisation
@@ -143,9 +379,18 @@ class WaveformProgressWidget(QFrame):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
 
-        # Waveform background
+        # Waveform background (with vertical zoom support)
         if self.pixmap:
-            painter.drawPixmap(self.rect(), self.pixmap)
+            painter.save()
+            painter.setClipRect(self.rect())
+            if abs(self.waveform_scale - 1.0) < 0.01:
+                painter.drawPixmap(self.rect(), self.pixmap)
+            else:
+                scaled_h = int(h * self.waveform_scale)
+                top_y = int((h - scaled_h) / 2)
+                target_rect = QRect(0, top_y, w, scaled_h)
+                painter.drawPixmap(target_rect, self.pixmap)
+            painter.restore()
 
         # Highlight segments
         if self.markers:
@@ -183,6 +428,11 @@ class WaveformProgressWidget(QFrame):
             painter.drawLine(x, 0, x, h)
             painter.setBrush(QBrush(self.playhead_color))
             painter.drawPolygon([QPointF(x - 5, 0), QPointF(x + 5, 0), QPointF(x, 7)])
+
+        # Hover hairline indicator (1px gray line)
+        if self.hover_x >= 0 and self.isEnabled():
+            painter.setPen(QPen(QColor(160, 160, 175, 200), 1, Qt.PenStyle.SolidLine))
+            painter.drawLine(self.hover_x, 0, self.hover_x, h)
 
         # Markers / handles
         for i, m in enumerate(self.markers):

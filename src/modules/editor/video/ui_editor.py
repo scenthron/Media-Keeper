@@ -251,6 +251,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.waveform_progress.scrub_started.connect(self._on_scrub_started)
         self.waveform_progress.scrub_finished.connect(self._on_scrub_finished)
         player_controls_vbox.addWidget(self.waveform_progress)
+        self.waveform_progress.set_duration_provider(lambda: self.player.duration())
 
         row1 = QHBoxLayout()
         row1.setSpacing(5)
@@ -839,8 +840,8 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         scroll_content_layout.addWidget(sec_overlay)
 
         # SECTION 4: Markers & Segments
-        sec_markers = CollapsibleSection(AppContext.tr("section_markers"), self, icon_path=os.path.join(self.icons_dir, "video-editor-marker.svg"), tooltip=AppContext.tr("tooltip_sec_markers"))
-        lay_markers = sec_markers.content_layout
+        self.sec_markers = CollapsibleSection(AppContext.tr("section_markers"), self, icon_path=os.path.join(self.icons_dir, "video-editor-marker.svg"), tooltip=AppContext.tr("tooltip_sec_markers"))
+        lay_markers = self.sec_markers.content_layout
         lay_markers.setSpacing(4)
         lay_markers.setContentsMargins(6, 6, 6, 6)
 
@@ -936,7 +937,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.lbl_frag_info.setStyleSheet("font-family: monospace; font-size: 11px; color: #4ade80; font-weight: bold; margin-top: 2px;")
         lay_markers.addWidget(self.lbl_frag_info)
 
-        scroll_content_layout.addWidget(sec_markers)
+        scroll_content_layout.addWidget(self.sec_markers)
 
         # SECTION 5: Encoding settings
         sec_encoding = CollapsibleSection(AppContext.tr("section_encoding"), self, icon_path=os.path.join(self.icons_dir, "gear-color.svg"), tooltip=AppContext.tr("tooltip_sec_encoding"))
@@ -1287,6 +1288,8 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         
         self.waveform_progress.clear_markers()
         self.waveform_progress.set_waveform(None)
+        self.waveform_progress.set_duration(0)
+        self.waveform_progress.reset_waveform_zoom()
         self.list_markers.clear()
         
         self.chk_overlay_enable.setChecked(False)
@@ -1487,6 +1490,12 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
             self.waveform_progress.add_marker(norm)
 
     def _on_markers_changed(self, markers, is_inverted):
+        # Auto-expand markers section when a marker is added if it was collapsed
+        if hasattr(self, 'sec_markers') and not self.sec_markers.is_expanded:
+            if len(markers) > getattr(self, '_last_markers_count', 0):
+                self.sec_markers.set_expanded(True)
+        self._last_markers_count = len(markers)
+
         count = len(markers) + 1
         selected_count = 0
         total_duration_ms = 0

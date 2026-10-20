@@ -299,5 +299,10 @@
   "repair_status_updated": "Превью обновлено",
   "repair_status_saved": "Сохранено: {}",
   "repair_status_ok": "OK (без изменений)",
-  "tooltip_slow_speed": "Скорость замедленного просмотра при удержании кнопок кадра"
+  "tooltip_slow_speed": "Скорость замедленного просмотра при удержании кнопок кадра",
+  "menu_add_marker_at": "Добавить маркер",
+  "menu_delete_marker": "Удалить этот маркер",
+  "menu_waveform_zoom_in": "Увеличить гистограмму",
+  "menu_waveform_zoom_out": "Уменьшить гистограмму",
+  "menu_waveform_zoom_reset": "Сбросить масштаб гистограммы"
 }

@@ -77,3 +77,16 @@ def is_segment_taken(num_markers: int, segment_index: int, is_inverted: bool) ->
     if is_inverted:
         take = not take
     return take
+
+
+def format_ms_time(ms: int) -> str:
+    """Formats milliseconds into MM:SS.mmm or HH:MM:SS.mmm string."""
+    if ms < 0:
+        ms = 0
+    h = ms // 3600000
+    m = (ms % 3600000) // 60000
+    s = (ms % 60000) // 1000
+    sss = ms % 1000
+    if h > 0:
+        return f"{h:02}:{m:02}:{s:02}.{sss:03}"
+    return f"{m:02}:{s:02}.{sss:03}"

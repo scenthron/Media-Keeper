@@ -72,6 +72,8 @@ class EditorPlaybackMixin:
     def _on_duration_changed(self, dur):
         total_str = self._to_hms(dur)
         self.lbl_time.setText(f"0.000 / {total_str}")
+        if hasattr(self, 'waveform_progress'):
+            self.waveform_progress.set_duration(dur)
         if self.is_video_loaded:
             self.center_video()
 

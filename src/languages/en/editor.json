@@ -299,5 +299,10 @@
   "repair_status_updated": "Preview restored",
   "repair_status_saved": "Saved: {}",
   "repair_status_ok": "OK (no changes)",
-  "tooltip_slow_speed": "Slow playback speed when holding frame buttons"
+  "tooltip_slow_speed": "Slow playback speed when holding frame buttons",
+  "menu_add_marker_at": "Add marker here",
+  "menu_delete_marker": "Delete this marker",
+  "menu_waveform_zoom_in": "Zoom in waveform",
+  "menu_waveform_zoom_out": "Zoom out waveform",
+  "menu_waveform_zoom_reset": "Reset waveform zoom"
 }

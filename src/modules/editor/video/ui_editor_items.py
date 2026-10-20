@@ -460,15 +460,18 @@ class CropHandle(QGraphicsObject):
     Контрастные маркеры кадрирования:
     - 4 угла ('tl', 'tr', 'bl', 'br') - стильные L-образные уголки;
     - 4 грани ('t', 'b', 'l', 'r') - центральные контрастные дефисы-манипуляторы.
+    
+    Управление перемещением осуществляется напрямую через mouseMoveEvent,
+    что гарантирует 100% неразрывную синхронизацию положения ручек и рамки.
     """
     from PyQt6.QtCore import pyqtSignal
-    handle_moved = pyqtSignal(object)
+    handle_moved = pyqtSignal(object, QPointF)
     
     def __init__(self, parent=None, handle_type='tl', corner=None):
         super().__init__(parent)
         self.handle_type = corner if corner else handle_type
-        self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsMovable | 
-                      QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
+        # Не используем ItemIsMovable, чтобы избежать рассинхронизации ручки и рамки
+        self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
         
         # Специализированные курсоры
         if self.handle_type in ('tl', 'br'):
@@ -484,9 +487,33 @@ class CropHandle(QGraphicsObject):
             
         self.setZValue(30)
         self._rect = QRectF(-14, -14, 28, 28)
+        self.is_dragging = False
 
     def boundingRect(self):
         return self._rect
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.is_dragging = True
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self.is_dragging and (event.buttons() & Qt.MouseButton.LeftButton):
+            new_pos = self.mapToParent(event.pos())
+            if not self.signalsBlocked():
+                self.handle_moved.emit(self, new_pos)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.is_dragging = False
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
 
     def paint(self, painter, option, widget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -538,19 +565,4 @@ class CropHandle(QGraphicsObject):
             painter.drawLine(QPointF(-edge_L, 0), QPointF(edge_L, 0))
         elif self.handle_type in ('l', 'r'):
             painter.drawLine(QPointF(0, -edge_L), QPointF(0, edge_L))
-
-    def itemChange(self, change, value):
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
-            new_pos = value
-            if self.parentItem():
-                rect = self.parentItem().boundingRect()
-                if rect.width() > 0 and rect.height() > 0:
-                    val = value
-                    x = max(0, min(val.x(), rect.width()))
-                    y = max(0, min(val.y(), rect.height()))
-                    new_pos = QPointF(x, y)
-            if not self.signalsBlocked():
-                self.handle_moved.emit(self)
-            return new_pos
-        return super().itemChange(change, value)
 

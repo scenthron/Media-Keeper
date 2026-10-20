@@ -264,7 +264,7 @@ class EditorCropMixin:
         for h_item in handles:
             h_item.blockSignals(False)
 
-    def _on_crop_moved(self, handle=None):
+    def _on_crop_moved(self, handle=None, pos=None):
         if self.is_crop_locked_size:
             self._update_crop_spins_from_handles()
             self._update_dimming()
@@ -284,8 +284,12 @@ class EditorCropMixin:
         vw, vh = rect.width(), rect.height()
         
         if handle:
-            hx = handle.x()
-            hy = handle.y()
+            if pos is not None:
+                hx = pos.x()
+                hy = pos.y()
+            else:
+                hx = handle.x()
+                hy = handle.y()
             
             if h_type == 'tl':
                 cur_x = max(0, min(hx, cur_r - 10))

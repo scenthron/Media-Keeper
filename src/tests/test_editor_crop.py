@@ -89,6 +89,23 @@ class TestEditorCrop(unittest.TestCase):
         self.assertEqual(w.handle_br.y(), 400)
         self.assertEqual(w.handle_r.pos(), QPointF(600, 275))
 
+    def test_direct_mouse_drag_sync(self):
+        w = VideoEditorWidget()
+        from PyQt6.QtWidgets import QGraphicsRectItem
+        rect_item = QGraphicsRectItem(0, 0, 1000, 1000)
+        w.video_item = rect_item
+        w.is_cropping = True
+
+        w._sync_crop_handles_to_rect(100, 100, 400, 300)
+        self.assertEqual(w.handle_tl.pos(), QPointF(100, 100))
+
+        # Direct call with position to _on_crop_moved
+        w._on_crop_moved(w.handle_tl, QPointF(80, 70))
+        # Top-left corner must strictly match 80, 70
+        self.assertEqual(w.handle_tl.pos(), QPointF(80, 70))
+        # Frame item rect must also strictly match
+        self.assertEqual(w.crop_frame_item._rect, QRectF(80, 70, 420, 330))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QGraphicsObject, QGraphicsItem
+﻿from PyQt6.QtWidgets import QGraphicsObject, QGraphicsItem
 from PyQt6.QtCore import Qt, QRectF, QPointF, QTimer, pyqtSignal, QSizeF
 from PyQt6.QtGui import QColor, QPainter, QPen, QBrush, QPixmap, QMovie, QFont, QFontMetrics, QImage
 from PyQt6.QtMultimedia import QVideoSink, QVideoFrame
@@ -410,10 +410,10 @@ class CropFrameItem(QGraphicsObject):
             painter.drawLine(QPointF(r.left(), r.top() + 2 * h3), QPointF(r.right(), r.top() + 2 * h3))
             
         # 2. Отрезки бегущей зебры с отступами (зазорами) от уголков и дефисов
-        # Отступ от угла: длина уголка 14px + зазор 5px = 19px
-        # Отступ от центрального дефиса: полудлина дефиса 12px + зазор 5px = 17px
-        corner_gap = 19.0
-        edge_gap = 17.0
+        # Отступ от угла: длина уголка 14px + зазор 25px = 39px
+        # Отступ от центрального дефиса: полудлина дефиса 12px + зазор 25px = 37px
+        corner_gap = 39.0
+        edge_gap = 37.0
         
         lines_to_draw = []
         

@@ -39,6 +39,8 @@ from logic_logger import setup_logging, shutdown_logging
 os.environ["QT_LOGGING_RULES"] = "*.debug=false;qt.multimedia.*=false"
 os.environ["AV_LOG_LEVEL"] = "quiet"
 
+_logged_once_warnings = set()
+
 def qt_message_handler(mode, context, message):
     ignore_phrases = [
         "swscaler", 
@@ -51,6 +53,16 @@ def qt_message_handler(mode, context, message):
     ]
     if any(phrase in message for phrase in ignore_phrases):
         return
+
+    # Подавление спама внутренних повторных предупреждений QFFmpeg
+    if "wildcard call disconnects from destroyed signal of QFFmpeg" in message:
+        key = "qffmpeg_disconnect_destroyed"
+        if key in _logged_once_warnings:
+            return
+        _logged_once_warnings.add(key)
+        logging.warning(f"{message} (последующие однотипные предупреждения QFFmpeg подавлены)")
+        return
+
     if mode == QtMsgType.QtInfoMsg:
         logging.info(message)
     elif mode == QtMsgType.QtWarningMsg:

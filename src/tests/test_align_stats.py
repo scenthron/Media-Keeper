@@ -1,4 +1,4 @@
-import cv2
+from modules.shared.utils_io import safe_cv2_imread
 import numpy as np
 import os
 import sys
@@ -10,7 +10,7 @@ def save_aligned():
     scrfd_path = os.path.expanduser('~/.mediakeeper/models/det_10g.onnx')
     detector = SCRFD(scrfd_path)
     
-    img = cv2.imread("lena.jpg")
+    img = safe_cv2_imread("lena.jpg")
     bboxes, kpss = detector.detect(img, input_size=(320, 320))
     largest_idx = np.argmax((bboxes[:, 2] - bboxes[:, 0]) * (bboxes[:, 3] - bboxes[:, 1]))
     kps = kpss[largest_idx]

@@ -1,4 +1,4 @@
-import cv2
+from modules.shared.utils_io import safe_cv2_imread
 import numpy as np
 import os
 import sys
@@ -12,7 +12,7 @@ def main():
     detector = SCRFD(os.path.expanduser('~/.mediakeeper/models/det_10g.onnx'))
     arcface_session = ort.InferenceSession(os.path.expanduser('~/.mediakeeper/models/w600k_r50.onnx'), providers=['CPUExecutionProvider'])
     
-    img = cv2.imread(img_path)
+    img = safe_cv2_imread(img_path)
     bboxes, kpss = detector.detect(img, input_size=(320, 320))
     largest_idx = np.argmax((bboxes[:, 2] - bboxes[:, 0]) * (bboxes[:, 3] - bboxes[:, 1]))
     kps = kpss[largest_idx]

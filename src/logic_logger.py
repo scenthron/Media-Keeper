@@ -371,10 +371,15 @@ def setup_logging():
     try:
         file_handler = RotatingFileHandler(
             log_path,
-            maxBytes=0,  # 5 MB
-            backupCount=0,
+            maxBytes=5 * 1024 * 1024,
+            backupCount=2,
             encoding='utf-8'
         )
+        if os.path.exists(log_path) and os.path.getsize(log_path) > 5 * 1024 * 1024:
+            try:
+                file_handler.doRollover()
+            except (OSError, PermissionError):
+                pass
         file_handler.setLevel(file_log_level)
         file_handler.setFormatter(log_formatter)
         handlers.append(file_handler)

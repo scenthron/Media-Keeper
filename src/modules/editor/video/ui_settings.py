@@ -114,7 +114,7 @@ class VideoSettingsWidget(QWidget):
         
         self.chk_hw_accel = QCheckBox("Аппаратное ускорение (GPU)")
         self.chk_hw_accel.setStyleSheet(cb_style)
-        self.chk_hw_accel.setToolTip("Ускоряет кодирование с помощью видеокарты")
+        self.chk_hw_accel.setToolTip("Ускоряет кодирование с помощью видеокарты" if AppContext.is_ru() else "Accelerates encoding using GPU")
         self.chk_hw_accel.clicked.connect(self.on_hw_accel_clicked)
         self.chk_hw_accel.clicked.connect(self.save_config)
         fmt_layout.addWidget(self.chk_hw_accel)
@@ -605,7 +605,7 @@ class VideoSettingsWidget(QWidget):
         else:
             self.hw_encoder = None
             self.hw_name = None
-            self.chk_hw_accel.setToolTip("Ускоряет кодирование с помощью видеокарты")
+            self.chk_hw_accel.setToolTip("Ускоряет кодирование с помощью видеокарты" if AppContext.is_ru() else "Accelerates encoding using GPU")
             self.settings_changed.emit()
 
     def on_hw_detect_finished(self, success, result):
@@ -614,15 +614,15 @@ class VideoSettingsWidget(QWidget):
             enc, name = result.split('|')
             self.hw_encoder = enc
             self.hw_name = name
-            self.chk_hw_accel.setText("Аппаратное ускорение (GPU)")
-            self.chk_hw_accel.setToolTip(f"Доступно аппаратное ускорение: {name}")
+            self.chk_hw_accel.setText("Аппаратное ускорение (GPU)" if AppContext.is_ru() else "Hardware acceleration (GPU)")
+            self.chk_hw_accel.setToolTip(f"Доступно аппаратное ускорение: {name}" if AppContext.is_ru() else f"Hardware acceleration available: {name}")
             self.chk_hw_accel.setChecked(True)
         else:
             self.hw_encoder = None
             self.hw_name = None
-            self.chk_hw_accel.setText("Аппаратное ускорение (GPU)")
+            self.chk_hw_accel.setText("Аппаратное ускорение (GPU)" if AppContext.is_ru() else "Hardware acceleration (GPU)")
             self.chk_hw_accel.setChecked(False)
-            self.chk_hw_accel.setToolTip(f"Ошибка: {result}")
+            self.chk_hw_accel.setToolTip(f"Ошибка: {result}" if AppContext.is_ru() else f"Error: {result}")
         self.settings_changed.emit()
         self.save_config()
 

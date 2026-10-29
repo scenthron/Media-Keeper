@@ -39,7 +39,7 @@ class EditorExportMixin:
         self.export_zone.set_folder(path)
 
     def _browse_export_dir(self):
-        d = QFileDialog.getExistingDirectory(self, "Выберите папку для сохранения")
+        d = QFileDialog.getExistingDirectory(self, "Выберите папку для сохранения" if AppContext.is_ru() else "Select folder to save")
         if d: self._set_export_dir(d)
 
     def start_execution(self):

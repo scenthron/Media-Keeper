@@ -80,7 +80,7 @@ class EditorOverlayMixin:
         self._schedule_cc_preview()
 
     def _select_overlay_image(self) -> None:
-        f, _ = QFileDialog.getOpenFileName(self, "Выберите изображение", "", "Image Files (*.png *.jpg *.jpeg *.gif)")
+        f, _ = QFileDialog.getOpenFileName(self, "Выберите изображение" if AppContext.is_ru() else "Select image", "", "Image Files (*.png *.jpg *.jpeg *.gif)")
         if f:
             self.overlay_image_path = f
             short_name = os.path.basename(f)
@@ -152,7 +152,7 @@ class EditorOverlayMixin:
     def _pick_overlay_color(self) -> None:
         # Retrieve current color from item to use as default in dialog
         initial_color = self.overlay_item._color
-        c = QColorDialog.getColor(initial_color, self, "Выберите цвет региона", QColorDialog.ColorDialogOption.ShowAlphaChannel)
+        c = QColorDialog.getColor(initial_color, self, "Выберите цвет региона" if AppContext.is_ru() else "Select region color", QColorDialog.ColorDialogOption.ShowAlphaChannel)
         if c.isValid():
             self.btn_overlay_color.setStyleSheet(f"background: {c.name()}; border: 1px solid #888;")
             self.overlay_item.set_color(c)

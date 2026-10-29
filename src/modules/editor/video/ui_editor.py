@@ -95,10 +95,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
         self.init_player()
         
-        self.playback_popup = PlaybackSettingsPopup(self.playback_rate, self.is_looping, self)
-        self.playback_popup.hide()
-        self.playback_popup.settings_changed.connect(self._apply_playback_settings)
-        self.playback_popup.closed.connect(self._on_popup_closed)
+        # Playback settings now managed directly via btn_speed and btn_loop on player bar
         
         self._setup_chevron_icons()
         self.init_ui()
@@ -374,6 +371,55 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
 
         row1.addSpacing(15)
 
+        # Кнопка скорости воспроизведения (ЛКМ - циклически, ПКМ - меню скоростей)
+        self.btn_speed = QPushButton("x1")
+        self.btn_speed.setFixedSize(36, 24)
+        self.btn_speed.setCheckable(True)
+        self.btn_speed.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_speed.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_speed.setStyleSheet("""
+            QPushButton { 
+                background: transparent; 
+                color: #ccc;
+                border: 1px solid #444; 
+                border-radius: 4px; 
+                font-size: 11px;
+                font-weight: bold;
+            }
+            QPushButton:hover { border-color: #666; background-color: #333; }
+            QPushButton:checked { background-color: #3b82f6; border-color: #3b82f6; color: white; }
+        """)
+        self.btn_speed.setToolTip("Скорость воспроизведения (ЛКМ - переключение, ПКМ - меню)" if AppContext.is_ru() else "Playback speed (LMB - toggle, RMB - menu)")
+        self.btn_speed.clicked.connect(self._on_speed_clicked)
+        self.btn_speed.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.btn_speed.customContextMenuRequested.connect(self._show_speed_menu)
+        row1.addWidget(self.btn_speed)
+
+        # Кнопка зацикливания видео (Повтор)
+        self.btn_loop = QPushButton()
+        self.btn_loop.setFixedSize(28, 24)
+        self.btn_loop.setCheckable(True)
+        self.btn_loop.setChecked(self.is_looping)
+        self.btn_loop.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_loop.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        repeat_icon_path = os.path.join(self.icons_dir, "repeat.svg")
+        self.btn_loop.setIcon(QIcon(repeat_icon_path) if os.path.exists(repeat_icon_path) else QIcon(os.path.join(self.icons_dir, "refresh.svg")))
+        self.btn_loop.setIconSize(QSize(14, 14))
+        self.btn_loop.setStyleSheet("""
+            QPushButton { 
+                background: transparent; 
+                border: 1px solid #444; 
+                border-radius: 4px; 
+            }
+            QPushButton:hover { border-color: #666; background-color: #333; }
+            QPushButton:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        """)
+        self.btn_loop.setToolTip(AppContext.tr("chk_loop_media"))
+        self.btn_loop.clicked.connect(self._on_loop_clicked)
+        row1.addWidget(self.btn_loop)
+
+        row1.addSpacing(5)
+
         self.btn_mute = QPushButton()
         self.btn_mute.setIcon(self.icon_speaker)
         self.btn_mute.setIconSize(QSize(14, 14))
@@ -391,17 +437,6 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.slider_vol.setStyleSheet("QSlider { background: transparent; } QSlider::groove:horizontal { background: #333; height: 4px; border-radius: 2px; } QSlider::handle:horizontal { background: #888; width: 10px; height: 10px; margin: -3px 0; border-radius: 5px; } QSlider::sub-page:horizontal { background: #888; border-radius: 2px; }")
         self.slider_vol.valueChanged.connect(self._on_volume_changed)
         row1.addWidget(self.slider_vol)
-        
-        self.btn_settings = QPushButton()
-        self.btn_settings.setIcon(QIcon(os.path.join(self.icons_dir, "gear-color.svg")))
-        self.btn_settings.setIconSize(QSize(14, 14))
-        self.btn_settings.setFixedSize(24, 24)
-        self.btn_settings.setCheckable(True)
-        self.btn_settings.setStyleSheet("QPushButton { background: transparent; border: 1px solid #444; border-radius: 4px; padding: 2px; } QPushButton:hover { border-color: #666; background-color: #333; } QPushButton:checked { background-color: #3b82f6; border-color: #3b82f6; }")
-        self.btn_settings.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_settings.setToolTip(AppContext.tr("tooltip_settings"))
-        self.btn_settings.clicked.connect(self._toggle_settings_popup)
-        row1.addWidget(self.btn_settings)
 
         player_controls_vbox.addLayout(row1)
         player_area_layout.addWidget(player_controls_panel)
@@ -1225,9 +1260,11 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
             b.setEnabled(not is_audio)
 
     def reset_settings(self):
-        if hasattr(self, 'playback_popup') and self.playback_popup.isVisible():
-            self.playback_popup.hide()
-            self.btn_settings.setChecked(False)
+        if hasattr(self, 'btn_speed'):
+            self.update_speed_button(1.0)
+        if hasattr(self, 'btn_loop'):
+            self.btn_loop.setChecked(False)
+            self.is_looping = False
         self.current_rotation = 0
         self._is_fragment_mode = False
         self.is_flip_h = False
@@ -1444,32 +1481,57 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         else:
             self.btn_mute.setIcon(self.icon_speaker)
 
-    def _toggle_settings_popup(self):
-        if self.btn_settings.isChecked():
-            self.playback_popup.set_values(self.playback_rate, self.is_looping)
-            pos = self.btn_settings.mapToGlobal(QPoint(0, 0))
-            x = pos.x() - self.playback_popup.width() + self.btn_settings.width()
-            y = pos.y() - self.playback_popup.height() - 5
-            self.playback_popup.move(x, y)
-            self.playback_popup.show()
-            self.playback_popup.raise_()
+    def _on_speed_clicked(self):
+        """Циклическое переключение скоростей по ЛКМ: 1.0 -> 1.25 -> 1.5 -> 2.0 -> 1.0"""
+        presets = [1.0, 1.25, 1.5, 2.0]
+        cur = round(float(getattr(self, 'playback_rate', 1.0)), 2)
+        next_rate = 1.0
+        for p in presets:
+            if p > cur + 0.05:
+                next_rate = p
+                break
+        self._set_playback_rate(next_rate)
+
+    def _show_speed_menu(self, pos):
+        """Контекстное меню точного выбора скорости воспроизведения по ПКМ."""
+        from PyQt6.QtWidgets import QMenu
+        from PyQt6.QtGui import QAction
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu { background-color: #252525; border: 1px solid #444; border-radius: 6px; padding: 4px; }
+            QMenu::item { color: #dddddd; padding: 5px 24px 5px 20px; border-radius: 4px; font-size: 11px; }
+            QMenu::item:selected { background-color: #3b82f6; color: white; }
+        """)
+        rates = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 3.0]
+        cur = round(float(getattr(self, 'playback_rate', 1.0)), 2)
+        for r in rates:
+            title = f"{r}x"
+            if r == 1.0:
+                title += " (" + ("Обычная" if AppContext.is_ru() else "Normal") + ")"
+            act = QAction(title, self)
+            act.setCheckable(True)
+            act.setChecked(abs(cur - r) < 0.05)
+            act.triggered.connect(lambda chk, rate=r: self._set_playback_rate(rate))
+            menu.addAction(act)
+        menu.exec(self.btn_speed.mapToGlobal(pos))
+
+    def _set_playback_rate(self, rate: float):
+        self.playback_rate = float(rate)
+        self.player.setPlaybackRate(self.playback_rate)
+        self.update_speed_button(self.playback_rate)
+
+    def update_speed_button(self, rate: float):
+        self.btn_speed.blockSignals(True)
+        is_active = (abs(rate - 1.0) > 0.05)
+        self.btn_speed.setChecked(is_active)
+        if rate.is_integer():
+            self.btn_speed.setText(f"x{int(rate)}")
         else:
-            self.playback_popup.hide()
+            self.btn_speed.setText(f"x{rate:.2f}".rstrip('0').rstrip('.'))
+        self.btn_speed.blockSignals(False)
 
-    def _on_popup_closed(self):
-        from PyQt6.QtGui import QCursor
-        from PyQt6.QtCore import QRectF, QPointF, QSizeF
-        cursor_pos = QCursor.pos()
-        btn_rect = self.btn_settings.frameGeometry()
-        top_left = self.btn_settings.mapToGlobal(QPoint(0, 0))
-        btn_global_rect = QRectF(QPointF(top_left), QSizeF(btn_rect.width(), btn_rect.height()))
-        if not btn_global_rect.contains(QPointF(cursor_pos)):
-            self.btn_settings.setChecked(False)
-
-    def _apply_playback_settings(self, rate, loop):
-        self.playback_rate = rate
-        self.is_looping = loop
-        self.player.setPlaybackRate(rate)
+    def _on_loop_clicked(self):
+        self.is_looping = self.btn_loop.isChecked()
 
     def center_video(self, size=None):
         if not self.video_item or not self.is_video_loaded: return
@@ -1734,8 +1796,10 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.btn_mute.setToolTip(AppContext.tr("tooltip_mute"))
         if hasattr(self, 'btn_reset_editor'):
             self.btn_reset_editor.setToolTip(AppContext.tr("tooltip_reset_editor"))
-        self.btn_settings.setText("")
-        self.btn_settings.setToolTip(AppContext.tr("tooltip_settings"))
+        if hasattr(self, 'btn_speed'):
+            self.btn_speed.setToolTip("Скорость воспроизведения (ЛКМ - переключение, ПКМ - меню)" if AppContext.is_ru() else "Playback speed (LMB - toggle, RMB - menu)")
+        if hasattr(self, 'btn_loop'):
+            self.btn_loop.setToolTip(AppContext.tr("chk_loop_media"))
         
         # Section 4 Markers buttons & tooltips
         self.btn_add_marker.setText(" " + AppContext.tr("btn_add_marker_text"))
@@ -1862,3 +1926,5 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
             self.export_zone.update_ui_text()
             
         self._update_naming_preview()
+        if hasattr(self, 'waveform_progress') and hasattr(self, 'list_markers'):
+            self._on_markers_changed(self.waveform_progress.markers, getattr(self.waveform_progress, 'is_inverted', False))

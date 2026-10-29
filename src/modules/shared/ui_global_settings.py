@@ -937,33 +937,6 @@ class GlobalSettingsDialog(QDialog):
 
         layout.addLayout(grid_opts)
 
-        self._add_separator(layout)
-
-        # 4. Filters Section
-        lbl_filter_header = QLabel("Фильтрация файлов" if AppContext.is_ru() else "File Filtering")
-        lbl_filter_header.setStyleSheet(f"font-size: 13px; font-weight: bold; color: {COLOR_PRIMARY};")
-        layout.addWidget(lbl_filter_header)
-
-        row_filter = QHBoxLayout()
-        row_filter.setSpacing(10)
-        lbl_filter_exts = QLabel(AppContext.tr("glob_sorter_filter_exts"))
-        row_filter.addWidget(lbl_filter_exts)
-        self.e_filter_exts = QLineEdit()
-        self.e_filter_exts.setText(self.sorter_config.get("filter_extensions", ""))
-        self.e_filter_exts.setPlaceholderText("например: png, jpg, mp4" if AppContext.is_ru() else "e.g. png, jpg, mp4")
-        row_filter.addWidget(self.e_filter_exts, stretch=1)
-
-        self.cb_filter_mode = QComboBox()
-        self.cb_filter_mode.addItem(AppContext.tr("glob_sorter_filter_inc"), "include")
-        self.cb_filter_mode.addItem(AppContext.tr("glob_sorter_filter_exc"), "exclude")
-        f_mode = self.sorter_config.get("filter_mode", "include")
-        for i in range(self.cb_filter_mode.count()):
-            if self.cb_filter_mode.itemData(i) == f_mode:
-                self.cb_filter_mode.setCurrentIndex(i)
-                break
-        row_filter.addWidget(self.cb_filter_mode)
-        layout.addLayout(row_filter)
-
         layout.addStretch()
 
         outer_l = QVBoxLayout(self.tab_sorter)
@@ -979,13 +952,6 @@ class GlobalSettingsDialog(QDialog):
         self.spin_pagination.setValue(int(self.sorter_config.get("pagination_size", 1000)))
         self.chk_auto_collapse.setChecked(bool(self.sorter_config.get("auto_collapse_groups", True)))
         self.spin_list_delay.setValue(float(self.sorter_config.get("list_view_delay", 0.0)))
-
-        self.e_filter_exts.setText(self.sorter_config.get("filter_extensions", ""))
-        f_mode = self.sorter_config.get("filter_mode", "include")
-        for i in range(self.cb_filter_mode.count()):
-            if self.cb_filter_mode.itemData(i) == f_mode:
-                self.cb_filter_mode.setCurrentIndex(i)
-                break
 
     # -------------------------------------------------------------------------
     # TAB 3: HOTKEYS
@@ -1139,9 +1105,9 @@ class GlobalSettingsDialog(QDialog):
         self.table_cache.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.table_cache.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.table_cache.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
-        self.table_cache.setColumnWidth(3, 170)
+        self.table_cache.setColumnWidth(3, 190)
         self.table_cache.verticalHeader().setVisible(False)
-        self.table_cache.verticalHeader().setDefaultSectionSize(42)
+        self.table_cache.verticalHeader().setDefaultSectionSize(48)
         self.table_cache.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table_cache.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table_cache, stretch=1)
@@ -1226,20 +1192,22 @@ class GlobalSettingsDialog(QDialog):
             # Col 3: Action button (Comfortably sized, fully visible)
             cell_widget = QWidget()
             cell_layout = QHBoxLayout(cell_widget)
-            cell_layout.setContentsMargins(6, 4, 6, 4)
+            cell_layout.setContentsMargins(6, 4, 12, 4)
             cell_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             btn_clr = QPushButton(f"🗑️ {AppContext.tr('glob_btn_clear')}")
+            btn_clr.setFixedHeight(30)
+            btn_clr.setMinimumWidth(110)
+            btn_clr.setMaximumWidth(130)
             btn_clr.setStyleSheet(f"""
                 QPushButton {{
                     color: #fca5a5;
                     border: 1px solid {COLOR_DANGER};
                     background-color: #2a1515;
-                    padding: 5px 16px;
+                    padding: 2px 10px;
                     border-radius: 4px;
                     font-size: 12px;
                     font-weight: bold;
-                    min-width: 120px;
                 }}
                 QPushButton:hover {{
                     background-color: {COLOR_DANGER};
@@ -1335,8 +1303,6 @@ class GlobalSettingsDialog(QDialog):
         self.sorter_config["pagination_size"] = self.spin_pagination.value()
         self.sorter_config["auto_collapse_groups"] = self.chk_auto_collapse.isChecked()
         self.sorter_config["list_view_delay"] = self.spin_list_delay.value()
-        self.sorter_config["filter_extensions"] = self.e_filter_exts.text().strip()
-        self.sorter_config["filter_mode"] = self.cb_filter_mode.currentData()
 
         # 4. Save Hotkeys overrides
         if self.registry:

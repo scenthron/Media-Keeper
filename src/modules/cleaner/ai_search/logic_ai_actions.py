@@ -30,7 +30,7 @@ class AiActionsController:
         if not files:
             return False
 
-        virtual_name = "ИИ Поиск"
+        virtual_name = AppContext.tr("cln_ai_btn_start_scan").strip()
         main_win = parent_widget.window() if hasattr(parent_widget, "window") else parent_widget
         if hasattr(main_win, "sorter_tab") and hasattr(main_win, "switch_tab"):
             main_win.sorter_tab.load_virtual_files(files, virtual_name)
@@ -68,10 +68,10 @@ class AiActionsController:
                 filter_config = {"mode": res["mode"], "exts": res["exts"]}
                 count = len(res["exts"])
                 if count == 0:
-                    status_text = AppContext.tr("cln_filter_all") if AppContext.is_ru() else "All images"
+                    status_text = AppContext.tr("cln_filter_all")
                 else:
-                    key = "Вкл" if res["mode"] == "include" else "Искл"
-                    status_text = f"Фильтр: {key} {count} типов" if AppContext.is_ru() else f"Filter: {key} {count} types"
+                    tmpl = AppContext.tr("cln_filter_status_inc") if res["mode"] == "include" else AppContext.tr("cln_filter_status_exc")
+                    status_text = tmpl.format(count)
                 if on_filter_applied_cb:
                     on_filter_applied_cb(filter_config, status_text)
 

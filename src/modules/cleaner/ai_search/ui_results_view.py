@@ -8,6 +8,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QSize, QUrl
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QPainter, QDesktopServices
 
 from config import AppContext
+from modules.shared import ui_theme
 from utils_common import format_size, reveal_in_explorer
 from ..ui_widgets import CleanerTreeWidget, CleanSpinBox
 from ..ui_preview import CleanerPreviewWidget
@@ -68,12 +69,8 @@ class AiResultsView(QWidget):
         post_filter_layout.addWidget(self.btn_col_ai)
         post_filter_layout.addSpacing(10)
 
-        self.lbl_post_filter = QLabel("Быстрый фильтр:" if AppContext.is_ru() else "Quick Filter:")
-        tooltip_post = (
-            "Скрывает из таблицы файлы, чья схожесть с лидером группы ниже выбранного процента.\n"
-            "Это НЕ удаляет файлы из списка результатов навсегда, а лишь временно скрывает их,\n"
-            "помогая сфокусироваться только на самых похожих фото."
-        )
+        self.lbl_post_filter = QLabel(AppContext.tr("cln_ai_quick_filter"))
+        tooltip_post = AppContext.tr("cln_ai_quick_filter_tip")
         self.lbl_post_filter.setToolTip(tooltip_post)
         self.lbl_post_filter.setStyleSheet("color: #ccc; font-size: 11px; font-weight: bold;")
         post_filter_layout.addWidget(self.lbl_post_filter)
@@ -107,7 +104,7 @@ class AiResultsView(QWidget):
         # 2. Сплиттер таблицы и превью
         self.right_splitter = QSplitter(Qt.Orientation.Horizontal)
         self.right_splitter.setHandleWidth(2)
-        self.right_splitter.setStyleSheet("QSplitter::handle { background-color: #2d2d2d; }")
+        self.right_splitter.setStyleSheet(ui_theme.STYLE_SPLITTER)
 
         tree_container = QWidget()
         tree_layout = QVBoxLayout(tree_container)
@@ -122,7 +119,7 @@ class AiResultsView(QWidget):
         tt_layout.setSpacing(10)
         tt_layout.addStretch(1)
 
-        self.lbl_selection_info = QLabel("Выбрано: 0 файлов • 0 B" if AppContext.is_ru() else "Selected: 0 files • 0 B")
+        self.lbl_selection_info = QLabel(AppContext.tr("cln_frag_sel_info_empty"))
         self.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
         tt_layout.addWidget(self.lbl_selection_info)
         tree_layout.addWidget(tt_bar)
@@ -130,10 +127,10 @@ class AiResultsView(QWidget):
         self.tree_results = CleanerTreeWidget()
         self.tree_results.setColumnCount(4)
         self.tree_results.setHeaderLabels([
-            "Имя файла" if AppContext.is_ru() else "File Name",
-            "Сходство (%)" if AppContext.is_ru() else "Similarity (%)",
-            "Размер" if AppContext.is_ru() else "Size",
-            "Путь" if AppContext.is_ru() else "Path"
+            AppContext.tr("cln_ai_col_filename"),
+            AppContext.tr("cln_frag_col_sim"),
+            AppContext.tr("cln_frag_col_size"),
+            AppContext.tr("cln_frag_col_path")
         ])
         self.tree_results.setColumnWidth(0, 240)
         self.tree_results.setColumnWidth(1, 100)
@@ -180,7 +177,7 @@ class AiResultsView(QWidget):
         self.right_splitter.addWidget(tree_container)
 
         self.preview_widget = CleanerPreviewWidget()
-        self.preview_widget.show_empty("Выберите файл для предпросмотра" if AppContext.is_ru() else "Select a file to preview")
+        self.preview_widget.show_empty(AppContext.tr("cln_ai_select_file_preview"))
         self.right_splitter.addWidget(self.preview_widget)
         self.right_splitter.setSizes([650, 350])
 
@@ -229,7 +226,7 @@ class AiResultsView(QWidget):
                             group_item.setCheckState(0, Qt.CheckState.Unchecked)
                     else:
                         group_item.setHidden(False)
-                        group_item.setText(0, f"Группа: {g_name} ({actual_size} файлов)" if AppContext.is_ru() else f"Group: {g_name} ({actual_size} files)")
+                        group_item.setText(0, AppContext.tr("cln_ai_group_title").format(g_name, actual_size))
                 else:
                     target_similarity = float(value)
                     for j in range(group_item.childCount()):
@@ -251,7 +248,7 @@ class AiResultsView(QWidget):
                             group_item.setCheckState(0, Qt.CheckState.Unchecked)
                     else:
                         group_item.setHidden(False)
-                        group_item.setText(0, f"Группа: {g_name} ({group_visible_children} файлов)" if AppContext.is_ru() else f"Group: {g_name} ({group_visible_children} files)")
+                        group_item.setText(0, AppContext.tr("cln_ai_group_title").format(g_name, group_visible_children))
         finally:
             self.tree_results.blockSignals(False)
 
@@ -270,17 +267,14 @@ class AiResultsView(QWidget):
                         if data and 'size' in data:
                             visible_bytes += data['size']
 
-        stats_text = (
-            f"Отображено: {visible_groups} групп, {visible_files} файлов, {visible_bytes // (1024*1024) if visible_bytes else 0} MB" if AppContext.is_ru()
-            else f"Displayed: {visible_groups} groups, {visible_files} files, {format_size(visible_bytes)}"
-        )
+        stats_text = AppContext.tr("cln_ai_stats_displayed").format(visible_groups, visible_files, visible_bytes // (1024*1024) if visible_bytes else 0)
         self.stats_updated.emit(stats_text)
         self._emit_selection_stats()
 
     def clear_results(self):
         self.tree_results.clear()
         self.post_filter_widget.hide()
-        self.preview_widget.show_empty("Файл не выбран" if AppContext.is_ru() else "No file selected")
+        self.preview_widget.show_empty(AppContext.tr("cln_ai_no_file_selected"))
         self.file_selected.emit("")
         self._emit_selection_stats()
 
@@ -307,7 +301,7 @@ class AiResultsView(QWidget):
 
                 group_item = QTreeWidgetItem()
                 group_item.setCheckState(0, Qt.CheckState.Unchecked)
-                group_item.setText(0, f"Группа: {group_name} ({num_files} файлов)" if AppContext.is_ru() else f"Group: {group_name} ({num_files} files)")
+                group_item.setText(0, AppContext.tr("cln_ai_group_title").format(group_name, num_files))
                 group_item.setText(2, format_size(group_size))
                 group_item.setData(0, Qt.ItemDataRole.UserRole, {"is_group": True, "name": group_name})
 
@@ -367,7 +361,7 @@ class AiResultsView(QWidget):
                 self.cluster_unique_sizes = sizes
                 min_size = min(sizes) if sizes else 1
                 max_size = max(sizes) if sizes else 100
-                self.spin_post_filter.setSuffix(" ф." if AppContext.is_ru() else " f.")
+                self.spin_post_filter.setSuffix(AppContext.tr("cln_ai_suffix_files"))
                 self.spin_post_filter.setDecimals(0)
                 self.spin_post_filter.setSingleStep(1.0)
                 self.spin_post_filter.setRange(float(min_size), float(max_size))
@@ -402,7 +396,7 @@ class AiResultsView(QWidget):
     def on_tree_selection_changed(self):
         selected_items = self.tree_results.selectedItems()
         if not selected_items:
-            self.preview_widget.show_empty("Файл не выбран" if AppContext.is_ru() else "No file selected")
+            self.preview_widget.show_empty(AppContext.tr("cln_ai_no_file_selected"))
             self.file_selected.emit("")
             return
 
@@ -447,7 +441,7 @@ class AiResultsView(QWidget):
 
                 self.file_selected.emit(path)
         else:
-            self.preview_widget.show_empty("Файл не выбран" if AppContext.is_ru() else "No file selected")
+            self.preview_widget.show_empty(AppContext.tr("cln_ai_no_file_selected"))
             self.file_selected.emit("")
 
     def refresh_preview_faces(self):
@@ -631,7 +625,7 @@ class AiResultsView(QWidget):
             if group_item.childCount() == 0:
                 root.removeChild(group_item)
 
-        self.preview_widget.show_empty("Выберите файл для предпросмотра" if AppContext.is_ru() else "Select a file to preview")
+        self.preview_widget.show_empty(AppContext.tr("cln_ai_select_file_preview"))
         self._emit_selection_stats()
 
     def _emit_selection_stats(self):
@@ -641,7 +635,7 @@ class AiResultsView(QWidget):
         size_str = format_size(size)
 
         self.lbl_selection_info.setStyleSheet("color: #93c5fd; font-size: 11px; font-weight: bold;")
-        self.lbl_selection_info.setText(f"Выбрано: {count} файлов • {size_str}" if AppContext.is_ru() else f"Selected: {count} files • {size_str}")
+        self.lbl_selection_info.setText(AppContext.tr("cln_ai_selected_files_info").format(count, size_str))
         self.lbl_selection_info.setToolTip(f"Выбрано файлов: {count}\nРазмер: {size_str}")
         self.selection_changed.emit(count, size)
 
@@ -651,14 +645,13 @@ class AiResultsView(QWidget):
             return
 
         data = item.data(0, Qt.ItemDataRole.UserRole)
-        is_ru = AppContext.is_ru()
         if data and data.get("is_group", False):
             menu = QMenu(self)
             menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; } QMenu::separator { height: 1px; background: #666; margin: 4px 8px; }")
 
-            act_select = QAction("Выделить все файлы в этой группе" if is_ru else "Select all files in this group", self)
-            act_deselect = QAction("Снять выделение со всех файлов в группе" if is_ru else "Deselect all files in this group", self)
-            act_invert = QAction("Инвертировать выделение" if is_ru else "Invert Selection", self)
+            act_select = QAction(AppContext.tr("cln_ai_act_select_group"), self)
+            act_deselect = QAction(AppContext.tr("cln_ai_act_deselect_group"), self)
+            act_invert = QAction(AppContext.tr("cln_ai_act_invert_selection"), self)
 
             act_select.triggered.connect(lambda: self.set_group_selection_state(item, Qt.CheckState.Checked))
             act_deselect.triggered.connect(lambda: self.set_group_selection_state(item, Qt.CheckState.Unchecked))
@@ -669,13 +662,13 @@ class AiResultsView(QWidget):
             menu.addAction(act_invert)
 
             menu.addSeparator()
-            act_send_sorter = QAction("Отправить эту группу в Сортировщик", self)
+            act_send_sorter = QAction(AppContext.tr("cln_ai_act_send_group_sorter"), self)
             act_send_sorter.triggered.connect(lambda checked, gi=item: self.send_group_to_sorter_requested.emit(gi))
             menu.addAction(act_send_sorter)
 
             menu.addSeparator()
-            act_expand_all = QAction("Развернуть все группы" if is_ru else "Expand all groups", self)
-            act_collapse_all = QAction("Свернуть все группы" if is_ru else "Collapse all groups", self)
+            act_expand_all = QAction(AppContext.tr("cln_ai_act_expand_all"), self)
+            act_collapse_all = QAction(AppContext.tr("cln_ai_act_collapse_all"), self)
             act_expand_all.triggered.connect(self.tree_results.expandAll)
             act_collapse_all.triggered.connect(self.tree_results.collapseAll)
             menu.addAction(act_expand_all)
@@ -687,20 +680,20 @@ class AiResultsView(QWidget):
             menu.setStyleSheet("QMenu { background-color: #2b2b2b; color: white; border: 1px solid #444; } QMenu::item:selected { background-color: #3b82f6; } QMenu::separator { height: 1px; background: #666; margin: 4px 8px; }")
             path = data.get("path")
 
-            act_open = QAction("Открыть файл" if is_ru else "Open File", self)
+            act_open = QAction(AppContext.tr("cln_ai_act_open_file"), self)
             act_open.triggered.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(path)))
             menu.addAction(act_open)
 
-            act_reveal = QAction("Показать в папке" if is_ru else "Show in folder", self)
+            act_reveal = QAction(AppContext.tr("cln_ai_act_reveal"), self)
             act_reveal.triggered.connect(lambda: reveal_in_explorer(path))
             menu.addAction(act_reveal)
 
             menu.addSeparator()
 
             group_item = item.parent()
-            act_select = QAction("Выделить все файлы в этой группе" if is_ru else "Select all files in this group", self)
-            act_deselect = QAction("Снять выделение со всех файлов в группе" if is_ru else "Deselect all files in this group", self)
-            act_invert = QAction("Инвертировать выделение в группе" if is_ru else "Invert Selection in group", self)
+            act_select = QAction(AppContext.tr("cln_ai_act_select_group"), self)
+            act_deselect = QAction(AppContext.tr("cln_ai_act_deselect_group"), self)
+            act_invert = QAction(AppContext.tr("cln_ai_act_invert_group"), self)
 
             act_select.triggered.connect(lambda: self.set_group_selection_state(group_item, Qt.CheckState.Checked))
             act_deselect.triggered.connect(lambda: self.set_group_selection_state(group_item, Qt.CheckState.Unchecked))
@@ -711,16 +704,34 @@ class AiResultsView(QWidget):
             menu.addAction(act_invert)
 
             menu.addSeparator()
-            act_send_sorter = QAction("Отправить эту группу в Сортировщик", self)
+            act_send_sorter = QAction(AppContext.tr("cln_ai_act_send_group_sorter"), self)
             act_send_sorter.triggered.connect(lambda checked, gi=group_item: self.send_group_to_sorter_requested.emit(gi))
             menu.addAction(act_send_sorter)
 
             menu.addSeparator()
-            act_expand_all = QAction("Развернуть все группы" if is_ru else "Expand all groups", self)
-            act_collapse_all = QAction("Свернуть все группы" if is_ru else "Collapse all groups", self)
+            act_expand_all = QAction(AppContext.tr("cln_ai_act_expand_all"), self)
+            act_collapse_all = QAction(AppContext.tr("cln_ai_act_collapse_all"), self)
             act_expand_all.triggered.connect(self.tree_results.expandAll)
             act_collapse_all.triggered.connect(self.tree_results.collapseAll)
             menu.addAction(act_expand_all)
             menu.addAction(act_collapse_all)
 
             menu.exec(self.tree_results.mapToGlobal(pos))
+
+
+    def retranslate_ui(self):
+        """Update results view strings on language switch."""
+        self.tree_results.setHeaderLabels([
+            AppContext.tr("cln_ai_col_filename"),
+            AppContext.tr("cln_frag_col_sim"),
+            AppContext.tr("cln_frag_col_size"),
+            AppContext.tr("cln_frag_col_path")
+        ])
+        if hasattr(self, 'lbl_post_filter'):
+            self.lbl_post_filter.setText(AppContext.tr("cln_ai_quick_filter"))
+            self.lbl_post_filter.setToolTip(AppContext.tr("cln_ai_quick_filter_tip"))
+        if hasattr(self, 'slider_post_filter'):
+            self.slider_post_filter.setToolTip(AppContext.tr("cln_ai_quick_filter_tip"))
+        if hasattr(self, 'preview_widget') and hasattr(self.preview_widget, 'update_ui_text'):
+            self.preview_widget.update_ui_text()
+        self._emit_selection_stats()

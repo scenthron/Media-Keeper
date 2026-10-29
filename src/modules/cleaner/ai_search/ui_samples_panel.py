@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QSize
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent
 
 from config import AppContext
+from modules.shared import ui_theme
 from ui_widgets_base import FlowLayout
 from ui_dialogs_generic import silent_warning
 from ..logic_ai_tags import AiTextTagsManager, parse_multi_tags, MultiTagHighlighter
@@ -142,9 +143,9 @@ class AiSamplesPanel(QWidget):
         layout.setSpacing(4)
 
         mode_header = QHBoxLayout()
-        self.btn_mode_ref = QPushButton("Поиск по образцам" if AppContext.is_ru() else "Search by Samples")
-        self.btn_mode_text = QPushButton("Поиск по тексту" if AppContext.is_ru() else "Search by Text")
-        self.btn_mode_smart = QPushButton("Умный поиск" if AppContext.is_ru() else "Smart Search")
+        self.btn_mode_ref = QPushButton(AppContext.tr("cln_ai_mode_ref"))
+        self.btn_mode_text = QPushButton(AppContext.tr("cln_ai_mode_text"))
+        self.btn_mode_smart = QPushButton(AppContext.tr("cln_ai_mode_smart"))
 
         mode_style = """
             QPushButton {
@@ -187,7 +188,7 @@ class AiSamplesPanel(QWidget):
         # Вкладка 0: Быстрый поиск
         self.fast_search_widget = AiFastSearchWidget()
         self.fast_search_widget.paths_changed.connect(lambda: self.search_state_changed.emit())
-        self.page_ref.addTab(self.fast_search_widget, "Быстрый поиск" if AppContext.is_ru() else "Fast Search")
+        self.page_ref.addTab(self.fast_search_widget, AppContext.tr("cln_ai_tab_fast_search"))
 
         # Вкладка 1: Менеджер образцов
         self.ref_manager_widget = QWidget()
@@ -197,12 +198,12 @@ class AiSamplesPanel(QWidget):
 
         ref_header = QHBoxLayout()
         page_ref_layout.addLayout(ref_header)
-        ref_title = QLabel("Группы Образцов" if AppContext.is_ru() else "Reference Groups")
-        ref_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI';")
-        ref_header.addWidget(ref_title)
+        self.lbl_ref_title = QLabel(AppContext.tr("cln_ai_ref_groups_title"))
+        self.lbl_ref_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI';")
+        ref_header.addWidget(self.lbl_ref_title)
         ref_header.addStretch()
 
-        self.btn_create_ref = QPushButton("[+] Создать" if AppContext.is_ru() else "[+] Create")
+        self.btn_create_ref = QPushButton(AppContext.tr("cln_ai_btn_create_ref"))
         self.btn_create_ref.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_create_ref.setStyleSheet("""
             QPushButton {
@@ -236,7 +237,7 @@ class AiSamplesPanel(QWidget):
         self.scroll_ref.setWidget(self.ref_container)
         page_ref_layout.addWidget(self.scroll_ref)
 
-        self.page_ref.addTab(self.ref_manager_widget, "Менеджер образцов" if AppContext.is_ru() else "Reference Manager")
+        self.page_ref.addTab(self.ref_manager_widget, AppContext.tr("cln_ai_tab_ref_manager"))
         self.page_ref.currentChanged.connect(lambda: self.search_state_changed.emit())
         self.mode_stack.addWidget(self.page_ref)
 
@@ -247,15 +248,12 @@ class AiSamplesPanel(QWidget):
         page_text_layout.setSpacing(8)
         page_text_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        lbl_text_search = QLabel("Введите текстовый запрос для поиска:" if AppContext.is_ru() else "Enter text query for search:")
-        lbl_text_search.setStyleSheet("color: #ccc; font-size: 12px;")
-        page_text_layout.addWidget(lbl_text_search)
+        self.lbl_text_search = QLabel(AppContext.tr("cln_ai_lbl_text_search"))
+        self.lbl_text_search.setStyleSheet("color: #ccc; font-size: 12px;")
+        page_text_layout.addWidget(self.lbl_text_search)
 
         self.line_text_search = SearchTextEdit()
-        self.line_text_search.setPlaceholderText(
-            "Например: дом(30), дождь, -люди, -собака(80), [Домашние животные: кошка(70)]" if AppContext.is_ru()
-            else "E.g.: house(30), rain, -people, -dog(80), [Pets: cat(70)]"
-        )
+        self.line_text_search.setPlaceholderText(AppContext.tr("cln_ai_ph_text_query"))
         self.line_text_search.setStyleSheet("""
             QTextEdit {
                 background-color: #222;
@@ -272,9 +270,8 @@ class AiSamplesPanel(QWidget):
         page_text_layout.addWidget(self.line_text_search)
 
         tags_action_layout = QHBoxLayout()
-        is_ru = AppContext.is_ru()
-        self.btn_manage_tags = QPushButton("⚙️ " + ("Теги" if is_ru else "Tags"))
-        self.btn_manage_tags.setToolTip("Управление текстовыми тегами" if is_ru else "Manage text tags")
+        self.btn_manage_tags = QPushButton("⚙️ " + AppContext.tr("cln_ai_btn_tags"))
+        self.btn_manage_tags.setToolTip(AppContext.tr("cln_ai_tip_tags"))
         self.btn_manage_tags.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_manage_tags.setStyleSheet("""
             QPushButton { background-color: #333; border: 1px solid #555; border-radius: 4px; padding: 4px 8px; color: #ccc; }
@@ -287,7 +284,7 @@ class AiSamplesPanel(QWidget):
         self.btn_info_tags.setStyleSheet("QPushButton { background: transparent; border: none; font-size: 16px; }")
         self.btn_info_tags.clicked.connect(self.show_tags_info)
 
-        self.btn_text_search = QPushButton("Найти" if AppContext.is_ru() else "Find")
+        self.btn_text_search = QPushButton(AppContext.tr("cln_ai_btn_find"))
         self.btn_text_search.setFixedHeight(32)
         self.btn_text_search.setFixedWidth(100)
         self.btn_text_search.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -328,27 +325,23 @@ class AiSamplesPanel(QWidget):
         page_smart_layout.setSpacing(8)
         page_smart_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        lbl_smart_title = QLabel("Автоматическая группировка" if AppContext.is_ru() else "Automatic Grouping")
-        lbl_smart_title.setStyleSheet("color: #ccc; font-weight: bold; font-size: 12px;")
-        page_smart_layout.addWidget(lbl_smart_title)
+        self.lbl_smart_title = QLabel(AppContext.tr("cln_ai_smart_title"))
+        self.lbl_smart_title.setStyleSheet("color: #ccc; font-weight: bold; font-size: 12px;")
+        page_smart_layout.addWidget(self.lbl_smart_title)
 
-        lbl_smart_desc = QLabel(
-            "Умный поиск позволяет находить похожие объекты и лица в указанных каталогах без использования заранее подготовленных Образцов. ИИ автоматически сгруппирует похожие файлы."
-            if AppContext.is_ru() else
-            "Smart search automatically groups similar objects and faces without using prepared references."
-        )
-        lbl_smart_desc.setWordWrap(True)
-        lbl_smart_desc.setStyleSheet("color: #888; font-size: 11px;")
-        page_smart_layout.addWidget(lbl_smart_desc)
+        self.lbl_smart_desc = QLabel(AppContext.tr("cln_ai_smart_desc"))
+        self.lbl_smart_desc.setWordWrap(True)
+        self.lbl_smart_desc.setStyleSheet("color: #888; font-size: 11px;")
+        page_smart_layout.addWidget(self.lbl_smart_desc)
 
         smart_type_layout = QHBoxLayout()
-        lbl_smart_type = QLabel("Тип поиска:" if AppContext.is_ru() else "Search Type:")
-        lbl_smart_type.setStyleSheet("color: #ccc; font-size: 12px;")
-        smart_type_layout.addWidget(lbl_smart_type)
+        self.lbl_smart_type = QLabel(AppContext.tr("cln_ai_smart_type"))
+        self.lbl_smart_type.setStyleSheet("color: #ccc; font-size: 12px;")
+        smart_type_layout.addWidget(self.lbl_smart_type)
 
         self.combo_auto_type = QComboBox()
-        self.combo_auto_type.addItem("По людям" if AppContext.is_ru() else "By People", "face")
-        self.combo_auto_type.addItem("По изображениям" if AppContext.is_ru() else "By Images", "general")
+        self.combo_auto_type.addItem(AppContext.tr("cln_ai_smart_by_people"), "face")
+        self.combo_auto_type.addItem(AppContext.tr("cln_ai_smart_by_images"), "general")
         self.combo_auto_type.setStyleSheet("QComboBox { background-color: #2b2b2b; color: white; border: 1px solid #444; border-radius: 4px; padding: 2px 5px; font-size: 11px; height: 22px; }")
         self.combo_auto_type.setFixedWidth(130)
         smart_type_layout.addWidget(self.combo_auto_type)
@@ -377,11 +370,7 @@ class AiSamplesPanel(QWidget):
     def _trigger_text_search(self):
         query = self.get_active_text_query()
         if not query:
-            silent_warning(
-                self,
-                "Внимание" if AppContext.is_ru() else "Warning",
-                "Введите текстовый запрос или выберите тег." if AppContext.is_ru() else "Please enter a query or select a tag."
-            )
+            silent_warning(self, AppContext.tr("cln_ai_warning_title"), AppContext.tr("cln_ai_warning_enter_query"))
             return
         self.text_search_requested.emit(query)
 
@@ -535,47 +524,8 @@ class AiSamplesPanel(QWidget):
         from PyQt6.QtWidgets import QMessageBox
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Icon.NoIcon)
-        msg.setWindowTitle("Справка по текстовым тегам" if AppContext.is_ru() else "Text Tags Help")
-
-        ru_text = (
-            "<b>Сложные поисковые запросы (Мультитеги):</b><br>"
-            "Вы можете вводить сложные запросы прямо в строку поиска, используя квадратные скобки и двоеточие.<br>"
-            "Синтаксис: <b>[Заголовок: запрос 1, запрос 2, ...]</b><br>"
-            "<i>Пример:</i> запрос <b>[Домашние животные: кошка, собака, попугай]</b> создаст одну колонку результатов "
-            "с именем «Домашние животные», в которой будут собраны все 3 вида животных.<br><br>"
-            "<b>Индивидуальные пороги параметров (число):</b><br>"
-            "Вы можете точно настраивать порог срабатывания для каждого конкретного слова, приписав порог в круглых скобках (без пробела).<br>"
-            "<i>Пример позитивного:</i> <b>девушка(80)</b> — картинка пройдет, если сходство с девушкой ≥ 80%. (Чем выше число, тем строже отсев).<br>"
-            "<i>Пример негативного (толерантность):</i> <b>-парень(50)</b> — картинка будет отброшена, если сходство с парнем ≥ 50%. (Чем <b>ниже</b> число, тем строже отсев мусора).<br><br>"
-            "<b>Система сохраненных тегов:</b><br>"
-            "Теги — это удобные закладки для ваших частых запросов.<br>"
-            "Заголовок тега формирует название группы результатов, в которую будет выводиться поиск:<br>"
-            "• По <i>одиночному тегу</i> (например, «Собака») — группа будет называться так же.<br>"
-            "• По <i>мультитегу</i> — заголовок тега станет именем группы для множественного запроса.<br><br>"
-            "Вы можете комбинировать обычный текст в строке поиска с выбранными тегами. Каждый отдельный тег или запрос "
-            "создает свою независимую колонку результатов."
-        )
-
-        en_text = (
-            "<b>Complex Search Queries (Multi-tags):</b><br>"
-            "You can enter complex queries directly into the search bar using square brackets and a colon.<br>"
-            "Syntax: <b>[Header: query 1, query 2, ...]</b><br>"
-            "<i>Example:</i> query <b>[Pets: cat, dog, parrot]</b> creates a single result group "
-            "named 'Pets' containing all 3 types of animals.<br><br>"
-            "<b>Individual Parameter Thresholds (number):</b><br>"
-            "You can fine-tune the match threshold for any specific word by appending a number in round brackets (no space).<br>"
-            "<i>Positive example:</i> <b>girl(80)</b> — passes if similarity is ≥ 80%. (Higher = stricter filtering).<br>"
-            "<i>Negative example (tolerance):</i> <b>-boy(50)</b> — drops the image if similarity is ≥ 50%. (Lower = stricter filtering).<br><br>"
-            "<b>Saved Tags System:</b><br>"
-            "Tags are convenient bookmarks for your frequent queries.<br>"
-            "The tag header sets the name of the result group for the search:<br>"
-            "• For a <i>single tag</i> (e.g., 'Dog') — the group will have the same name.<br>"
-            "• For a <i>multi-tag</i> — the tag header becomes the group name for multiple queries.<br><br>"
-            "You can combine plain text in the search bar with selected tags. Each individual tag or query "
-            "creates its own independent result column."
-        )
-
-        msg.setText(ru_text if AppContext.is_ru() else en_text)
+        msg.setWindowTitle(AppContext.tr("cln_ai_tags_help_title"))
+        msg.setText(AppContext.tr("cln_ai_tags_help_body"))
         msg.exec()
 
     def refresh_tag_chips(self):
@@ -617,3 +567,29 @@ class AiSamplesPanel(QWidget):
 
             self.active_tag_buttons[name] = btn
             self.tags_flow.addWidget(btn)
+
+
+    def retranslate_ui(self):
+        """Update interface strings on language switch."""
+        self.btn_mode_ref.setText(AppContext.tr("cln_ai_mode_ref"))
+        self.btn_mode_text.setText(AppContext.tr("cln_ai_mode_text"))
+        self.btn_mode_smart.setText(AppContext.tr("cln_ai_mode_smart"))
+        self.page_ref.setTabText(0, AppContext.tr("cln_ai_tab_fast_search"))
+        self.page_ref.setTabText(1, AppContext.tr("cln_ai_tab_ref_manager"))
+        if hasattr(self, 'lbl_ref_title'):
+            self.lbl_ref_title.setText(AppContext.tr("cln_ai_ref_groups_title"))
+        self.btn_create_ref.setText(AppContext.tr("cln_ai_btn_create_ref"))
+        if hasattr(self, 'lbl_text_search'):
+            self.lbl_text_search.setText(AppContext.tr("cln_ai_lbl_text_search"))
+        self.line_text_search.setPlaceholderText(AppContext.tr("cln_ai_ph_text_query"))
+        self.btn_manage_tags.setText("⚙️ " + AppContext.tr("cln_ai_btn_tags"))
+        self.btn_manage_tags.setToolTip(AppContext.tr("cln_ai_tip_tags"))
+        self.btn_text_search.setText(AppContext.tr("cln_ai_btn_find"))
+        if hasattr(self, 'lbl_smart_title'):
+            self.lbl_smart_title.setText(AppContext.tr("cln_ai_smart_title"))
+        if hasattr(self, 'lbl_smart_desc'):
+            self.lbl_smart_desc.setText(AppContext.tr("cln_ai_smart_desc"))
+        if hasattr(self, 'lbl_smart_type'):
+            self.lbl_smart_type.setText(AppContext.tr("cln_ai_smart_type"))
+        self.combo_auto_type.setItemText(0, AppContext.tr("cln_ai_smart_by_people"))
+        self.combo_auto_type.setItemText(1, AppContext.tr("cln_ai_smart_by_images"))

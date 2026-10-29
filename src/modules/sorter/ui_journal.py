@@ -12,6 +12,8 @@ from PyQt6.QtGui import QIcon, QPixmap, QColor, QClipboard
 from config import AppContext
 from utils_common import format_size
 from logic_paths import get_app_data_dir
+from ui_dialogs_generic import silent_info
+from modules.shared import ui_theme
 from .logic_journal import MoveJournal
 
 class JournalDialog(QDialog):
@@ -19,7 +21,7 @@ class JournalDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Журнал перемещений" if AppContext.is_ru() else "Move Journal")
+        self.setWindowTitle(AppContext.tr("srt_jnl_title"))
         # Окно будет поверх родительского окна (Media Keeper), но не поверх других программ
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowStaysOnTopHint)
         self.resize(850, 500)
@@ -31,7 +33,14 @@ class JournalDialog(QDialog):
         layout = QVBoxLayout(self)
         
         self.table = QTableWidget(0, 6)
-        self.table.setHorizontalHeaderLabels(["Дата/Время", "Файлы", "Откуда", "Куда", "", "Действие"] if AppContext.is_ru() else ["Date/Time", "Files", "From", "To", "", "Action"])
+        self.table.setHorizontalHeaderLabels([
+            AppContext.tr("srt_jnl_col_time"),
+            AppContext.tr("srt_jnl_col_files"),
+            AppContext.tr("srt_jnl_col_from"),
+            AppContext.tr("srt_jnl_col_to"),
+            "",
+            AppContext.tr("srt_jnl_col_action")
+        ])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -49,18 +58,16 @@ class JournalDialog(QDialog):
         
         layout.addWidget(self.table)
         
-        hint_lbl = QLabel(
-            "Подсказка: <b>Двойной клик</b> по зеленому файлу — открыть файл. <b>Средняя кнопка (колесико)</b> по строке — открыть папку. <b>ПКМ</b> — меню копирования." if AppContext.is_ru() else "Hint: <b>Double click</b> on green file to open it. <b>Middle click</b> on row to open folder. <b>RMB</b> for copy menu."
-        )
-        hint_lbl.setStyleSheet("color: #aaa; font-size: 11px;")
-        layout.addWidget(hint_lbl)
+        self.hint_lbl = QLabel(AppContext.tr("srt_jnl_hint"))
+        self.hint_lbl.setStyleSheet(f"color: {ui_theme.TEXT_MUTED_LIGHT}; font-size: 11px;")
+        layout.addWidget(self.hint_lbl)
         
         btn_layout = QHBoxLayout()
-        self.btn_refresh = QPushButton("Обновить проверку" if AppContext.is_ru() else "Refresh Check")
+        self.btn_refresh = QPushButton(AppContext.tr("srt_jnl_btn_refresh"))
         self.btn_refresh.clicked.connect(self._load_data)
-        self.btn_clear = QPushButton("Очистить журнал" if AppContext.is_ru() else "Clear Journal")
+        self.btn_clear = QPushButton(AppContext.tr("srt_jnl_btn_clear"))
         self.btn_clear.clicked.connect(self._clear_journal)
-        self.btn_close = QPushButton("Закрыть" if AppContext.is_ru() else "Close")
+        self.btn_close = QPushButton(AppContext.tr("srt_jnl_btn_close"))
         self.btn_close.clicked.connect(self.close)
         
         btn_layout.addWidget(self.btn_refresh)
@@ -69,6 +76,24 @@ class JournalDialog(QDialog):
         btn_layout.addWidget(self.btn_close)
         
         layout.addLayout(btn_layout)
+
+    def retranslate_ui(self):
+        """Update interface texts dynamically when application language changes."""
+        self.setWindowTitle(AppContext.tr("srt_jnl_title"))
+        self.table.setHorizontalHeaderLabels([
+            AppContext.tr("srt_jnl_col_time"),
+            AppContext.tr("srt_jnl_col_files"),
+            AppContext.tr("srt_jnl_col_from"),
+            AppContext.tr("srt_jnl_col_to"),
+            "",
+            AppContext.tr("srt_jnl_col_action")
+        ])
+        if hasattr(self, "hint_lbl"):
+            self.hint_lbl.setText(AppContext.tr("srt_jnl_hint"))
+        self.btn_refresh.setText(AppContext.tr("srt_jnl_btn_refresh"))
+        self.btn_clear.setText(AppContext.tr("srt_jnl_btn_clear"))
+        self.btn_close.setText(AppContext.tr("srt_jnl_btn_close"))
+        self._load_data()
 
     def _load_data(self):
         self.table.setRowCount(0)
@@ -88,11 +113,11 @@ class JournalDialog(QDialog):
             pairs = entry.get("pairs", [])
             is_group = len(pairs) > 1
             if is_group:
-                file_text = f"Группа файлов ({len(pairs)} шт.)" if AppContext.is_ru() else f"File group ({len(pairs)} items)"
-                tooltip = ("Перемещена группа файлов:\n" if AppContext.is_ru() else "Moved file group:\n") + "\n".join(os.path.basename(p["src"]) for p in pairs[:5])
+                file_text = AppContext.tr("srt_jnl_file_group").format(len(pairs))
+                tooltip = AppContext.tr("srt_jnl_moved_group") + "\n".join(os.path.basename(p["src"]) for p in pairs[:5])
                 if len(pairs) > 5: tooltip += "\n..."
             else:
-                file_text = os.path.basename(pairs[0]["src"]) if pairs else ("Неизвестно" if AppContext.is_ru() else "Unknown")
+                file_text = os.path.basename(pairs[0]["src"]) if pairs else AppContext.tr("srt_jnl_unknown")
                 tooltip = file_text
                 
             item_files = QTableWidgetItem(file_text)
@@ -119,7 +144,7 @@ class JournalDialog(QDialog):
             item_src.setToolTip(src_dir)
             if not os.path.exists(src_dir):
                 item_src.setForeground(QColor("red"))
-                item_src.setToolTip(f"Папка отсутствует (будет создана при возврате)\\n{src_dir}" if AppContext.is_ru() else f"Folder is missing (will be created on return)\\n{src_dir}")
+                item_src.setToolTip(AppContext.tr("srt_jnl_folder_missing").format(src_dir))
             else:
                 item_src.setForeground(QColor("green"))
             self.table.setItem(row, 2, item_src)
@@ -136,25 +161,25 @@ class JournalDialog(QDialog):
             
             # 5. Кнопка удаления записи (Крестик)
             btn_del = QPushButton("✖")
-            btn_del.setToolTip("Удалить запись из журнала (файлы останутся на местах)" if AppContext.is_ru() else "Delete log entry (files will remain in place)")
-            btn_del.setStyleSheet("QPushButton { color: #f44336; border: 1px solid #444; border-radius: 3px; max-width: 25px; min-width: 25px; padding: 2px; } QPushButton:hover { background-color: #f44336; color: white; }")
+            btn_del.setToolTip(AppContext.tr("srt_jnl_tip_del"))
+            btn_del.setStyleSheet(f"QPushButton {{ color: {ui_theme.COLOR_DANGER}; border: 1px solid {ui_theme.BORDER_MEDIUM}; border-radius: 3px; max-width: 25px; min-width: 25px; padding: 2px; }} QPushButton:hover {{ background-color: {ui_theme.COLOR_DANGER}; color: white; }}")
             btn_del.clicked.connect(lambda checked, e_id=entry.get("id"): self._remove_entry(e_id))
             self.table.setCellWidget(row, 4, btn_del)
             
             # 6. Действие
             status = entry.get("status", "valid")
             if status == "done":
-                lbl = QLabel("Выполнено" if AppContext.is_ru() else "Completed")
-                lbl.setStyleSheet("color: #4CAF50; font-weight: bold;")
+                lbl = QLabel(AppContext.tr("srt_jnl_status_done"))
+                lbl.setStyleSheet(f"color: {ui_theme.COLOR_SUCCESS_TEXT}; font-weight: bold;")
                 lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.table.setCellWidget(row, 5, lbl)
             elif found_count == 0:
-                lbl = QLabel("Файлы не найдены" if AppContext.is_ru() else "Files not found")
-                lbl.setStyleSheet("color: #F44336;")
+                lbl = QLabel(AppContext.tr("srt_jnl_status_not_found"))
+                lbl.setStyleSheet(f"color: {ui_theme.COLOR_DANGER};")
                 lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.table.setCellWidget(row, 5, lbl)
             else:
-                text = ("Вернуть файлы" if AppContext.is_ru() else "Return files") if found_count == len(pairs) else (f"Вернуть {found_count}/{len(pairs)}" if AppContext.is_ru() else f"Return {found_count}/{len(pairs)}")
+                text = AppContext.tr("srt_jnl_btn_undo_all") if found_count == len(pairs) else AppContext.tr("srt_jnl_btn_undo_part").format(found_count, len(pairs))
                 btn_action = QPushButton(text)
                 btn_action.clicked.connect(lambda checked, e=entry: self._trigger_undo(e))
                 self.table.setCellWidget(row, 5, btn_action)
@@ -190,7 +215,8 @@ class JournalDialog(QDialog):
         if not entry: return
         
         menu = QMenu(self)
-        action_copy = menu.addAction("Копировать пути (новое расположение)" if AppContext.is_ru() else "Copy paths (new location)")
+        menu.setStyleSheet(ui_theme.STYLE_CONTEXT_MENU)
+        action_copy = menu.addAction(AppContext.tr("srt_jnl_act_copy_paths"))
         
         action = menu.exec(self.table.viewport().mapToGlobal(pos))
         if action == action_copy:
@@ -222,8 +248,7 @@ class JournalDialog(QDialog):
             except Exception as e:
                 pass
         else:
-            from ui_dialogs_generic import silent_info
-            silent_info(self, "Файл не найден" if AppContext.is_ru() else "File not found", "Этот файл физически отсутствует на диске или был удален/перемещен." if AppContext.is_ru() else "This file is physically missing on disk or has been deleted/moved.")
+            silent_info(self, AppContext.tr("srt_jnl_file_not_found"), AppContext.tr("srt_jnl_file_not_found_desc"))
         
     def _handle_middle_click(self, item):
         row = item.row()
@@ -255,8 +280,7 @@ class JournalDialog(QDialog):
             if os.path.exists(path):
                 self._open_and_select_in_explorer(path)
             else:
-                from ui_dialogs_generic import silent_info
-                silent_info(self, "Файл не найден" if AppContext.is_ru() else "File not found", "Этот файл физически отсутствует на диске." if AppContext.is_ru() else "This file is physically missing on disk.")
+                silent_info(self, AppContext.tr("srt_jnl_file_not_found"), AppContext.tr("srt_jnl_file_missing_disk"))
         else:
             dst_dir = os.path.dirname(pairs[0]["dst"])
             if os.path.exists(dst_dir):

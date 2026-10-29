@@ -243,6 +243,8 @@ class UiSetupMixin:
         self.lbl_unsort_dot = QLabel("●")
         self.lbl_unsort_dot.setStyleSheet("color: #22c55e; font-size: 14px; padding: 0px; margin: 0px;")
         self.lbl_unsort_dot.setToolTip(AppContext.tr("tooltip_recursive_active"))
+        if hasattr(self, '_journal_dialog') and self._journal_dialog and hasattr(self._journal_dialog, 'retranslate_ui'):
+            self._journal_dialog.retranslate_ui()
         self.lbl_unsort_dot.hide()
 
         self.lbl_unsort_count = FolderLabel("lbl_unsort", lambda: getattr(self, 'UNSORT_DIR', ""))

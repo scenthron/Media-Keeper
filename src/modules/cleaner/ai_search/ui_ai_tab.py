@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer, QThread
 from PyQt6.QtGui import QIcon, QPixmap
 
 from config import AppContext, APP_DESIGN
+from modules.shared import ui_theme
 from ui_widgets_base import DropZoneWidget
 from ui_dialogs_generic import silent_info, silent_warning, silent_question
 from ..workers import STAGE_SCANNING, STAGE_ANALYSIS
@@ -95,7 +96,7 @@ class AiClassificationTab(QWidget):
 
         self.main_splitter = QSplitter(Qt.Orientation.Vertical)
         self.main_splitter.setHandleWidth(2)
-        self.main_splitter.setStyleSheet("QSplitter::handle { background-color: #2d2d2d; }")
+        self.main_splitter.setStyleSheet(ui_theme.STYLE_SPLITTER)
 
         # Верхняя панель настроек (3 колонки)
         self._init_top_settings()
@@ -123,18 +124,14 @@ class AiClassificationTab(QWidget):
         lbl_brain.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ph_layout.addWidget(lbl_brain)
 
-        lbl_title = QLabel("Требуется инициализация ИИ-моделей" if AppContext.is_ru() else "AI Models Initialization Required")
+        self.lbl_title_placeholder = QLabel(AppContext.tr("cln_ai_models_init_title"))
+        lbl_title = self.lbl_title_placeholder
         lbl_title.setStyleSheet("font-weight: bold; color: white; font-size: 16px; background: transparent; border: none;")
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ph_layout.addWidget(lbl_title)
 
-        lbl_desc = QLabel(
-            "Для работы сверхточного ИИ-поиска необходимо наличие моделей CLIP и InsightFace (~1.5 ГБ).\n"
-            "Загрузка выполняется один раз, после чего ИИ работает полностью автономно без подключения к интернету."
-            if AppContext.is_ru() else
-            "To use advanced AI classification and face recognition, CLIP and InsightFace models (~1.5 GB) are required.\n"
-            "This download is done once, and then the AI runs completely offline."
-        )
+        self.lbl_desc_placeholder = QLabel(AppContext.tr("cln_ai_models_init_desc"))
+        lbl_desc = self.lbl_desc_placeholder
         lbl_desc.setWordWrap(True)
         lbl_desc.setFixedWidth(400)
         lbl_desc.setStyleSheet("color: #aaa; font-size: 12px; background: transparent; border: none; line-height: 1.5;")
@@ -146,7 +143,7 @@ class AiClassificationTab(QWidget):
         desc_layout.addStretch(1)
         ph_layout.addLayout(desc_layout)
 
-        self.btn_download_models = QPushButton("Загрузить модели ИИ" if AppContext.is_ru() else "Download AI Models")
+        self.btn_download_models = QPushButton(AppContext.tr("cln_ai_btn_download_models"))
         self.btn_download_models.setFixedSize(200, 36)
         self.btn_download_models.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_download_models.setStyleSheet("""
@@ -163,7 +160,7 @@ class AiClassificationTab(QWidget):
         """)
         self.btn_download_models.clicked.connect(self.start_placeholder_download)
 
-        self.btn_stop_download = QPushButton("⏹ Отмена" if AppContext.is_ru() else "⏹ Cancel")
+        self.btn_stop_download = QPushButton(AppContext.tr("cln_ai_btn_stop_download"))
         self.btn_stop_download.setFixedSize(120, 36)
         self.btn_stop_download.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_stop_download.setStyleSheet("""
@@ -239,7 +236,8 @@ class AiClassificationTab(QWidget):
         col_dirs.setSpacing(4)
 
         dirs_header = QHBoxLayout()
-        dirs_title = QLabel("Каталоги для поиска" if AppContext.is_ru() else "Folders to Search")
+        self.lbl_dirs_title = QLabel(AppContext.tr("cln_ai_dirs_title"))
+        dirs_title = self.lbl_dirs_title
         dirs_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI';")
         dirs_header.addWidget(dirs_title)
         dirs_header.addStretch()
@@ -287,7 +285,7 @@ class AiClassificationTab(QWidget):
         from ..ui_panels import load_svg_icon
         icons_dir_ai = AppContext.find_resource_dir("icons") or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "icons")
 
-        self.btn_filter_ai = QPushButton(AppContext.tr("cln_btn_scan_types") if AppContext.is_ru() else "Scan File Types")
+        self.btn_filter_ai = QPushButton(AppContext.tr("cln_btn_scan_types"))
         self.btn_filter_ai.setIcon(load_svg_icon(os.path.join(icons_dir_ai, "loupe-color.svg"), QSize(16, 16)))
         self.btn_filter_ai.setIconSize(QSize(16, 16))
         self.btn_filter_ai.setFixedHeight(36)
@@ -295,7 +293,7 @@ class AiClassificationTab(QWidget):
         self.btn_filter_ai.setStyleSheet("QPushButton { background-color: #444; color: #fff; border: 1px solid #666; padding: 0 10px; border-radius: 4px; font-weight: bold; } QPushButton:hover { background-color: #555; color: white; border-color: #888; }")
         self.btn_filter_ai.clicked.connect(self.open_filter_dialog_ai)
 
-        self.lbl_filter_status_ai = QLabel(AppContext.tr("cln_filter_all") if AppContext.is_ru() else "All images")
+        self.lbl_filter_status_ai = QLabel(AppContext.tr("cln_filter_all"))
         self.lbl_filter_status_ai.setStyleSheet("color: #aaa; font-size: 11px;")
         self.lbl_filter_status_ai.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
@@ -315,7 +313,8 @@ class AiClassificationTab(QWidget):
         col_params.setSpacing(4)
 
         params_header = QHBoxLayout()
-        params_title = QLabel("Параметры ИИ поиска" if AppContext.is_ru() else "AI Search Parameters")
+        self.lbl_params_title = QLabel(AppContext.tr("cln_ai_params_title"))
+        params_title = self.lbl_params_title
         params_title.setStyleSheet("font-weight: bold; color: #888; font-size: 11px; font-family: 'Segoe UI';")
         params_header.addWidget(params_title)
 
@@ -326,34 +325,7 @@ class AiClassificationTab(QWidget):
             QToolTip { color: white; background-color: #2b2b2b; border: 1px solid #555; font-size: 12px; padding: 4px; border-radius: 4px; }
         """)
 
-        info_text = (
-            "🧠 КАК РАБОТАЕТ ИИ-ПОИСК:\n\n"
-            "1. Типы анализа:\n"
-            "   • Общее сходство: Используется модель OpenAI CLIP (ViT-B/32) для сравнения смысловой нагрузки, объектов и цветовой гаммы.\n"
-            "   • Поиск лиц: Используется модель InsightFace для точного обнаружения лиц и их сопоставления.\n\n"
-            "2. Сколько картинок-примеров добавлять:\n"
-            "   • Для лиц: достаточно 1-3 четких фото лица под разными углами.\n"
-            "   • Для общего поиска: достаточно 2-5 характерных скриншотов/картинок.\n\n"
-            "3. Порог схожести (Confidence):\n"
-            "   • 85% - 100%: Строгий поиск (тот же человек, почти идентичные скриншоты).\n"
-            "   • 70% - 85%: Умеренное сходство (тот же человек в другой одежде, похожие сцены).\n"
-            "   • 50% - 70%: Широкий поиск (похожие по цветам и структуре изображения).\n\n"
-            "💡 Совет: Для лучшего результата используйте четкие примеры и отключайте ненужные группы Образцов."
-            if AppContext.is_ru() else
-            "🧠 HOW AI SEARCH WORKS:\n\n"
-            "1. Analysis Types:\n"
-            "   • General Similarity: Compares colors, composition, and objects.\n"
-            "   • Face Recognition: Detects human faces and matches facial features.\n\n"
-            "2. Number of Reference Images:\n"
-            "   • For Faces: 1-3 clear photos from different angles are enough.\n"
-            "   • For General: 2-5 typical screenshots or images.\n\n"
-            "3. Similarity Threshold (Confidence):\n"
-            "   • 85% - 100%: Strict match (same person, nearly identical screenshots).\n"
-            "   • 70% - 85%: Medium match (same person in other clothes, similar scenes).\n"
-            "   • 50% - 70%: Broad match (similar colors and structure).\n\n"
-            "💡 Tip: Disable unused reference groups to speed up scanning."
-        )
-        self.lbl_info_icon.setToolTip(info_text)
+        self.lbl_info_icon.setToolTip(AppContext.tr("cln_ai_info_tooltip"))
         params_header.addWidget(self.lbl_info_icon)
         params_header.addStretch()
         col_params.addLayout(params_header)
@@ -380,15 +352,15 @@ class AiClassificationTab(QWidget):
         tab_advanced_layout.setContentsMargins(8, 8, 8, 8)
         tab_advanced_layout.setSpacing(8)
 
-        self.params_tabs.addTab(tab_general, "Общие настройки" if AppContext.is_ru() else "General")
-        self.params_tabs.addTab(tab_advanced, "Продвинутые" if AppContext.is_ru() else "Advanced")
+        self.params_tabs.addTab(tab_general, AppContext.tr("cln_ai_tab_general"))
+        self.params_tabs.addTab(tab_advanced, AppContext.tr("cln_ai_tab_advanced"))
         params_main_layout.addWidget(self.params_tabs)
 
         # Панель размера и очистки кэша
         cache_layout = QHBoxLayout()
         cache_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.chk_use_cache = QCheckBox("Использовать кэш" if AppContext.is_ru() else "Use Cache")
+        self.chk_use_cache = QCheckBox(AppContext.tr("cln_ai_chk_use_cache"))
         self.chk_use_cache.setChecked(True)
         self.chk_use_cache.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_use_cache.setStyleSheet("""
@@ -408,7 +380,7 @@ class AiClassificationTab(QWidget):
         icons_dir = AppContext.find_resource_dir("icons") or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "icons")
         self.btn_clear_cache_ai.setIcon(load_svg_icon(os.path.join(icons_dir, "trash-color.svg"), QSize(16, 16)))
         self.btn_clear_cache_ai.setIconSize(QSize(16, 16))
-        self.btn_clear_cache_ai.setToolTip("Очистить кэш ИИ" if AppContext.is_ru() else "Clear AI Cache")
+        self.btn_clear_cache_ai.setToolTip(AppContext.tr("cln_ai_tip_clear_cache"))
         self.btn_clear_cache_ai.setFixedSize(32, 32)
         self.btn_clear_cache_ai.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_clear_cache_ai.setStyleSheet("""
@@ -428,7 +400,7 @@ class AiClassificationTab(QWidget):
         tab_general_layout.addLayout(cache_layout)
 
         # Слайдер схожести
-        self.lbl_threshold = QLabel("Схожесть:" if AppContext.is_ru() else "Similarity:")
+        self.lbl_threshold = QLabel(AppContext.tr("cln_ai_lbl_threshold"))
         tooltip_thresh = (
             "Базовый порог первичной группировки (до объединения).\n"
             "Меньшие значения (50-60%): Образуются широкие группы с множеством потенциально похожих фото.\n"
@@ -477,7 +449,7 @@ class AiClassificationTab(QWidget):
         tab_general_layout.addLayout(slider_layout)
 
         # Негативный порог
-        self.lbl_neg_threshold = QLabel("Толерантность антипаттернов:" if AppContext.is_ru() else "Negative Tolerance:")
+        self.lbl_neg_threshold = QLabel(AppContext.tr("cln_ai_lbl_neg_threshold"))
         tooltip_neg = (
             "Порог толерантности для картинок, содержащих минус-слова (антипаттерны).\n"
             "Меньшие значения (30-40%): Очень строгий фильтр, удаляет почти всё подозрительное.\n"
@@ -536,7 +508,7 @@ class AiClassificationTab(QWidget):
 
         QTimer.singleShot(100, self.update_cache_info_ai)
 
-        self.btn_start_scan = QPushButton(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
+        self.btn_start_scan = QPushButton(AppContext.tr("cln_ai_btn_start_scan"))
         self.btn_start_scan.setFixedHeight(40)
         self.btn_start_scan.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_start_scan.setStyleSheet("""
@@ -551,7 +523,7 @@ class AiClassificationTab(QWidget):
         top_layout.addLayout(col_params, 1)
 
     def _init_advanced_tab(self, tab_advanced_layout):
-        self.chk_use_gpu = QCheckBox("Аппаратное ускорение (GPU DirectML)" if AppContext.is_ru() else "Hardware Acceleration (GPU DirectML)")
+        self.chk_use_gpu = QCheckBox(AppContext.tr("cln_ai_chk_use_gpu"))
         self.chk_use_gpu.setCursor(Qt.CursorShape.PointingHandCursor)
 
         from modules.cleaner.core_directml import DirectMLManager
@@ -574,13 +546,13 @@ class AiClassificationTab(QWidget):
                 QCheckBox::indicator { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #555; background: #111; }
                 QCheckBox::indicator:checked { background-color: #3b82f6; border-color: #3b82f6; }
             """)
-            self.chk_use_gpu.setToolTip("Использовать видеокарту для ускорения ИИ." if AppContext.is_ru() else "Use GPU for AI acceleration.")
+            self.chk_use_gpu.setToolTip(AppContext.tr("cln_ai_tip_use_gpu"))
             self.chk_use_gpu.setChecked(_use_dml)
 
         self.chk_use_gpu.clicked.connect(self._on_directml_clicked)
         tab_advanced_layout.addWidget(self.chk_use_gpu)
 
-        self.chk_show_faces = QCheckBox("Показывать рамки на лицах" if AppContext.is_ru() else "Show face bounding boxes")
+        self.chk_show_faces = QCheckBox(AppContext.tr("cln_ai_chk_show_faces"))
         self.chk_show_faces.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_show_faces.setStyleSheet("""
             QCheckBox { color: white; font-weight: bold; font-size: 13px; }
@@ -595,10 +567,12 @@ class AiClassificationTab(QWidget):
         face_conf_wrapper.setSpacing(2)
 
         face_conf_title_layout = QHBoxLayout()
-        lbl_face_conf_title = QLabel("Порог обнаружения лиц (уверенность)" if AppContext.is_ru() else "Face detection confidence threshold")
+        self.lbl_face_conf_title = QLabel(AppContext.tr("cln_ai_face_conf_title"))
+        lbl_face_conf_title = self.lbl_face_conf_title
         lbl_face_conf_title.setStyleSheet("color: white; font-weight: bold; font-size: 13px;")
 
-        btn_face_conf_default = QPushButton("По умолчанию" if AppContext.is_ru() else "Default")
+        self.btn_face_conf_default = QPushButton(AppContext.tr("cln_ai_btn_face_conf_default"))
+        btn_face_conf_default = self.btn_face_conf_default
         btn_face_conf_default.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_face_conf_default.setStyleSheet("""
             QPushButton { background-color: #333; color: #ccc; font-size: 11px; padding: 2px 8px; border-radius: 4px; border: 1px solid #444; }
@@ -612,7 +586,8 @@ class AiClassificationTab(QWidget):
         self.face_conf_layout = QHBoxLayout()
         self.face_conf_layout.setContentsMargins(0, 0, 0, 0)
 
-        lbl_face_conf_left = QLabel("Больше лиц" if AppContext.is_ru() else "More faces")
+        self.lbl_face_conf_left = QLabel(AppContext.tr("cln_ai_face_conf_left"))
+        lbl_face_conf_left = self.lbl_face_conf_left
         lbl_face_conf_left.setStyleSheet("color: #aaa; font-size: 11px;")
 
         self.slider_face_conf = QSlider(Qt.Orientation.Horizontal)
@@ -634,7 +609,8 @@ class AiClassificationTab(QWidget):
             QSlider::handle:horizontal { background: #3b82f6; width: 12px; height: 12px; margin-top: -4px; margin-bottom: -4px; border-radius: 6px; }
         """)
 
-        lbl_face_conf_right = QLabel("Идеальные лица" if AppContext.is_ru() else "Perfect faces")
+        self.lbl_face_conf_right = QLabel(AppContext.tr("cln_ai_face_conf_right"))
+        lbl_face_conf_right = self.lbl_face_conf_right
         lbl_face_conf_right.setStyleSheet("color: #aaa; font-size: 11px;")
 
         self.lbl_face_conf_val = QLabel(f"{saved_thresh}%")
@@ -793,32 +769,22 @@ class AiClassificationTab(QWidget):
         if legacy:
             msg = QMessageBox(self)
             msg.setIcon(QMessageBox.Icon.NoIcon)
-            msg.setWindowTitle("Найдены устаревшие ИИ-модели" if AppContext.is_ru() else "Legacy AI Models Found")
+            msg.setWindowTitle(AppContext.tr("cln_ai_legacy_models_title"))
 
             total_size = sum(os.path.getsize(f) for f in legacy) // (1024 * 1024)
-            text = (
-                f"Обнаружены файлы прошлых версий, которые уже не используются в приложении.\n"
-                f"Вы можете удалить их без опасений, т.к. они более не поддерживаются программой и занимают место на диске (~{total_size} МБ)."
-                if AppContext.is_ru() else
-                f"Found files from previous versions that are no longer used by the application.\n"
-                f"You can safely delete them as they are no longer supported and take up disk space (~{total_size} MB)."
-            )
+            text = AppContext.tr("cln_ai_legacy_models_body").format(total_size)
 
             msg.setText(text)
             msg.setDetailedText("\n".join(legacy))
 
-            btn_yes = msg.addButton("Удалить" if AppContext.is_ru() else "Delete", QMessageBox.ButtonRole.YesRole)
-            btn_no = msg.addButton("Отмена" if AppContext.is_ru() else "Cancel", QMessageBox.ButtonRole.NoRole)
+            btn_yes = msg.addButton(AppContext.tr("cln_ai_btn_delete"), QMessageBox.ButtonRole.YesRole)
+            btn_no = msg.addButton(AppContext.tr("cln_ai_btn_cancel"), QMessageBox.ButtonRole.NoRole)
             msg.setDefaultButton(btn_yes)
             msg.exec()
 
             if msg.clickedButton() == btn_yes:
                 freed = self.ai.clean_legacy_models(legacy)
-                silent_info(
-                    self,
-                    "Успешно" if AppContext.is_ru() else "Success",
-                    f"Освобождено {freed // (1024*1024)} МБ." if AppContext.is_ru() else f"Freed {freed // (1024*1024)} MB."
-                )
+                silent_info(self, AppContext.tr("cln_ai_title_success"), AppContext.tr("cln_ai_freed_mb").format(freed // (1024*1024)))
 
         if self.ai.are_models_present():
             self.download_placeholder.hide()
@@ -834,9 +800,8 @@ class AiClassificationTab(QWidget):
         self.placeholder_progress.show()
         self.placeholder_progress.setValue(0)
         self.placeholder_status.setStyleSheet("color: #93c5fd;")
-        self.placeholder_status.setText("Подключение..." if AppContext.is_ru() else "Connecting...")
+        self.placeholder_status.setText(AppContext.tr("cln_ai_status_connecting"))
 
-        is_ru = AppContext.is_ru()
         self.dl_thread = AiModelDownloaderThread(self.ai, self)
 
         def on_progress(filename, downloaded, total_size):
@@ -854,23 +819,23 @@ class AiClassificationTab(QWidget):
 
             if hasattr(self, 'dl_thread') and self.dl_thread and self.dl_thread._is_stopped:
                 self.placeholder_status.setStyleSheet("color: #f59e0b;")
-                self.placeholder_status.setText("Загрузка остановлена пользователем." if is_ru else "Download stopped by user.")
+                self.placeholder_status.setText(AppContext.tr("cln_ai_status_download_stopped"))
                 return
 
             if success:
                 self.placeholder_status.setStyleSheet("color: #4ade80;")
-                self.placeholder_status.setText("Инициализация..." if is_ru else "Initializing...")
+                self.placeholder_status.setText(AppContext.tr("cln_ai_status_initializing"))
 
                 if self.ai.initialize_sessions():
-                    self.placeholder_status.setText("Успешно!" if is_ru else "Success!")
+                    self.placeholder_status.setText(AppContext.tr("cln_ai_status_success"))
                     self.download_placeholder.hide()
                     self.main_content_widget.show()
                 else:
                     self.placeholder_status.setStyleSheet("color: #ef4444;")
-                    self.placeholder_status.setText("Ошибка инициализации!" if is_ru else "Initialization failed!")
+                    self.placeholder_status.setText(AppContext.tr("cln_ai_status_init_failed"))
             else:
                 self.placeholder_status.setStyleSheet("color: #ef4444;")
-                self.placeholder_status.setText("Ошибка при скачивании моделей!" if is_ru else "Failed to download models!")
+                self.placeholder_status.setText(AppContext.tr("cln_ai_status_download_failed"))
 
         self.dl_thread.progress_signal.connect(on_progress)
         self.dl_thread.finished_signal.connect(on_finished)
@@ -880,7 +845,7 @@ class AiClassificationTab(QWidget):
         if hasattr(self, 'dl_thread') and self.dl_thread and self.dl_thread.isRunning():
             self.btn_stop_download.setEnabled(False)
             self.placeholder_status.setStyleSheet("color: #f59e0b;")
-            self.placeholder_status.setText("Отмена загрузки..." if AppContext.is_ru() else "Cancelling download...")
+            self.placeholder_status.setText(AppContext.tr("cln_ai_status_cancelling"))
             self.dl_thread.stop()
 
     def update_cache_info_ai(self):
@@ -903,13 +868,10 @@ class AiClassificationTab(QWidget):
             self.lbl_cache_info_ai.setText("0 B")
 
     def clear_ai_cache_ui(self):
-        is_ru = AppContext.is_ru()
         reply = silent_question(
             self,
-            "Очистить кэш ИИ" if is_ru else "Clear AI Cache",
-            "Вы уверены, что хотите полностью очистить кэш ИИ? Это сбросит кэшированные признаки всех изображений и при повторном сканировании потребуется их полный анализ."
-            if is_ru else
-            "Are you sure you want to clear the AI cache? This will reset all cached features and require full analysis next time.",
+            AppContext.tr("cln_ai_clear_cache_title"),
+            AppContext.tr("cln_ai_clear_cache_prompt"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
@@ -980,7 +942,7 @@ class AiClassificationTab(QWidget):
             self._is_ok = True
 
         self.btn_start_scan.setEnabled(can_run)
-        self.btn_start_scan.setText(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
+        self.btn_start_scan.setText(AppContext.tr("cln_ai_btn_start_scan"))
 
     def update_cleaner_action_bar_info(self, count=None, total_size=None):
         if count is None:
@@ -998,7 +960,7 @@ class AiClassificationTab(QWidget):
         if self.samples_panel.mode_stack.currentIndex() == 1:
             query = self.samples_panel.get_active_text_query()
             if not query:
-                silent_warning(self, "Внимание" if AppContext.is_ru() else "Warning", "Введите текстовый запрос или выберите тег." if AppContext.is_ru() else "Please enter a query or select a tag.")
+                silent_warning(self, AppContext.tr("cln_ai_warning_title"), AppContext.tr("cln_ai_warning_enter_query"))
                 return
             self.toggle_scan(text_query=query)
         else:
@@ -1008,7 +970,7 @@ class AiClassificationTab(QWidget):
         if hasattr(self, 'facade') and self.facade.active_worker:
             self.facade.cancel_search()
             self.progress_bar.hide()
-            self.btn_start_scan.setText(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
+            self.btn_start_scan.setText(AppContext.tr("cln_ai_btn_start_scan"))
             self.btn_start_scan.setStyleSheet("""
                 QPushButton { background-color: #15803d; color: white; font-weight: 900; font-size: 14px; border: 1px solid #16a34a; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
                 QPushButton:hover { background-color: #16a34a; }
@@ -1033,12 +995,12 @@ class AiClassificationTab(QWidget):
         if is_fast_search:
             pos_paths = self.samples_panel.fast_search_widget.get_pos_paths()
             if not pos_paths:
-                silent_warning(self, "Ошибка" if AppContext.is_ru() else "Error", "Добавьте хотя бы один позитивный образец для поиска!" if AppContext.is_ru() else "Add at least one positive sample for search!")
+                silent_warning(self, AppContext.tr("cln_frag_err_title"), AppContext.tr("cln_ai_err_add_pos_sample"))
                 return
 
             missing_files = [p for p in pos_paths if not os.path.exists(p)]
             if len(missing_files) == len(pos_paths):
-                silent_warning(self, "Файлы не найдены" if AppContext.is_ru() else "Files not found", "Все добавленные образцы были перемещены или удалены с диска.\nПожалуйста, добавьте их заново из нового расположения." if AppContext.is_ru() else "All added samples were moved or deleted from disk.\nPlease re-add them from their new location.")
+                silent_warning(self, AppContext.tr("cln_ai_err_missing_samples_title"), AppContext.tr("cln_ai_err_missing_samples_desc"))
                 return
 
             fast_search_dump = self.samples_panel.fast_search_widget.generate_temp_dump()
@@ -1049,7 +1011,7 @@ class AiClassificationTab(QWidget):
             enabled_groups = [name for name, info in settings.get("groups", {}).items() if info.get("enabled", True)]
 
             if not enabled_groups:
-                silent_warning(self, "Ошибка" if AppContext.is_ru() else "Error", "Выберите хотя бы одну группу Образцов для поиска!" if AppContext.is_ru() else "Select at least one reference group to search!")
+                silent_warning(self, AppContext.tr("cln_frag_err_title"), AppContext.tr("cln_ai_err_no_groups_selected"))
                 return
 
             for name in enabled_groups:
@@ -1057,7 +1019,7 @@ class AiClassificationTab(QWidget):
                 if status == "gray":
                     if name in self.samples_panel.chips_map:
                         self.samples_panel.chips_map[name].set_error_highlight(True)
-                    silent_warning(self, "Ошибка" if AppContext.is_ru() else "Error", f"Группа '{name}' включена в поиск, но не содержит картинок-примеров! Загрузите картинки или выключите группу." if AppContext.is_ru() else f"Group '{name}' is enabled but contains no reference images! Load images or disable the group.")
+                    silent_warning(self, AppContext.tr("cln_frag_err_title"), AppContext.tr("cln_ai_err_group_empty").format(name))
                     return
 
             needs_training = [name for name in enabled_groups if self.classifier.get_group_status(name)[0] == "orange"]
@@ -1065,10 +1027,10 @@ class AiClassificationTab(QWidget):
                 if not self.check_and_download_models_ui():
                     return
                 dlg = QDialog(self)
-                dlg.setWindowTitle("Автоматическое обучение ИИ" if AppContext.is_ru() else "AI Auto-training")
+                dlg.setWindowTitle(AppContext.tr("cln_ai_autotrain_title"))
                 dlg.setFixedSize(300, 100)
                 dlg_layout = QVBoxLayout(dlg)
-                lbl_title = QLabel("Идет подготовка Образцов..." if AppContext.is_ru() else "Preparing reference groups...")
+                lbl_title = QLabel(AppContext.tr("cln_ai_autotrain_prep"))
                 bar = QProgressBar()
                 bar.setRange(0, len(needs_training))
                 dlg_layout.addWidget(lbl_title)
@@ -1076,20 +1038,20 @@ class AiClassificationTab(QWidget):
                 dlg.show()
 
                 for idx, name in enumerate(needs_training):
-                    lbl_title.setText(f"Обучение Образца ({idx + 1}/{len(needs_training)}): {name}")
+                    lbl_title.setText(AppContext.tr("cln_ai_autotrain_step").format(idx + 1, len(needs_training), name))
                     from PyQt6.QtWidgets import QApplication
                     QApplication.processEvents()
                     success = self.classifier.train_group(name)
                     if not success:
                         dlg.close()
-                        QMessageBox.critical(self, "Ошибка" if AppContext.is_ru() else "Error", f"Не удалось обучить группу '{name}'!" if AppContext.is_ru() else f"Failed to train group '{name}'!")
+                        QMessageBox.critical(self, AppContext.tr("cln_frag_err_title"), AppContext.tr("cln_ai_autotrain_failed").format(name))
                         return
                     bar.setValue(idx + 1)
                 dlg.close()
                 self.reload_groups()
 
         self.scan_started.emit()
-        self.btn_start_scan.setText(" Остановить" if AppContext.is_ru() else " Stop")
+        self.btn_start_scan.setText(AppContext.tr("cln_ai_btn_stop_scan"))
         self.btn_start_scan.setStyleSheet("""
             QPushButton { background-color: #991b1b; color: white; font-weight: 900; font-size: 14px; border: 1px solid #7f1d1d; border-radius: 6px; font-family: 'Segoe UI'; padding: 4px; }
             QPushButton:hover { background-color: #b91c1c; }
@@ -1198,9 +1160,9 @@ class AiClassificationTab(QWidget):
             self.samples_panel.fast_search_widget.neg_area.set_defective_paths(original_defective)
 
     def on_scan_error(self, error_msg: str):
-        QMessageBox.critical(self, "Ошибка ИИ" if AppContext.is_ru() else "AI Error", error_msg)
+        QMessageBox.critical(self, AppContext.tr("cln_ai_err_title"), error_msg)
         self.progress_bar.hide()
-        self.btn_start_scan.setText(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
+        self.btn_start_scan.setText(AppContext.tr("cln_ai_btn_start_scan"))
         self.btn_start_scan.setStyleSheet("""
             QPushButton { background-color: #15803d; color: white; font-weight: 900; font-size: 14px; border: 1px solid #16a34a; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
             QPushButton:hover { background-color: #16a34a; }
@@ -1225,14 +1187,11 @@ class AiClassificationTab(QWidget):
 
         from utils_common import format_size
         size_str = format_size(wasted_bytes) if wasted_bytes else "0 MB"
-        self.lbl_stats.setText(
-            f"Найдено совпадений: {groups_found} групп, {files_found} файлов, {size_str} (Время: {m:02d}:{s:02d})" if AppContext.is_ru()
-            else f"Matches found: {groups_found} groups, {files_found} files, {size_str} (Time: {m:02d}:{s:02d})"
-        )
+        self.lbl_stats.setText(AppContext.tr("cln_ai_stats_matches").format(groups_found, files_found, size_str, m, s))
 
     def on_scan_finished(self, response: AiSearchResponse):
         from PyQt6.QtWidgets import QApplication
-        self.progress_bar.setFormat("Формирование таблицы... (100%)" if AppContext.is_ru() else "Building table... (100%)")
+        self.progress_bar.setFormat(AppContext.tr("cln_ai_table_building"))
         QApplication.processEvents()
 
         results_dict = {}
@@ -1257,7 +1216,7 @@ class AiClassificationTab(QWidget):
         self.populate_results(results_dict)
 
         self.progress_bar.hide()
-        self.btn_start_scan.setText(" Начать ИИ Поиск" if AppContext.is_ru() else " Start AI Search")
+        self.btn_start_scan.setText(AppContext.tr("cln_ai_btn_start_scan"))
         self.btn_start_scan.setStyleSheet("""
             QPushButton { background-color: #15803d; color: white; font-weight: 900; font-size: 14px; border: 1px solid #16a34a; border-radius: 6px; font-family: 'Segoe UI', 'Segoe UI Emoji'; padding: 4px; }
             QPushButton:hover { background-color: #16a34a; }
@@ -1294,25 +1253,86 @@ class AiClassificationTab(QWidget):
         """)
 
         msg = QMessageBox(self)
-        msg.setWindowTitle("Аппаратное ускорение")
+        msg.setWindowTitle(AppContext.tr("cln_ai_gpu_dialog_title"))
         msg.setIcon(QMessageBox.Icon.NoIcon)
-        msg.setText("Настройка сохранена.\nПожалуйста, ПЕРЕЗАПУСТИТЕ ПРОГРАММУ для применения изменений." if AppContext.is_ru() else "Saved. Please RESTART THE APP to apply changes.")
+        msg.setText(AppContext.tr("cln_ai_gpu_restart_notice"))
         msg.exec()
 
     def open_filter_dialog_ai(self):
         self.btn_filter_ai.setEnabled(False)
-        self.btn_filter_ai.setText("Сканирование..." if AppContext.is_ru() else "Scanning...")
+        self.btn_filter_ai.setText(AppContext.tr("cln_frag_btn_scanning"))
 
         def on_applied(filter_config, status_text):
             self.ai_filter_config = filter_config
             self.lbl_filter_status_ai.setText(status_text)
             self.btn_filter_ai.setEnabled(True)
-            self.btn_filter_ai.setText(AppContext.tr("cln_btn_scan_types") if AppContext.is_ru() else "Scan File Types")
+            self.btn_filter_ai.setText(AppContext.tr("cln_btn_scan_types"))
 
         worker = AiActionsController.run_extension_scan_ai(self.cleaner, self, on_applied)
         if not worker:
             self.btn_filter_ai.setEnabled(True)
-            self.btn_filter_ai.setText(AppContext.tr("cln_btn_scan_types") if AppContext.is_ru() else "Scan File Types")
+            self.btn_filter_ai.setText(AppContext.tr("cln_btn_scan_types"))
+
+
+
+    def retranslate_ui(self):
+        """Update AI tab strings dynamically on language switch."""
+        if hasattr(self, 'lbl_title_placeholder'):
+            self.lbl_title_placeholder.setText(AppContext.tr("cln_ai_models_init_title"))
+        if hasattr(self, 'lbl_desc_placeholder'):
+            self.lbl_desc_placeholder.setText(AppContext.tr("cln_ai_models_init_desc"))
+        if hasattr(self, 'btn_download_models'):
+            self.btn_download_models.setText(AppContext.tr("cln_ai_btn_download_models"))
+        if hasattr(self, 'btn_stop_download'):
+            self.btn_stop_download.setText(AppContext.tr("cln_ai_btn_stop_download"))
+        if hasattr(self, 'lbl_dirs_title'):
+            self.lbl_dirs_title.setText(AppContext.tr("cln_ai_dirs_title"))
+        if hasattr(self, 'btn_filter_ai'):
+            self.btn_filter_ai.setText(AppContext.tr("cln_btn_scan_types"))
+        if hasattr(self, 'lbl_filter_status_ai'):
+            if (getattr(self, 'ai_filter_config', None) or {}).get('mode', 'all') == 'all':
+                self.lbl_filter_status_ai.setText(AppContext.tr("cln_filter_all"))
+        if hasattr(self, 'lbl_params_title'):
+            self.lbl_params_title.setText(AppContext.tr("cln_ai_params_title"))
+        if hasattr(self, 'lbl_info_icon'):
+            self.lbl_info_icon.setToolTip(AppContext.tr("cln_ai_info_tooltip"))
+        if hasattr(self, 'params_tabs'):
+            self.params_tabs.setTabText(0, AppContext.tr("cln_ai_tab_general"))
+            self.params_tabs.setTabText(1, AppContext.tr("cln_ai_tab_advanced"))
+        if hasattr(self, 'chk_use_cache'):
+            self.chk_use_cache.setText(AppContext.tr("cln_ai_chk_use_cache"))
+        if hasattr(self, 'btn_clear_cache_ai'):
+            self.btn_clear_cache_ai.setToolTip(AppContext.tr("cln_ai_tip_clear_cache"))
+        if hasattr(self, 'lbl_threshold'):
+            self.lbl_threshold.setText(AppContext.tr("cln_ai_lbl_threshold"))
+        if hasattr(self, 'lbl_neg_threshold'):
+            self.lbl_neg_threshold.setText(AppContext.tr("cln_ai_lbl_neg_threshold"))
+        if hasattr(self, 'btn_start_scan'):
+            if hasattr(self, 'facade') and getattr(self.facade, 'active_worker', None):
+                self.btn_start_scan.setText(AppContext.tr("cln_ai_btn_stop_scan"))
+            else:
+                self.btn_start_scan.setText(AppContext.tr("cln_ai_btn_start_scan"))
+        if hasattr(self, 'chk_use_gpu'):
+            self.chk_use_gpu.setText(AppContext.tr("cln_ai_chk_use_gpu"))
+            self.chk_use_gpu.setToolTip(AppContext.tr("cln_ai_tip_use_gpu"))
+        if hasattr(self, 'chk_show_faces'):
+            self.chk_show_faces.setText(AppContext.tr("cln_ai_chk_show_faces"))
+        if hasattr(self, 'lbl_face_conf_title'):
+            self.lbl_face_conf_title.setText(AppContext.tr("cln_ai_face_conf_title"))
+        if hasattr(self, 'btn_face_conf_default'):
+            self.btn_face_conf_default.setText(AppContext.tr("cln_ai_btn_face_conf_default"))
+        if hasattr(self, 'lbl_face_conf_left'):
+            self.lbl_face_conf_left.setText(AppContext.tr("cln_ai_face_conf_left"))
+        if hasattr(self, 'lbl_face_conf_right'):
+            self.lbl_face_conf_right.setText(AppContext.tr("cln_ai_face_conf_right"))
+        if hasattr(self, 'samples_panel') and hasattr(self.samples_panel, 'retranslate_ui'):
+            self.samples_panel.retranslate_ui()
+        if hasattr(self, 'results_view') and hasattr(self.results_view, 'retranslate_ui'):
+            self.results_view.retranslate_ui()
+
+    def update_ui_text(self):
+        """Compatibility alias for cleaner main tab."""
+        self.retranslate_ui()
 
 
 # Псевдоним класса для обратной совместимости

@@ -132,6 +132,7 @@ def build():
         "modules.sorter.viewer_items",
         "modules.sorter.viewer_media_player",
         "modules.sorter.viewer_views",
+        "modules.shared.ui_theme",
         "modules.cleaner.logic_orb",
         "modules.cleaner.ui_ai_tab",
         "modules.cleaner.ai_search",

@@ -1,7 +1,7 @@
 
 import os
 import logging
-from PyQt6.QtCore import QUrl, Qt, QTimer
+from PyQt6.QtCore import QUrl, Qt, QTimer, QObject
 from PyQt6.QtMultimedia import QMediaPlayer
 from PyQt6.QtGui import QPixmap, QImageReader
 from config import AppContext, VIEWER_DESIGN
@@ -238,6 +238,34 @@ class PlayerMixin:
                 self.viewer.sync_active_index(self.current_index)
                 return
             
+            # Для Solo-режима запускаем дебаунс загрузки медиа (35 мс),
+            # чтобы при быстром нажатии стрелочек UI не подвисал от тяжелого декодирования
+            if not hasattr(self, '_media_load_timer') or self._media_load_timer is None:
+                self._media_load_timer = QTimer(self if isinstance(self, QObject) else None)
+                self._media_load_timer.setSingleShot(True)
+                self._media_load_timer.timeout.connect(self._load_current_media_content)
+                
+            self._media_load_timer.start(35)
+        except Exception as e:
+            logging.error(f"Exception in show_current_file: {e}", exc_info=True)
+            raise
+
+
+    def _load_current_media_content(self):
+        """Отложенная загрузка и декодирование тяжелого медиаконтента для текущего файла."""
+        try:
+            if not self.files_queue or self.current_index >= len(self.files_queue):
+                return
+            if hasattr(self, 'viewer') and self.viewer.current_view_mode != 0:
+                return
+            if not self.current_file_path:
+                return
+                
+            filename = self.files_queue[self.current_index]
+            check_path = ensure_long_path(os.path.join(self.UNSORT_DIR, filename))
+            if check_path != self.current_file_path:
+                return
+                
             # Reset Player State
             if hasattr(self, '_recreate_main_player'):
                 self._recreate_main_player()
@@ -328,7 +356,6 @@ class PlayerMixin:
                 self.video_controls.show()
                 self.current_media_is_video = False # Treat as audio for UI logic
                 
-                
                 is_fast_active = getattr(AppContext, "session_audio_speed_active", False)
                 speed = float(AppContext.session_fast_speed_val) if is_fast_active else 1.0
                 loop = AppContext.session_loop
@@ -355,8 +382,7 @@ class PlayerMixin:
                 self.current_media_is_video = False
                 self.viewer.show_empty_state(AppContext.tr("msg_unsupported") + ext)
         except Exception as e:
-            logging.error(f"Exception in show_current_file: {e}", exc_info=True)
-            raise
+            logging.error(f"Exception in _load_current_media_content: {e}", exc_info=True)
 
     def toggle_playback(self):
         if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:

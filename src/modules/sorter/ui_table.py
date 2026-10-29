@@ -65,6 +65,7 @@ class TableActionHeader(QFrame):
 class SorterTableView(QTableWidget):
     """Высокопроизводительная таблица для Сортировщика."""
     itemSelectionChanged = pyqtSignal()
+    checked_stats_changed = pyqtSignal()
     item_double_clicked = pyqtSignal(str) # Emits full path
     current_item_changed = pyqtSignal(str) # Emits full path when row changes
     send_to_editor_requested = pyqtSignal(str, list)
@@ -244,6 +245,7 @@ class SorterTableView(QTableWidget):
         for row in sorted(rows_to_delete, reverse=True):
             self.removeRow(row)
         self.setUpdatesEnabled(True)
+        self.checked_stats_changed.emit()
         self.itemSelectionChanged.emit()
 
     def get_checked_files(self):
@@ -271,6 +273,7 @@ class SorterTableView(QTableWidget):
             if item:
                 item.setCheckState(st)
         self.setUpdatesEnabled(True)
+        self.checked_stats_changed.emit()
         self.itemSelectionChanged.emit()
         
     def invert_selection(self):
@@ -281,6 +284,7 @@ class SorterTableView(QTableWidget):
                 st = Qt.CheckState.Unchecked if item.checkState() == Qt.CheckState.Checked else Qt.CheckState.Checked
                 item.setCheckState(st)
         self.setUpdatesEnabled(True)
+        self.checked_stats_changed.emit()
         self.itemSelectionChanged.emit()
 
     def _on_double_clicked(self, row, col):
@@ -298,6 +302,7 @@ class SorterTableView(QTableWidget):
 
     def _on_cell_clicked(self, row, col):
         if col == 0:
+            self.checked_stats_changed.emit()
             self.itemSelectionChanged.emit()
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.MiddleButton:
@@ -322,6 +327,7 @@ class SorterTableView(QTableWidget):
                 if item:
                     st = Qt.CheckState.Unchecked if item.checkState() == Qt.CheckState.Checked else Qt.CheckState.Checked
                     item.setCheckState(st)
+                    self.checked_stats_changed.emit()
                     self.itemSelectionChanged.emit()
                     if row + 1 < self.rowCount():
                         self.setCurrentCell(row + 1, 1)
@@ -540,12 +546,19 @@ class TableModeContainer(QWidget):
         self.header.deselect_all_requested.connect(lambda: self.table.select_all_rows(False))
         self.header.invert_selection_requested.connect(self.table.invert_selection)
         
-        self.table.itemSelectionChanged.connect(self._on_table_selection_changed)
+        # Дебаунс превью для плавной навигации по стрелочкам
+        self._preview_debounce_timer = QTimer(self)
+        self._preview_debounce_timer.setSingleShot(True)
+        self._preview_debounce_timer.setInterval(40)
+        self._preview_debounce_timer.timeout.connect(self._do_load_preview)
+        self._pending_preview_path = None
+
+        self.table.itemSelectionChanged.connect(self._on_table_row_selection_changed)
+        self.table.checked_stats_changed.connect(self._on_table_stats_changed)
         self.table.current_item_changed.connect(self._on_current_item_changed)
         self.table.item_double_clicked.connect(self.item_double_clicked.emit)
         self.table.send_to_editor_requested.connect(self.send_to_editor_requested.emit)
         self.table.delete_files_requested.connect(self._on_delete_requested)
-
 
     def _on_delete_requested(self, file_paths):
         p = self.get_viewer_area()
@@ -553,15 +566,23 @@ class TableModeContainer(QWidget):
             main_app = p.get_main_app()
             if main_app and hasattr(main_app, 'delete_files_permanently'):
                 main_app.delete_files_permanently(file_paths)
-    def _on_table_selection_changed(self):
+
+    def _on_table_stats_changed(self):
         checked = self.table.get_checked_files()
         checked_size = self.table.get_checked_size()
         total = self.table.rowCount()
         self.header.update_stats(len(checked), total, checked_size)
+
+    def _on_table_row_selection_changed(self):
         self.itemSelectionChanged.emit()
 
     def _on_current_item_changed(self, path):
-        self.preview_widget.load_file(path)
+        self._pending_preview_path = path
+        self._preview_debounce_timer.start(40)
+
+    def _do_load_preview(self):
+        if self._pending_preview_path:
+            self.preview_widget.load_file(self._pending_preview_path)
 
     # --- Dummy methods to absorb QListWidget calls from SorterViewerArea ---
     @property

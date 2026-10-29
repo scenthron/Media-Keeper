@@ -1396,17 +1396,20 @@ class SorterViewerArea(QWidget):
         rel_path = safe_relpath(filepath, main_app.UNSORT_DIR)
         rel_path_norm = os.path.normpath(rel_path)
         
-        for idx, f in enumerate(main_app.files_queue):
-            if os.path.normpath(f) == rel_path_norm:
-                if main_app.current_index != idx:
-                    main_app.current_index = idx
-                    main_app.current_file_path = filepath
-                    logging.info(f"[SorterViewerArea] Synced main app current_index to {idx} ({os.path.basename(filepath)}) from row {row}")
-                    # Обновляем тулбар только если выделен 1 файл
-                    selected_count = len(self.get_selected_files())
-                    if selected_count <= 1:
-                        main_app.update_file_info_label()
-                break
+        target_idx = -1
+        if hasattr(main_app, 'find_queue_index'):
+            target_idx = main_app.find_queue_index(rel_path)
+        elif 0 <= row < len(main_app.files_queue):
+            target_idx = row
+            
+        if target_idx != -1 and main_app.current_index != target_idx:
+            main_app.current_index = target_idx
+            main_app.current_file_path = filepath
+            logging.info(f"[SorterViewerArea] Synced main app current_index to {target_idx} ({os.path.basename(filepath)}) from row {row}")
+            # Обновляем тулбар только если выделен 1 файл
+            selected_count = len(self.get_selected_files())
+            if selected_count <= 1:
+                main_app.update_file_info_label()
 
     def navigate_vertical(self, direction: int) -> None:
         """Перемещает фокус вверх (-1) или вниз (1) по списку/плиткам в зависимости от режима."""

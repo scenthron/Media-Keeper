@@ -1121,6 +1121,35 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
         text = f"{cur_count} [{cur_size}] / {tot_count} [{tot_size}]"
         self.lbl_filename.setText(text)
 
+    def find_queue_index(self, rel_path: str) -> int:
+        """Быстрый поиск индекса файла в files_queue с кэшированием O(1)."""
+        if not self.files_queue:
+            return -1
+            
+        norm_target = os.path.normpath(rel_path)
+        
+        # 1. Быстрый путь O(1): текущий индекс уже указывает на этот файл
+        if 0 <= self.current_index < len(self.files_queue):
+            if os.path.normpath(self.files_queue[self.current_index]) == norm_target:
+                return self.current_index
+                
+        # 2. Быстрый поиск через кэш-словарь O(1)
+        cached_queue_id = getattr(self, '_queue_index_cache_id', None)
+        current_queue_id = id(self.files_queue)
+        if cached_queue_id != current_queue_id or getattr(self, '_queue_cache_len', -1) != len(self.files_queue):
+            self._queue_index_cache = {os.path.normpath(f): i for i, f in enumerate(self.files_queue)}
+            self._queue_index_cache_id = current_queue_id
+            self._queue_cache_len = len(self.files_queue)
+            
+        idx = self._queue_index_cache.get(norm_target, -1)
+        if idx != -1:
+            return idx
+            
+        # 3. Фолбек: если путь очищен от префикса длинных путей
+        from utils_io import strip_long_path_prefix
+        norm_target_clean = strip_long_path_prefix(norm_target)
+        return self._queue_index_cache.get(norm_target_clean, -1)
+
     def on_selection_changed(self) -> None:
         selected = self.viewer.get_selected_files()
         count = len(selected)
@@ -1168,11 +1197,9 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
                 long_path = ensure_long_path(path)
                 long_unsort = ensure_long_path(self.UNSORT_DIR)
                 rel_path = safe_relpath(long_path, long_unsort)
-                rel_path_norm = os.path.normpath(rel_path)
-                for idx, f in enumerate(self.files_queue):
-                    if os.path.normpath(f) == rel_path_norm:
-                        self.current_index = idx
-                        break
+                idx = self.find_queue_index(rel_path)
+                if idx != -1:
+                    self.current_index = idx
                 
                 self.update_file_info_label()
             else:
@@ -1233,15 +1260,16 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             pass
         size_str = format_size(size)
         
-        # Find index in queue
-        long_unsort = ensure_long_path(self.UNSORT_DIR)
-        rel_path = safe_relpath(long_curr, long_unsort)
-        rel_path_norm = os.path.normpath(rel_path)
+        # Find index in queue мгновенно O(1)
         idx_str = ""
-        for idx, f in enumerate(self.files_queue):
-            if os.path.normpath(f) == rel_path_norm:
-                idx_str = f"[{idx + 1}/{len(self.files_queue)}]"
-                break
+        if 0 <= self.current_index < len(self.files_queue):
+            idx_str = f"[{self.current_index + 1}/{len(self.files_queue)}]"
+        else:
+            long_unsort = ensure_long_path(self.UNSORT_DIR)
+            rel_path = safe_relpath(long_curr, long_unsort)
+            idx = self.find_queue_index(rel_path)
+            if idx != -1:
+                idx_str = f"[{idx + 1}/{len(self.files_queue)}]" 
                 
         display_text = f"[{size_str}]  {filename}  {idx_str}"
         if getattr(self.viewer, 'current_view_mode', 0) == 2:

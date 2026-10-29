@@ -420,7 +420,7 @@ def check_models_availability(parent_widget=None):
     if not engine.are_models_present():
         msg = QMessageBox(parent_widget)
         msg.setWindowTitle("Требуются новые нейросети")
-        msg.setIcon(QMessageBox.Icon.Information)
+        msg.setIcon(QMessageBox.Icon.NoIcon)
         msg.setText(
             "Для работы нового сверхточного ИИ-поиска необходимо скачать новые модели (CLIP и InsightFace).\n"
             "Общий объем загрузки составит около 1.5 ГБ.\n\n"

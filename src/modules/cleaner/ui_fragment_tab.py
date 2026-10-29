@@ -15,6 +15,7 @@ from .ui_widgets import CleanerTreeWidget
 
 from config import AppContext
 from ui_widgets_base import DropZoneWidget
+from ui_dialogs_generic import silent_info, silent_warning, silent_question
 from logic_paths import get_app_data_dir
 
 from .logic_orb import OrbEngine, OrbCacheManager
@@ -709,7 +710,7 @@ class AiFragmentTab(QWidget):
         self.btn_clear_frag.setEnabled(False)
 
     def clear_orb_cache(self):
-        reply = QMessageBox.question(self, "Очистить кэш" if AppContext.is_ru() else "Clear Cache", "Очистить кэш-дескрипторов?" if AppContext.is_ru() else "Clear descriptor cache?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        reply = silent_question(self, "Очистить кэш" if AppContext.is_ru() else "Clear Cache", "Очистить кэш-дескрипторов?" if AppContext.is_ru() else "Clear descriptor cache?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             OrbCacheManager().clear_disk_cache()
             self.update_cache_info_fragment()
@@ -718,8 +719,8 @@ class AiFragmentTab(QWidget):
         dirs = list(self.cleaner.source_folders.keys()) if hasattr(self.cleaner, 'source_folders') else []
             
         if not dirs:
-            from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Ошибка" if AppContext.is_ru() else "Error", "Сначала добавьте папки для сканирования." if AppContext.is_ru() else "Please add folders to scan first.")
+            from ui_dialogs_generic import silent_warning
+            silent_warning(self, "Ошибка" if AppContext.is_ru() else "Error", "Сначала добавьте папки для сканирования." if AppContext.is_ru() else "Please add folders to scan first.")
             return
             
         self.btn_filter.setEnabled(False)
@@ -761,11 +762,11 @@ class AiFragmentTab(QWidget):
             
         dirs = list(self.cleaner.source_folders.keys()) if hasattr(self.cleaner, 'source_folders') else []
         if not dirs:
-            QMessageBox.warning(self, "Ошибка" if AppContext.is_ru() else "Error", "Добавьте папки для поиска." if AppContext.is_ru() else "Please add folders to search.")
+            silent_warning(self, "Ошибка" if AppContext.is_ru() else "Error", "Добавьте папки для поиска." if AppContext.is_ru() else "Please add folders to search.")
             return
             
         if not self.target_image_path:
-            QMessageBox.warning(self, "Ошибка" if AppContext.is_ru() else "Error", "Добавьте изображение-фрагмент." if AppContext.is_ru() else "Please add a fragment image.")
+            silent_warning(self, "Ошибка" if AppContext.is_ru() else "Error", "Добавьте изображение-фрагмент." if AppContext.is_ru() else "Please add a fragment image.")
             return
             
         self.tree_results.clear()

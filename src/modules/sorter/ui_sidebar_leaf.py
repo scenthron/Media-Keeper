@@ -9,7 +9,7 @@ from PyQt6.QtCore import Qt, QMimeData, QUrl, QFile, QEvent, QSize
 from PyQt6.QtGui import QDrag, QDesktopServices, QAction, QIcon
 
 from config import AppContext
-from ui_dialogs_generic import SmartNameDialog, FolderStatsDialog
+from ui_dialogs_generic import SmartNameDialog, FolderStatsDialog, silent_warning
 from .ui_dialog_automation import AutomationDialog
 from utils_common import truncate_text
 from .logic_automation import AutomationConfig
@@ -432,7 +432,7 @@ class LeafNodeWidget(QWidget, SidebarNodeMixin):
                 else:
                     self.app.reload_categories_ui()
             else:
-                QMessageBox.warning(self, AppContext.tr("err_title"), AppContext.tr("msg_del_fail"))
+                silent_warning(self, AppContext.tr("err_title"), AppContext.tr("msg_del_fail"))
 
     def open_stats(self):
         dlg = FolderStatsDialog(self.path, self)

@@ -10,6 +10,7 @@ from PyQt6.QtCore import QPointF
 from PyQt6.QtGui import QAction
 
 from config import AppContext
+from ui_dialogs_generic import silent_info
 from .logic_automation import AutomationConfig, TemplateEngine
 
 class IconPickerPopup(QDialog):
@@ -498,7 +499,7 @@ class AutomationDialog(QDialog):
         count_total = len(files)
 
         if count_total == 0:
-            QMessageBox.information(self, "Info", AppContext.tr("msg_batch_no_files"))
+            silent_info(self, "Info", AppContext.tr("msg_batch_no_files"))
             return
 
         confirm_dlg = QDialog(self)
@@ -574,7 +575,7 @@ class AutomationDialog(QDialog):
                     app.refresh_files_list(show_progress=False)
 
         # Показываем результат на самом диалоге, который гарантированно жив
-        QMessageBox.information(
+        silent_info(
             self,
             AppContext.tr("dlg_folder_settings_title"),
             AppContext.tr("msg_batch_result").format(count_total, count, errors)

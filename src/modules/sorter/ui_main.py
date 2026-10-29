@@ -1359,8 +1359,8 @@ class SorterModule(QWidget, UiSetupMixin, FileOpsMixin, PlayerMixin, SorterHotke
             
         is_checked = self.btn_remember_tree.isChecked()
         if is_checked and TreeStateManager.state_exists(root):
-            from PyQt6.QtWidgets import QMessageBox
-            reply = QMessageBox.question(self, AppContext.tr("app_name"), 
+            from ui_dialogs_generic import silent_question
+            reply = silent_question(self, AppContext.tr("app_name"), 
                                          "Для данного каталога уже есть сохраненные настройки вида дерева.\n\n"
                                          "Восстановить их (Да) или перезаписать текущим видом (Нет)?",
                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel)

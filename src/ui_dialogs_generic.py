@@ -1123,3 +1123,76 @@ class MoveErrorsDialog(QDialog):
         btns_layout.addWidget(b_ok)
         main_layout.addLayout(btns_layout)
 
+
+
+_SILENT_MSG_STYLE = """
+    QMessageBox { background-color: #2b2b2b; }
+    QMessageBox QLabel { color: #eeeeee; font-size: 13px; }
+    QPushButton { 
+        background-color: #555; color: white; 
+        padding: 6px 16px; border-radius: 4px; border: 1px solid #666; font-size: 13px;
+        min-width: 70px;
+    } 
+    QPushButton:hover { background-color: #666; border-color: #777; }
+    QPushButton:pressed { background-color: #444; }
+"""
+
+def silent_info(
+    parent=None,
+    title: str = "",
+    text: str = "",
+    buttons: QMessageBox.StandardButton = QMessageBox.StandardButton.Ok,
+    default_button: QMessageBox.StandardButton = QMessageBox.StandardButton.Ok,
+    **kwargs
+) -> QMessageBox.StandardButton:
+    """Display an informational dialog without Windows system sounds."""
+    msg = QMessageBox(parent)
+    msg.setIcon(QMessageBox.Icon.NoIcon)
+    msg.setWindowTitle(str(title) if title else "Информация")
+    msg.setText(str(text))
+    msg.setStandardButtons(buttons)
+    def_btn = kwargs.get('defaultButton', default_button)
+    if def_btn is not None:
+        msg.setDefaultButton(def_btn)
+    msg.setStyleSheet(_SILENT_MSG_STYLE)
+    return msg.exec()
+
+def silent_warning(
+    parent=None,
+    title: str = "",
+    text: str = "",
+    buttons: QMessageBox.StandardButton = QMessageBox.StandardButton.Ok,
+    default_button: QMessageBox.StandardButton = QMessageBox.StandardButton.Ok,
+    **kwargs
+) -> QMessageBox.StandardButton:
+    """Display a warning dialog without Windows system sounds."""
+    msg = QMessageBox(parent)
+    msg.setIcon(QMessageBox.Icon.NoIcon)
+    msg.setWindowTitle(str(title) if title else "Предупреждение")
+    msg.setText(str(text))
+    msg.setStandardButtons(buttons)
+    def_btn = kwargs.get('defaultButton', default_button)
+    if def_btn is not None:
+        msg.setDefaultButton(def_btn)
+    msg.setStyleSheet(_SILENT_MSG_STYLE)
+    return msg.exec()
+
+def silent_question(
+    parent=None,
+    title: str = "",
+    text: str = "",
+    buttons: QMessageBox.StandardButton = (QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No),
+    default_button: QMessageBox.StandardButton = QMessageBox.StandardButton.No,
+    **kwargs
+) -> QMessageBox.StandardButton:
+    """Display a confirmation/question dialog without Windows system sounds."""
+    msg = QMessageBox(parent)
+    msg.setIcon(QMessageBox.Icon.NoIcon)
+    msg.setWindowTitle(str(title) if title else "Подтверждение")
+    msg.setText(str(text))
+    msg.setStandardButtons(buttons)
+    def_btn = kwargs.get('defaultButton', default_button)
+    if def_btn is not None:
+        msg.setDefaultButton(def_btn)
+    msg.setStyleSheet(_SILENT_MSG_STYLE)
+    return msg.exec()

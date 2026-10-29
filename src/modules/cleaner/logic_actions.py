@@ -9,7 +9,7 @@ from config import AppContext
 from .ui_widgets import SourceListItem, generate_vibrant_color
 from .ui_dialogs import CleanerResultDialog, MovePreviewDialog
 from .workers_move import SessionMoveWorker, SessionDeleteWorker
-from ui_dialogs_generic import SmartNameDialog, FileDeletionConfirmDialog
+from ui_dialogs_generic import SmartNameDialog, FileDeletionConfirmDialog, silent_warning, silent_question
 
 class ActionMixin:
     def add_folder(self) -> None:
@@ -376,7 +376,7 @@ class ActionMixin:
 
         dest_root = dest_folder if dest_folder else self.action_bar.drop_zone.get_path()
         if not dest_root or not os.path.exists(dest_root):
-            QMessageBox.warning(self, AppContext.tr("err_title"), AppContext.tr("msg_trash_not_set"))
+            silent_warning(self, AppContext.tr("err_title"), AppContext.tr("msg_trash_not_set"))
             return
 
         self.preview_widget.show_empty("Moving...")
@@ -711,7 +711,7 @@ class ActionMixin:
         paths = self.session_db.get_global_marked_empty_folders()
         if not paths: return
         
-        res = QMessageBox.question(self, AppContext.tr("msg_del_confirm_title"), f"Удалить {len(paths)} пустых папок?\nЭто действие нельзя отменить через Откат.", 
+        res = silent_question(self, AppContext.tr("msg_del_confirm_title"), f"Удалить {len(paths)} пустых папок?\nЭто действие нельзя отменить через Откат.", 
                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         
         if res == QMessageBox.StandardButton.Yes:
@@ -760,7 +760,7 @@ class ActionMixin:
         
         old_path = item['path']
         if not os.path.exists(old_path):
-            QMessageBox.warning(self, "Error", "File not found!")
+            silent_warning(self, "Error", "File not found!")
             return
             
         parent_dir = os.path.dirname(old_path)

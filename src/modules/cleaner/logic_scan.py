@@ -48,11 +48,11 @@ class ScanMixin:
 
     def _on_dump_finished(self, success: bool, error: str):
         self.overlay.hide()
-        from PyQt6.QtWidgets import QMessageBox
+        from ui_dialogs_generic import silent_info, silent_warning
         if success:
-            QMessageBox.information(self, "Готово", "Дамп успешно создан!")
+            silent_info(self, "Готово", "Дамп успешно создан!")
         else:
-            QMessageBox.warning(self, "Ошибка", f"Не удалось создать дамп: {error}")
+            silent_warning(self, "Ошибка", f"Не удалось создать дамп: {error}")
 
     def reset_scan(self) -> None:
         if self.finder and self.finder.isRunning():

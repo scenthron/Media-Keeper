@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QKeySequence
 from config import AppContext
+from ui_dialogs_generic import silent_question
 from .logic_config import ConfigManager
 
 class SorterSettingsDialog(QDialog):
@@ -537,7 +538,7 @@ class PathSettingsDialog(QDialog):
             conflict_name = conflict_action.label_ru if is_ru else conflict_action.label_en
             current_name = self.registry._actions[action_id].label_ru if is_ru else self.registry._actions[action_id].label_en
             
-            reply = QMessageBox.question(
+            reply = silent_question(
                 self,
                 "Конфликт горячих клавиш" if is_ru else "Hotkey Conflict",
                 f"Сочетание '{key_str}' уже используется для действия:\n「{conflict_name}」.\n\nНазначить его для «{current_name}» и очистить старое действие?" if is_ru
@@ -562,7 +563,7 @@ class PathSettingsDialog(QDialog):
 
     def reset_all_hotkeys(self):
         is_ru = (AppContext.LANG == "RU")
-        reply = QMessageBox.question(
+        reply = silent_question(
             self,
             "Сброс горячих клавиш" if is_ru else "Reset Hotkeys",
             "Вы уверены, что хотите сбросить все горячие клавиши к значениям по умолчанию?" if is_ru

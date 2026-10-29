@@ -222,8 +222,8 @@ class JournalDialog(QDialog):
             except Exception as e:
                 pass
         else:
-            from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.information(self, "Файл не найден" if AppContext.is_ru() else "File not found", "Этот файл физически отсутствует на диске или был удален/перемещен." if AppContext.is_ru() else "This file is physically missing on disk or has been deleted/moved.")
+            from ui_dialogs_generic import silent_info
+            silent_info(self, "Файл не найден" if AppContext.is_ru() else "File not found", "Этот файл физически отсутствует на диске или был удален/перемещен." if AppContext.is_ru() else "This file is physically missing on disk or has been deleted/moved.")
         
     def _handle_middle_click(self, item):
         row = item.row()
@@ -255,8 +255,8 @@ class JournalDialog(QDialog):
             if os.path.exists(path):
                 self._open_and_select_in_explorer(path)
             else:
-                from PyQt6.QtWidgets import QMessageBox
-                QMessageBox.information(self, "Файл не найден" if AppContext.is_ru() else "File not found", "Этот файл физически отсутствует на диске." if AppContext.is_ru() else "This file is physically missing on disk.")
+                from ui_dialogs_generic import silent_info
+                silent_info(self, "Файл не найден" if AppContext.is_ru() else "File not found", "Этот файл физически отсутствует на диске." if AppContext.is_ru() else "This file is physically missing on disk.")
         else:
             dst_dir = os.path.dirname(pairs[0]["dst"])
             if os.path.exists(dst_dir):

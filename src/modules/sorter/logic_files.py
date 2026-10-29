@@ -13,7 +13,7 @@ from PyQt6.QtCore import QTimer, QUrl, Qt, QFile
 from PyQt6.QtGui import QDesktopServices
 
 from config import AppContext
-from ui_dialogs_generic import ProgressDialog, SmartNameDialog, FileConflictDialog, FileDeletionConfirmDialog, BatchRenameErrorsDialog, MultiFileConflictDialog, MoveErrorsDialog
+from ui_dialogs_generic import ProgressDialog, SmartNameDialog, FileConflictDialog, FileDeletionConfirmDialog, BatchRenameErrorsDialog, MultiFileConflictDialog, MoveErrorsDialog, silent_warning
 from .ui_sidebar_category import CategoryWidget
 from .ui_sidebar_leaf import LeafNodeWidget
 from .workers import ScanThread, MoveThread
@@ -748,12 +748,12 @@ class FileOpsMixin:
 
     def rename_current_file(self):
         if not self.current_file_path:
-            QMessageBox.warning(self, "Info", AppContext.tr("msg_empty"))
+            silent_warning(self, "Info", AppContext.tr("msg_empty"))
             return
             
         long_current = ensure_long_path(self.current_file_path)
         if not os.path.exists(long_current):
-            QMessageBox.warning(self, "Info", AppContext.tr("msg_empty"))
+            silent_warning(self, "Info", AppContext.tr("msg_empty"))
             return
             
         # Защита: переименование доступно только когда выбран строго 1 файл
@@ -1262,7 +1262,7 @@ class FileOpsMixin:
         if path_to_trash and os.path.exists(path_to_trash):
             self.move_current_file(path_to_trash)
         else:
-             QMessageBox.warning(self, AppContext.tr("err_title"), AppContext.tr("msg_trash_not_set"))
+             silent_warning(self, AppContext.tr("err_title"), AppContext.tr("msg_trash_not_set"))
 
     def delete_files_permanently(self, file_paths):
         if not file_paths:

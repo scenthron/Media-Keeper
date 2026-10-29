@@ -15,6 +15,7 @@ from PyQt6.QtGui import QIcon, QPixmap, QColor, QAction, QCursor, QFont, QPainte
 
 from config import AppContext, APP_DESIGN
 from ui_widgets_base import DropZoneWidget, FlowLayout
+from ui_dialogs_generic import silent_info, silent_warning, silent_question
 from .logic_ai_tags import AiTextTagsManager, parse_multi_tags, parse_tag_weight, MultiTagHighlighter
 from .ui_ai_tags_dialog import AiTagManagerDialog
 from .logic_ai import AiEngine
@@ -1257,7 +1258,7 @@ class AiClassificationTab(QWidget):
         if legacy:
             from PyQt6.QtWidgets import QMessageBox
             msg = QMessageBox(self)
-            msg.setIcon(QMessageBox.Icon.Question)
+            msg.setIcon(QMessageBox.Icon.NoIcon)
             msg.setWindowTitle("Найдены устаревшие ИИ-модели" if AppContext.is_ru() else "Legacy AI Models Found")
             
             total_size = sum(os.path.getsize(f) for f in legacy) // (1024 * 1024)
@@ -1277,7 +1278,7 @@ class AiClassificationTab(QWidget):
             
             if msg.clickedButton() == btn_yes:
                 freed = self.ai.clean_legacy_models(legacy)
-                QMessageBox.information(
+                silent_info(
                     self, 
                     "Успешно" if AppContext.is_ru() else "Success", 
                     f"Освобождено {freed // (1024*1024)} МБ." if AppContext.is_ru() else f"Freed {freed // (1024*1024)} MB."
@@ -1607,7 +1608,7 @@ class AiClassificationTab(QWidget):
 
     def clear_ai_cache_ui(self):
         is_ru = AppContext.is_ru()
-        reply = QMessageBox.question(
+        reply = silent_question(
             self,
             "Очистить кэш ИИ" if is_ru else "Clear AI Cache",
             "Вы уверены, что хотите полностью очистить кэш ИИ? Это сбросит кэшированные признаки всех изображений и при повторном сканировании потребуется их полный анализ."
@@ -1782,7 +1783,7 @@ class AiClassificationTab(QWidget):
         if not combined_query:
             from PyQt6.QtWidgets import QMessageBox
             from config import AppContext
-            QMessageBox.warning(self, "Внимание" if AppContext.is_ru() else "Warning", "Введите текстовый запрос или выберите тег." if AppContext.is_ru() else "Please enter a query or select a tag.")
+            silent_warning(self, "Внимание" if AppContext.is_ru() else "Warning", "Введите текстовый запрос или выберите тег." if AppContext.is_ru() else "Please enter a query or select a tag.")
             return
         
         self.toggle_scan(text_query=combined_query)
@@ -1879,7 +1880,7 @@ class AiClassificationTab(QWidget):
             missing_files = [p for p in pos_paths if not os.path.exists(p)]
             if len(missing_files) == len(pos_paths):
                 msg = QMessageBox(self)
-                msg.setIcon(QMessageBox.Icon.Warning)
+                msg.setIcon(QMessageBox.Icon.NoIcon)
                 msg.setWindowTitle("Файлы не найдены" if AppContext.is_ru() else "Files not found")
                 msg.setText("Все добавленные образцы были перемещены или удалены с диска.\nПожалуйста, добавьте их заново из нового расположения." if AppContext.is_ru() else "All added samples were moved or deleted from disk.\nPlease re-add them from their new location.")
                 msg.exec()

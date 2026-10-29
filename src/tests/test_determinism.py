@@ -1,11 +1,12 @@
-from modules.shared.utils_io import safe_cv2_imread
-import numpy as np
-import os
 import sys
+import os
+import numpy as np
 import onnxruntime as ort
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from src.utils_io import safe_cv2_imread
 from modules.cleaner.logic_scrfd import SCRFD
+import cv2
 
 def main():
     img_path = sys.argv[1]

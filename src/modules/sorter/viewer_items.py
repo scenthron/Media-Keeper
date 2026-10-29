@@ -792,23 +792,49 @@ class SorterPlaceholderWidget(QWidget):
         
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.setSpacing(20)
+        layout.setSpacing(14)
         
-        self.lbl_message = QLabel()
-        self.lbl_message.setStyleSheet("color: #888888; font-size: 18px; font-weight: 500;")
-        self.lbl_message.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_message.setWordWrap(True)
-        self.lbl_message.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        layout.addWidget(self.lbl_message)
+        # 1. Icon
+        self.lbl_icon = QLabel()
+        self.lbl_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_icon.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        icons_dir = AppContext.find_resource_dir("icons")
+        if icons_dir:
+            icon_path = os.path.join(icons_dir, "folder-color.svg")
+            if os.path.exists(icon_path):
+                pix = QIcon(icon_path).pixmap(QSize(64, 64))
+                if not pix.isNull():
+                    self.lbl_icon.setPixmap(pix)
+        layout.addWidget(self.lbl_icon, 0, Qt.AlignmentFlag.AlignCenter)
+
+        # 2. Title
+        self.lbl_title = QLabel()
+        self.lbl_title.setStyleSheet("color: #e5e7eb; font-size: 20px; font-weight: bold;")
+        self.lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_title.setWordWrap(True)
+        self.lbl_title.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        layout.addWidget(self.lbl_title, 0, Qt.AlignmentFlag.AlignCenter)
+
+        # 3. Description / Hint
+        self.lbl_desc = QLabel()
+        self.lbl_desc.setStyleSheet("color: #9ca3af; font-size: 15px; font-weight: normal; line-height: 1.4;")
+        self.lbl_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_desc.setWordWrap(True)
+        self.lbl_desc.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        layout.addWidget(self.lbl_desc, 0, Qt.AlignmentFlag.AlignCenter)
         
+        # Compatibility alias
+        self.lbl_message = self.lbl_desc
+
+        # 4. Action Button
         self.btn_browse = QPushButton()
         self.btn_browse.setStyleSheet("""
             QPushButton { 
                 background-color: #3b82f6; 
                 color: white; 
-                font-size: 16px; 
+                font-size: 15px; 
                 font-weight: bold; 
-                padding: 12px 24px; 
+                padding: 10px 24px; 
                 border-radius: 6px; 
                 border: none;
             }
@@ -819,13 +845,50 @@ class SorterPlaceholderWidget(QWidget):
         self.btn_browse.clicked.connect(self.browse_requested.emit)
         layout.addWidget(self.btn_browse, 0, Qt.AlignmentFlag.AlignCenter)
 
-    def set_message(self, message, show_button=True):
-        self.lbl_message.setText(message)
-        self.btn_browse.setText("Выбрать папку" if AppContext.LANG == "RU" else "Browse Folder")
+        self.set_default_message()
+
+    def set_default_message(self):
+        is_ru = AppContext.is_ru() if hasattr(AppContext, 'is_ru') else (getattr(AppContext, 'LANG', 'RU') == 'RU')
+        title = "Входящие не выбраны" if is_ru else "Inbox not selected"
+        desc = (
+            "Перетащите папку или группу файлов для анализа на этот холст\nили выберите их через кнопку ниже"
+            if is_ru
+            else "Drag & drop a folder or a group of files here for analysis\nor choose them using the button below"
+        )
+        self.set_content(title, desc, show_button=True)
+
+    def set_content(self, title: str, desc: str = "", show_button: bool = True):
+        self.lbl_title.setText(title)
+        if desc:
+            self.lbl_desc.setText(desc)
+            self.lbl_desc.show()
+        else:
+            self.lbl_desc.setText("")
+            self.lbl_desc.hide()
+            
+        is_ru = AppContext.is_ru() if hasattr(AppContext, 'is_ru') else (getattr(AppContext, 'LANG', 'RU') == 'RU')
+        self.btn_browse.setText("📁  Выбрать папку" if is_ru else "📁  Browse Folder")
         if show_button:
             self.btn_browse.show()
         else:
             self.btn_browse.hide()
+
+    def set_message(self, message, show_button=True):
+        if not message or message in ("Входящие не выбраны", "Входящие сброшены", "Inbox reset", "Inbox not selected"):
+            self.set_default_message()
+            return
+            
+        if "\n\n" in message:
+            parts = message.split("\n\n", 1)
+            self.set_content(parts[0], parts[1], show_button=show_button)
+        elif "\n" in message:
+            parts = message.split("\n", 1)
+            self.set_content(parts[0], parts[1], show_button=show_button)
+        else:
+            self.set_content(message, "", show_button=show_button)
+
+    def retranslate_ui(self):
+        self.set_default_message()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():

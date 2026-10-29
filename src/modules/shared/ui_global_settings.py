@@ -900,25 +900,6 @@ class GlobalSettingsDialog(QDialog):
         self.chk_scan_subfolders.setChecked(bool(self.sorter_config.get("scan_subfolders", False)))
         grid_opts.addWidget(self.chk_scan_subfolders, 0, 0)
 
-        row_depth = QHBoxLayout()
-        row_depth.setSpacing(8)
-        lbl_depth = QLabel(AppContext.tr("glob_sorter_nesting_depth"))
-        row_depth.addWidget(lbl_depth)
-        self.spin_depth = StyledSpinBox(
-            min_val=1,
-            max_val=50,
-            step=1,
-            value=int(self.sorter_config.get("max_nesting_depth", 5))
-        )
-        self.spin_depth.setFixedWidth(90)
-        row_depth.addWidget(self.spin_depth)
-        row_depth.addStretch()
-        grid_opts.addLayout(row_depth, 0, 1)
-
-        self.chk_auto_collapse = StyledCheckBox(AppContext.tr("glob_sorter_collapse_groups"))
-        self.chk_auto_collapse.setChecked(bool(self.sorter_config.get("auto_collapse_groups", True)))
-        grid_opts.addWidget(self.chk_auto_collapse, 1, 0)
-
         row_delay = QHBoxLayout()
         row_delay.setSpacing(8)
         lbl_delay = QLabel(AppContext.tr("glob_sorter_list_delay"))
@@ -933,7 +914,11 @@ class GlobalSettingsDialog(QDialog):
         self.spin_list_delay.setFixedWidth(90)
         row_delay.addWidget(self.spin_list_delay)
         row_delay.addStretch()
-        grid_opts.addLayout(row_delay, 1, 1)
+        grid_opts.addLayout(row_delay, 0, 1)
+
+        self.chk_auto_collapse = StyledCheckBox(AppContext.tr("glob_sorter_collapse_groups"))
+        self.chk_auto_collapse.setChecked(bool(self.sorter_config.get("auto_collapse_groups", True)))
+        grid_opts.addWidget(self.chk_auto_collapse, 1, 0)
 
         layout.addLayout(grid_opts)
 
@@ -948,7 +933,6 @@ class GlobalSettingsDialog(QDialog):
         self.picker_sort.setText(self.sorter_config.get("path_sort", ""))
         self.picker_todel.setText(self.sorter_config.get("path_todel", ""))
         self.chk_scan_subfolders.setChecked(bool(self.sorter_config.get("scan_subfolders", False)))
-        self.spin_depth.setValue(int(self.sorter_config.get("max_nesting_depth", 5)))
         self.spin_pagination.setValue(int(self.sorter_config.get("pagination_size", 1000)))
         self.chk_auto_collapse.setChecked(bool(self.sorter_config.get("auto_collapse_groups", True)))
         self.spin_list_delay.setValue(float(self.sorter_config.get("list_view_delay", 0.0)))
@@ -1299,7 +1283,6 @@ class GlobalSettingsDialog(QDialog):
         self.sorter_config["path_sort"] = self.picker_sort.text()
         self.sorter_config["path_todel"] = self.picker_todel.text()
         self.sorter_config["scan_subfolders"] = self.chk_scan_subfolders.isChecked()
-        self.sorter_config["max_nesting_depth"] = self.spin_depth.value()
         self.sorter_config["pagination_size"] = self.spin_pagination.value()
         self.sorter_config["auto_collapse_groups"] = self.chk_auto_collapse.isChecked()
         self.sorter_config["list_view_delay"] = self.spin_list_delay.value()

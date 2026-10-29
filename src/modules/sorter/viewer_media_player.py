@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF, pyqtSignal, QSize, QUrl, QPoint
 from PyQt6.QtGui import (
     QColor, QPixmap, QMovie, QWheelEvent, QMouseEvent, QPainter, QKeyEvent,
-    QCursor, QTransform
+    QCursor, QTransform, QFont
 )
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget, QGraphicsVideoItem
@@ -448,47 +448,23 @@ class ZoomableGraphicsView(QGraphicsView):
         self.reset_view()
 
     def show_empty_state(self, message):
+        viewer_area = self.parent()
+        if viewer_area and hasattr(viewer_area, 'show_empty_state'):
+            viewer_area.show_empty_state(message)
+            return
+
         self.current_is_video = False
-        if self.time_overlay: self.time_overlay.hide()
+        if self.time_overlay:
+            self.time_overlay.hide()
         self.clear_scene_content()
         
-        self.lbl_center_text.setFont(QFont("Segoe UI", 24, QFont.Weight.Bold))
-        self.lbl_center_text.setStyleSheet("color: white;")
+        self.lbl_center_text.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
+        self.lbl_center_text.setStyleSheet("color: #9ca3af;")
         self.lbl_center_text.setText(message)
         self.lbl_center_text.show()
         
         self.update_overlay_positions()
-        
-        self.scene.setSceneRect(0, 0, 100, 100) # dummy rect
-        self.reset_view()
-        
-        # Empty state button setup
-        show_btn = True
-        viewer_area = self.parent()  # SorterViewerArea
-        if viewer_area and hasattr(viewer_area, 'get_main_app'):
-            main_app = viewer_area.get_main_app()
-            if main_app and getattr(main_app, 'UNSORT_DIR', None) and getattr(main_app, 'files_queue', None):
-                show_btn = False
-        
-        if show_btn:
-            btn = QPushButton("Выбрать папку" if AppContext.LANG == "RU" else "Browse Folder")
-            btn.setStyleSheet("""
-                QPushButton { 
-                    background-color: #3b82f6; 
-                    color: white; 
-                    font-size: 16px; 
-                    font-weight: bold; 
-                    padding: 10px 20px; 
-                    border-radius: 6px; 
-                }
-                QPushButton:hover { background-color: #2563eb; }
-            """)
-            btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.clicked.connect(self.browse_requested.emit)
-            proxy = self.scene.addWidget(btn)
-            proxy.setPos((base_w - proxy.preferredSize().width()) / 2, y_text + text_rect.height() + 20)
-            
-        self.scene.setSceneRect(0, 0, base_w, base_h)
+        self.scene.setSceneRect(0, 0, 100, 100)
         self.reset_view()
 
     def clear_scene_content(self):

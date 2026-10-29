@@ -372,6 +372,8 @@ class DuplicateFinderWorker(QThread):
             self.progress.emit(STAGE_ANALYSIS, 100.0, msg, scanned_files, found_matches_count, current_wasted_bytes, scanned_bytes, len(zero_files), len(empty_folders))
 
         final_groups.sort(key=lambda g: g['size'] * (len(g['files']) - 1), reverse=True)
+        if self.db:
+            self.db.close()
         self.finished.emit({'groups': final_groups, 'zero_files': zero_files, 'empty_folders': empty_folders})
 
 
@@ -883,6 +885,8 @@ class SimilarScanWorker(QThread):
         if self.is_running:
             self.progress.emit(STAGE_ANALYSIS, 100.0, "Готово", scanned_files, found_matches_count, current_wasted_bytes, scanned_bytes, 0, 0)
             
+        if self.db:
+            self.db.close()
         self.finished.emit({'groups': groups, 'zero_files': [], 'empty_folders': []})
 
 
@@ -1042,6 +1046,8 @@ class CreateDumpWorker(QThread):
             conn.commit()
             conn.close()
             
+            if self.db:
+                self.db.close()
             self.finished.emit(True, "")
         except Exception as e:
             self.finished.emit(False, str(e))

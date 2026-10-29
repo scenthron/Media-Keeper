@@ -39,7 +39,7 @@ class AiResultsView(QWidget):
         main_layout.setSpacing(0)
 
         # 1. Пост-фильтр (встраивается или отображается над деревом)
-        self.post_filter_widget = QWidget()
+        self.post_filter_widget = QWidget(self)
         self.post_filter_widget.setStyleSheet("border: none;")
         post_filter_layout = QHBoxLayout(self.post_filter_widget)
         post_filter_layout.setContentsMargins(0, 4, 0, 4)
@@ -392,7 +392,8 @@ class AiResultsView(QWidget):
             self.spin_post_filter.blockSignals(False)
             self.slider_post_filter.blockSignals(False)
 
-            self.post_filter_widget.show()
+            if not self.post_filter_widget.isWindow():
+                self.post_filter_widget.show()
             self.on_post_filter_changed(self.spin_post_filter.value())
         finally:
             self.tree_results.blockSignals(False)

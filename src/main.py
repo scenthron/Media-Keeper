@@ -507,10 +507,11 @@ class MediaKeeperShell(QMainWindow):
         self.close_drawer()
 
     def open_global_settings(self):
-        logging.debug("Открытие глобальных настроек (перенаправлено на настройки Сортировщика).")
-        if hasattr(self.sorter_tab, "open_settings_dialog"):
-            self.sorter_tab.open_settings_dialog()
-            self.close_drawer()
+        logging.debug("Открытие централизованного окна Глобальных настроек.")
+        from modules.shared import GlobalSettingsDialog
+        dlg = GlobalSettingsDialog(self)
+        dlg.exec()
+        self.close_drawer()
 
     def update_ui_text(self):
         logging.info("Обновление текстов интерфейса для текущего языка.")

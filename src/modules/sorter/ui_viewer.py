@@ -534,8 +534,8 @@ class SorterViewerArea(QWidget):
         
         self.current_view_mode = mode_idx
         
-        # If files queue is empty, keep showing empty placeholder widget
-        if not getattr(self, 'loading_files', None) and self.current_inbox_dir is None:
+        # If files queue is empty, keep showing empty placeholder widget across all modes
+        if not getattr(self, 'loading_files', None):
             self.stack.setCurrentIndex(3)
         else:
             self.stack.setCurrentIndex(mode_idx)
@@ -768,15 +768,14 @@ class SorterViewerArea(QWidget):
         self.loading_render_items = []
         self.is_loading_interrupted = False
         
-        if self.current_inbox_dir is None and not files:
+        if not files:
             self.loading_overlay.hide()
             self.loading_files = []
-            self.show_empty_state("Входящие не выбраны\n\nПеретащите папку или группу файлов для анализа на этот холст\nили выберите их через Проводник" if AppContext.LANG == "RU" else "Inbox folder not selected\n\nDrag a folder or a group of files here for analysis\nor choose them using the button below")
+            if not unsort_dir:
+                self.show_empty_state("Входящие не выбраны\n\nПеретащите папку или группу файлов для анализа на этот холст\nили выберите их через кнопку ниже" if AppContext.LANG == "RU" else "Inbox folder not selected\n\nDrag a folder or a group of files here for analysis\nor choose them using the button below")
+            else:
+                self.show_empty_state("Папка пуста\n\nВ выбранной папке нет поддерживаемых медиафайлов" if AppContext.LANG == "RU" else "Folder is empty\n\nNo supported media files found in selected folder")
             return
-            
-        if not files and self.current_inbox_dir is not None:
-            # Пустая папка
-            pass
             
         self.loading_files = files
         if hasattr(self.list_view, 'populate'):

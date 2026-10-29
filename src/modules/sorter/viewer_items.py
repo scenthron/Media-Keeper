@@ -5,7 +5,7 @@ import os
 import logging
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QStyle, QApplication,
-    QFileIconProvider, QPushButton, QCheckBox
+    QFileIconProvider, QPushButton, QCheckBox, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QSize, QRect, QFileInfo, QPoint, pyqtSignal
 from PyQt6.QtGui import (
@@ -792,7 +792,7 @@ class SorterPlaceholderWidget(QWidget):
         
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.setSpacing(14)
+        layout.setSpacing(16)
         
         # 1. Icon
         self.lbl_icon = QLabel()
@@ -807,19 +807,24 @@ class SorterPlaceholderWidget(QWidget):
                     self.lbl_icon.setPixmap(pix)
         layout.addWidget(self.lbl_icon, 0, Qt.AlignmentFlag.AlignCenter)
 
-        # 2. Title
+        # 2. Title (гарантированный размер и отступы без обрезания букв)
         self.lbl_title = QLabel()
-        self.lbl_title.setStyleSheet("color: #e5e7eb; font-size: 20px; font-weight: bold;")
+        self.lbl_title.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
+        self.lbl_title.setStyleSheet("color: #f3f4f6; padding: 6px 16px; background: transparent;")
         self.lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_title.setWordWrap(True)
+        self.lbl_title.setMinimumHeight(44)
+        self.lbl_title.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         self.lbl_title.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         layout.addWidget(self.lbl_title, 0, Qt.AlignmentFlag.AlignCenter)
 
         # 3. Description / Hint
         self.lbl_desc = QLabel()
-        self.lbl_desc.setStyleSheet("color: #9ca3af; font-size: 15px; font-weight: normal; line-height: 1.4;")
+        self.lbl_desc.setFont(QFont("Segoe UI", 11))
+        self.lbl_desc.setStyleSheet("color: #9ca3af; padding: 4px 16px; background: transparent; line-height: 1.4;")
         self.lbl_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_desc.setWordWrap(True)
+        self.lbl_desc.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         self.lbl_desc.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         layout.addWidget(self.lbl_desc, 0, Qt.AlignmentFlag.AlignCenter)
         
@@ -828,12 +833,11 @@ class SorterPlaceholderWidget(QWidget):
 
         # 4. Action Button
         self.btn_browse = QPushButton()
+        self.btn_browse.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
         self.btn_browse.setStyleSheet("""
             QPushButton { 
                 background-color: #3b82f6; 
                 color: white; 
-                font-size: 15px; 
-                font-weight: bold; 
                 padding: 10px 24px; 
                 border-radius: 6px; 
                 border: none;

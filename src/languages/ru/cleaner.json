@@ -315,5 +315,15 @@
   "cln_ai_group_title": "Группа: {} ({} файлов)",
   "cln_ai_stats_displayed": "Отображено: {} групп, {} файлов, {} MB",
   "cln_ai_suffix_files": " ф.",
-  "cln_btn_rescan": "⚠️ Пересканировать"
+  "cln_btn_rescan": "⚠️ Пересканировать",
+  "cln_ai_view_tree": "Режим дерева (список)",
+  "cln_ai_view_grid": "Режим сетки (плитка)",
+  "cln_ai_zoom_tip": "Размер миниатюр в сетке",
+  "cln_ai_hover_tip_on": "Отключить быстрый просмотр при наведении (F1)",
+  "cln_ai_hover_tip_off": "Включить быстрый просмотр при наведении (F1)",
+  "cln_ai_hover_settings": "Настройки быстрого просмотра",
+  "cln_ai_hover_delay": "Задержка:",
+  "cln_ai_hover_sec": "сек.",
+  "cln_ai_hover_size": "Размер окна:",
+  "cln_ai_btn_reset": "Сбросить"
 }

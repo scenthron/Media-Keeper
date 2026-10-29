@@ -138,6 +138,7 @@ def build():
         "modules.cleaner.ai_search",
         "modules.cleaner.ai_search.ui_samples_panel",
         "modules.cleaner.ai_search.ui_results_view",
+        "modules.cleaner.ai_search.ui_grid_view",
         "modules.cleaner.ai_search.logic_ai_actions",
         "modules.cleaner.ai_search.ui_ai_tab",
         "modules.cleaner.ui_fragment_tab",

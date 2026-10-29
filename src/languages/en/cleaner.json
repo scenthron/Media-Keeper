@@ -315,5 +315,15 @@
   "cln_ai_group_title": "Group: {} ({} files)",
   "cln_ai_stats_displayed": "Displayed: {} groups, {} files, {} MB",
   "cln_ai_suffix_files": " f.",
-  "cln_btn_rescan": "⚠️ Rescan Required"
+  "cln_btn_rescan": "⚠️ Rescan Required",
+  "cln_ai_view_tree": "Tree view (list)",
+  "cln_ai_view_grid": "Grid view (tiles)",
+  "cln_ai_zoom_tip": "Thumbnail size in grid",
+  "cln_ai_hover_tip_on": "Disable hover preview (F1)",
+  "cln_ai_hover_tip_off": "Enable hover preview (F1)",
+  "cln_ai_hover_settings": "Hover preview settings",
+  "cln_ai_hover_delay": "Delay:",
+  "cln_ai_hover_sec": "sec",
+  "cln_ai_hover_size": "Window size:",
+  "cln_ai_btn_reset": "Reset"
 }

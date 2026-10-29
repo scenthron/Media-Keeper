@@ -198,11 +198,7 @@ QFileDialog.getSaveFileName = _make_safe_dialog_method(QFileDialog.getSaveFileNa
 
 from config import AppContext, APP_VERSION, APP_DESIGN
 from ui_menu import NavigationDrawer
-# UPDATED IMPORTS:
 from modules.sorter.ui_main import SorterModule
-from modules.editor.ui_main import EditorMainWidget
-from modules.cleaner.ui_main import CleanerModule
-from modules.analyzer.ui_main import AnalyzerWidget
 from ui_dialogs_generic import InfoDialog
 
 class MediaKeeperShell(QMainWindow):
@@ -231,20 +227,17 @@ class MediaKeeperShell(QMainWindow):
         
         self.stack = QStackedWidget(self.central_widget)
         
-        logging.debug("Создание вкладок модулей.")
+        logging.debug("Создание вкладки Сортировщика (остальные модули загружаются лениво).")
         self.sorter_tab = SorterModule()
-        self.editor_tab = EditorMainWidget()
-        self.cleaner_tab = CleanerModule() 
-        self.analyzer_tab = AnalyzerWidget()
-        
-        self.analyzer_tab.back_requested.connect(lambda: self.switch_tab(0))
-        self.editor_tab.ffmpeg_downloaded.connect(self.on_ffmpeg_downloaded)
+        self._editor_tab = None
+        self._cleaner_tab = None
+        self._analyzer_tab = None
 
-        self.stack.addWidget(self.sorter_tab)   # 0
-        self.stack.addWidget(self.editor_tab)   # 1
-        self.stack.addWidget(self.cleaner_tab)   # 2
-        self.stack.addWidget(self.analyzer_tab)  # 3
-        logging.info("Все вкладки модулей успешно добавлены в QStackedWidget.")
+        self.stack.addWidget(self.sorter_tab)   # 0: Sorter
+        self.stack.addWidget(QWidget())          # 1: Editor placeholder
+        self.stack.addWidget(QWidget())          # 2: Cleaner placeholder
+        self.stack.addWidget(QWidget())          # 3: Analyzer placeholder
+        logging.info("Вкладка Сортировщика и заглушки модулей добавлены в QStackedWidget.")
         
         self.drawer = NavigationDrawer(self.central_widget)
         self.drawer.hide()
@@ -276,6 +269,104 @@ class MediaKeeperShell(QMainWindow):
         self.installEventFilter(self)
         self.update_ui_text()
         logging.debug("Базовая тема оформления применена.")
+
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(1500, self._preload_background_tabs)
+
+    @property
+    def editor_tab(self):
+        return self._ensure_editor_loaded()
+
+    @editor_tab.setter
+    def editor_tab(self, value):
+        self._editor_tab = value
+
+    @property
+    def cleaner_tab(self):
+        return self._ensure_cleaner_loaded()
+
+    @cleaner_tab.setter
+    def cleaner_tab(self, value):
+        self._cleaner_tab = value
+
+    @property
+    def analyzer_tab(self):
+        return self._ensure_analyzer_loaded()
+
+    @analyzer_tab.setter
+    def analyzer_tab(self, value):
+        self._analyzer_tab = value
+
+    def _ensure_editor_loaded(self):
+        """Ленивая инициализация модуля Видеоредактора / Конвертеров."""
+        if self._editor_tab is not None:
+            return self._editor_tab
+        logging.info("Ленивая инициализация модуля Редактора (EditorMainWidget)...")
+        from modules.editor.ui_main import EditorMainWidget
+        self._editor_tab = EditorMainWidget()
+        self._editor_tab.ffmpeg_downloaded.connect(self.on_ffmpeg_downloaded)
+        old_widget = self.stack.widget(1)
+        self.stack.removeWidget(old_widget)
+        self.stack.insertWidget(1, self._editor_tab)
+        old_widget.deleteLater()
+        if hasattr(self._editor_tab, "update_ui_text"):
+            self._editor_tab.update_ui_text()
+        return self._editor_tab
+
+    def _ensure_cleaner_loaded(self):
+        """Ленивая инициализация модуля Очистки и поиска дубликатов."""
+        if self._cleaner_tab is not None:
+            return self._cleaner_tab
+        logging.info("Ленивая инициализация модуля Очистки (CleanerModule)...")
+        from modules.cleaner.ui_main import CleanerModule
+        self._cleaner_tab = CleanerModule()
+        if hasattr(AppContext, "cleaner_tab"):
+            AppContext.cleaner_tab = self._cleaner_tab
+        old_widget = self.stack.widget(2)
+        self.stack.removeWidget(old_widget)
+        self.stack.insertWidget(2, self._cleaner_tab)
+        old_widget.deleteLater()
+        if hasattr(self._cleaner_tab, "update_ui_text"):
+            self._cleaner_tab.update_ui_text()
+        return self._cleaner_tab
+
+    def _ensure_analyzer_loaded(self):
+        """Ленивая инициализация модуля Анализатора диска."""
+        if self._analyzer_tab is not None:
+            return self._analyzer_tab
+        logging.info("Ленивая инициализация модуля Анализатора (AnalyzerWidget)...")
+        from modules.analyzer.ui_main import AnalyzerWidget
+        self._analyzer_tab = AnalyzerWidget()
+        self._analyzer_tab.back_requested.connect(lambda: self.switch_tab(0))
+        old_widget = self.stack.widget(3)
+        self.stack.removeWidget(old_widget)
+        self.stack.insertWidget(3, self._analyzer_tab)
+        old_widget.deleteLater()
+        if hasattr(self._analyzer_tab, "update_ui_text"):
+            self._analyzer_tab.update_ui_text()
+        return self._analyzer_tab
+
+    def _preload_background_tabs(self):
+        """Фоновый прогрев оставшихся модулей по очереди спустя время после отрисовки окна."""
+        from PyQt6.QtCore import QTimer
+        if self._editor_tab is None:
+            self._ensure_editor_loaded()
+            QTimer.singleShot(1000, self._preload_cleaner_tab)
+        elif self._cleaner_tab is None:
+            self._ensure_cleaner_loaded()
+            QTimer.singleShot(1000, self._preload_analyzer_tab)
+        elif self._analyzer_tab is None:
+            self._ensure_analyzer_loaded()
+
+    def _preload_cleaner_tab(self):
+        from PyQt6.QtCore import QTimer
+        if self._cleaner_tab is None:
+            self._ensure_cleaner_loaded()
+            QTimer.singleShot(1000, self._preload_analyzer_tab)
+
+    def _preload_analyzer_tab(self):
+        if self._analyzer_tab is None:
+            self._ensure_analyzer_loaded()
 
     def changeEvent(self, event):
         if event.type() == QEvent.Type.WindowStateChange:
@@ -345,14 +436,21 @@ class MediaKeeperShell(QMainWindow):
              if hasattr(self.sorter_tab, "stop_playback"):
                  logging.debug("Остановка воспроизведения при уходе со вкладки Сортировщика.")
                  self.sorter_tab.stop_playback()
-        elif current_widget == self.cleaner_tab and index != 2:
-             if hasattr(self.cleaner_tab, "stop_playback"):
+        elif self._cleaner_tab is not None and current_widget == self._cleaner_tab and index != 2:
+             if hasattr(self._cleaner_tab, "stop_playback"):
                  logging.debug("Остановка воспроизведения при уходе со вкладки Поиска дубликатов.")
-                 self.cleaner_tab.stop_playback()
-        elif current_widget == self.analyzer_tab and index != 3:
-             if hasattr(self.analyzer_tab, "stop_playback"):
+                 self._cleaner_tab.stop_playback()
+        elif self._analyzer_tab is not None and current_widget == self._analyzer_tab and index != 3:
+             if hasattr(self._analyzer_tab, "stop_playback"):
                  logging.debug("Остановка воспроизведения при уходе со вкладки Анализатора.")
-                 self.analyzer_tab.stop_playback()
+                 self._analyzer_tab.stop_playback()
+
+        if index == 1:
+            self._ensure_editor_loaded()
+        elif index == 2:
+            self._ensure_cleaner_loaded()
+        elif index == 3:
+            self._ensure_analyzer_loaded()
 
         self.stack.setCurrentIndex(index)
         self.drawer.set_active_tab(index)
@@ -362,9 +460,9 @@ class MediaKeeperShell(QMainWindow):
                 logging.debug("Возобновление работы Сортировщика при возвращении на вкладку.")
                 self.sorter_tab.on_tab_enter()
         elif index == 3:
-            if hasattr(self.analyzer_tab, "on_tab_enter"):
+            if self._analyzer_tab is not None and hasattr(self._analyzer_tab, "on_tab_enter"):
                 logging.debug("Синхронизация данных Анализатора при входе на вкладку.")
-                self.analyzer_tab.on_tab_enter()
+                self._analyzer_tab.on_tab_enter()
 
         self.close_drawer()
         current = self.stack.currentWidget()
@@ -419,9 +517,12 @@ class MediaKeeperShell(QMainWindow):
         self.setWindowTitle(f"{AppContext.tr('app_title')} {APP_VERSION}")
         self.drawer.update_ui_text()
         if hasattr(self.sorter_tab, "update_ui_text"): self.sorter_tab.update_ui_text()
-        if hasattr(self.editor_tab, "update_ui_text"): self.editor_tab.update_ui_text()
-        if hasattr(self.analyzer_tab, "update_ui_text"): self.analyzer_tab.update_ui_text()
-        if hasattr(self.cleaner_tab, "update_ui_text"): self.cleaner_tab.update_ui_text()
+        if self._editor_tab is not None and hasattr(self._editor_tab, "update_ui_text"):
+            self._editor_tab.update_ui_text()
+        if self._analyzer_tab is not None and hasattr(self._analyzer_tab, "update_ui_text"):
+            self._analyzer_tab.update_ui_text()
+        if self._cleaner_tab is not None and hasattr(self._cleaner_tab, "update_ui_text"):
+            self._cleaner_tab.update_ui_text()
 
     def on_ffmpeg_downloaded(self) -> None:
         """Вызывается при успешном скачивании FFmpeg для обновления превью видеофайлов в Сортировщике и активации видео-режима в Cleaner."""
@@ -429,13 +530,18 @@ class MediaKeeperShell(QMainWindow):
         if hasattr(self.sorter_tab, 'refresh_video_thumbnails'):
             self.sorter_tab.refresh_video_thumbnails()
             
-        if hasattr(self, 'cleaner_tab'):
-            cleaner = self.cleaner_tab
+        if self._cleaner_tab is not None:
+            cleaner = self._cleaner_tab
             if hasattr(cleaner, 'settings_panel_similar') and hasattr(cleaner.settings_panel_similar, 'update_media_types_availability'):
                 cleaner.settings_panel_similar.update_media_types_availability()
 
     def closeEvent(self, event):
         logging.info("Завершение работы приложения.")
+        if self._cleaner_tab is not None and hasattr(self._cleaner_tab, 'closeEvent'):
+            try:
+                self._cleaner_tab.closeEvent(event)
+            except Exception:
+                pass
         shutdown_logging() # Flush logs
         from PyQt6.QtWidgets import QApplication
         QApplication.quit()

@@ -28,7 +28,10 @@ class ScanWorker(QRunnable):
                         total_size += os.path.getsize(fp)
                     except: pass
         except: pass
-        self.signals.result_ready.emit(self.path, file_count, total_size)
+        try:
+            self.signals.result_ready.emit(self.path, file_count, total_size)
+        except RuntimeError:
+            pass
 
 from utils_io import strip_long_path_prefix
 

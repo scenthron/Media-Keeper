@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QFrame, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QCheckBox, QStyle, QStyleOptionSlider, QMenu
+from PyQt6.QtWidgets import QLineEdit, QFrame, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QCheckBox, QStyle, QStyleOptionSlider, QMenu
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QPointF, QRect, QSize
 from PyQt6.QtGui import QPainter, QColor, QBrush, QPen, QIcon
 from config import AppContext, VIEWER_DESIGN, APP_DESIGN
@@ -728,3 +728,60 @@ class CollapsibleSection(QFrame):
         if new_tooltip:
             self.btn_header.setToolTip(new_tooltip)
 
+class OverlayDropLineEdit(QLineEdit):
+    """Поле для отображения имени файла оверлея с поддержкой Drag & Drop из проводника."""
+    file_dropped = pyqtSignal(str)
+    clicked = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setReadOnly(True)
+        self.setAcceptDrops(True)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_style(False)
+
+    def update_style(self, is_drag_active: bool):
+        border_color = "#3b82f6" if is_drag_active else "#555555"
+        bg_color = "rgba(59, 130, 246, 0.12)" if is_drag_active else "rgba(30, 30, 46, 0.7)"
+        self.setStyleSheet(f"""
+            QLineEdit {{
+                border: 1px dashed {border_color};
+                border-radius: 4px;
+                background-color: {bg_color};
+                color: #e0e0e0;
+                padding: 4px 8px;
+                font-size: 11px;
+            }}
+        """)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                p = url.toLocalFile()
+                ext = os.path.splitext(p)[1].lower()
+                if ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']:
+                    self.update_style(True)
+                    event.acceptProposedAction()
+                    return
+        event.ignore()
+
+    def dragLeaveEvent(self, event):
+        self.update_style(False)
+        event.accept()
+
+    def dropEvent(self, event):
+        self.update_style(False)
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                p = url.toLocalFile()
+                ext = os.path.splitext(p)[1].lower()
+                if ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']:
+                    self.file_dropped.emit(p)
+                    event.acceptProposedAction()
+                    return
+        event.ignore()

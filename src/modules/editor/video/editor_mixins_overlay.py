@@ -79,52 +79,101 @@ class EditorOverlayMixin:
             self.overlay_item.set_opacity(val / 100.0)
         self._schedule_cc_preview()
 
+    def _update_overlay_image_ui(self) -> None:
+        if not hasattr(self, 'edit_overlay_path'):
+            return
+        has_img = bool(getattr(self, 'overlay_image_path', None) and os.path.exists(self.overlay_image_path))
+        icons_dir = getattr(self, 'icons_dir', AppContext.find_resource_dir("icons"))
+        from PyQt6.QtGui import QIcon
+        
+        if has_img:
+            base_name = os.path.basename(self.overlay_image_path)
+            self.edit_overlay_path.setText(base_name)
+            self.edit_overlay_path.setToolTip(self.overlay_image_path)
+            self.edit_overlay_path.setStyleSheet(
+                "QLineEdit {"
+                "    border: 1px dashed #4ade80;"
+                "    border-radius: 4px;"
+                "    background-color: rgba(74, 222, 128, 0.08);"
+                "    color: #4ade80;"
+                "    font-weight: bold;"
+                "    padding: 4px 8px;"
+                "    font-size: 11px;"
+                "}"
+            )
+            if hasattr(self, 'btn_overlay_file_action'):
+                self.btn_overlay_file_action.setIcon(QIcon(os.path.join(icons_dir, "trash-color.svg")))
+                self.btn_overlay_file_action.setToolTip(AppContext.tr("tooltip_overlay_img_del"))
+            if hasattr(self, 'btn_overlay_img_reset'):
+                self.btn_overlay_img_reset.show()
+        else:
+            self.edit_overlay_path.setText("")
+            self.edit_overlay_path.setPlaceholderText(AppContext.tr("ovl_drop_placeholder"))
+            self.edit_overlay_path.setToolTip(AppContext.tr("tooltip_overlay_drop_field"))
+            if hasattr(self.edit_overlay_path, 'update_style'):
+                self.edit_overlay_path.update_style(False)
+            if hasattr(self, 'btn_overlay_file_action'):
+                self.btn_overlay_file_action.setIcon(QIcon(os.path.join(icons_dir, "folder-color.svg")))
+                self.btn_overlay_file_action.setToolTip(AppContext.tr("ovl_btn_select"))
+            if hasattr(self, 'btn_overlay_img_reset'):
+                self.btn_overlay_img_reset.hide()
+
+    def _on_overlay_file_action_clicked(self) -> None:
+        if getattr(self, 'overlay_image_path', None):
+            self._clear_overlay_image()
+        else:
+            self._select_overlay_image()
+
     def _select_overlay_image(self) -> None:
-        f, _ = QFileDialog.getOpenFileName(self, "Выберите изображение" if AppContext.is_ru() else "Select image", "", "Image Files (*.png *.jpg *.jpeg *.gif)")
+        f, _ = QFileDialog.getOpenFileName(self, "Выберите изображение" if AppContext.is_ru() else "Select image", "", "Image Files (*.png *.jpg *.jpeg *.gif *.webp *.bmp)")
         if f:
-            self.overlay_image_path = f
-            short_name = os.path.basename(f)
-            if len(short_name) > 10: short_name = short_name[:10] + "..."
-            self.btn_overlay_select_img.setText(short_name)
-            self.lbl_overlay_img_name.setText(short_name)
-            self.lbl_overlay_img_name.setToolTip(f)
-            self.btn_overlay_img_del.show()
-            self.btn_overlay_img_reset.show()
+            self._apply_overlay_image_file(f)
+
+    def _apply_overlay_image_file(self, f: str) -> None:
+        if not f or not os.path.exists(f):
+            return
+        self.overlay_image_path = f
+        self._update_overlay_image_ui()
+        
+        pix = QPixmap(f)
+        if not pix.isNull() and hasattr(self, 'video_item') and self.video_item.boundingRect().width() > 0:
+            v_rect = self.video_item.boundingRect()
+            new_w, new_h = pix.width(), pix.height()
+            if new_w > v_rect.width() or new_h > v_rect.height():
+                scaled = pix.scaled(v_rect.size().toSize(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                new_w, new_h = scaled.width(), scaled.height()
+            x = (v_rect.width() - new_w) / 2
+            y = (v_rect.height() - new_h) / 2
+            self.overlay_item.set_rect(QRectF(0, 0, new_w, new_h))
+            self.overlay_item.setPos(x, y)
+            self.overlay_item.set_pixmap(pix)
+        
+        ext = os.path.splitext(f)[1].lower()
+        if ext == '.gif':
+            from PyQt6.QtCore import QBuffer
+            from utils_io import ensure_long_path
+            try:
+                with open(ensure_long_path(f), 'rb') as file:
+                    data = file.read()
+                self._overlay_movie_buffer = QBuffer()
+                self._overlay_movie_buffer.setData(data)
+                self._overlay_movie_buffer.open(QBuffer.OpenModeFlag.ReadOnly)
+                fmt = ext.strip('.').encode() if ext else b''
+                movie = QMovie(self._overlay_movie_buffer, fmt)
+                self.overlay_item.set_movie(movie)
+            except Exception:
+                self.overlay_item.set_movie(QMovie(f))
+        else:
+            self.overlay_item.set_pixmap(QPixmap(f))
+        
+        if hasattr(self, 'chk_overlay_bounce') and self.chk_overlay_bounce.isChecked():
+            pos = self.player.position() if hasattr(self, 'player') and self.player else 0
+            self._update_bouncing_overlay_pos(pos)
             
-            pix = QPixmap(f)
-            if not pix.isNull() and self.video_item.boundingRect().width() > 0:
-                v_rect = self.video_item.boundingRect()
-                new_w, new_h = pix.width(), pix.height()
-                if new_w > v_rect.width() or new_h > v_rect.height():
-                    scaled = pix.scaled(v_rect.size().toSize(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                    new_w, new_h = scaled.width(), scaled.height()
-                x = (v_rect.width() - new_w) / 2
-                y = (v_rect.height() - new_h) / 2
-                self.overlay_item.set_rect(QRectF(0, 0, new_w, new_h))
-                self.overlay_item.setPos(x, y)
-                self.overlay_item.set_pixmap(pix)
-            
-            ext = os.path.splitext(f)[1].lower()
-            if ext == '.gif':
-                from PyQt6.QtCore import QBuffer
-                from utils_io import ensure_long_path
-                try:
-                    with open(ensure_long_path(f), 'rb') as file:
-                        data = file.read()
-                    self._overlay_movie_buffer = QBuffer()
-                    self._overlay_movie_buffer.setData(data)
-                    self._overlay_movie_buffer.open(QBuffer.OpenModeFlag.ReadOnly)
-                    fmt = ext.strip('.').encode() if ext else b''
-                    movie = QMovie(self._overlay_movie_buffer, fmt)
-                    self.overlay_item.set_movie(movie)
-                except Exception:
-                    self.overlay_item.set_movie(QMovie(f))
-            else:
-                self.overlay_item.set_pixmap(QPixmap(f))
-            self._schedule_cc_preview()
+        self._schedule_cc_preview()
 
     def _on_reset_overlay_size(self) -> None:
-        if not self.overlay_image_path: return
+        if not getattr(self, 'overlay_image_path', None): return
         pix = QPixmap(self.overlay_image_path)
         if pix.isNull(): return
         v_rect = self.video_item.boundingRect()
@@ -140,10 +189,7 @@ class EditorOverlayMixin:
 
     def _clear_overlay_image(self) -> None:
         self.overlay_image_path = None
-        self.btn_overlay_select_img.setText(AppContext.tr("ovl_btn_select"))
-        self.lbl_overlay_img_name.setText("")
-        self.btn_overlay_img_del.hide()
-        self.btn_overlay_img_reset.hide()
+        self._update_overlay_image_ui()
         self.overlay_item.set_pixmap(None)
         self.overlay_item.set_movie(None)
         self._reset_overlay_to_two_thirds()

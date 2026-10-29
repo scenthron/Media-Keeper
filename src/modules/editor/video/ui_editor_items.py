@@ -301,13 +301,17 @@ class OverlayGraphicsItem(QGraphicsObject):
         if handles['tl'].contains(pos) or handles['br'].contains(pos):
             cursor = Qt.CursorShape.SizeFDiagCursor 
             self.hover_handle = 'tl' if handles['tl'].contains(pos) else 'br'
+            self.setToolTip("Потяните для изменения размера (Shift для пропорций)" if AppContext.is_ru() else "Drag to resize (Shift to keep proportions)")
         elif handles['tr'].contains(pos) or handles['bl'].contains(pos):
             cursor = Qt.CursorShape.SizeBDiagCursor
             self.hover_handle = 'tr' if handles['tr'].contains(pos) else 'bl'
+            self.setToolTip("Потяните для изменения размера (Shift для пропорций)" if AppContext.is_ru() else "Drag to resize (Shift to keep proportions)")
         elif self._rect.contains(pos):
             cursor = Qt.CursorShape.SizeAllCursor
+            self.setToolTip("Перетащите для перемещения" if AppContext.is_ru() else "Drag to move")
         else:
             cursor = Qt.CursorShape.ArrowCursor
+            self.setToolTip("")
             
         self.setCursor(cursor)
         super().hoverMoveEvent(event)
@@ -316,7 +320,7 @@ class OverlayGraphicsItem(QGraphicsObject):
         if event.button() == Qt.MouseButton.LeftButton:
             if self.isSelected() and self.hover_handle:
                 self.is_resizing = True
-                self.resize_start_pos = event.pos()
+                self.resize_start_pos = QPointF(event.pos())
                 self.resize_start_rect = self._rect
                 event.accept()
                 return
@@ -324,18 +328,68 @@ class OverlayGraphicsItem(QGraphicsObject):
 
     def mouseMoveEvent(self, event):
         if self.is_resizing and self.resize_start_rect:
-            diff = event.pos() - self.resize_start_pos
+            diff = QPointF(event.pos()) - self.resize_start_pos
             r = self.resize_start_rect
             new_rect = QRectF(r)
             
-            if self.hover_handle == 'br':
-                new_rect.setBottomRight(r.bottomRight() + diff)
-            elif self.hover_handle == 'tl':
-                new_rect.setTopLeft(r.topLeft() + diff)
-            elif self.hover_handle == 'tr':
-                new_rect.setTopRight(r.topRight() + diff)
-            elif self.hover_handle == 'bl':
-                new_rect.setBottomLeft(r.bottomLeft() + diff)
+            # Проверяем зажатие Shift или Ctrl для пропорционального изменения размера (как в Photoshop)
+            keep_aspect = bool(event.modifiers() & (Qt.KeyboardModifier.ShiftModifier | Qt.KeyboardModifier.ControlModifier))
+            
+            if keep_aspect:
+                if self._mode == "image" and self._pixmap and not self._pixmap.isNull():
+                    aspect = float(self._pixmap.width()) / max(1.0, float(self._pixmap.height()))
+                else:
+                    aspect = r.width() / max(1.0, r.height())
+                
+                if self.hover_handle == 'br':
+                    cand_w = max(10.0, r.width() + diff.x())
+                    cand_h = max(10.0, r.height() + diff.y())
+                    if abs(diff.x() / max(1.0, r.width())) >= abs(diff.y() / max(1.0, r.height())):
+                        final_w = cand_w
+                        final_h = final_w / aspect
+                    else:
+                        final_h = cand_h
+                        final_w = final_h * aspect
+                    new_rect = QRectF(r.left(), r.top(), final_w, final_h)
+                elif self.hover_handle == 'tl':
+                    cand_w = max(10.0, r.width() - diff.x())
+                    cand_h = max(10.0, r.height() - diff.y())
+                    if abs(diff.x() / max(1.0, r.width())) >= abs(diff.y() / max(1.0, r.height())):
+                        final_w = cand_w
+                        final_h = final_w / aspect
+                    else:
+                        final_h = cand_h
+                        final_w = final_h * aspect
+                    new_rect = QRectF(r.right() - final_w, r.bottom() - final_h, final_w, final_h)
+                elif self.hover_handle == 'tr':
+                    cand_w = max(10.0, r.width() + diff.x())
+                    cand_h = max(10.0, r.height() - diff.y())
+                    if abs(diff.x() / max(1.0, r.width())) >= abs(diff.y() / max(1.0, r.height())):
+                        final_w = cand_w
+                        final_h = final_w / aspect
+                    else:
+                        final_h = cand_h
+                        final_w = final_h * aspect
+                    new_rect = QRectF(r.left(), r.bottom() - final_h, final_w, final_h)
+                elif self.hover_handle == 'bl':
+                    cand_w = max(10.0, r.width() - diff.x())
+                    cand_h = max(10.0, r.height() + diff.y())
+                    if abs(diff.x() / max(1.0, r.width())) >= abs(diff.y() / max(1.0, r.height())):
+                        final_w = cand_w
+                        final_h = final_w / aspect
+                    else:
+                        final_h = cand_h
+                        final_w = final_h * aspect
+                    new_rect = QRectF(r.right() - final_w, r.top(), final_w, final_h)
+            else:
+                if self.hover_handle == 'br':
+                    new_rect.setBottomRight(r.bottomRight() + diff)
+                elif self.hover_handle == 'tl':
+                    new_rect.setTopLeft(r.topLeft() + diff)
+                elif self.hover_handle == 'tr':
+                    new_rect.setTopRight(r.topRight() + diff)
+                elif self.hover_handle == 'bl':
+                    new_rect.setBottomLeft(r.bottomLeft() + diff)
             
             new_rect = new_rect.normalized()
 

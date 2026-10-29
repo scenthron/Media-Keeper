@@ -24,7 +24,7 @@ from ..ffmpeg_downloader import check_ffmpeg_available
 
 # Sub-components
 from .ui_editor_items import OverlayGraphicsItem, CropHandle, CropFrameItem, VideoGraphicsItem
-from .ui_editor_widgets import WaveformProgressWidget, MagneticSlider, PlaybackSettingsPopup, CollapsibleSection
+from .ui_editor_widgets import WaveformProgressWidget, MagneticSlider, PlaybackSettingsPopup, CollapsibleSection, OverlayDropLineEdit
 from .ui_editor_view import EditorGraphicsView
 from modules.sorter.ui_player import SpeedButton, SpeedSettingsPopup
 
@@ -849,7 +849,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.combo_overlay_type.setToolTip("Выберите тип наложения: Рисунок (картинка), Цветокоррекция (плашка цвета) или Размытие" if AppContext.is_ru() else "Select overlay type: Image (picture), Color Correction (solid color) or Blur")
         lay_overlay.addWidget(self.combo_overlay_type)
 
-        # Replacement container instead of QStackedWidget for image overlay
+        # Replacement container with Drag&Drop QLineEdit and action button
         self.widget_overlay_img = QWidget()
         self.widget_overlay_img.setStyleSheet("background: transparent; border: none; margin: 0; padding: 0;")
         pg_img_l = QVBoxLayout(self.widget_overlay_img)
@@ -859,28 +859,59 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         row_img_btns = QHBoxLayout()
         row_img_btns.setContentsMargins(0, 0, 0, 0)
         row_img_btns.setSpacing(5)
-        self.btn_overlay_select_img = QPushButton(AppContext.tr("ovl_btn_select"))
-        self.btn_overlay_select_img.clicked.connect(self._select_overlay_image)
-        self.btn_overlay_select_img.setStyleSheet("QPushButton { background: #333; border: 1px solid #444; color: white; border-radius: 4px; padding: 4px; font-size: 11px; } QPushButton:hover { background: #444; }")
-        self.btn_overlay_select_img.setToolTip("Выбрать графический файл (PNG/JPG/GIF) для наложения на видео" if AppContext.is_ru() else "Select an image file (PNG/JPG/GIF) to overlay on video")
-        self.lbl_overlay_img_name = QLabel("")
-        self.lbl_overlay_img_name.setStyleSheet("color: #aaa; font-size: 10px;")
-        self.btn_overlay_img_del = QPushButton("×")
-        self.btn_overlay_img_del.setFixedSize(20, 20)
-        self.btn_overlay_img_del.clicked.connect(self._clear_overlay_image)
-        self.btn_overlay_img_del.setStyleSheet("QPushButton { background: #dc2626; color: white; border-radius: 3px; font-weight: bold; } QPushButton:hover { background: #b91c1c; }")
-        self.btn_overlay_img_del.setToolTip("Удалить выбранное изображение" if AppContext.is_ru() else "Remove selected image")
-        self.btn_overlay_img_del.hide()
+        
+        self.edit_overlay_path = OverlayDropLineEdit(self.widget_overlay_img)
+        self.edit_overlay_path.setFixedHeight(30)
+        self.edit_overlay_path.setPlaceholderText(AppContext.tr("ovl_drop_placeholder"))
+        self.edit_overlay_path.setToolTip(AppContext.tr("tooltip_overlay_drop_field"))
+        self.edit_overlay_path.file_dropped.connect(self._apply_overlay_image_file)
+        self.edit_overlay_path.clicked.connect(self._on_overlay_file_action_clicked)
+        row_img_btns.addWidget(self.edit_overlay_path, 1)
+
+        self.btn_overlay_file_action = QPushButton()
+        self.btn_overlay_file_action.setFixedSize(30, 30)
+        self.btn_overlay_file_action.setIconSize(QSize(18, 18))
+        self.btn_overlay_file_action.setIcon(QIcon(os.path.join(self.icons_dir, "folder-color.svg")))
+        self.btn_overlay_file_action.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_overlay_file_action.setStyleSheet("""
+            QPushButton { 
+                background: #2a2a3e; 
+                border: 1px solid #3a3a5a; 
+                border-radius: 4px; 
+                padding: 0px; 
+            }
+            QPushButton:hover { 
+                background: #3a3a5a; 
+                border-color: #555; 
+            }
+        """)
+        self.btn_overlay_file_action.setToolTip(AppContext.tr("ovl_btn_select"))
+        self.btn_overlay_file_action.clicked.connect(self._on_overlay_file_action_clicked)
+        row_img_btns.addWidget(self.btn_overlay_file_action)
+
         self.btn_overlay_img_reset = QPushButton("↺")
-        self.btn_overlay_img_reset.setFixedSize(20, 20)
+        self.btn_overlay_img_reset.setFixedSize(24, 30)
+        self.btn_overlay_img_reset.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_overlay_img_reset.clicked.connect(self._on_reset_overlay_size)
-        self.btn_overlay_img_reset.setStyleSheet("QPushButton { background: #333; color: white; border-radius: 3px; } QPushButton:hover { background: #444; }")
+        self.btn_overlay_img_reset.setStyleSheet("""
+            QPushButton { 
+                background: #2a2a3e; 
+                border: 1px solid #3a3a5a; 
+                color: #ccc; 
+                border-radius: 4px; 
+                font-size: 13px; 
+                font-weight: bold; 
+                padding: 0px; 
+            }
+            QPushButton:hover { 
+                background: #3a3a5a; 
+                color: white; 
+            }
+        """)
         self.btn_overlay_img_reset.setToolTip("Сбросить размер" if AppContext.is_ru() else "Reset size")
         self.btn_overlay_img_reset.hide()
-        row_img_btns.addWidget(self.btn_overlay_select_img)
-        row_img_btns.addWidget(self.lbl_overlay_img_name)
-        row_img_btns.addWidget(self.btn_overlay_img_del)
         row_img_btns.addWidget(self.btn_overlay_img_reset)
+        
         pg_img_l.addLayout(row_img_btns)
 
         # Чекбокс отскакивающего / случайного движения изображения
@@ -1876,10 +1907,10 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.lbl_overlay_val.setText(AppContext.tr("ovl_opacity"))
         self.slider_overlay_val.setToolTip(AppContext.tr("tooltip_overlay_val_slider"))
         self.spin_overlay_val.setToolTip(AppContext.tr("tooltip_overlay_val_spin"))
-        self.btn_overlay_select_img.setText(AppContext.tr("ovl_btn_select"))
-        self.btn_overlay_select_img.setToolTip(AppContext.tr("tooltip_overlay_select_img"))
-        self.btn_overlay_img_del.setToolTip(AppContext.tr("tooltip_overlay_img_del"))
-        self.btn_overlay_img_reset.setToolTip(AppContext.tr("tooltip_overlay_img_reset"))
+        if hasattr(self, '_update_overlay_image_ui'):
+            self._update_overlay_image_ui()
+        if hasattr(self, 'btn_overlay_img_reset'):
+            self.btn_overlay_img_reset.setToolTip(AppContext.tr("tooltip_overlay_img_reset") if hasattr(AppContext, 'tr') else "Сбросить размер")
         self.btn_overlay_color.setToolTip(AppContext.tr("tooltip_overlay_color"))
         if hasattr(self, 'chk_overlay_bounce'):
             self.chk_overlay_bounce.setText(AppContext.tr("ovl_bounce"))

@@ -197,7 +197,7 @@
     "tooltip_start_exec": "Start export and video processing",
     "tooltip_overlay_type": "Select overlay type: Image (watermark), Color Fill, or Blur",
     "tooltip_overlay_select_img": "Select image file (PNG/JPG/GIF) for overlay",
-    "tooltip_overlay_img_del": "Delete selected image",
+    "tooltip_overlay_img_del": "Remove image",
     "tooltip_overlay_img_reset": "Reset size",
     "tooltip_overlay_color": "Select fill color",
     "tooltip_marker_time": "Exact position of selected time marker",
@@ -306,5 +306,7 @@
     "menu_waveform_zoom_out": "Zoom out waveform",
     "menu_waveform_zoom_reset": "Reset waveform zoom",
     "ovl_bounce": "Random bounce",
-    "tooltip_ovl_bounce": "Image continuously bounces across the video within boundaries or crop area"
+    "tooltip_ovl_bounce": "Image continuously bounces across the video within boundaries or crop area",
+    "ovl_drop_placeholder": "Drag image here...",
+    "tooltip_overlay_drop_field": "Drag image file (PNG, JPG, GIF, WebP) or click to browse"
 }

@@ -134,6 +134,7 @@ def build():
         "modules.sorter.viewer_views",
         "modules.shared",
         "modules.shared.ui_theme",
+        "modules.shared.ui_components",
         "modules.shared.ui_global_settings",
         "modules.cleaner.logic_orb",
         "modules.cleaner.ui_ai_tab",

@@ -1,8 +1,8 @@
 """
 Global Settings & Cache Manager Dialog for Media Keeper.
 Provides centralized management for:
-- Tab 1: General (Interface language, DirectML GPU acceleration, AI models status & downloader, FFmpeg status & downloader, System logs)
-- Tab 2: Sorter (Directories, recursion, max depth, pagination, auto-collapse groups, list delay, extension filters, affixes)
+- Tab 1: General (Interface language, DirectML GPU acceleration, AI models status & downloader, FFmpeg status & size & downloader, System logs)
+- Tab 2: Sorter (Directories, recursion, max depth, pagination, auto-collapse groups, list delay, extension filters)
 - Tab 3: Hotkeys (Full hotkey remapping table, capture buttons, conflict resolution, reset to defaults)
 - Tab 4: Cache & Databases (Visual table of all project caches, disk usage with WAL/SHM, background clearing)
 """
@@ -16,9 +16,9 @@ from typing import Dict, List, Any, Optional
 
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QTabWidget,
-    QWidget, QLabel, QPushButton, QComboBox, QCheckBox, QSpinBox, QDoubleSpinBox,
-    QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView,
-    QProgressBar, QFileDialog, QFrame, QScrollArea, QSizePolicy
+    QWidget, QLabel, QPushButton, QComboBox, QLineEdit,
+    QTableWidget, QTableWidgetItem, QHeaderView,
+    QProgressBar, QFrame, QScrollArea, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize
 from PyQt6.QtGui import QDesktopServices, QIcon, QFont, QKeySequence
@@ -34,6 +34,9 @@ from modules.shared.ui_theme import (
     TEXT_PRIMARY, TEXT_SECONDARY, TEXT_BODY, TEXT_MUTED,
     COLOR_PRIMARY, COLOR_PRIMARY_HOVER, COLOR_SUCCESS, COLOR_SUCCESS_HOVER,
     COLOR_DANGER, COLOR_DANGER_HOVER, COLOR_WARNING
+)
+from modules.shared.ui_components import (
+    StyledCheckBox, StyledSpinBox, StyledDoubleSpinBox, PathPickerWidget
 )
 from modules.sorter.ui_dialog_settings import HotkeyCaptureButton
 from modules.sorter.logic_hotkeys import HotkeyRegistry, _SORTER_ACTIONS
@@ -205,7 +208,6 @@ def is_scanner_active(parent_widget=None) -> bool:
     """Check if any background file scanning or heavy processing is currently active."""
     if not parent_widget:
         return False
-    # Check parent (MediaKeeperShell)
     cleaner = getattr(parent_widget, "_cleaner_tab", None)
     if cleaner:
         if getattr(cleaner, "finder_dupes", None) and cleaner.finder_dupes.isRunning():
@@ -334,7 +336,6 @@ class GlobalSettingsDialog(QDialog):
         self.refresh_cache_stats()
 
     def _init_registry(self):
-        """Retrieve existing HotkeyRegistry from parent sorter tab or create a local copy."""
         parent = self.parent()
         registry = None
         if parent:
@@ -346,7 +347,6 @@ class GlobalSettingsDialog(QDialog):
         if registry:
             self.registry = registry
         else:
-            # Standalone fallback registry
             self.registry = HotkeyRegistry("sorter")
             for action in _SORTER_ACTIONS:
                 self.registry.register(action)
@@ -391,38 +391,6 @@ class GlobalSettingsDialog(QDialog):
                 background-color: {BG_INPUT};
                 selection-background-color: {COLOR_PRIMARY};
                 outline: 0;
-            }}
-            QSpinBox, QDoubleSpinBox {{
-                background-color: {BG_INPUT};
-                color: {TEXT_PRIMARY};
-                padding: 5px 8px;
-                border: 1px solid {BORDER_MEDIUM};
-                border-radius: 4px;
-                font-size: 13px;
-                font-weight: bold;
-            }}
-            QCheckBox {{
-                color: {TEXT_PRIMARY};
-                font-size: 13px;
-                font-weight: bold;
-                spacing: 8px;
-                background: transparent;
-            }}
-            QCheckBox::indicator {{
-                width: 16px;
-                height: 16px;
-                border: 1px solid #6b7280;
-                border-radius: 3px;
-                background-color: #374151;
-            }}
-            QCheckBox::indicator:hover {{
-                border-color: {COLOR_PRIMARY};
-                background-color: #4b5563;
-            }}
-            QCheckBox::indicator:checked {{
-                background-color: {COLOR_PRIMARY};
-                border-color: {COLOR_PRIMARY};
-                image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0id2hpdGUiPjxwYXRoIGQ9Ik0xMy44NiAzLjY2YS41LjUgMCAwIDEgLjA4LjdsLTcgOGEuNS41IDAgMCAxLS43MiAwbC0zLjUtNGEuNS41IDAgMSAxIC43Ni0uNjRMNi41IDExLjIybDYuNjYtNy42YS41LjUgMCAwIDEgLjctLjA2eiIvPjwvc3ZnPg==);
             }}
             QTabWidget::panel {{
                 border: 1px solid {BORDER_DEFAULT};
@@ -595,7 +563,7 @@ class GlobalSettingsDialog(QDialog):
         lbl_gpu_header.setStyleSheet(f"font-size: 13px; font-weight: bold; color: {COLOR_PRIMARY};")
         sec_gpu.addWidget(lbl_gpu_header)
 
-        self.chk_directml = QCheckBox(AppContext.tr("glob_gpu_checkbox"))
+        self.chk_directml = StyledCheckBox(AppContext.tr("glob_gpu_checkbox"))
         sec_gpu.addWidget(self.chk_directml)
 
         self.lbl_gpu_status = QLabel("")
@@ -632,7 +600,7 @@ class GlobalSettingsDialog(QDialog):
 
         self._add_separator(layout)
 
-        # 4. FFmpeg Codecs
+        # 4. FFmpeg Codecs (with size display)
         sec_ffmpeg = QVBoxLayout()
         sec_ffmpeg.setSpacing(6)
         lbl_ffmpeg_header = QLabel(AppContext.tr("glob_ffmpeg_title"))
@@ -721,7 +689,7 @@ class GlobalSettingsDialog(QDialog):
         # AI Models status
         self._refresh_models_status()
 
-        # FFmpeg status
+        # FFmpeg status (with size in MB)
         self._refresh_ffmpeg_status()
 
         # Logs disk size
@@ -744,9 +712,14 @@ class GlobalSettingsDialog(QDialog):
             self.btn_download_models.show()
 
     def _refresh_ffmpeg_status(self):
-        is_ready, _ = check_ffmpeg_available()
+        is_ready, exe_path = check_ffmpeg_available()
         if is_ready:
-            self.lbl_ffmpeg_status.setText(AppContext.tr("glob_ffmpeg_ready"))
+            bin_dir = get_ffmpeg_bin_dir()
+            ffmpeg_size = calc_folder_size(bin_dir)
+            if ffmpeg_size == 0 and exe_path and os.path.exists(exe_path):
+                ffmpeg_size = os.path.getsize(exe_path)
+            size_str = format_size(ffmpeg_size) if ffmpeg_size > 0 else "OK"
+            self.lbl_ffmpeg_status.setText(f"{AppContext.tr('glob_ffmpeg_ready')} ({size_str})")
             self.lbl_ffmpeg_status.setStyleSheet(f"color: {COLOR_SUCCESS}; font-weight: bold; font-size: 13px;")
             self.btn_download_ffmpeg.hide()
         else:
@@ -880,91 +853,93 @@ class GlobalSettingsDialog(QDialog):
         # Sort Path
         lbl_sort = QLabel(AppContext.tr("glob_sorter_sort_path"))
         layout.addWidget(lbl_sort)
-        row_sort = QHBoxLayout()
-        row_sort.setSpacing(6)
-        self.e_sort_path = QLineEdit()
-        row_sort.addWidget(self.e_sort_path, stretch=1)
-        btn_browse_sort = QPushButton(AppContext.tr("btn_browse"))
-        btn_browse_sort.clicked.connect(self._browse_sort_path)
-        row_sort.addWidget(btn_browse_sort)
-        btn_clear_sort = QPushButton("🗑️")
-        btn_clear_sort.setFixedWidth(36)
-        btn_clear_sort.setToolTip("Очистить путь" if AppContext.is_ru() else "Clear path")
-        btn_clear_sort.clicked.connect(lambda: self.e_sort_path.setText(""))
-        row_sort.addWidget(btn_clear_sort)
-        layout.addLayout(row_sort)
+        self.picker_sort = PathPickerWidget(
+            initial_path=self.sorter_config.get("path_sort", ""),
+            dialog_title=AppContext.tr("glob_sorter_sort_path"),
+            is_folder=True
+        )
+        layout.addWidget(self.picker_sort)
 
         # Trash Path
         lbl_todel = QLabel(AppContext.tr("glob_sorter_todel_path"))
         layout.addWidget(lbl_todel)
-        row_todel = QHBoxLayout()
-        row_todel.setSpacing(6)
-        self.e_todel_path = QLineEdit()
-        row_todel.addWidget(self.e_todel_path, stretch=1)
-        btn_browse_todel = QPushButton(AppContext.tr("btn_browse"))
-        btn_browse_todel.clicked.connect(self._browse_todel_path)
-        row_todel.addWidget(btn_browse_todel)
-        btn_clear_todel = QPushButton("🗑️")
-        btn_clear_todel.setFixedWidth(36)
-        btn_clear_todel.setToolTip("Очистить путь" if AppContext.is_ru() else "Clear path")
-        btn_clear_todel.clicked.connect(lambda: self.e_todel_path.setText(""))
-        row_todel.addWidget(btn_clear_todel)
-        layout.addLayout(row_todel)
+        self.picker_todel = PathPickerWidget(
+            initial_path=self.sorter_config.get("path_todel", ""),
+            dialog_title=AppContext.tr("glob_sorter_todel_path"),
+            is_folder=True
+        )
+        layout.addWidget(self.picker_todel)
 
         self._add_separator(layout)
 
-        # 2. Scanning & Pagination
+        # 2. Key Setting: Pagination on its own full-width row
+        row_pag = QHBoxLayout()
+        row_pag.setSpacing(12)
+        lbl_pag = QLabel(AppContext.tr("glob_sorter_pagination"))
+        lbl_pag.setStyleSheet("font-weight: bold; font-size: 13px;")
+        row_pag.addWidget(lbl_pag)
+        self.spin_pagination = StyledSpinBox(
+            min_val=50,
+            max_val=5000,
+            step=100,
+            value=int(self.sorter_config.get("pagination_size", 1000))
+        )
+        self.spin_pagination.setFixedWidth(130)
+        row_pag.addWidget(self.spin_pagination)
+        row_pag.addStretch()
+        layout.addLayout(row_pag)
+
+        self._add_separator(layout)
+
+        # 3. Scanning & Display Options
         grid_opts = QGridLayout()
         grid_opts.setHorizontalSpacing(16)
         grid_opts.setVerticalSpacing(12)
 
-        self.chk_scan_subfolders = QCheckBox(AppContext.tr("glob_sorter_scan_subfolders"))
+        self.chk_scan_subfolders = StyledCheckBox(AppContext.tr("glob_sorter_scan_subfolders"))
+        self.chk_scan_subfolders.setChecked(bool(self.sorter_config.get("scan_subfolders", False)))
         grid_opts.addWidget(self.chk_scan_subfolders, 0, 0)
 
         row_depth = QHBoxLayout()
         row_depth.setSpacing(8)
         lbl_depth = QLabel(AppContext.tr("glob_sorter_nesting_depth"))
         row_depth.addWidget(lbl_depth)
-        self.spin_depth = QSpinBox()
-        self.spin_depth.setRange(1, 50)
+        self.spin_depth = StyledSpinBox(
+            min_val=1,
+            max_val=50,
+            step=1,
+            value=int(self.sorter_config.get("max_nesting_depth", 5))
+        )
         self.spin_depth.setFixedWidth(90)
         row_depth.addWidget(self.spin_depth)
         row_depth.addStretch()
         grid_opts.addLayout(row_depth, 0, 1)
 
-        self.chk_auto_collapse = QCheckBox(AppContext.tr("glob_sorter_collapse_groups"))
+        self.chk_auto_collapse = StyledCheckBox(AppContext.tr("glob_sorter_collapse_groups"))
+        self.chk_auto_collapse.setChecked(bool(self.sorter_config.get("auto_collapse_groups", True)))
         grid_opts.addWidget(self.chk_auto_collapse, 1, 0)
-
-        row_pag = QHBoxLayout()
-        row_pag.setSpacing(8)
-        lbl_pag = QLabel(AppContext.tr("glob_sorter_pagination"))
-        row_pag.addWidget(lbl_pag)
-        self.spin_pagination = QSpinBox()
-        self.spin_pagination.setRange(50, 5000)
-        self.spin_pagination.setSingleStep(100)
-        self.spin_pagination.setFixedWidth(90)
-        row_pag.addWidget(self.spin_pagination)
-        row_pag.addStretch()
-        grid_opts.addLayout(row_pag, 1, 1)
 
         row_delay = QHBoxLayout()
         row_delay.setSpacing(8)
         lbl_delay = QLabel(AppContext.tr("glob_sorter_list_delay"))
         row_delay.addWidget(lbl_delay)
-        self.spin_list_delay = QDoubleSpinBox()
-        self.spin_list_delay.setRange(0.0, 10.0)
-        self.spin_list_delay.setSingleStep(0.1)
-        self.spin_list_delay.setDecimals(2)
+        self.spin_list_delay = StyledDoubleSpinBox(
+            min_val=0.0,
+            max_val=10.0,
+            step=0.1,
+            decimals=2,
+            value=float(self.sorter_config.get("list_view_delay", 0.0))
+        )
         self.spin_list_delay.setFixedWidth(90)
         row_delay.addWidget(self.spin_list_delay)
         row_delay.addStretch()
-        grid_opts.addLayout(row_delay, 2, 0, 1, 2)
+        grid_opts.addLayout(row_delay, 1, 1)
 
         layout.addLayout(grid_opts)
 
         self._add_separator(layout)
 
-        # 3. Filters Section
+        # 4. Filters Section
         lbl_filter_header = QLabel("Фильтрация файлов" if AppContext.is_ru() else "File Filtering")
         lbl_filter_header.setStyleSheet(f"font-size: 13px; font-weight: bold; color: {COLOR_PRIMARY};")
         layout.addWidget(lbl_filter_header)
@@ -974,33 +949,20 @@ class GlobalSettingsDialog(QDialog):
         lbl_filter_exts = QLabel(AppContext.tr("glob_sorter_filter_exts"))
         row_filter.addWidget(lbl_filter_exts)
         self.e_filter_exts = QLineEdit()
+        self.e_filter_exts.setText(self.sorter_config.get("filter_extensions", ""))
         self.e_filter_exts.setPlaceholderText("например: png, jpg, mp4" if AppContext.is_ru() else "e.g. png, jpg, mp4")
         row_filter.addWidget(self.e_filter_exts, stretch=1)
 
         self.cb_filter_mode = QComboBox()
         self.cb_filter_mode.addItem(AppContext.tr("glob_sorter_filter_inc"), "include")
         self.cb_filter_mode.addItem(AppContext.tr("glob_sorter_filter_exc"), "exclude")
+        f_mode = self.sorter_config.get("filter_mode", "include")
+        for i in range(self.cb_filter_mode.count()):
+            if self.cb_filter_mode.itemData(i) == f_mode:
+                self.cb_filter_mode.setCurrentIndex(i)
+                break
         row_filter.addWidget(self.cb_filter_mode)
         layout.addLayout(row_filter)
-
-        self._add_separator(layout)
-
-        # 4. Affix Section
-        lbl_affix_header = QLabel(AppContext.tr("glob_sorter_affix_title"))
-        lbl_affix_header.setStyleSheet(f"font-size: 13px; font-weight: bold; color: {COLOR_PRIMARY};")
-        layout.addWidget(lbl_affix_header)
-
-        row_affix = QHBoxLayout()
-        row_affix.setSpacing(10)
-        self.cb_affix_mode = QComboBox()
-        self.cb_affix_mode.addItem("Префикс" if AppContext.is_ru() else "Prefix", "prefix")
-        self.cb_affix_mode.addItem("Суффикс" if AppContext.is_ru() else "Suffix", "suffix")
-        row_affix.addWidget(self.cb_affix_mode)
-
-        self.e_affix_text = QLineEdit()
-        self.e_affix_text.setPlaceholderText("Текст аффикса..." if AppContext.is_ru() else "Affix text...")
-        row_affix.addWidget(self.e_affix_text, stretch=1)
-        layout.addLayout(row_affix)
 
         layout.addStretch()
 
@@ -1010,8 +972,8 @@ class GlobalSettingsDialog(QDialog):
         outer_l.addWidget(scroll)
 
     def _load_sorter_settings(self):
-        self.e_sort_path.setText(self.sorter_config.get("path_sort", ""))
-        self.e_todel_path.setText(self.sorter_config.get("path_todel", ""))
+        self.picker_sort.setText(self.sorter_config.get("path_sort", ""))
+        self.picker_todel.setText(self.sorter_config.get("path_todel", ""))
         self.chk_scan_subfolders.setChecked(bool(self.sorter_config.get("scan_subfolders", False)))
         self.spin_depth.setValue(int(self.sorter_config.get("max_nesting_depth", 5)))
         self.spin_pagination.setValue(int(self.sorter_config.get("pagination_size", 1000)))
@@ -1024,25 +986,6 @@ class GlobalSettingsDialog(QDialog):
             if self.cb_filter_mode.itemData(i) == f_mode:
                 self.cb_filter_mode.setCurrentIndex(i)
                 break
-
-        a_mode = self.sorter_config.get("affix_mode", "prefix")
-        for i in range(self.cb_affix_mode.count()):
-            if self.cb_affix_mode.itemData(i) == a_mode:
-                self.cb_affix_mode.setCurrentIndex(i)
-                break
-        self.e_affix_text.setText(self.sorter_config.get("affix_text", ""))
-
-    def _browse_sort_path(self):
-        cur = self.e_sort_path.text() or ""
-        folder = QFileDialog.getExistingDirectory(self, AppContext.tr("btn_browse"), cur)
-        if folder:
-            self.e_sort_path.setText(folder)
-
-    def _browse_todel_path(self):
-        cur = self.e_todel_path.text() or ""
-        folder = QFileDialog.getExistingDirectory(self, AppContext.tr("btn_browse"), cur)
-        if folder:
-            self.e_todel_path.setText(folder)
 
     # -------------------------------------------------------------------------
     # TAB 3: HOTKEYS
@@ -1196,9 +1139,9 @@ class GlobalSettingsDialog(QDialog):
         self.table_cache.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.table_cache.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.table_cache.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
-        self.table_cache.setColumnWidth(3, 140)
+        self.table_cache.setColumnWidth(3, 170)
         self.table_cache.verticalHeader().setVisible(False)
-        self.table_cache.verticalHeader().setDefaultSectionSize(40)
+        self.table_cache.verticalHeader().setDefaultSectionSize(42)
         self.table_cache.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table_cache.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table_cache, stretch=1)
@@ -1280,10 +1223,10 @@ class GlobalSettingsDialog(QDialog):
             item_size.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table_cache.setItem(row_idx, 2, item_size)
 
-            # Col 3: Action button (Single clean wide button)
+            # Col 3: Action button (Comfortably sized, fully visible)
             cell_widget = QWidget()
             cell_layout = QHBoxLayout(cell_widget)
-            cell_layout.setContentsMargins(4, 2, 4, 2)
+            cell_layout.setContentsMargins(6, 4, 6, 4)
             cell_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
             btn_clr = QPushButton(f"🗑️ {AppContext.tr('glob_btn_clear')}")
@@ -1292,11 +1235,11 @@ class GlobalSettingsDialog(QDialog):
                     color: #fca5a5;
                     border: 1px solid {COLOR_DANGER};
                     background-color: #2a1515;
-                    padding: 5px 14px;
+                    padding: 5px 16px;
                     border-radius: 4px;
-                    font-size: 11px;
+                    font-size: 12px;
                     font-weight: bold;
-                    min-width: 100px;
+                    min-width: 120px;
                 }}
                 QPushButton:hover {{
                     background-color: {COLOR_DANGER};
@@ -1385,8 +1328,8 @@ class GlobalSettingsDialog(QDialog):
         self.sorter_config["use_directml"] = use_dml
 
         # 3. Save Sorter settings
-        self.sorter_config["path_sort"] = self.e_sort_path.text().strip()
-        self.sorter_config["path_todel"] = self.e_todel_path.text().strip()
+        self.sorter_config["path_sort"] = self.picker_sort.text()
+        self.sorter_config["path_todel"] = self.picker_todel.text()
         self.sorter_config["scan_subfolders"] = self.chk_scan_subfolders.isChecked()
         self.sorter_config["max_nesting_depth"] = self.spin_depth.value()
         self.sorter_config["pagination_size"] = self.spin_pagination.value()
@@ -1394,8 +1337,6 @@ class GlobalSettingsDialog(QDialog):
         self.sorter_config["list_view_delay"] = self.spin_list_delay.value()
         self.sorter_config["filter_extensions"] = self.e_filter_exts.text().strip()
         self.sorter_config["filter_mode"] = self.cb_filter_mode.currentData()
-        self.sorter_config["affix_mode"] = self.cb_affix_mode.currentData()
-        self.sorter_config["affix_text"] = self.e_affix_text.text().strip()
 
         # 4. Save Hotkeys overrides
         if self.registry:

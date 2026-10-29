@@ -174,7 +174,27 @@ class VideoEditorWorker(QThread):
                             filter_complex.append(f"[1:v]scale={w}:{h}[img_scaled]")
                             opacity = ovl.get('opacity', 1.0)
                             filter_complex.append(f"[img_scaled]format=rgba,colorchannelmixer=aa={opacity}[img_ready]")
-                            filter_complex.append(f"{current_v_label}[img_ready]overlay={x}:{y}[v_ovl]")
+                            if ovl.get('bounce'):
+                                if self.s.get('crop'):
+                                    c = self.s['crop']
+                                    cx = max(0, int(c['x']))
+                                    cy = max(0, int(c['y']))
+                                    cw = max(1, int(c['w']))
+                                    ch = max(1, int(c['h']))
+                                else:
+                                    cx = 0
+                                    cy = 0
+                                    cw = orig_w
+                                    ch = orig_h
+                                span_x = max(1, cw - w)
+                                span_y = max(1, ch - h)
+                                vx = 2.0 * span_x / 7.0
+                                vy = 2.0 * span_y / 5.3
+                                x_expr = f"{cx}+{span_x}-abs(mod(t*{vx:.2f}\,{2*span_x})-{span_x})"
+                                y_expr = f"{cy}+{span_y}-abs(mod(t*{vy:.2f}\,{2*span_y})-{span_y})"
+                                filter_complex.append(f"{current_v_label}[img_ready]overlay=x='{x_expr}':y='{y_expr}'[v_ovl]")
+                            else:
+                                filter_complex.append(f"{current_v_label}[img_ready]overlay={x}:{y}[v_ovl]")
                             current_v_label = "[v_ovl]"
                             
                     # Color Correction
@@ -320,7 +340,27 @@ class VideoEditorWorker(QThread):
                     filter_complex.append(f"[1:v]scale={w}:{h}[img_scaled]")
                     opacity = ovl.get('opacity', 1.0)
                     filter_complex.append(f"[img_scaled]format=rgba,colorchannelmixer=aa={opacity}[img_ready]")
-                    filter_complex.append(f"{current_v_label}[img_ready]overlay={x}:{y}[v_ovl]")
+                    if ovl.get('bounce'):
+                        if self.s.get('crop'):
+                            c = self.s['crop']
+                            cx = max(0, int(c['x']))
+                            cy = max(0, int(c['y']))
+                            cw = max(1, int(c['w']))
+                            ch = max(1, int(c['h']))
+                        else:
+                            cx = 0
+                            cy = 0
+                            cw = orig_w
+                            ch = orig_h
+                        span_x = max(1, cw - w)
+                        span_y = max(1, ch - h)
+                        vx = 2.0 * span_x / 7.0
+                        vy = 2.0 * span_y / 5.3
+                        x_expr = f"{cx}+{span_x}-abs(mod(t*{vx:.2f}\,{2*span_x})-{span_x})"
+                        y_expr = f"{cy}+{span_y}-abs(mod(t*{vy:.2f}\,{2*span_y})-{span_y})"
+                        filter_complex.append(f"{current_v_label}[img_ready]overlay=x='{x_expr}':y='{y_expr}'[v_ovl]")
+                    else:
+                        filter_complex.append(f"{current_v_label}[img_ready]overlay={x}:{y}[v_ovl]")
                     current_v_label = "[v_ovl]"
 
             # Color Correction

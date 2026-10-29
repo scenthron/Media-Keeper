@@ -852,9 +852,13 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         # Replacement container instead of QStackedWidget for image overlay
         self.widget_overlay_img = QWidget()
         self.widget_overlay_img.setStyleSheet("background: transparent; border: none; margin: 0; padding: 0;")
-        pg_img_l = QHBoxLayout(self.widget_overlay_img)
+        pg_img_l = QVBoxLayout(self.widget_overlay_img)
         pg_img_l.setContentsMargins(0, 0, 0, 0)
-        pg_img_l.setSpacing(5)
+        pg_img_l.setSpacing(6)
+        
+        row_img_btns = QHBoxLayout()
+        row_img_btns.setContentsMargins(0, 0, 0, 0)
+        row_img_btns.setSpacing(5)
         self.btn_overlay_select_img = QPushButton(AppContext.tr("ovl_btn_select"))
         self.btn_overlay_select_img.clicked.connect(self._select_overlay_image)
         self.btn_overlay_select_img.setStyleSheet("QPushButton { background: #333; border: 1px solid #444; color: white; border-radius: 4px; padding: 4px; font-size: 11px; } QPushButton:hover { background: #444; }")
@@ -873,10 +877,19 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.btn_overlay_img_reset.setStyleSheet("QPushButton { background: #333; color: white; border-radius: 3px; } QPushButton:hover { background: #444; }")
         self.btn_overlay_img_reset.setToolTip("Сбросить размер" if AppContext.is_ru() else "Reset size")
         self.btn_overlay_img_reset.hide()
-        pg_img_l.addWidget(self.btn_overlay_select_img)
-        pg_img_l.addWidget(self.lbl_overlay_img_name)
-        pg_img_l.addWidget(self.btn_overlay_img_del)
-        pg_img_l.addWidget(self.btn_overlay_img_reset)
+        row_img_btns.addWidget(self.btn_overlay_select_img)
+        row_img_btns.addWidget(self.lbl_overlay_img_name)
+        row_img_btns.addWidget(self.btn_overlay_img_del)
+        row_img_btns.addWidget(self.btn_overlay_img_reset)
+        pg_img_l.addLayout(row_img_btns)
+
+        # Чекбокс отскакивающего / случайного движения изображения
+        self.chk_overlay_bounce = QCheckBox(AppContext.tr("ovl_bounce"))
+        self.chk_overlay_bounce.setStyleSheet(f"QCheckBox {{ border: none; background: transparent; color: #eee; font-size: 11px; }} QCheckBox::indicator {{ width: 14px; height: 14px; border: 1px solid #555; background: #333; border-radius: 3px; }} QCheckBox::indicator:checked {{ background-color: {APP_DESIGN['accent_color']}; border-color: {APP_DESIGN['accent_color']}; }} QCheckBox:disabled {{ color: #555; }}")
+        self.chk_overlay_bounce.setToolTip(AppContext.tr("tooltip_ovl_bounce"))
+        self.chk_overlay_bounce.toggled.connect(self._on_overlay_bounce_toggled)
+        pg_img_l.addWidget(self.chk_overlay_bounce)
+
         lay_overlay.addWidget(self.widget_overlay_img)
 
         # Replacement container instead of QStackedWidget for region overlay
@@ -1320,7 +1333,9 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.cc_contrast = 1.0
         self.cc_saturation = 1.0
         self.chk_overlay_enable.setChecked(False)
-        self.chk_overlay_enable.setEnabled(False) 
+        self.chk_overlay_enable.setEnabled(False)
+        if hasattr(self, 'chk_overlay_bounce'):
+            self.chk_overlay_bounce.setChecked(False) 
         self.slider_overlay_val.setValue(100)
         self.overlay_enabled = False
         self.overlay_type = "region"
@@ -1359,6 +1374,8 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         
         self.chk_overlay_enable.setChecked(False)
         self.chk_overlay_enable.setEnabled(False)
+        if hasattr(self, 'chk_overlay_bounce'):
+            self.chk_overlay_bounce.setChecked(False)
         self.btn_crop.setEnabled(False)
         for b in [self.btn_rot_ccw, self.btn_rot_cw, self.btn_flip_h, self.btn_flip_v]:
             b.setEnabled(False)
@@ -1864,6 +1881,9 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.btn_overlay_img_del.setToolTip(AppContext.tr("tooltip_overlay_img_del"))
         self.btn_overlay_img_reset.setToolTip(AppContext.tr("tooltip_overlay_img_reset"))
         self.btn_overlay_color.setToolTip(AppContext.tr("tooltip_overlay_color"))
+        if hasattr(self, 'chk_overlay_bounce'):
+            self.chk_overlay_bounce.setText(AppContext.tr("ovl_bounce"))
+            self.chk_overlay_bounce.setToolTip(AppContext.tr("tooltip_ovl_bounce"))
         
         self.combo_overlay_type.setToolTip(AppContext.tr("tooltip_overlay_type"))
         self.edit_marker_time.setToolTip(AppContext.tr("tooltip_marker_time"))

@@ -29,6 +29,9 @@ class EditorPlaybackMixin:
         # Real-time synchronization of marker time field with playback cursor
         if hasattr(self, 'edit_marker_time') and not self.edit_marker_time.hasFocus():
             self.edit_marker_time.setText(self._to_hms_full(pos))
+
+        if hasattr(self, '_update_bouncing_overlay_pos'):
+            self._update_bouncing_overlay_pos(pos)
         
         if self._is_preview_mode:
             markers = self.waveform_progress.markers

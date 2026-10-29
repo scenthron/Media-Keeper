@@ -321,6 +321,9 @@ class EditorCropMixin:
         self._update_crop_spins_from_handles()
         self._update_dimming()
         self._check_start_readiness()
+        if hasattr(self, '_update_bouncing_overlay_pos'):
+            pos = self.player.position() if hasattr(self, 'player') and self.player else 0
+            self._update_bouncing_overlay_pos(pos)
 
     def _get_crop_stripe_brush(self, is_locked):
         from PyQt6.QtGui import QPixmap, QPainter, QColor, QPen, QBrush

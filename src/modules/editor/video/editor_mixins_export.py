@@ -140,7 +140,8 @@ class EditorExportMixin:
                     'opacity': self.overlay_item._opacity,
                     'color': self.overlay_item._color.name() if self.overlay_type == 'region' else None,
                     'path': self.overlay_image_path if self.overlay_type == 'image' else None,
-                    'blur_val': self.slider_overlay_val.value() if self.overlay_type == 'blur' else 0
+                    'blur_val': self.slider_overlay_val.value() if self.overlay_type == 'blur' else 0,
+                    'bounce': self.chk_overlay_bounce.isChecked() if hasattr(self, 'chk_overlay_bounce') else False
                 }
 
         return {

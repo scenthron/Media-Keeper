@@ -157,3 +157,65 @@ class EditorOverlayMixin:
             self.btn_overlay_color.setStyleSheet(f"background: {c.name()}; border: 1px solid #888;")
             self.overlay_item.set_color(c)
             self._schedule_cc_preview()
+
+    def _on_overlay_bounce_toggled(self, checked: bool) -> None:
+        """Переключение режима отскакивающего/случайного движения водяного знака."""
+        if checked:
+            self._saved_static_overlay_pos = self.overlay_item.pos()
+            pos = self.player.position() if hasattr(self, 'player') and self.player else 0
+            self._update_bouncing_overlay_pos(pos)
+        else:
+            if hasattr(self, '_saved_static_overlay_pos') and self._saved_static_overlay_pos is not None:
+                self.overlay_item.setPos(self._saved_static_overlay_pos)
+        self._schedule_cc_preview()
+
+    def _update_bouncing_overlay_pos(self, pos_ms: int) -> None:
+        """Обновление позиции логотипа по траектории отскока от границ кадра (или кропа)."""
+        if not getattr(self, 'overlay_enabled', False):
+            return
+        if getattr(self, 'overlay_type', None) != 'image':
+            return
+        if not hasattr(self, 'chk_overlay_bounce') or not self.chk_overlay_bounce.isChecked():
+            return
+        if not hasattr(self, 'video_item') or not self.video_item:
+            return
+        v_rect = self.video_item.boundingRect()
+        if v_rect.isEmpty():
+            return
+
+        ovl_rect = self.overlay_item.get_rect()
+        w, h = ovl_rect.width(), ovl_rect.height()
+        if w <= 0 or h <= 0:
+            return
+
+        # Если активно кадрирование (Crop), ограничиваем движение зоной кадрирования
+        if getattr(self, 'is_cropping', False) and hasattr(self, 'handle_tl') and hasattr(self, 'handle_br'):
+            tl = self.handle_tl.pos()
+            br = self.handle_br.pos()
+            cx = max(0.0, tl.x())
+            cy = max(0.0, tl.y())
+            cw = max(1.0, br.x() - tl.x())
+            ch = max(1.0, br.y() - tl.y())
+        else:
+            cx = 0.0
+            cy = 0.0
+            cw = v_rect.width()
+            ch = v_rect.height()
+
+        span_x = max(1.0, cw - w)
+        span_y = max(1.0, ch - h)
+
+        # Несоизмеримые периоды для сложной траектории (не по одной диагонали)
+        t = pos_ms / 1000.0
+        vx = 2.0 * span_x / 7.0
+        vy = 2.0 * span_y / 5.3
+
+        mod_x = (t * vx) % (2.0 * span_x)
+        dx = abs(mod_x - span_x)
+        x = cx + (span_x - dx)
+
+        mod_y = (t * vy) % (2.0 * span_y)
+        dy = abs(mod_y - span_y)
+        y = cy + (span_y - dy)
+
+        self.overlay_item.setPos(x, y)

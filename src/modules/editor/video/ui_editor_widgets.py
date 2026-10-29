@@ -1,3 +1,4 @@
+import os
 from PyQt6.QtWidgets import QLineEdit, QFrame, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QCheckBox, QStyle, QStyleOptionSlider, QMenu
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QPointF, QRect, QSize
 from PyQt6.QtGui import QPainter, QColor, QBrush, QPen, QIcon
@@ -770,6 +771,16 @@ class OverlayDropLineEdit(QLineEdit):
                     return
         event.ignore()
 
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                p = url.toLocalFile()
+                ext = os.path.splitext(p)[1].lower()
+                if ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']:
+                    event.acceptProposedAction()
+                    return
+        event.ignore()
+
     def dragLeaveEvent(self, event):
         self.update_style(False)
         event.accept()
@@ -781,7 +792,7 @@ class OverlayDropLineEdit(QLineEdit):
                 p = url.toLocalFile()
                 ext = os.path.splitext(p)[1].lower()
                 if ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']:
-                    self.file_dropped.emit(p)
+                    self.file_dropped.emit(os.path.normpath(p))
                     event.acceptProposedAction()
                     return
         event.ignore()

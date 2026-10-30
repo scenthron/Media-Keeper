@@ -206,6 +206,7 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         
         self.overlay_item = OverlayGraphicsItem(self.video_item)
         self.overlay_item.hide()
+        self.overlay_item.geometry_changed.connect(self._on_overlay_geometry_changed)
         
         v = self.video_item
         self.crop_dim_top = QGraphicsRectItem(v)

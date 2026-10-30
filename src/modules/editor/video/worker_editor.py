@@ -151,12 +151,13 @@ class VideoEditorWorker(QThread):
                     # Overlay
                     ovl = self.s.get('overlay')
                     if ovl:
-                        x = int(ovl['x'] * orig_w)
-                        y = int(ovl['y'] * orig_h)
-                        w = int(ovl['w'] * orig_w)
-                        h = int(ovl['h'] * orig_h)
-                        w = max(1, w)
-                        h = max(1, h)
+                        cur_w, cur_h = orig_w, orig_h
+                        if rot in (90, 270):
+                            cur_w, cur_h = orig_h, orig_w
+                        x = int(ovl['x'] * cur_w)
+                        y = int(ovl['y'] * cur_h)
+                        w = max(1, int(ovl['w'] * cur_w))
+                        h = max(1, int(ovl['h'] * cur_h))
                         
                         if ovl['type'] == 'region':
                             color = ovl.get('color', '#ff0000').replace('#', '0x')
@@ -177,15 +178,18 @@ class VideoEditorWorker(QThread):
                             if ovl.get('bounce'):
                                 if self.s.get('crop'):
                                     c = self.s['crop']
-                                    cx = max(0, int(c['x']))
-                                    cy = max(0, int(c['y']))
-                                    cw = max(1, int(c['w']))
-                                    ch = max(1, int(c['h']))
+                                    sw, sh = self.s.get('video_size', (cur_w, cur_h))
+                                    sc_x = cur_w / max(1.0, float(sw))
+                                    sc_y = cur_h / max(1.0, float(sh))
+                                    cx = max(0, int(c['x'] * sc_x))
+                                    cy = max(0, int(c['y'] * sc_y))
+                                    cw = max(1, int(c['w'] * sc_x))
+                                    ch = max(1, int(c['h'] * sc_y))
                                 else:
                                     cx = 0
                                     cy = 0
-                                    cw = orig_w
-                                    ch = orig_h
+                                    cw = cur_w
+                                    ch = cur_h
                                 span_x = max(1, cw - w)
                                 span_y = max(1, ch - h)
                                 speed_mult = ovl.get('bounce_speed', 1.0)
@@ -196,8 +200,8 @@ class VideoEditorWorker(QThread):
                                 v = base_v * speed_mult
                                 vx = max(1.0, v * math.cos(rad))
                                 vy = max(1.0, v * math.sin(rad))
-                                x_expr = f"{cx}+{span_x}-abs(mod(t*{vx:.2f}\,{2*span_x})-{span_x})"
-                                y_expr = f"{cy}+{span_y}-abs(mod(t*{vy:.2f}\,{2*span_y})-{span_y})"
+                                x_expr = rf"{cx}+{span_x}-abs(mod(t*{vx:.2f}\,{2*span_x})-{span_x})"
+                                y_expr = rf"{cy}+{span_y}-abs(mod(t*{vy:.2f}\,{2*span_y})-{span_y})"
                                 filter_complex.append(f"{current_v_label}[img_ready]overlay=x='{x_expr}':y='{y_expr}'[v_ovl]")
                             else:
                                 filter_complex.append(f"{current_v_label}[img_ready]overlay={x}:{y}[v_ovl]")
@@ -323,12 +327,13 @@ class VideoEditorWorker(QThread):
             # Overlay
             ovl = self.s.get('overlay')
             if ovl:
-                x = int(ovl['x'] * orig_w)
-                y = int(ovl['y'] * orig_h)
-                w = int(ovl['w'] * orig_w)
-                h = int(ovl['h'] * orig_h)
-                w = max(1, w)
-                h = max(1, h)
+                cur_w, cur_h = orig_w, orig_h
+                if rot in (90, 270):
+                    cur_w, cur_h = orig_h, orig_w
+                x = int(ovl['x'] * cur_w)
+                y = int(ovl['y'] * cur_h)
+                w = max(1, int(ovl['w'] * cur_w))
+                h = max(1, int(ovl['h'] * cur_h))
                 
                 if ovl['type'] == 'region':
                     color = ovl.get('color', '#ff0000').replace('#', '0x')
@@ -349,15 +354,18 @@ class VideoEditorWorker(QThread):
                     if ovl.get('bounce'):
                         if self.s.get('crop'):
                             c = self.s['crop']
-                            cx = max(0, int(c['x']))
-                            cy = max(0, int(c['y']))
-                            cw = max(1, int(c['w']))
-                            ch = max(1, int(c['h']))
+                            sw, sh = self.s.get('video_size', (cur_w, cur_h))
+                            sc_x = cur_w / max(1.0, float(sw))
+                            sc_y = cur_h / max(1.0, float(sh))
+                            cx = max(0, int(c['x'] * sc_x))
+                            cy = max(0, int(c['y'] * sc_y))
+                            cw = max(1, int(c['w'] * sc_x))
+                            ch = max(1, int(c['h'] * sc_y))
                         else:
                             cx = 0
                             cy = 0
-                            cw = orig_w
-                            ch = orig_h
+                            cw = cur_w
+                            ch = cur_h
                         span_x = max(1, cw - w)
                         span_y = max(1, ch - h)
                         speed_mult = ovl.get('bounce_speed', 1.0)
@@ -368,8 +376,8 @@ class VideoEditorWorker(QThread):
                         v = base_v * speed_mult
                         vx = max(1.0, v * math.cos(rad))
                         vy = max(1.0, v * math.sin(rad))
-                        x_expr = f"{cx}+{span_x}-abs(mod(t*{vx:.2f}\,{2*span_x})-{span_x})"
-                        y_expr = f"{cy}+{span_y}-abs(mod(t*{vy:.2f}\,{2*span_y})-{span_y})"
+                        x_expr = rf"{cx}+{span_x}-abs(mod(t*{vx:.2f}\,{2*span_x})-{span_x})"
+                        y_expr = rf"{cy}+{span_y}-abs(mod(t*{vy:.2f}\,{2*span_y})-{span_y})"
                         filter_complex.append(f"{current_v_label}[img_ready]overlay=x='{x_expr}':y='{y_expr}'[v_ovl]")
                     else:
                         filter_complex.append(f"{current_v_label}[img_ready]overlay={x}:{y}[v_ovl]")

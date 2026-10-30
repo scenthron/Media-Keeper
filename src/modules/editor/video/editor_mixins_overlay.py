@@ -224,6 +224,14 @@ class EditorOverlayMixin:
             self._update_bouncing_overlay_pos(pos)
         self._schedule_cc_preview()
 
+    def _on_overlay_geometry_changed(self) -> None:
+        """Вызывается при интерактивном изменении размера или перемещении оверлея на холсте."""
+        if hasattr(self, 'chk_overlay_bounce') and self.chk_overlay_bounce.isChecked():
+            self._saved_static_overlay_pos = self.overlay_item.pos()
+            pos = self.player.position() if hasattr(self, 'player') and self.player else 0
+            self._update_bouncing_overlay_pos(pos)
+        self._schedule_cc_preview()
+
     def _update_bouncing_overlay_pos(self, pos_ms: int) -> None:
         """Обновление позиции логотипа по кинематике угла и скорости отскока."""
         if not getattr(self, 'overlay_enabled', False):
@@ -233,6 +241,9 @@ class EditorOverlayMixin:
         if not hasattr(self, 'chk_overlay_bounce') or not self.chk_overlay_bounce.isChecked():
             return
         if not hasattr(self, 'video_item') or not self.video_item:
+            return
+        # Не дергать позицию, пока пользователь зажал ЛКМ и изменяет размер
+        if getattr(self.overlay_item, 'is_resizing', False):
             return
         v_rect = self.video_item.boundingRect()
         if v_rect.isEmpty():

@@ -161,27 +161,7 @@ class UiSetupMixin:
             }
         """)
         
-        is_ru = (AppContext.LANG == "RU")
-        sort_options = [
-            ("name_asc", "Имя (А-Я)" if is_ru else "Name (A-Z)"),
-            ("name_desc", "Имя (Я-А)" if is_ru else "Name (Z-A)"),
-            ("type_asc", "Тип файла" if is_ru else "File Type"),
-            ("size_desc", "Размер (По убыванию)" if is_ru else "Size (Large to Small)"),
-            ("size_asc", "Размер (По возрастанию)" if is_ru else "Size (Small to Large)"),
-            ("mtime_desc", "Дата изменения (Новые)" if is_ru else "Date Modified (Newest)"),
-            ("mtime_asc", "Дата изменения (Старые)" if is_ru else "Date Modified (Oldest)"),
-            ("ctime_desc", "Дата создания (Новые)" if is_ru else "Date Created (Newest)"),
-            ("ctime_asc", "Дата создания (Старые)" if is_ru else "Date Created (Oldest)"),
-        ]
-        for key, name in sort_options:
-            self.cb_sort.addItem(name, key)
-            
-        current_sort = self.config.get("sort_type", "name_asc")
-        for idx in range(self.cb_sort.count()):
-            if self.cb_sort.itemData(idx) == current_sort:
-                self.cb_sort.setCurrentIndex(idx)
-                break
-                
+        self._rebuild_sort_combo()
         self.cb_sort.activated.connect(self._on_sort_changed)
         sort_container.addWidget(self.cb_sort)
         
@@ -191,7 +171,7 @@ class UiSetupMixin:
         self.btn_group.setCheckable(True)
         self.btn_group.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_group.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_group.setToolTip("Сортировать по группам" if is_ru else "Sort by groups")
+        self.btn_group.setToolTip(AppContext.tr("tooltip_sort_groups"))
         self.btn_group.setStyleSheet("""
             QPushButton {
                 background-color: #333333;
@@ -547,7 +527,36 @@ class UiSetupMixin:
         self._journal_dialog.show()
         self._journal_dialog.activateWindow()
 
+    def _rebuild_sort_combo(self):
+        if not hasattr(self, 'cb_sort') or not self.cb_sort:
+            return
+        current_sort = self.cb_sort.currentData() or self.config.get("sort_type", "name_asc")
+        is_ru = AppContext.is_ru()
+        sort_options = [
+            ("name_asc", "Имя (А-Я)" if is_ru else "Name (A-Z)"),
+            ("name_desc", "Имя (Я-А)" if is_ru else "Name (Z-A)"),
+            ("type_asc", "Тип файла" if is_ru else "File Type"),
+            ("size_desc", "Размер (По убыванию)" if is_ru else "Size (Large to Small)"),
+            ("size_asc", "Размер (По возрастанию)" if is_ru else "Size (Small to Large)"),
+            ("mtime_desc", "Дата изменения (Новые)" if is_ru else "Date Modified (Newest)"),
+            ("mtime_asc", "Дата изменения (Старые)" if is_ru else "Date Modified (Oldest)"),
+            ("ctime_desc", "Дата создания (Новые)" if is_ru else "Date Created (Newest)"),
+            ("ctime_asc", "Дата создания (Старые)" if is_ru else "Date Created (Oldest)"),
+        ]
+        self.cb_sort.blockSignals(True)
+        self.cb_sort.clear()
+        selected_idx = 0
+        for idx, (key, name) in enumerate(sort_options):
+            self.cb_sort.addItem(name, key)
+            if key == current_sort:
+                selected_idx = idx
+        self.cb_sort.setCurrentIndex(selected_idx)
+        self.cb_sort.blockSignals(False)
+
     def update_ui_text(self):
+        self._rebuild_sort_combo()
+        if hasattr(self, 'btn_group'):
+            self.btn_group.setToolTip(AppContext.tr("tooltip_sort_groups"))
         self.lbl_unsort_count.text_prefix_key = "lbl_unsort"
         self.lbl_unsort_count.update_info()
         self.lbl_todel_count.text_prefix_key = "lbl_todel"
@@ -600,6 +609,10 @@ class UiSetupMixin:
             
         if hasattr(self, 'viewer') and self.viewer:
             self.viewer.update_fullscreen_tooltip(self.window().isFullScreen() if self.window() else False)
+            if hasattr(self.viewer, 'update_ui_text'):
+                self.viewer.update_ui_text()
+        if hasattr(self, 'update_ui_for_virtual_folder'):
+            self.update_ui_for_virtual_folder()
             
         self.validate_controls_state()
         

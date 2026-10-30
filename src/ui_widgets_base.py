@@ -236,10 +236,12 @@ class FolderLabel(QLabel):
             hint_open = AppContext.tr('tooltip_scroll_open_hint')
             hint_settings = AppContext.tr('tooltip_right_click_menu_hint')
             
+            lbl_f = "Файлов" if AppContext.is_ru() else "Files"
+            lbl_s = "Размер" if AppContext.is_ru() else "Size"
             tooltip_text = (
                 f"{prefix} ({folder_name}):\n"
                 f"{path}\n\n"
-                f"Files: {count} | Size: {size_str}\n\n"
+                f"{lbl_f}: {count} | {lbl_s}: {size_str}\n\n"
                 f"{hint_open}\n"
                 f"{hint_settings}"
             )

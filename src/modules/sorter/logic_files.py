@@ -276,7 +276,22 @@ class FileOpsMixin:
         total_size = sum(f.get('size', 0) for f in self._raw_dir_files) if hasattr(self, '_raw_dir_files') else 0
         from utils_common import format_size
         size_str = format_size(total_size)
-        return f"{self.virtual_folder_name} ({count} файлов, {size_str})"
+        
+        folder_display = self.virtual_folder_name
+        if folder_display in ("Dropped Files", "Список файлов") and hasattr(AppContext, 'tr'):
+            folder_display = AppContext.tr("virtual_folder_dropped")
+            
+        if AppContext.is_ru():
+            if count % 10 == 1 and count % 100 != 11:
+                f_word = "файл"
+            elif 2 <= count % 10 <= 4 and (count % 100 < 10 or count % 100 >= 20):
+                f_word = "файла"
+            else:
+                f_word = "файлов"
+        else:
+            f_word = "file" if count == 1 else "files"
+            
+        return f"{folder_display} ({count} {f_word}, {size_str})"
 
     def update_ui_for_virtual_folder(self):
         if not getattr(self, 'virtual_folder_name', None): return

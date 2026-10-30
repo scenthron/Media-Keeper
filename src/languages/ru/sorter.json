@@ -183,5 +183,17 @@
   "srt_jnl_act_copy_paths": "Копировать пути (новое расположение)",
   "srt_jnl_file_not_found": "Файл не найден",
   "srt_jnl_file_not_found_desc": "Этот файл физически отсутствует на диске или был удален/перемещен.",
-  "srt_jnl_file_missing_disk": "Этот файл физически отсутствует на диске."
+  "srt_jnl_file_missing_disk": "Этот файл физически отсутствует на диске.",
+  "virtual_folder_dropped": "Список файлов",
+  "tooltip_speed_btn": "Быстрый просмотр (ЛКМ - вкл/выкл, ПКМ - настройка скорости)",
+  "tooltip_loop_media": "Повтор медиа",
+  "tooltip_sort_groups": "Сортировать по группам",
+  "tbl_select_all": "Выбрать всё",
+  "tbl_deselect_all": "Снять всё",
+  "tbl_invert": "Инвертировать",
+  "col_mark": "[X]",
+  "col_name": "Имя",
+  "col_type": "Тип",
+  "col_size": "Размер",
+  "col_date": "Дата"
 }

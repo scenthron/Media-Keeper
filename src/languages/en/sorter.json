@@ -183,5 +183,17 @@
   "srt_jnl_act_copy_paths": "Copy paths (new location)",
   "srt_jnl_file_not_found": "File not found",
   "srt_jnl_file_not_found_desc": "This file is physically missing on disk or has been deleted/moved.",
-  "srt_jnl_file_missing_disk": "This file is physically missing on disk."
+  "srt_jnl_file_missing_disk": "This file is physically missing on disk.",
+  "virtual_folder_dropped": "Dropped Files",
+  "tooltip_speed_btn": "Fast preview (LMB - toggle, RMB - speed settings)",
+  "tooltip_loop_media": "Loop media",
+  "tooltip_sort_groups": "Sort by groups",
+  "tbl_select_all": "Select All",
+  "tbl_deselect_all": "Deselect All",
+  "tbl_invert": "Invert",
+  "col_mark": "[X]",
+  "col_name": "Name",
+  "col_type": "Type",
+  "col_size": "Size",
+  "col_date": "Date"
 }

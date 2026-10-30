@@ -18,6 +18,12 @@ class TableActionHeader(QFrame):
     deselect_all_requested = pyqtSignal()
     invert_selection_requested = pyqtSignal()
 
+    def update_ui_text(self):
+        if hasattr(self, 'header') and hasattr(self.header, 'update_ui_text'):
+            self.header.update_ui_text()
+        if hasattr(self, 'table') and hasattr(self.table, 'update_headers'):
+            self.table.update_headers()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedHeight(36)
@@ -26,8 +32,9 @@ class TableActionHeader(QFrame):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 0, 10, 0)
         
-        self.lbl_stats = QLabel("Выбрано: 0 из 0 (0 Б)")
+        self.lbl_stats = QLabel("")
         self.lbl_stats.setStyleSheet("color: #ccc; font-size: 13px; font-weight: bold; border: none;")
+        self._last_stats = (0, 0, 0)
         
         btn_style = """
             QPushButton {
@@ -37,20 +44,21 @@ class TableActionHeader(QFrame):
             QPushButton:pressed { background-color: #555; }
         """
         
-        self.btn_select_all = QPushButton("Выбрать всё")
+        self.btn_select_all = QPushButton(AppContext.tr("tbl_select_all"))
         self.btn_select_all.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_select_all.setStyleSheet(btn_style)
         self.btn_select_all.clicked.connect(self.select_all_requested.emit)
         
-        self.btn_deselect_all = QPushButton("Снять всё")
+        self.btn_deselect_all = QPushButton(AppContext.tr("tbl_deselect_all"))
         self.btn_deselect_all.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_deselect_all.setStyleSheet(btn_style)
         self.btn_deselect_all.clicked.connect(self.deselect_all_requested.emit)
         
-        self.btn_invert = QPushButton("Инвертировать")
+        self.btn_invert = QPushButton(AppContext.tr("tbl_invert"))
         self.btn_invert.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_invert.setStyleSheet(btn_style)
         self.btn_invert.clicked.connect(self.invert_selection_requested.emit)
+        self.update_stats(0, 0, 0)
         
         layout.addWidget(self.btn_select_all)
         layout.addWidget(self.btn_deselect_all)
@@ -58,12 +66,34 @@ class TableActionHeader(QFrame):
         layout.addStretch()
         layout.addWidget(self.lbl_stats)
 
+    def update_ui_text(self):
+        self.btn_select_all.setText(AppContext.tr("tbl_select_all"))
+        self.btn_deselect_all.setText(AppContext.tr("tbl_deselect_all"))
+        self.btn_invert.setText(AppContext.tr("tbl_invert"))
+        if hasattr(self, '_last_stats'):
+            self.update_stats(*self._last_stats)
+
     def update_stats(self, count: int, total: int, size_bytes: int):
-        self.lbl_stats.setText(f"Выбрано: {count} из {total} ({format_size(size_bytes)})")
+        self._last_stats = (count, total, size_bytes)
+        sz_str = format_size(size_bytes)
+        if AppContext.is_ru():
+            self.lbl_stats.setText(f"Выбрано: {count} из {total} ({sz_str})")
+        else:
+            self.lbl_stats.setText(f"Selected: {count} of {total} ({sz_str})")
 
 
 class SorterTableView(QTableWidget):
     """Высокопроизводительная таблица для Сортировщика."""
+    def update_headers(self):
+        self.setHorizontalHeaderLabels([
+            AppContext.tr("col_mark"),
+            AppContext.tr("col_name"),
+            AppContext.tr("col_type"),
+            AppContext.tr("col_size"),
+            AppContext.tr("col_date")
+        ])
+
+
     itemSelectionChanged = pyqtSignal()
     checked_stats_changed = pyqtSignal()
     item_double_clicked = pyqtSignal(str) # Emits full path
@@ -74,7 +104,7 @@ class SorterTableView(QTableWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setColumnCount(5)
-        self.setHorizontalHeaderLabels(["[X]", "Имя", "Тип", "Размер", "Дата"])
+        self.update_headers()
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)

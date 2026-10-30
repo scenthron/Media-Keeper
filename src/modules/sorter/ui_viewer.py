@@ -521,6 +521,21 @@ class SorterViewerArea(QWidget):
         # Синхронизируем состояние флага, toggle_hover_preview сам сделает flip предпочтения
         self.toggle_hover_preview()
 
+    def update_ui_text(self):
+        if hasattr(self, 'list_view') and hasattr(self.list_view, 'update_ui_text'):
+            self.list_view.update_ui_text()
+        self.set_mode(self.current_view_mode)
+        if hasattr(self, 'btn_fullscreen'):
+            self.btn_fullscreen.setToolTip("Во весь экран" if AppContext.is_ru() else "Fullscreen")
+        if hasattr(self, 'btn_page_prev'):
+            self.btn_page_prev.setToolTip("Предыдущая страница" if AppContext.is_ru() else "Previous Page")
+        if hasattr(self, 'lbl_page_text'):
+            self.lbl_page_text.setToolTip("Текущая страница" if AppContext.is_ru() else "Current Page")
+        if hasattr(self, 'btn_page_next'):
+            self.btn_page_next.setToolTip("Следующая страница" if AppContext.is_ru() else "Next Page")
+        if hasattr(self, 'btn_page_refresh'):
+            self.btn_page_refresh.setToolTip("Обновить списки и переформировать группы" if AppContext.is_ru() else "Refresh lists and regroup")
+
     def set_mode(self, mode_idx):
         self.grid_view._stop_hover_playback(force=True)
         self.list_view._stop_hover_playback(force=True)

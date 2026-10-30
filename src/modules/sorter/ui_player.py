@@ -604,8 +604,8 @@ class VideoPlayerControls(QWidget):
         self.update_ui_text()
 
     def update_ui_text(self):
-        self.btn_speed.setToolTip(AppContext.tr("Быстрый просмотр (ЛКМ - вкл/выкл, ПКМ - настройка скорости)"))
-        self.btn_loop.setToolTip(AppContext.tr("Повтор медиа"))
+        self.btn_speed.setToolTip(AppContext.tr("tooltip_speed_btn"))
+        self.btn_loop.setToolTip(AppContext.tr("tooltip_loop_media"))
 
     def set_app_reference(self, app):
         self.app_reference = app

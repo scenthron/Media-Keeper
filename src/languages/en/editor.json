@@ -308,5 +308,9 @@
     "ovl_bounce": "Random bounce",
     "tooltip_ovl_bounce": "Image continuously bounces across the video within boundaries or crop area",
     "ovl_drop_placeholder": "Drag image here...",
-    "tooltip_overlay_drop_field": "Drag image file (PNG, JPG, GIF, WebP) or click to browse"
+    "tooltip_overlay_drop_field": "Drag image file (PNG, JPG, GIF, WebP) or click to browse",
+    "lbl_bounce_speed": "Speed:",
+    "tooltip_bounce_speed": "Watermark movement speed multiplier (0.1x to 2.0x, default 1.0x)",
+    "lbl_bounce_angle": "Angle:",
+    "tooltip_bounce_angle": "Bounce trajectory angle (15° - horizontal, 45° - classic, 75° - vertical)"
 }

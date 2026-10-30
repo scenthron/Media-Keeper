@@ -806,29 +806,29 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.spin_overlay_val.setFixedHeight(34)
         self.spin_overlay_val.setMinimumWidth(75)
         _overlay_spin_style = (
-            "QSpinBox {"
+            "QSpinBox, QDoubleSpinBox {"
             "  background: #1e1e2e;"
             "  color: #a0f0a0;"
             "  border: 1px solid #3a3a5a;"
             "  border-radius: 6px;"
-            "  font-size: 12px;"
+            "  font-size: 11px;"
             "  font-weight: bold;"
-            "  padding: 2px 2px 2px 6px;"
+            "  padding: 2px 2px 2px 4px;"
             "}"
-            "QSpinBox:disabled { color: #4a5a4a; border-color: #2a2a3a; background: #1a1a1a; }"
-            "QSpinBox:focus { border-color: #4ade80; }"
-            "QSpinBox::up-button, QSpinBox::down-button {"
+            "QSpinBox:disabled, QDoubleSpinBox:disabled { color: #4a5a4a; border-color: #2a2a3a; background: #1a1a1a; }"
+            "QSpinBox:focus, QDoubleSpinBox:focus { border-color: #4ade80; }"
+            "QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {"
             "  width: 18px;"
             "  background: #2a2a3e;"
             "  border: none;"
             "}"
-            "QSpinBox::up-button { border-top-right-radius: 5px; }"
-            "QSpinBox::down-button { border-bottom-right-radius: 5px; }"
-            "QSpinBox::up-button:hover, QSpinBox::down-button:hover { background: #3a3a5a; }"
-            f"QSpinBox::up-arrow {{ image: url('{self.chevron_paths['up_active']}'); width: 10px; height: 10px; }}"
-            f"QSpinBox::down-arrow {{ image: url('{self.chevron_paths['down_active']}'); width: 10px; height: 10px; }}"
-            f"QSpinBox::up-arrow:disabled {{ image: url('{self.chevron_paths['up_disabled']}'); }}"
-            f"QSpinBox::down-arrow:disabled {{ image: url('{self.chevron_paths['down_disabled']}'); }}"
+            "QSpinBox::up-button, QDoubleSpinBox::up-button { border-top-right-radius: 5px; }"
+            "QSpinBox::down-button, QDoubleSpinBox::down-button { border-bottom-right-radius: 5px; }"
+            "QSpinBox::up-button:hover, QSpinBox::down-button:hover, QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover { background: #3a3a5a; }"
+            f"QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {{ image: url('{self.chevron_paths['up_active']}'); width: 10px; height: 10px; }}"
+            f"QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {{ image: url('{self.chevron_paths['down_active']}'); width: 10px; height: 10px; }}"
+            f"QSpinBox::up-arrow:disabled, QDoubleSpinBox::up-arrow:disabled {{ image: url('{self.chevron_paths['up_disabled']}'); }}"
+            f"QSpinBox::down-arrow:disabled, QDoubleSpinBox::down-arrow:disabled {{ image: url('{self.chevron_paths['down_disabled']}'); }}"
         )
         self.spin_overlay_val.setStyleSheet(_overlay_spin_style)
         self.spin_overlay_val.setEnabled(False)
@@ -920,6 +920,133 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.chk_overlay_bounce.setToolTip(AppContext.tr("tooltip_ovl_bounce"))
         self.chk_overlay_bounce.toggled.connect(self._on_overlay_bounce_toggled)
         pg_img_l.addWidget(self.chk_overlay_bounce)
+
+        # Панель параметров движения: Скорость (0.1x-2.0x) и Угол (15°-75°)
+        self.widget_bounce_settings = QWidget()
+        self.widget_bounce_settings.setStyleSheet("background: transparent; border: none; margin: 0; padding: 0;")
+        lay_bounce = QVBoxLayout(self.widget_bounce_settings)
+        lay_bounce.setContentsMargins(6, 2, 0, 4)
+        lay_bounce.setSpacing(4)
+
+        # Строка 1: Скорость
+        row_speed = QHBoxLayout()
+        row_speed.setSpacing(5)
+        self.lbl_bounce_speed = QLabel(AppContext.tr("lbl_bounce_speed"))
+        self.lbl_bounce_speed.setStyleSheet("color: #ccc; font-size: 11px; min-width: 55px;")
+        self.lbl_bounce_speed.setToolTip(AppContext.tr("tooltip_bounce_speed"))
+        row_speed.addWidget(self.lbl_bounce_speed)
+
+        self.spin_bounce_speed = QDoubleSpinBox()
+        self.spin_bounce_speed.setRange(0.10, 2.00)
+        self.spin_bounce_speed.setValue(1.00)
+        self.spin_bounce_speed.setSingleStep(0.05)
+        self.spin_bounce_speed.setDecimals(2)
+        self.spin_bounce_speed.setSuffix("x")
+        self.spin_bounce_speed.setFixedHeight(26)
+        self.spin_bounce_speed.setFixedWidth(68)
+        self.spin_bounce_speed.setStyleSheet(_overlay_spin_style)
+        self.spin_bounce_speed.setToolTip(AppContext.tr("tooltip_bounce_speed"))
+        row_speed.addWidget(self.spin_bounce_speed)
+
+        self.slider_bounce_speed = MagneticSlider(Qt.Orientation.Horizontal, snap_values=[100])
+        self.slider_bounce_speed.setRange(10, 200)
+        self.slider_bounce_speed.setValue(100)
+        self.slider_bounce_speed.setStyleSheet(f"QSlider::groove:horizontal {{ height: 4px; background: #444; margin: 4px 0; }} QSlider::handle:horizontal {{ width: 10px; height: 10px; background: {APP_DESIGN['accent_color']}; margin: -3px 0; border-radius: 5px; }}")
+        self.slider_bounce_speed.setToolTip(AppContext.tr("tooltip_bounce_speed"))
+        row_speed.addWidget(self.slider_bounce_speed)
+
+        self.btn_reset_bounce_speed = QPushButton("↺")
+        self.btn_reset_bounce_speed.setFixedSize(22, 22)
+        self.btn_reset_bounce_speed.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_reset_bounce_speed.setStyleSheet(self._btn_style() + "font-size: 11px; padding: 0;")
+        self.btn_reset_bounce_speed.setToolTip("Сбросить скорость (1.0x)" if AppContext.is_ru() else "Reset speed (1.0x)")
+        row_speed.addWidget(self.btn_reset_bounce_speed)
+        lay_bounce.addLayout(row_speed)
+
+        # Строка 2: Угол
+        row_angle = QHBoxLayout()
+        row_angle.setSpacing(5)
+        self.lbl_bounce_angle = QLabel(AppContext.tr("lbl_bounce_angle"))
+        self.lbl_bounce_angle.setStyleSheet("color: #ccc; font-size: 11px; min-width: 55px;")
+        self.lbl_bounce_angle.setToolTip(AppContext.tr("tooltip_bounce_angle"))
+        row_angle.addWidget(self.lbl_bounce_angle)
+
+        self.spin_bounce_angle = QSpinBox()
+        self.spin_bounce_angle.setRange(15, 75)
+        self.spin_bounce_angle.setValue(45)
+        self.spin_bounce_angle.setSingleStep(1)
+        self.spin_bounce_angle.setSuffix("°")
+        self.spin_bounce_angle.setFixedHeight(26)
+        self.spin_bounce_angle.setFixedWidth(68)
+        self.spin_bounce_angle.setStyleSheet(_overlay_spin_style)
+        self.spin_bounce_angle.setToolTip(AppContext.tr("tooltip_bounce_angle"))
+        row_angle.addWidget(self.spin_bounce_angle)
+
+        self.slider_bounce_angle = MagneticSlider(Qt.Orientation.Horizontal, snap_values=[45])
+        self.slider_bounce_angle.setRange(15, 75)
+        self.slider_bounce_angle.setValue(45)
+        self.slider_bounce_angle.setStyleSheet(f"QSlider::groove:horizontal {{ height: 4px; background: #444; margin: 4px 0; }} QSlider::handle:horizontal {{ width: 10px; height: 10px; background: {APP_DESIGN['accent_color']}; margin: -3px 0; border-radius: 5px; }}")
+        self.slider_bounce_angle.setToolTip(AppContext.tr("tooltip_bounce_angle"))
+        row_angle.addWidget(self.slider_bounce_angle)
+
+        self.btn_reset_bounce_angle = QPushButton("↺")
+        self.btn_reset_bounce_angle.setFixedSize(22, 22)
+        self.btn_reset_bounce_angle.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_reset_bounce_angle.setStyleSheet(self._btn_style() + "font-size: 11px; padding: 0;")
+        self.btn_reset_bounce_angle.setToolTip("Сбросить угол (45°)" if AppContext.is_ru() else "Reset angle (45°)")
+        row_angle.addWidget(self.btn_reset_bounce_angle)
+        lay_bounce.addLayout(row_angle)
+
+        self.slider_bounce_speed._is_updating = False
+        def on_speed_slider(val):
+            if self.slider_bounce_speed._is_updating: return
+            self.slider_bounce_speed._is_updating = True
+            self.spin_bounce_speed.setValue(val / 100.0)
+            self.slider_bounce_speed._is_updating = False
+            self._on_bounce_params_changed()
+
+        def on_speed_spin(val):
+            if self.slider_bounce_speed._is_updating: return
+            self.slider_bounce_speed._is_updating = True
+            self.slider_bounce_speed.setValue(int(round(val * 100)))
+            self.slider_bounce_speed._is_updating = False
+            self._on_bounce_params_changed()
+
+        def on_speed_reset():
+            self.spin_bounce_speed.setValue(1.00)
+            self.slider_bounce_speed.setValue(100)
+            self._on_bounce_params_changed()
+
+        self.slider_bounce_speed.valueChanged.connect(on_speed_slider)
+        self.spin_bounce_speed.valueChanged.connect(on_speed_spin)
+        self.btn_reset_bounce_speed.clicked.connect(on_speed_reset)
+
+        self.slider_bounce_angle._is_updating = False
+        def on_angle_slider(val):
+            if self.slider_bounce_angle._is_updating: return
+            self.slider_bounce_angle._is_updating = True
+            self.spin_bounce_angle.setValue(val)
+            self.slider_bounce_angle._is_updating = False
+            self._on_bounce_params_changed()
+
+        def on_angle_spin(val):
+            if self.slider_bounce_angle._is_updating: return
+            self.slider_bounce_angle._is_updating = True
+            self.slider_bounce_angle.setValue(val)
+            self.slider_bounce_angle._is_updating = False
+            self._on_bounce_params_changed()
+
+        def on_angle_reset():
+            self.spin_bounce_angle.setValue(45)
+            self.slider_bounce_angle.setValue(45)
+            self._on_bounce_params_changed()
+
+        self.slider_bounce_angle.valueChanged.connect(on_angle_slider)
+        self.spin_bounce_angle.valueChanged.connect(on_angle_spin)
+        self.btn_reset_bounce_angle.clicked.connect(on_angle_reset)
+
+        self.widget_bounce_settings.hide()
+        pg_img_l.addWidget(self.widget_bounce_settings)
 
         lay_overlay.addWidget(self.widget_overlay_img)
 
@@ -1366,7 +1493,15 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.chk_overlay_enable.setChecked(False)
         self.chk_overlay_enable.setEnabled(False)
         if hasattr(self, 'chk_overlay_bounce'):
-            self.chk_overlay_bounce.setChecked(False) 
+            self.chk_overlay_bounce.setChecked(False)
+        if hasattr(self, 'spin_bounce_speed'):
+            self.spin_bounce_speed.setValue(1.00)
+            self.slider_bounce_speed.setValue(100)
+        if hasattr(self, 'spin_bounce_angle'):
+            self.spin_bounce_angle.setValue(45)
+            self.slider_bounce_angle.setValue(45)
+        if hasattr(self, 'widget_bounce_settings'):
+            self.widget_bounce_settings.hide() 
         self.slider_overlay_val.setValue(100)
         self.overlay_enabled = False
         self.overlay_type = "region"
@@ -1407,6 +1542,14 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         self.chk_overlay_enable.setEnabled(False)
         if hasattr(self, 'chk_overlay_bounce'):
             self.chk_overlay_bounce.setChecked(False)
+        if hasattr(self, 'spin_bounce_speed'):
+            self.spin_bounce_speed.setValue(1.00)
+            self.slider_bounce_speed.setValue(100)
+        if hasattr(self, 'spin_bounce_angle'):
+            self.spin_bounce_angle.setValue(45)
+            self.slider_bounce_angle.setValue(45)
+        if hasattr(self, 'widget_bounce_settings'):
+            self.widget_bounce_settings.hide()
         self.btn_crop.setEnabled(False)
         for b in [self.btn_rot_ccw, self.btn_rot_cw, self.btn_flip_h, self.btn_flip_v]:
             b.setEnabled(False)
@@ -1915,6 +2058,16 @@ class VideoEditorWidget(QWidget, EditorPlaybackMixin, EditorCropMixin, EditorOve
         if hasattr(self, 'chk_overlay_bounce'):
             self.chk_overlay_bounce.setText(AppContext.tr("ovl_bounce"))
             self.chk_overlay_bounce.setToolTip(AppContext.tr("tooltip_ovl_bounce"))
+        if hasattr(self, 'lbl_bounce_speed'):
+            self.lbl_bounce_speed.setText(AppContext.tr("lbl_bounce_speed"))
+            self.lbl_bounce_speed.setToolTip(AppContext.tr("tooltip_bounce_speed"))
+            self.spin_bounce_speed.setToolTip(AppContext.tr("tooltip_bounce_speed"))
+            self.slider_bounce_speed.setToolTip(AppContext.tr("tooltip_bounce_speed"))
+        if hasattr(self, 'lbl_bounce_angle'):
+            self.lbl_bounce_angle.setText(AppContext.tr("lbl_bounce_angle"))
+            self.lbl_bounce_angle.setToolTip(AppContext.tr("tooltip_bounce_angle"))
+            self.spin_bounce_angle.setToolTip(AppContext.tr("tooltip_bounce_angle"))
+            self.slider_bounce_angle.setToolTip(AppContext.tr("tooltip_bounce_angle"))
         
         self.combo_overlay_type.setToolTip(AppContext.tr("tooltip_overlay_type"))
         self.edit_marker_time.setToolTip(AppContext.tr("tooltip_marker_time"))

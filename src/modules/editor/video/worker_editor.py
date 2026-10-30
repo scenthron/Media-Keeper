@@ -188,8 +188,14 @@ class VideoEditorWorker(QThread):
                                     ch = orig_h
                                 span_x = max(1, cw - w)
                                 span_y = max(1, ch - h)
-                                vx = 2.0 * span_x / 7.0
-                                vy = 2.0 * span_y / 5.3
+                                speed_mult = ovl.get('bounce_speed', 1.0)
+                                angle_deg = ovl.get('bounce_angle', 45)
+                                import math
+                                rad = math.radians(angle_deg)
+                                base_v = max(span_x, span_y) / 4.0
+                                v = base_v * speed_mult
+                                vx = max(1.0, v * math.cos(rad))
+                                vy = max(1.0, v * math.sin(rad))
                                 x_expr = f"{cx}+{span_x}-abs(mod(t*{vx:.2f}\,{2*span_x})-{span_x})"
                                 y_expr = f"{cy}+{span_y}-abs(mod(t*{vy:.2f}\,{2*span_y})-{span_y})"
                                 filter_complex.append(f"{current_v_label}[img_ready]overlay=x='{x_expr}':y='{y_expr}'[v_ovl]")
@@ -354,8 +360,14 @@ class VideoEditorWorker(QThread):
                             ch = orig_h
                         span_x = max(1, cw - w)
                         span_y = max(1, ch - h)
-                        vx = 2.0 * span_x / 7.0
-                        vy = 2.0 * span_y / 5.3
+                        speed_mult = ovl.get('bounce_speed', 1.0)
+                        angle_deg = ovl.get('bounce_angle', 45)
+                        import math
+                        rad = math.radians(angle_deg)
+                        base_v = max(span_x, span_y) / 4.0
+                        v = base_v * speed_mult
+                        vx = max(1.0, v * math.cos(rad))
+                        vy = max(1.0, v * math.sin(rad))
                         x_expr = f"{cx}+{span_x}-abs(mod(t*{vx:.2f}\,{2*span_x})-{span_x})"
                         y_expr = f"{cy}+{span_y}-abs(mod(t*{vy:.2f}\,{2*span_y})-{span_y})"
                         filter_complex.append(f"{current_v_label}[img_ready]overlay=x='{x_expr}':y='{y_expr}'[v_ovl]")

@@ -206,6 +206,8 @@ class EditorOverlayMixin:
 
     def _on_overlay_bounce_toggled(self, checked: bool) -> None:
         """Переключение режима отскакивающего/случайного движения водяного знака."""
+        if hasattr(self, 'widget_bounce_settings'):
+            self.widget_bounce_settings.setVisible(checked)
         if checked:
             self._saved_static_overlay_pos = self.overlay_item.pos()
             pos = self.player.position() if hasattr(self, 'player') and self.player else 0
@@ -215,8 +217,15 @@ class EditorOverlayMixin:
                 self.overlay_item.setPos(self._saved_static_overlay_pos)
         self._schedule_cc_preview()
 
+    def _on_bounce_params_changed(self) -> None:
+        """Вызывается при изменении скорости или угла движения."""
+        if hasattr(self, 'chk_overlay_bounce') and self.chk_overlay_bounce.isChecked():
+            pos = self.player.position() if hasattr(self, 'player') and self.player else 0
+            self._update_bouncing_overlay_pos(pos)
+        self._schedule_cc_preview()
+
     def _update_bouncing_overlay_pos(self, pos_ms: int) -> None:
-        """Обновление позиции логотипа по траектории отскока от границ кадра (или кропа)."""
+        """Обновление позиции логотипа по кинематике угла и скорости отскока."""
         if not getattr(self, 'overlay_enabled', False):
             return
         if getattr(self, 'overlay_type', None) != 'image':
@@ -251,10 +260,18 @@ class EditorOverlayMixin:
         span_x = max(1.0, cw - w)
         span_y = max(1.0, ch - h)
 
-        # Несоизмеримые периоды для сложной траектории (не по одной диагонали)
+        # Вычисляем составляющие скорости исходя из множителя скорости и угла наклона
+        speed_mult = self.spin_bounce_speed.value() if hasattr(self, 'spin_bounce_speed') else 1.0
+        angle_deg = self.spin_bounce_angle.value() if hasattr(self, 'spin_bounce_angle') else 45
+        import math
+        rad = math.radians(angle_deg)
+
+        base_v = max(span_x, span_y) / 4.0
+        v = base_v * speed_mult
+        vx = max(1.0, v * math.cos(rad))
+        vy = max(1.0, v * math.sin(rad))
+
         t = pos_ms / 1000.0
-        vx = 2.0 * span_x / 7.0
-        vy = 2.0 * span_y / 5.3
 
         mod_x = (t * vx) % (2.0 * span_x)
         dx = abs(mod_x - span_x)

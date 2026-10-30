@@ -141,7 +141,9 @@ class EditorExportMixin:
                     'color': self.overlay_item._color.name() if self.overlay_type == 'region' else None,
                     'path': self.overlay_image_path if self.overlay_type == 'image' else None,
                     'blur_val': self.slider_overlay_val.value() if self.overlay_type == 'blur' else 0,
-                    'bounce': self.chk_overlay_bounce.isChecked() if hasattr(self, 'chk_overlay_bounce') else False
+                    'bounce': self.chk_overlay_bounce.isChecked() if hasattr(self, 'chk_overlay_bounce') else False,
+                    'bounce_speed': self.spin_bounce_speed.value() if hasattr(self, 'spin_bounce_speed') else 1.0,
+                    'bounce_angle': self.spin_bounce_angle.value() if hasattr(self, 'spin_bounce_angle') else 45
                 }
 
         return {
